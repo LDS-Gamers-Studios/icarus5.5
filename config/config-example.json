@@ -1,0 +1,66 @@
+{
+  "api": {
+    "snipcart": "",
+    "steam": ""
+  },
+  "applicationId": "",
+  "color": [
+    248,
+    154,
+    34
+  ],
+  "db": {
+    "model": "database/dbControllers.js",
+    "db": "",
+    "settings": {
+      "useFindAndModify": false,
+      "useNewUrlParser": true,
+      "user": "",
+      "pass": ""
+    }
+  },
+  "error": {
+    "url": ""
+  },
+  "events": [
+    "channelCreate",
+    "channelUpdate",
+    "filterUpdate",
+    "guildBanAdd",
+    "guildMemberAdd",
+    "guildMemberRemove",
+    "guildMemberUpdate",
+    "interactionCreate",
+    "messageCreate",
+    "messageReactionAdd",
+    "messageReactionRemove",
+    "messageUpdate",
+    "presenceUpdate",
+    "ready",
+    "threadCreate",
+    "userUpdate",
+    "voiceStateUpdate"
+  ],
+  "google": {
+    "api": "",
+    "creds": {
+      "type": "",
+      "project_id": "",
+      "private_key_id": "",
+      "private_key": "",
+      "client_email": "",
+      "client_id": "",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://accounts.google.com/o/oauth2/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": ""
+    },
+    "sheets": {
+      "config": "",
+      "games": "",
+      "applications": ""
+    }
+  },
+  "prefix": "!",
+  "token": ""
+}

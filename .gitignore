@@ -1,0 +1,15 @@
+node_modules
+storage/*
+tmp
+config/*
+!config/README.md
+!config/*-example.json
+test.js
+*-.js
+*-.json
+data/banned.json
+site/*
+.DS_Store
+
+# For Visual Studio's temp directory
+.vs/
