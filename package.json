@@ -24,7 +24,7 @@
     "forever": "^4.0.1",
     "google-spreadsheet": "^3.1.15",
     "moment": "^2.29.1",
-    "mongoose": "^5.13.7",
+    "mongoose": "^5.13.20",
     "nanoid": "^3.1.25",
     "profanity-matcher": "^1.0.1",
     "rss-parser": "^3.12.0",
