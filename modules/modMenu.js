@@ -37,9 +37,9 @@ function getMenuItems(rawItems, permsMap, includeKey) {
 
 async function menu(options, interaction, target) {
   const selectId = u.customId();
-  const row = new Discord.MessageActionRow()
+  const row = new Discord.ActionRowBuilder()
     .addComponents(
-      new Discord.MessageSelectMenu()
+      new Discord.StringSelectMenuBuilder()
         .setCustomId(selectId)
         .setPlaceholder('Nothing Selected')
         .addOptions(options),
@@ -293,7 +293,7 @@ const processes = {
 };
 
 /**
-   * @param {Discord.ContextMenuInteraction} inter
+   * @param {Discord.ContextMenuCommandInteraction} inter
    */
 async function modMenu(inter) {
   await inter.deferReply({ ephemeral: true });

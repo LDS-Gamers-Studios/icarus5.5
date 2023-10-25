@@ -1,4 +1,5 @@
 const Discord = require("discord.js"),
+  { escapeMarkdown } = require('discord.js'),
   config = require("../config/config.json");
 
 const errorLog = new Discord.WebhookClient(config.error);
@@ -12,7 +13,7 @@ const { nanoid } = require("nanoid");
 
 /**
  * Converts an interaction into a more universal format for error messages.
- * @param {Discord.Interaction} inter The interaction to be parsed.
+ * @param {Discord.BaseInteraction} inter The interaction to be parsed.
  * @returns {ParsedInteraction} The interaction after it has been broken down.
  */
 function parseInteraction(inter) {
@@ -89,7 +90,7 @@ const utils = {
   },
   /**
    * After the given amount of time, attempts to delete the message.
-   * @param {Discord.Message|Discord.Interaction} msg The message to delete.
+   * @param {Discord.Message|Discord.BaseInteraction} msg The message to delete.
    * @param {number} t The length of time to wait before deletion, in milliseconds.
    */
   clean: async function(msg, t = 20000) {
@@ -103,7 +104,7 @@ const utils = {
   },
   /**
    * After the given amount of time, attempts to delete the interaction.
-   * @param {Discord.Interaction} interaction The interaction to delete.
+   * @param {Discord.BaseInteraction} interaction The interaction to delete.
    * @param {number} t The length of time to wait before deletion, in milliseconds.
    */
   cleanInteraction: async function(interaction, t = 20000) {
@@ -118,7 +119,7 @@ const utils = {
   /**
    * Confirm Dialog
    * @function confirmInteraction
-   * @param {Discord.Interaction} interaction The interaction to confirm
+   * @param {Discord.BaseInteraction} interaction The interaction to confirm
    * @param {String} prompt The prompt for the confirmation
    * @returns {Boolean}
    */
@@ -134,9 +135,9 @@ const utils = {
     await interaction[reply]({
       embeds: [embed],
       components: [
-        new Discord.MessageActionRow().addComponents(
-          new Discord.MessageButton().setCustomId(confirmTrue).setEmoji("✅").setLabel("Confirm").setStyle("SUCCESS"),
-          new Discord.MessageButton().setCustomId(confirmFalse).setEmoji("⛔").setLabel("Cancel").setStyle("DANGER")
+        new Discord.ActionRowBuilder().addComponents(
+          new Discord.ButtonBuilder().setCustomId(confirmTrue).setEmoji("✅").setLabel("Confirm").setStyle("SUCCESS"),
+          new Discord.ButtonBuilder().setCustomId(confirmFalse).setEmoji("⛔").setLabel("Cancel").setStyle("DANGER")
         )
       ],
       ephemeral: true,
@@ -194,7 +195,7 @@ const utils = {
   /**
    * Shortcut to Discord.Util.escapeMarkdown. See docs there for reference.
    */
-  escapeText: Discord.Util.escapeMarkdown,
+  escapeText: escapeMarkdown,
   /**
    * Returns a MessageEmbed with basic values preset, such as color and timestamp.
    * @param {any} data The data object to pass to the MessageEmbed constructor.
@@ -212,7 +213,7 @@ const utils = {
         iconURL: data.author.displayAvatarURL()
       };
     }
-    const embed = new Discord.MessageEmbed(data);
+    const embed = new Discord.EmbedBuilder(data);
     if (!data?.color) embed.setColor(config.color);
     if (!data?.timestamp) embed.setTimestamp();
     return embed;
@@ -221,7 +222,7 @@ const utils = {
    * Handles a command exception/error. Most likely called from a catch.
    * Reports the error and lets the user know.
    * @param {Error} error The error to report.
-   * @param {any} message Any Discord.Message, Discord.Interaction, or text string.
+   * @param {any} message Any Discord.Message, Discord.BaseInteraction, or text string.
    */
   errorHandler: function(error, message = null) {
     if (!error || (error.name === "AbortError")) return;
@@ -239,7 +240,7 @@ const utils = {
       embed.addField("User", message.author.username, true)
         .addField("Location", loc, true)
         .addField("Command", message.cleanContent || "`undefined`", true);
-    } else if (message instanceof Discord.Interaction) {
+    } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.guild ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
       console.error(`Interaction by ${message.user.username} in ${loc}`);
 

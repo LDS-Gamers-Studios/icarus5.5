@@ -1,5 +1,5 @@
 const Augur = require("augurbot"),
-  { MessageActionRow, MessageButton } = require('discord.js');
+  { ActionRowBuilder, ButtonBuilder } = require('discord.js');
 
 const dict = {
   "ᔑ": "a",
@@ -56,9 +56,9 @@ async function handleMessage(msg) {
     return;
   }
 
-  const row = new MessageActionRow()
+  const row = new ActionRowBuilder()
   .addComponents(
-    new MessageButton()
+    new ButtonBuilder()
       .setCustomId('sgaTranslate')
       .setLabel('Translate')
       .setStyle('PRIMARY'),

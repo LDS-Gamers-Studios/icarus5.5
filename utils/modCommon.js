@@ -1,19 +1,19 @@
 const Discord = require("discord.js"),
   u = require("../utils/utils"),
   sf = require("../config/snowflakes.json"),
-  { MessageActionRow, MessageButton } = require("discord.js");
+  { ActionRowBuilder, ButtonBuilder } = require("discord.js");
 
 const modActions = [
-  new MessageActionRow().addComponents(
-    new MessageButton().setCustomId("modCardClear").setEmoji("✅").setStyle("SUCCESS"),
-    new MessageButton().setCustomId("modCardVerbal").setEmoji("🗣").setStyle("PRIMARY"),
-    new MessageButton().setCustomId("modCardMinor").setEmoji("⚠").setStyle("DANGER"),
-    new MessageButton().setCustomId("modCardMajor").setEmoji("⛔").setStyle("DANGER"),
-    new MessageButton().setCustomId("modCardMute").setEmoji("🔇").setStyle("DANGER")
+  new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId("modCardClear").setEmoji("✅").setStyle("SUCCESS"),
+    new ButtonBuilder().setCustomId("modCardVerbal").setEmoji("🗣").setStyle("PRIMARY"),
+    new ButtonBuilder().setCustomId("modCardMinor").setEmoji("⚠").setStyle("DANGER"),
+    new ButtonBuilder().setCustomId("modCardMajor").setEmoji("⛔").setStyle("DANGER"),
+    new ButtonBuilder().setCustomId("modCardMute").setEmoji("🔇").setStyle("DANGER")
   ),
-  new MessageActionRow().addComponents(
-    new MessageButton().setCustomId("modCardInfo").setEmoji("👤").setLabel("User Info").setStyle("SECONDARY"),
-    new MessageButton().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle("SECONDARY")
+  new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId("modCardInfo").setEmoji("👤").setLabel("User Info").setStyle("SECONDARY"),
+    new ButtonBuilder().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle("SECONDARY")
   )
 ];
 
