@@ -1,4 +1,4 @@
-const Augur = require("augurbot"),
+const Augur = require("@bobbythecatfish/augurbot"),
   { ActionRowBuilder, ButtonBuilder } = require('discord.js');
 
 const dict = {

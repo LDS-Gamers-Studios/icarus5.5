@@ -4,7 +4,7 @@
 const u = require("../utils/utils"),
   sf = require("../config/snowflakes.json"),
   config = require("../config/config.json"),
-  Augur = require("augurbot"),
+  Augur = require("@bobbythecatfish/augurbot"),
   { GoogleSpreadsheet } = require("google-spreadsheet");
 
 let channelNames = new Array();

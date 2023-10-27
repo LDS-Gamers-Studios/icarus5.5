@@ -1,4 +1,4 @@
-const { AugurClient } = require("augurbot"),
+const { AugurClient } = require("@bobbythecatfish/augurbot"),
   config = require("./config/config.json"),
   u = require("./utils/utils");
 

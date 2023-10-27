@@ -18,8 +18,7 @@
   },
   "homepage": "https://github.com/BobbyTheCatfish/icarus5.5#readme",
   "dependencies": {
-    "augurbot": "github:BobbyTheCatfish/augurbot#master",
-    "axios": "^0.21.1",
+    "@bobbythecatfish/augurbot": "^3.0.0",
     "discord.js": "^14.13.0",
     "forever": "^4.0.1",
     "google-spreadsheet": "^3.1.15",

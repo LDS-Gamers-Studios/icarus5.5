@@ -1,4 +1,4 @@
-const Augur = require("augurbot"),
+const Augur = require("@bobbythecatfish/augurbot"),
   Rank = require("../utils/rankInfo"),
   sf = require("../config/snowflakes"),
   u = require("../utils/utils");
