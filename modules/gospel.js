@@ -1,4 +1,4 @@
-const Augur = require("augurbot");
+const Augur = require("@bobbythecatfish/augurbot");
 const { Interaction } = require("discord.js");
 const Parser = require("rss-parser");
 const sf = require("../config/snowflakes.json");

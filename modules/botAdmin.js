@@ -1,6 +1,6 @@
 // This file is a place for all the publicly visible bot diagnostic commands usable primarily only by the head bot dev.
 
-const Augur = require("augurbot"),
+const Augur = require("@bobbythecatfish/augurbot"),
   p = require("../utils/perms"),
   u = require("../utils/utils"),
   sf = require("../config/snowflakes");

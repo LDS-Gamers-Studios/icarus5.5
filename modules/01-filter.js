@@ -1,4 +1,4 @@
-const Augur = require("augurbot"),
+const Augur = require("@bobbythecatfish/augurbot"),
   banned = require("../data/banned.json"),
   Discord = require("discord.js"),
   profanityFilter = require("profanity-matcher"),
