@@ -1,4 +1,4 @@
-const Augur = require("@bobbythecatfish/augurbot"),
+const Augur = require("augurbot-ts"),
   { fetchGalnetFeed, fetchSystemFactions } = require("../utils/EliteApi"),
   { ldsg, channels: { elitefactionupdates, elitenews } } = require("../config/snowflakes"),
   u = require("../utils/utils");

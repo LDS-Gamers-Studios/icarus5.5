@@ -1,14 +1,15 @@
-const { AugurClient } = require("@bobbythecatfish/augurbot"),
+const { AugurClient } = require("augurbot-ts"),
   config = require("./config/config.json"),
+  { AllowedMentionsTypes, Partials } = require("discord.js"),
   u = require("./utils/utils");
 
 const client = new AugurClient(config, {
   clientOptions: {
     allowedMentions: {
-      parsed: ["roles", "users"],
+      parsed: [AllowedMentionsTypes.Role, AllowedMentionsTypes.User],
       repliedUser: true
     },
-    partials: ["CHANNEL", "MESSAGE", "REACTION"]
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction]
   },
   commands: "./modules",
   errorHandler: u.errorHandler,

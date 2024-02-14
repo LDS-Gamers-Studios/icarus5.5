@@ -1,30 +1,33 @@
-{
+const Discord = require('discord.js');
+const type = Discord.ApplicationCommandOptionType;
+
+module.exports = {
   "name": "mod",
   "description": "Modding Actions Within LDSG",
   "default_permission": false,
-  "type": 1,
+  "type": Discord.ApplicationCommandType.ChatInput,
   "options": [
     {
       "name": "ban",
       "description": "Ban a user",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Who do you want to ban?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "reason",
           "description": "Why are they being banned?",
-          "type": 3,
+          "type": type.String,
           "required": true
         },
         {
           "name": "clean",
           "description": "How many days of messages should I remove? (Default: 1)",
-          "type": 4,
+          "type": type.Integer,
           "required": false
         }
       ]
@@ -32,18 +35,18 @@
     {
       "name": "filter",
       "description": "Add or remove a word from the language filter",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "word",
           "description": "Which word do you want to add to the language filter?",
-          "type": 3,
+          "type": type.String,
           "required": true
         },
         {
           "name": "apply",
           "description": "Should I add (`true`) or remove (`false`) the word? (Default: `true`)",
-          "type": 5,
+          "type": type.Boolean,
           "required": false
         }
       ]
@@ -51,18 +54,18 @@
     {
       "name": "fullinfo",
       "description": "Check when a user joined the server and rank information",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Which user do you want info about?",
-          "type": 6,
+          "type": type.User,
           "required": false
         },
         {
           "name": "history",
           "description": "How many days history do you need? (Default `28`)",
-          "type": 4,
+          "type": type.Integer,
           "required": false
         }
       ]
@@ -70,18 +73,18 @@
     {
       "name": "kick",
       "description": "Kick a user",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Who do you want to kick?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "reason",
           "description": "Why are they being kicked?",
-          "type": 3,
+          "type": type.String,
           "required": true
         }
       ]
@@ -89,24 +92,24 @@
     {
       "name": "mute",
       "description": "Mute or unmute a user",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Who do you want to mute?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "reason",
           "description": "Why are they being muted?",
-          "type": 3,
+          "type": type.String,
           "required": false
         },
         {
           "name": "apply",
           "description": "Do I apply (`true`) or remove (`false`) the mute? (Default: `true`)",
-          "type": 5,
+          "type": type.Boolean,
           "required": false
         }
       ]
@@ -114,18 +117,18 @@
     {
       "name": "note",
       "description": "Make a note about a user",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Who needs the note?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "note",
           "description": "What is the note?",
-          "type": 3,
+          "type": type.String,
           "required": true
         }
       ]
@@ -133,24 +136,24 @@
     {
       "name": "office",
       "description": "Send a user to the office",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Who are you sending to the office?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "reason",
           "description": "Why are you sending them there?",
-          "type": 3,
+          "type": type.String,
           "required": true
         },
         {
           "name": "apply",
           "description": "Am I sending them (`true`) or letting them out (`false`)? (Default: `true`)",
-          "type": 5,
+          "type": type.Boolean,
           "required": false
         }
       ]
@@ -158,18 +161,18 @@
     {
       "name": "purge",
       "description": "Purge messages in the channel",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "number",
           "description": "How many messages should I delete?",
-          "type": 4,
+          "type": type.Integer,
           "required": true
         },
         {
           "name": "reason",
           "description": "Why are you purging?",
-          "type": 3,
+          "type": type.String,
           "required": true
         }
       ]
@@ -177,18 +180,18 @@
     {
       "name": "rename",
       "description": "Change a user's nickname, if their name is inappropriate",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Who do you want to rename?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "name",
           "description": "What name should I apply?",
-          "type": 3,
+          "type": type.String,
           "required": false
         }
       ]
@@ -196,24 +199,24 @@
     {
       "name": "slowmode",
       "description": "Set a temporary slow mode on the channel",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "channel",
           "description": "Which channel needs a slowmode?",
-          "type": 7,
+          "type": type.Channel,
           "required": false
         },
         {
           "name": "duration",
           "description": "How many minutes will it last? (Default: `10`)",
-          "type": 4,
+          "type": type.Integer,
           "required": false
         },
         {
           "name": "timer",
           "description": "How many seconds between messages? (Default: `15`)",
-          "type": 4,
+          "type": type.Integer,
           "required": false
         }
       ]
@@ -221,18 +224,18 @@
     {
       "name": "summary",
       "description": "Get a brief summary of a user's history",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Whose summary do you want to see?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "history",
           "description": "How many days history do you need? (Default `28`)",
-          "type": 4,
+          "type": type.Integer,
           "required": false
         }
       ]
@@ -240,18 +243,18 @@
     {
       "name": "trust",
       "description": "Trust or untrust a user",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Which user are you applying this to?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "type",
           "description": "What type of Trusting is needed?",
-          "type": 3,
+          "type": type.String,
           "choices": [
             { "name": "Initial", "value": "initial" },
             { "name": "Plus", "value": "plus" },
@@ -262,7 +265,7 @@
         {
           "name": "apply",
           "description": "Should I apply (`true`) or remove (`false`) the role? (Default: `true`)",
-          "type": 5,
+          "type": type.Boolean,
           "required": false
         }
       ]
@@ -270,27 +273,27 @@
     {
       "name": "warn",
       "description": "Give a user a warning",
-      "type": 1,
+      "type": type.Subcommand,
       "options": [
         {
           "name": "user",
           "description": "Which user do you want to warn?",
-          "type": 6,
+          "type": type.User,
           "required": true
         },
         {
           "name": "reason",
           "description": "Why do you need to warn them?",
-          "type": 3,
+          "type": type.String,
           "required": true
         },
         {
           "name": "value",
           "description": "What value is the warning? (Default: `1`)",
-          "type": 4,
+          "type": type.Integer,
           "required": false
         }
       ]
     }
   ]
-}
+};

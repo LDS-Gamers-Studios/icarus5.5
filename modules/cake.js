@@ -1,4 +1,4 @@
-const Augur = require("@bobbythecatfish/augurbot"),
+const Augur = require("augurbot-ts"),
   moment = require("moment"),
   u = require("../utils/utils"),
   sf = require("../config/snowflakes.json");

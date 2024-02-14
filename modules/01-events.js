@@ -1,4 +1,4 @@
-const Augur = require("@bobbythecatfish/augurbot"),
+const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   sf = require("../config/snowflakes.json"),
   moment = require("moment"),
@@ -11,17 +11,17 @@ const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
   try {
     if (channel.guild?.id == sf.ldsg) {
-      if (channel.permissionsFor(channel.client.user)?.has(["VIEW_CHANNEL", "MANAGE_CHANNELS"])) {
+      if (channel.permissionsFor(channel.client.user)?.has(["ViewChannel", "ManageChannels"])) {
         channel.permissionOverwrites.create(sf.roles.muted, {
           // text
-          VIEW_CHANNEL: false,
-          ADD_REACTIONS: false,
-          SEND_MESSAGES: false,
-          READ_MESSAGE_HISTORY: false,
+          ViewChannel: false,
+          AddReactions: false,
+          SendMessages: false,
+          ReadMessageHistory: false,
           // voice
-          CONNECT: false,
-          SPEAK: false,
-          STREAM: false
+          Connect: false,
+          Speak: false,
+          Stream: false
         }, { reason: "New channel permissions update" })
         .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
 
@@ -29,14 +29,14 @@ const Module = new Augur.Module()
         if (ductTapeExclude) {
           channel.permissionOverwrites.create(sf.roles.ducttape, {
             // text
-            VIEW_CHANNEL: false,
-            ADD_REACTIONS: false,
-            SEND_MESSAGES: false,
-            READ_MESSAGE_HISTORY: false,
+            ViewChannel: false,
+            AddReactions: false,
+            SendMessages: false,
+            ReadMessageHistory: false,
             // voice
-            CONNECT: false,
-            SPEAK: false,
-            STREAM: false
+            Connect: false,
+            Speak: false,
+            Stream: false
           }, { reason: "New channel permissions update" })
           .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
         }
@@ -53,18 +53,22 @@ const Module = new Augur.Module()
     u.errorHandler(error, "Set permissions on channel create");
   }
 })
-.addEvent("guildBanAdd", (guild, user) => {
+.addEvent("guildBanAdd", (guildBan) => {
+  const guild = guildBan.guild;
+  const user = guildBan.user;
   if (guild.id == sf.ldsg) {
     if (guild.client.ignoreNotifications?.has(user.id)) {
       guild.client.ignoreNotifications.delete(user.id);
     } else {
-      guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
-        u.embed({
-          author: user,
-          title: `${user.username} has been banned`,
-          color: 0x0000ff
-        })
-      ] });
+      guild.channels.cache.get(sf.channels.modlogs).send({
+        embeds: [
+          u.embed({
+            author: user,
+            title: `${user.username} has been banned`,
+            color: 0x0000ff
+          })
+        ]
+      });
     }
   }
 })
@@ -97,7 +101,7 @@ const Module = new Augur.Module()
         if (user.roles.length > 0) member = await member.roles.add(toAdd);
 
         let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
-        if (roleString.length > 1024) roleString = roleString.substr(0, roleString.indexOf(", ", 1000)) + " ...";
+        if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
 
         embed.setTitle(member.displayName + " has rejoined the server.")
           .addField("Roles", roleString);

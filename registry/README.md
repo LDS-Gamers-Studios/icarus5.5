@@ -1,1 +1,1 @@
-Each file in here is the json required to register a certain Discord interaction.
+Each file in here is the js required to register a certain Discord interaction.

@@ -1,4 +1,4 @@
-const Augur = require("@bobbythecatfish/augurbot"),
+const Augur = require("augurbot-ts"),
   banned = require("../data/banned.json"),
   Discord = require("discord.js"),
   profanityFilter = require("profanity-matcher"),
@@ -13,6 +13,7 @@ const bannedWords = new RegExp(banned.words.join("|"), "i"),
 
 let pf = new profanityFilter();
 
+/** @type {Map<string, Discord.Channel} */
 const grownups = new Map(),
   processing = new Set();
 
@@ -215,11 +216,13 @@ async function processCardAction(interaction) {
       const infoEmbed = u.embed({ author: member })
       .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
       .setDescription(infractionDescription)
-      .addField("ID", member.id, true)
-      .addField("Activity", `Posts: ${parseInt(userDoc.posts, 10).toLocaleString()}`, true)
-      .addField("Roles", roleString)
-      .addField("Joined", member.joinedAt.toUTCString(), true)
-      .addField("Account Created", member.user.createdAt.toUTCString(), true);
+      .addFields([
+        { name: "ID", value: member.id, inline: true },
+        { name: "Activity", value: `Posts: ${parseInt(userDoc.posts, 10).toLocaleString()}`, inline: true },
+        { name: "Roles", value: roleString },
+        { name: "Joined", value: member.joinedAt.toUTCString(), inline:  true },
+        { name: "Account Created", value: member.user.createdAt.toUTCString(), inline: true },
+      ]);
 
       interaction.editReply({ embeds: [infoEmbed] });
     } else if (interaction.customId == "modCardClear") {
@@ -227,13 +230,13 @@ async function processCardAction(interaction) {
 
       await Module.db.infraction.remove(flag);
       embed.setColor(0x00FF00)
-      .addField("Resolved", `${mod.toString()} cleared the flag.`);
-      embed.fields = embed.fields.filter(f => !f.name.startsWith("Jump"));
+      .addFields([{ name: "Resolved", value: `${mod.toString()} cleared the flag.` }]);
+      embed.data.fields = embed.data.fields.filter(f => !f.name.startsWith("Jump"));
 
       await interaction.update({ embeds: [embed], components: [] });
     } else if (interaction.customId == "modCardLink") {
       // LINK TO #MODDISCUSSION
-      const md = await interaction.client.channels.cache.get(sf.channels.moddiscussion);
+      const md = interaction.client.channels.cache.get(sf.channels.moddiscussion);
       await interaction.reply({ content: `Sending the flag over to ${md}...`, ephemeral: true });
 
       embed.setFooter({ text: `Linked by ${u.escapeText(mod.displayName)}` });
@@ -247,15 +250,15 @@ async function processCardAction(interaction) {
       switch (interaction.customId) {
       case "modCardVerbal":
         infraction.value = 0;
-        embed.setColor(0x00FFFF).addField("Resolved", `${mod.toString()} issued a verbal warning.`);
+        embed.setColor(0x00FFFF).addFields({ name: "Resolved", value: `${mod.toString()} issued a verbal warning.` });
         break;
       case "modCardMinor":
         infraction.value = 1;
-        embed.addField("Resolved", `${mod.toString()} issued a 1 point warning.`);
+        embed.addFields({ name: "Resolved", value: `${mod.toString()} issued a 1 point warning.` });
         break;
       case "modCardMajor":
         infraction.value = 5;
-        embed.addField("Resolved", `${mod.toString()} issued a 5 point warning.`);
+        embed.addFields({ name: "Resolved", value: `${mod.toString()} issued a 5 point warning.` });
         break;
       case "modCardMute":
         infraction.value = 10;
@@ -278,7 +281,7 @@ async function processCardAction(interaction) {
             }
           });
         }
-        embed.addField("Resolved", `${mod.toString()} muted the member.`);
+        embed.addFields({ name: "Resolved", value: `${mod.toString()} muted the member.` });
         break;
       }
       await Module.db.infraction.update(infraction);
@@ -286,7 +289,7 @@ async function processCardAction(interaction) {
 
       if (member) {
         const quote = u.embed({ author: member })
-        .addField("Channel", `#${interaction.guild.channels.cache.get(infraction.channel).name}`)
+        .addFields({ name: "Channel", value: `#${interaction.guild.channels.cache.get(infraction.channel).name}` })
         .setDescription(embed.description)
         .setTimestamp(flag.createdAt);
 
@@ -299,8 +302,8 @@ async function processCardAction(interaction) {
         member.send({ content: response, embeds: [quote] }).catch(() => blocked(member));
       }
 
-      embed.fields = embed.fields.filter(f => !f.name || !f.name.startsWith("Jump"));
-      embed.fields.find(f => f.name?.startsWith("Infraction")).value = `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}`;
+      embed.data.fields = embed.data.fields.filter(f => !f.name || !f.name.startsWith("Jump"));
+      embed.data.fields.find(f => f.name?.startsWith("Infraction")).value = `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}`;
 
       await interaction.update({ embeds: [embed], components: [] }).catch(() => {
         interaction.message.edit({ embeds: [embed], components: [] }).catch((error) => u.errorHandler(error, interaction));
@@ -324,13 +327,13 @@ async function processCardAction(interaction) {
 const Module = new Augur.Module()
 .addEvent("messageCreate", processMessageLanguage)
 .addEvent("messageUpdate", processMessageLanguage)
-.addInteractionHandler({ customId: "modCardClear", process: processCardAction })
-.addInteractionHandler({ customId: "modCardVerbal", process: processCardAction })
-.addInteractionHandler({ customId: "modCardMinor", process: processCardAction })
-.addInteractionHandler({ customId: "modCardMajor", process: processCardAction })
-.addInteractionHandler({ customId: "modCardMute", process: processCardAction })
-.addInteractionHandler({ customId: "modCardInfo", process: processCardAction })
-.addInteractionHandler({ customId: "modCardLink", process: processCardAction })
+.addInteraction({ id: "modCardClear", process: processCardAction })
+.addInteraction({ id: "modCardVerbal", process: processCardAction })
+.addInteraction({ id: "modCardMinor", process: processCardAction })
+.addInteraction({ id: "modCardMajor", process: processCardAction })
+.addInteraction({ id: "modCardMute", process: processCardAction })
+.addInteraction({ id: "modCardInfo", process: processCardAction })
+.addInteraction({ id: "modCardLink", process: processCardAction })
 .addEvent("filterUpdate", () => pf = new profanityFilter());
 
 module.exports = Module;

@@ -1,10 +1,11 @@
-const Augur = require("@bobbythecatfish/augurbot"),
+const Augur = require("augurbot-ts"),
+  Discord = require('discord.js'),
   p = require("../utils/perms"),
   u = require("../utils/utils"),
   sf = require("../config/snowflakes"),
   config = require("../config/config.json"),
-  gb = "<:gb:493084576470663180>",
-  ember = "<:ember:512508452619157504>";
+  gb = `<:gb:${sf.emoji.gb}>`,
+  ember = `<:ember:${sf.emoji.ember}>`;
 
 const { GoogleSpreadsheet } = require("google-spreadsheet"),
   doc = new GoogleSpreadsheet(config.google.sheets.games);
@@ -41,6 +42,7 @@ function getHouseInfo(member) {
   return { name: "Unsorted", color: config.color };
 }
 
+/** @param {Discord.ChatInputCommandInteraction} interaction*/
 async function slashBankGive(interaction) {
   try {
     const giver = interaction.member;
@@ -49,8 +51,7 @@ async function slashBankGive(interaction) {
       interaction.reply({ content: "You can't give to *yourself*, silly.", ephemeral: true });
       return;
     }
-
-    let reason = interaction.options.getString("reason");
+    let reason = interaction.options.get("reason").value;
     const toIcarus = recipient.id == interaction.client.user.id;
     if (toIcarus && (!reason || !(reason.length > 0))) {
       interaction.reply({ content: "You need to have a reason to give to me!", ephemeral: true });
@@ -58,10 +59,10 @@ async function slashBankGive(interaction) {
     }
     reason = reason || "No particular reason";
 
-    const currency = interaction.options.getString("currency", true);
+    const currency = interaction.options.get("currency", true).value;
     const { coin, MAX } = (currency == "gb" ? { coin: gb, MAX: 1000 } : { coin: ember, MAX: 10000 });
 
-    let value = interaction.options.getInteger("amount", true);
+    let value = interaction.options.get("amount", true).value;
     if (value === 0) {
       interaction.reply({ content: "You can't give *nothing*.", ephemeral: true });
       return;
@@ -377,7 +378,7 @@ async function slashBankAward(interaction) {
 }
 
 const Module = new Augur.Module()
-.addInteractionCommand({
+.addInteraction({
   name: "bank",
   guildId: sf.ldsg,
   commandId: sf.commands.slashBank,
