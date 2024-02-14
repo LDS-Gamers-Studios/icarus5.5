@@ -1,4 +1,4 @@
-const Augur = require("@bobbythecatfish/augurbot"),
+const Augur = require("augurbot-ts"),
   p = require("../utils/perms"),
   sf = require("../config/snowflakes"),
   u = require("../utils/utils"),
@@ -136,6 +136,7 @@ const processes = {
     .setImage(user.displayAvatarURL({ size: 512, dynamic: true }));
     interaction.editReply({ embeds: [embed] });
   },
+  /** @param {Discord.BaseInteraction} interaction; @param {Discord.Message} target */
   pinMessage: async function(interaction, target) {
     try {
       const user = interaction.user;
@@ -317,7 +318,7 @@ async function modMenu(inter) {
 }
 
 const Module = new Augur.Module()
-.addInteractionCommand({ name: "Moderation", commandId: sf.commands.messageMod, process: modMenu })
-.addInteractionCommand({ name: "Moderation", commandId: sf.commands.userMod, process: modMenu });
+.addInteraction({ name: "Moderation", commandId: sf.commands.messageMod, process: modMenu })
+.addInteraction({ name: "Moderation", commandId: sf.commands.userMod, process: modMenu });
 
 module.exports = Module;

@@ -1,11 +1,11 @@
-const Augur = require("@bobbythecatfish/augurbot"),
+const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   sf = require("../config/snowflakes");
 
 // Message context menu for bookmarking a message.
 
 const Module = new Augur.Module()
-.addInteractionCommand({ name: "Bookmark",
+.addInteraction({ name: "Bookmark",
   commandId: sf.commands.messageBookmark,
   process: async (interaction) => {
     try {

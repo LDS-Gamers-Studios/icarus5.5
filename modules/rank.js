@@ -1,4 +1,4 @@
-const Augur = require("@bobbythecatfish/augurbot"),
+const Augur = require("augurbot-ts"),
   Rank = require("../utils/rankInfo"),
   sf = require("../config/snowflakes"),
   u = require("../utils/utils");
@@ -129,7 +129,7 @@ async function rankClockwork(client) {
 }
 
 const Module = new Augur.Module()
-.addInteractionCommand({
+.addInteraction({
   name: "rank",
   guildId: sf.ldsg,
   commandId: sf.commands.slashRank,

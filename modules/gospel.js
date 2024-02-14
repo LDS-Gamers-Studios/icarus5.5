@@ -1,4 +1,4 @@
-const Augur = require("@bobbythecatfish/augurbot");
+const Augur = require("augurbot-ts");
 const { Interaction } = require("discord.js");
 const Parser = require("rss-parser");
 const sf = require("../config/snowflakes.json");
@@ -293,7 +293,7 @@ const Module = new Augur.Module()
   .setInit(() => {
     // init code
   })
-  .addInteractionCommand({
+  .addInteraction({
     name: "gospel",
     guildId: sf.ldsg,
     commandId: sf.commands.slashGospel,

@@ -4,7 +4,7 @@
 const u = require("../utils/utils"),
   sf = require("../config/snowflakes.json"),
   config = require("../config/config.json"),
-  Augur = require("@bobbythecatfish/augurbot"),
+  Augur = require("augurbot-ts"),
   { GoogleSpreadsheet } = require("google-spreadsheet");
 
 let channelNames = new Array();
@@ -194,7 +194,7 @@ async function slashVoiceRefresh(interaction) {
 }
 
 const Module = new Augur.Module()
-.addInteractionCommand({
+.addInteraction({
   name: "voice",
   guildId: sf.ldsg,
   commandId: sf.commands.slashVoice,
