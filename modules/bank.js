@@ -2,10 +2,9 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   p = require("../utils/perms"),
   u = require("../utils/utils"),
-  sf = require("../config/snowflakes"),
   config = require("../config/config.json"),
-  gb = `<:gb:${sf.emoji.gb}>`,
-  ember = `<:ember:${sf.emoji.ember}>`;
+  gb = `<:gb:${u.sf.emoji.gb}>`,
+  ember = `<:ember:${u.sf.emoji.ember}>`;
 
 const { GoogleSpreadsheet } = require("google-spreadsheet"),
   doc = new GoogleSpreadsheet(config.google.sheets.games);
@@ -32,9 +31,9 @@ function filterUnique(e, i, a) {
 
 function getHouseInfo(member) {
   const houseInfo = new u.Collection()
-    .set(sf.roles.housebb, { name: "Brightbeam", color: "#00a1da" })
-    .set(sf.roles.housefb, { name: "Freshbeast", color: "#fdd023" })
-    .set(sf.roles.housesc, { name: "Starcamp", color: "#e32736" });
+    .set(u.sf.roles.housebb, { name: "Brightbeam", color: "#00a1da" })
+    .set(u.sf.roles.housefb, { name: "Freshbeast", color: "#fdd023" })
+    .set(u.sf.roles.housesc, { name: "Starcamp", color: "#e32736" });
 
   for (const [k, v] of houseInfo) {
     if (member.roles.cache.has(k)) return v;
@@ -115,11 +114,11 @@ async function slashBankGive(interaction) {
     giver.send({ embeds: [embed] }).catch(u.noop);
 
     if ((currency == "em") && toIcarus) {
-      const hoh = interaction.client.channels.cache.get(sf.channels.headsofhouse);
+      const hoh = interaction.client.channels.cache.get(u.sf.channels.headsofhouse);
       const hohEmbed = u.embed({ author: interaction.client.user })
       .addField("Reason", reason)
       .setDescription(`**${u.escapeText(giver.displayName)}** gave me ${coin}${value}.`);
-      hoh.send({ content: `<@&${sf.roles.manager}>`, embeds: [hohEmbed] });
+      hoh.send({ content: `<@&${u.sf.roles.manager}>`, embeds: [hohEmbed] });
     }
   } catch (e) { u.errorHandler(e, interaction); }
 }
@@ -147,7 +146,7 @@ async function slashBankGameList(interaction) {
 
     games = games.sort((a, b) => a["Game Title"].localeCompare(b["Game Title"]));
     // Filter Rated M, unless the member has the Rated M Role
-    if (!interaction.member?.roles.cache.has(sf.roles.rated_m)) games = games.filter(g => g.Rating.toUpperCase() != "M");
+    if (!interaction.member?.roles.cache.has(u.sf.roles.rated_m)) games = games.filter(g => g.Rating.toUpperCase() != "M");
 
     // Reply so there's no "interaction failed" error message.
     interaction.editReply(`Watch your DMs for a list of games that can be redeemed with ${gb}!`);
@@ -259,7 +258,7 @@ async function slashBankGameRedeem(interaction) {
     .addField("Cost", gb + game.Cost, true)
     .addField("Balance", gb + (balance.balance - game.Cost), true);
 
-    interaction.client.channels.cache.get(sf.channels.modlogs).send({ embeds: [embed] });
+    interaction.client.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
 
   } catch (e) { u.errorHandler(e, interaction); }
 }
@@ -306,7 +305,7 @@ async function slashBankDiscount(interaction) {
       .addField("Amount", `${gb}${-withdraw.value}\n$${-withdraw.value / 100}`)
       .addField("Balance", `${gb}${balance.balance + withdraw.value}`)
       .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb} for a store coupon code.`);
-      interaction.client.channels.cache.get(sf.channels.modlogs).send({ embeds: [embed] });
+      interaction.client.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
     } else {
       interaction.editReply("Sorry, something went wrong. Please try again.");
     }
@@ -317,7 +316,7 @@ async function slashBankAward(interaction) {
   try {
     const giver = interaction.member;
 
-    if (!p.isTeam(interaction) && !giver.roles.cache.has(sf.roles.volunteer)) {
+    if (!p.isTeam(interaction) && !giver.roles.cache.has(u.sf.roles.volunteer)) {
       interaction.reply({ content: `*Nice try!* This command is for Team and Volunteers only!`, ephemeral: true });
       return;
     }
@@ -367,7 +366,7 @@ async function slashBankAward(interaction) {
 
     const house = getHouseInfo(recipient);
 
-    const mopbucket = interaction.client.channels.cache.get(sf.channels.mopbucketawards);
+    const mopbucket = interaction.client.channels.cache.get(u.sf.channels.mopbucketawards);
     embed = u.embed({ author: interaction.client.user })
     .setColor(house.color)
     .addField("House", house.name)
@@ -380,8 +379,8 @@ async function slashBankAward(interaction) {
 const Module = new Augur.Module()
 .addInteraction({
   name: "bank",
-  guildId: sf.ldsg,
-  commandId: sf.commands.slashBank,
+  guildId: u.sf.ldsg,
+  commandId: u.sf.commands.slashBank,
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
     case "give":

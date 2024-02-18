@@ -1,8 +1,7 @@
-//CHECK v14
+// CHECK v14
 
 const Augur = require("augurbot-ts"),
   u = require('../utils/utils'),
-  sf = require("../config/snowflakes.json"),
   discord = require("discord.js"),
   petPetGif = require('pet-pet-gif'),
   Jimp = require("jimp");
@@ -181,7 +180,7 @@ async function avatar(int) {
 const Module = new Augur.Module()
 .addInteraction({
   name: "avatar",
-  id: sf.commands.slashAvatar,
+  id: u.sf.commands.slashAvatar,
   interactionType: 'CommandSlash',
   process: async (interaction) => {
     const file = interaction.options.getAttachment('file');

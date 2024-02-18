@@ -1,6 +1,5 @@
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
-  sf = require("../config/snowflakes.json"),
   moment = require("moment"),
   { GoogleSpreadsheet } = require("google-spreadsheet"),
   config = require('../config/config.json');
@@ -10,9 +9,9 @@ let emojis = [];
 const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
   try {
-    if (channel.guild?.id == sf.ldsg) {
+    if (channel.guild?.id == u.sf.ldsg) {
       if (channel.permissionsFor(channel.client.user)?.has(["ViewChannel", "ManageChannels"])) {
-        channel.permissionOverwrites.create(sf.roles.muted, {
+        channel.permissionOverwrites.create(u.sf.roles.muted, {
           // text
           ViewChannel: false,
           AddReactions: false,
@@ -27,7 +26,7 @@ const Module = new Augur.Module()
 
         // Keep Duct Tape Out
         if (ductTapeExclude) {
-          channel.permissionOverwrites.create(sf.roles.ducttape, {
+          channel.permissionOverwrites.create(u.sf.roles.ducttape, {
             // text
             ViewChannel: false,
             AddReactions: false,
@@ -56,11 +55,11 @@ const Module = new Augur.Module()
 .addEvent("guildBanAdd", (guildBan) => {
   const guild = guildBan.guild;
   const user = guildBan.user;
-  if (guild.id == sf.ldsg) {
+  if (guild.id == u.sf.ldsg) {
     if (guild.client.ignoreNotifications?.has(user.id)) {
       guild.client.ignoreNotifications.delete(user.id);
     } else {
-      guild.channels.cache.get(sf.channels.modlogs).send({
+      guild.channels.cache.get(u.sf.channels.modlogs).send({
         embeds: [
           u.embed({
             author: user,
@@ -74,13 +73,13 @@ const Module = new Augur.Module()
 })
 .addEvent("guildMemberAdd", async (member) => {
   try {
-    if (member.guild.id == sf.ldsg) {
+    if (member.guild.id == u.sf.ldsg) {
       const guild = member.guild;
 
       const user = await Module.db.user.fetchUser(member.id, false);
-      const general = guild.channels.cache.get(sf.channels.general);
-      const welcomeChannel = guild.channels.cache.get(sf.channels.welcome);
-      const modLogs = guild.channels.cache.get(sf.channels.modlogs);
+      const general = guild.channels.cache.get(u.sf.channels.general);
+      const welcomeChannel = guild.channels.cache.get(u.sf.channels.welcome);
+      const modLogs = guild.channels.cache.get(u.sf.channels.modlogs);
 
       const embed = u.embed()
       .setColor(0x7289da)
@@ -94,9 +93,9 @@ const Module = new Augur.Module()
         const toAdd = user.roles.filter(role => (
           guild.roles.cache.has(role) &&
           !guild.roles.cache.get(role).managed &&
-          ![sf.roles.live, sf.roles.management, sf.roles.manager, sf.roles.mod,
-            sf.roles.team, sf.roles.headofhouse, sf.roles.emberguardian,
-            sf.roles.destinyclansmanager, sf.roles.volunteer].includes(role)
+          ![u.sf.roles.live, u.sf.roles.management, u.sf.roles.manager, u.sf.roles.mod,
+            u.sf.roles.team, u.sf.roles.headofhouse, u.sf.roles.emberguardian,
+            u.sf.roles.destinyclansmanager, u.sf.roles.volunteer].includes(role)
         ));
         if (user.roles.length > 0) member = await member.roles.add(toAdd);
 
@@ -129,7 +128,7 @@ const Module = new Augur.Module()
           "How'd you find us?",
           "What platforms/games do you play?"
         ]);
-        welcomeString = `${welcome}, ${member}! ${info1} ${welcomeChannel} ${info2}. ${info3}\n\nTry \`!profile\` over in <#${sf.channels.botspam}> if you'd like to opt in to roles or share IGNs.`;
+        welcomeString = `${welcome}, ${member}! ${info1} ${welcomeChannel} ${info2}. ${info3}\n\nTry \`!profile\` over in <#${u.sf.channels.botspam}> if you'd like to opt in to roles or share IGNs.`;
         embed.setTitle(member.displayName + " has joined the server.");
 
         Module.db.user.newUser(member.id);
@@ -144,17 +143,17 @@ const Module = new Augur.Module()
       const pizza = false,
         milestone = 5000;
       if (pizza && (guild.members.size < milestone)) welcomeString += `\n*${milestone - guild.members.size} more members until we have a pizza party!*`;
-      if (!member.roles.cache.has(sf.roles.muted) && !member.user.bot) await general.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
+      if (!member.roles.cache.has(u.sf.roles.muted) && !member.user.bot) await general.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
       if (guild.members.size == milestone) {
         await general.send(`:tada: :confetti_ball: We're now at ${milestone} members! :confetti_ball: :tada:`);
-        await modLogs.send(`:tada: :confetti_ball: We're now at ${milestone} members! :confetti_ball: :tada:\n*pinging for effect: ${guild.members.cache.get(sf.other.ghost)} ${guild.members.cache.get(sf.ownerId)}*`);
+        await modLogs.send(`:tada: :confetti_ball: We're now at ${milestone} members! :confetti_ball: :tada:\n*pinging for effect: ${guild.members.cache.get(u.sf.other.ghost)} ${guild.members.cache.get(u.sf.ownerId)}*`);
       }
     }
   } catch (e) { u.errorHandler(e, "New Member Add"); }
 })
 .addEvent("guildMemberRemove", async (member) => {
   try {
-    if (member.guild.id == sf.ldsg) {
+    if (member.guild.id == u.sf.ldsg) {
       await Module.db.user.updateTenure(member);
       if (!member.client.ignoreNotifications?.has(member.id)) {
         const user = await Module.db.user.fetchUser(member);
@@ -166,16 +165,16 @@ const Module = new Augur.Module()
         .addField("Joined", moment(member.joinedAt).fromNow(), true)
         .addField("Posts", (user?.posts || 0) + " Posts", true);
 
-        member.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [embed] });
+        member.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
       }
     }
   } catch (error) { u.errorHandler(error, `Member Leave: ${u.escapeText(member.displayName)} (${member.id})`); }
 })
 .addEvent("userUpdate", async (oldUser, newUser) => {
   try {
-    const ldsg = newUser.client.guilds.cache.get(sf.ldsg);
+    const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
     const newMember = ldsg.members.cache.get(newUser.id);
-    if (newMember && (!newMember.roles.cache.has(sf.roles.trusted) || newMember.roles.cache.has(sf.roles.untrusted))) {
+    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || newMember.roles.cache.has(u.sf.roles.untrusted))) {
       const user = await Module.db.user.fetchUser(newMember).catch(u.noop);
       const embed = u.embed({ author: oldUser })
       .setTitle("User Update")
@@ -188,7 +187,7 @@ const Module = new Augur.Module()
       } else {
         embed.setThumbnail(newUser.displayAvatarURL());
       }
-      ldsg.channels.cache.get(sf.channels.userupdates).send({ content: `${newUser}: ${newUser.id}`, embeds: [embed] });
+      ldsg.channels.cache.get(u.sf.channels.userupdates).send({ content: `${newUser}: ${newUser.id}`, embeds: [embed] });
     }
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.username)} (${newUser.id})`); }
 })
@@ -200,14 +199,14 @@ const Module = new Augur.Module()
     const channels = await doc.sheetsByTitle["Sponsor Channels"].getRows();
     emojis = Array.from(channels.map(x => [x["Sponsor ID"], x["Emoji ID"]]));
     emojis = emojis.concat([
-      ["buttermelon", sf.emoji.buttermelon],
-      ["noice", sf.emoji.noice],
+      ["buttermelon", u.sf.emoji.buttermelon],
+      ["noice", u.sf.emoji.noice],
       ["carp", "🐟"]
     ]);
   } catch (e) { u.errorHandler(e, "Load Sponsor Reactions"); }
 })
 .addEvent("messageCreate", async (msg) => {
-  if (!msg.author.bot && msg.guild && msg.guild.id == sf.ldsg) {
+  if (!msg.author.bot && msg.guild && msg.guild.id == u.sf.ldsg) {
     for (const [sponsor, emoji] of emojis) {
       if (msg.mentions.members.has(sponsor)) await msg.react(emoji).catch(u.noop);
       // Filter out sponsors and test for trigger words

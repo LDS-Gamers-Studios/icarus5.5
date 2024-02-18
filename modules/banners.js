@@ -1,7 +1,6 @@
 // This module deals with setting server banners for the holidays.
 
 const u = require("../utils/utils"),
-  sf = require("../config/snowflakes.json"),
   config = require("../config/config.json"),
   Augur = require("augurbot-ts"),
   { GoogleSpreadsheet } = require("google-spreadsheet");
@@ -24,7 +23,7 @@ const Module = new Augur.Module()
     const stringDate = `${date.getMonth() + 1}/${date.getDate()}`;
     const banner = banners.get(stringDate);
     if (banner) {
-      const ldsg = Module.client.guilds.cache.get(sf.ldsg);
+      const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
       ldsg.setBanner(banner);
     }
   }, 1000 * 60 * 60 * 24);

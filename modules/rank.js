@@ -1,6 +1,5 @@
 const Augur = require("augurbot-ts"),
   Rank = require("../utils/rankInfo"),
-  sf = require("../config/snowflakes"),
   u = require("../utils/utils");
 
 const active = new Set();
@@ -77,15 +76,15 @@ async function rankClockwork(client) {
   try {
     const response = await Module.db.user.addXp(active);
     if (response.users.length > 0) {
-      const ldsg = client.guilds.cache.get(sf.ldsg);
+      const ldsg = client.guilds.cache.get(u.sf.ldsg);
       for (const user of response.users) {
         const member = ldsg.members.cache.get(user.discordId) ?? await ldsg.members.fetch(user.discordId).catch(u.noop);
         if (!member) continue;
 
         try {
           // Remind mods to trust people!
-          if ((user.posts % 25 == 0) && !member.roles.cache.has(sf.roles.trusted) && !member.roles.cache.has(sf.roles.untrusted)) {
-            const modLogs = ldsg.channels.cache.get(sf.channels.modlogs);
+          if ((user.posts % 25 == 0) && !member.roles.cache.has(u.sf.roles.trusted) && !member.roles.cache.has(u.sf.roles.untrusted)) {
+            const modLogs = ldsg.channels.cache.get(u.sf.channels.modlogs);
             modLogs.send({
               content: `${member} has posted ${user.posts} times in chat without being trusted!`,
               embeds: [
@@ -131,8 +130,8 @@ async function rankClockwork(client) {
 const Module = new Augur.Module()
 .addInteraction({
   name: "rank",
-  guildId: sf.ldsg,
-  commandId: sf.commands.slashRank,
+  guildId: u.sf.ldsg,
+  commandId: u.sf.commands.slashRank,
   process: async (interaction) => {
     try {
       const subcommand = interaction.options.getSubcommand(true);
@@ -163,7 +162,7 @@ const Module = new Augur.Module()
 .setUnload(() => active)
 .addEvent("messageCreate", (msg) => {
   if (
-    msg.guild?.id == sf.ldsg &&
+    msg.guild?.id == u.sf.ldsg &&
     msg.author &&
     !active.has(msg.author.id) &&
     !(Rank.excludeChannels.includes(msg.channel.id) || Rank.excludeChannels.includes(msg.channel.parentId)) &&

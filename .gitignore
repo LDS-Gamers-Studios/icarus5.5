@@ -3,7 +3,9 @@ storage/*
 tmp
 config/*
 !config/README.md
+!config/snowflakes.json
 !config/*-example.json
+!config/*-testing.json
 test.js
 *-.js
 *-.json

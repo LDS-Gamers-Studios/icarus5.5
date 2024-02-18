@@ -1,12 +1,11 @@
 const Augur = require("augurbot-ts"),
-  u = require("../utils/utils"),
-  sf = require("../config/snowflakes");
+  u = require("../utils/utils");
 
 // Message context menu for bookmarking a message.
 
 const Module = new Augur.Module()
 .addInteraction({ name: "Bookmark",
-  commandId: sf.commands.messageBookmark,
+  commandId: u.sf.commands.messageBookmark,
   process: async (interaction) => {
     try {
       await interaction.deferReply?.({ ephemeral: true });

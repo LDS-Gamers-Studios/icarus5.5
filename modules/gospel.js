@@ -1,7 +1,6 @@
 const Augur = require("augurbot-ts");
 const { Interaction } = require("discord.js");
 const Parser = require("rss-parser");
-const sf = require("../config/snowflakes.json");
 const u = require("../utils/utils");
 
 const abbreviationTable = new Map(); // abbreviation: { bookName, work }
@@ -295,8 +294,8 @@ const Module = new Augur.Module()
   })
   .addInteraction({
     name: "gospel",
-    guildId: sf.ldsg,
-    commandId: sf.commands.slashGospel,
+    guildId: u.sf.ldsg,
+    commandId: u.sf.commands.slashGospel,
     process: async (interaction) => {
       switch (interaction.options.getSubcommand(true)) {
       case "verse":

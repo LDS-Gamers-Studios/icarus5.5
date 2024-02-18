@@ -2,7 +2,6 @@
 // frost's note: Sounds and music are nice but maybe not right now.
 
 const u = require("../utils/utils"),
-  sf = require("../config/snowflakes.json"),
   config = require("../config/config.json"),
   Augur = require("augurbot-ts"),
   { GoogleSpreadsheet } = require("google-spreadsheet");
@@ -10,7 +9,7 @@ const u = require("../utils/utils"),
 let channelNames = new Array();
 
 function isCommunityVoice(channel) {
-  return (channel?.parentId == sf.channels.communityVoice) && (channel?.id != sf.channels.voiceAFK);
+  return (channel?.parentId == u.sf.channels.communityVoice) && (channel?.id != u.sf.channels.voiceAFK);
 }
 
 function getIDsFromMentionString(mentionString) {
@@ -23,10 +22,10 @@ function getIDsFromMentionString(mentionString) {
 
 async function ensureVoiceChannelsOpen(client) {
   if (!client) return;
-  const communityVoice = client.channels.cache.get(sf.channels.communityVoice);
+  const communityVoice = client.channels.cache.get(u.sf.channels.communityVoice);
   let openVoiceChannels = [...communityVoice.children.values()];
   const channelsOpenedArr = [];
-  while (openVoiceChannels.filter((x => (x.id != sf.channels.voiceAFK) && (x.members.size == 0))).length < 2) {
+  while (openVoiceChannels.filter((x => (x.id != u.sf.channels.voiceAFK) && (x.members.size == 0))).length < 2) {
     const bitrate = 64000;
     const available = channelNames.filter(name => !communityVoice.guild.channels.cache.find(c => c.name.startsWith(name)));
     const name = ((u.rand(available) || u.rand(channelNames)) || "Room Error") + ` (${parseInt(bitrate / 1000, 10)} kbps)`;
@@ -35,18 +34,18 @@ async function ensureVoiceChannelsOpen(client) {
       const newChannel = await communityVoice.guild.channels.create(name, {
         type: "GUILD_VOICE",
         bitrate,
-        parent: sf.channels.communityVoice,
+        parent: u.sf.channels.communityVoice,
         permissionOverwrites: [
           {
-            id: sf.roles.muted,
+            id: u.sf.roles.muted,
             deny: ["VIEW_CHANNEL", "CONNECT", "SEND_MESSAGES", "SPEAK"]
           },
           {
-            id: sf.roles.ducttape,
+            id: u.sf.roles.ducttape,
             deny: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
           },
           {
-            id: sf.roles.suspended, // "871566171206484008"
+            id: u.sf.roles.suspended, // "871566171206484008"
             deny: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
           }
         ]
@@ -55,7 +54,7 @@ async function ensureVoiceChannelsOpen(client) {
       const embed = u.embed()
         .setTitle("Voice Channel Added")
         .setDescription(`A channel was removed by mistake so I created ${newChannel.name}. You might want to modify its bitrate if I guessed it wrong.`);
-      await (client.channels.cache.get(sf.channels.modlogs)).send({ embeds: [embed] });
+      await (client.channels.cache.get(u.sf.channels.modlogs)).send({ embeds: [embed] });
       // Update in case of multiple missing channels.
       openVoiceChannels = Array.from(communityVoice.children.values());
       // Report the channel name in case it's needed.
@@ -81,7 +80,7 @@ async function slashVoiceLock(interaction) {
           id: interaction.guild.id,
           deny: "CONNECT"
         }, { // Muted
-          id: sf.roles.muted,
+          id: u.sf.roles.muted,
           deny: ["CONNECT", "SPEAK", "VIEW_CHANNEL"]
         }
       ].concat(users.map(id => ({
@@ -121,7 +120,7 @@ async function slashVoiceUnlock(interaction) {
             id: interaction.guild.id,
             allow: "CONNECT"
           }, { // Muted
-            id: sf.roles.muted,
+            id: u.sf.roles.muted,
             deny: ["CONNECT", "SPEAK", "VIEW_CHANNEL"]
           }
         ];
@@ -158,7 +157,7 @@ async function slashVoiceStreamlock(interaction) {
             id: interaction.guild.id,
             deny: ["SPEAK", "STREAM"]
           }, { // Muted
-            id: sf.roles.muted,
+            id: u.sf.roles.muted,
             deny: ["CONNECT", "SPEAK", "VIEW_CHANNEL"]
           }
         ].concat(users.map(id => ({
@@ -187,8 +186,8 @@ async function slashVoiceRefresh(interaction) {
     interaction.reply({ content: "I opened " + channels.map(x => "<#" + x.id + ">").join(" and ") + ". The mods have been notified, and will change the bitrate if needed.", ephemeral: true });
   } else {
     // Let the user know what channels are open.
-    const channelsOpen = [...interaction.client.channels.cache.get(sf.channels.communityVoice).children.values()]
-      .filter((x => (x.id != sf.channels.voiceAFK) && (x.members.size == 0)));
+    const channelsOpen = [...interaction.client.channels.cache.get(u.sf.channels.communityVoice).children.values()]
+      .filter((x => (x.id != u.sf.channels.voiceAFK) && (x.members.size == 0)));
     interaction.reply({ content: "The channels " + channelsOpen.map(x => "<#" + x + ">").join(" and ") + " are already open! Join one of those!", ephemeral: true });
   }
 }
@@ -196,8 +195,8 @@ async function slashVoiceRefresh(interaction) {
 const Module = new Augur.Module()
 .addInteraction({
   name: "voice",
-  guildId: sf.ldsg,
-  commandId: sf.commands.slashVoice,
+  guildId: u.sf.ldsg,
+  commandId: u.sf.commands.slashVoice,
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
     case "lock":
@@ -228,7 +227,7 @@ const Module = new Augur.Module()
 .addEvent("voiceStateUpdate", async (oldState, newState) => {
   const guild = oldState?.guild;
   // If the change is in LDSG and involves moving users (we don't care otherwise)
-  if ((guild.id == sf.ldsg) && (oldState.channelId != newState.channelId)) {
+  if ((guild.id == u.sf.ldsg) && (oldState.channelId != newState.channelId)) {
     // If the channel that was moved out of is empty, remove it.
     if (oldState.channel && (oldState.channel.members.size == 0) && isCommunityVoice(oldState.channel)) {
       await oldState.channel.delete().catch(e => u.errorHandler(e, `Could not delete empty voice channel: ${oldState.channel.name}`));
@@ -243,18 +242,18 @@ const Module = new Augur.Module()
         await guild.channels.create(name, {
           type: "GUILD_VOICE",
           bitrate,
-          parent: sf.channels.communityVoice,
+          parent: u.sf.channels.communityVoice,
           permissionOverwrites: [
             {
-              id: sf.roles.muted,
+              id: u.sf.roles.muted,
               deny: ["VIEW_CHANNEL", "CONNECT", "SEND_MESSAGES", "SPEAK"]
             },
             {
-              id: sf.roles.ducttape,
+              id: u.sf.roles.ducttape,
               deny: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
             },
             {
-              id: sf.roles.suspended,
+              id: u.sf.roles.suspended,
               deny: ["VIEW_CHANNEL", "CONNECT", "SPEAK"]
             }
           ]
