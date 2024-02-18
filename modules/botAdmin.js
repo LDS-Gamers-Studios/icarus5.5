@@ -2,8 +2,7 @@
 
 const Augur = require("augurbot-ts"),
   p = require("../utils/perms"),
-  u = require("../utils/utils"),
-  sf = require("../config/snowflakes");
+  u = require("../utils/utils");
 
 /**
  * function fieldMismatches
@@ -205,7 +204,7 @@ const Module = new Augur.Module()
 })
 // When the bot is fully online, fetch all the ldsg members, since it will only autofetch for small servers and we want them all.
 .addEvent("ready", () => {
-  Module.client.guilds.cache.get(sf.ldsg).members.fetch();
+  Module.client.guilds.cache.get(u.sf.ldsg).members.fetch();
 })
 .setInit(async (reload) => {
   try {

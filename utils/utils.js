@@ -1,5 +1,11 @@
 const Discord = require("discord.js"),
   { escapeMarkdown } = require('discord.js'),
+  sf = require("../config/snowflakes.json"),
+  // TESTING SNOWFLAKES NEED TO BE DOUBLE CHECKED
+  // not sure if all are updated
+  // 2/18/24
+  tsf = require("../config/snowflakes-testing.json"),
+  csf = require("../config/snowflakes-testing-commands.json"),
   config = require("../config/config.json");
 
 const errorLog = new Discord.WebhookClient(config.error);
@@ -322,6 +328,11 @@ const utils = {
   rand: function(selections) {
     return selections[Math.floor(Math.random() * selections.length)];
   },
+  /**
+   * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
+   */
+  sf: config.devMode ? Object.assign(tsf, csf) : sf,
+
   /**
    * Returns a promise that will fulfill after the given amount of time.
    * If awaited, will block for the given amount of time.

@@ -1,7 +1,6 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   u = require("../utils/utils"),
-  sf = require("../config/snowflakes.json"),
   p = require("../utils/perms"),
   profanityFilter = require("profanity-matcher"),
   c = require("../utils/modCommon");
@@ -14,7 +13,7 @@ const Module = new Augur.Module();
  * @param {Discord.GuildMember} member The guild member that's blocked.
  */
 function blocked(member) {
-  return member.client.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+  return member.client.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
     u.embed({
       author: member,
       color: 0x00ffff,
@@ -66,7 +65,7 @@ async function slashModFilter(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const word = interaction.options.get("word").value.toLowerCase().trim();
   const member = interaction.member;
-  const modLogs = interaction.guild.channels.cache.get(sf.channels.modlogs);
+  const modLogs = interaction.guild.channels.cache.get(u.sf.channels.modlogs);
   const filtered = pf.scan(word);
   const apply = interaction.options.get("apply").value ?? true;
   if (!p.isMgmt(interaction) && !p.isMgr(interaction) && !p.isAdmin(interaction)) {
@@ -175,7 +174,7 @@ async function slashModOffice(interaction) {
     // Send 'em
     if (apply) {
       // Don't bother if it's already done
-      if (target.roles.cache.has(sf.roles.ducttape)) {
+      if (target.roles.cache.has(u.sf.roles.ducttape)) {
         await interaction.editReply({
           content: `They're already in the office.`
         });
@@ -183,19 +182,19 @@ async function slashModOffice(interaction) {
       }
 
       // Impose "duct tape"
-      await target.roles.add(sf.roles.ducttape);
+      await target.roles.add(u.sf.roles.ducttape);
       // if (target.voice.channel) await target.voice.disconnect(reason);
       // muteState.set(target.id, target.voice.serverMute);
       // await target.voice.setMute(true, reason);
 
-      await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
         u.embed({ author: target })
         .setTitle("Member Sent to Office")
         .setDescription(`**${interaction.member}** sent **${target}** to the office for:\n${reason}`)
         .setColor(0x0000ff)
       ] });
 
-      await interaction.guild.channels.cache.get(sf.channels.office).send(
+      await interaction.guild.channels.cache.get(u.sf.channels.office).send(
         `${target}, you have been sent to the office in ${interaction.guild.name}. `
         + 'This allows you and the mods to have a private space to discuss any issues without restricting access to the rest of the server. '
         + 'Please review our Code of Conduct. '
@@ -208,7 +207,7 @@ async function slashModOffice(interaction) {
       });
     } else { // Remove "duct tape"
       // Don't bother if it's already done
-      if (!target.roles.cache.has(sf.roles.ducttape)) {
+      if (!target.roles.cache.has(u.sf.roles.ducttape)) {
         await interaction.editReply({
           content: `They aren't in the office.`,
         });
@@ -216,11 +215,11 @@ async function slashModOffice(interaction) {
       }
 
       // Remove "duct tape""
-      await target.roles.remove(sf.roles.ducttape);
+      await target.roles.remove(u.sf.roles.ducttape);
       // if (muteState.get(target.id)) await target.voice.setMute(false, "Mute resolved");
       // muteState.delete(target.id);
 
-      await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
         u.embed({ author: target })
         .setTitle("Member Released from Office")
         .setDescription(`**${interaction.member}** let **${target}** out of the office.`)
@@ -262,7 +261,7 @@ async function slashModPurge(interaction) {
       if (msgsToDelete.size != fetching) { break; }
     }
     // Log it
-    await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: interaction.member })
       .setTitle("Channel Purge")
       .setDescription(`**${interaction.member}** purged ${number - num} messages in ${interaction.channel}`)
@@ -308,7 +307,7 @@ async function slashModSlowmode(interaction) {
     }
 
     interaction.editReply("Slowmode deactivated.");
-    await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: { name: interaction.member } })
         .setTitle("Channel Slowmode")
         .setDescription(`${interaction.member} disabled slowmode in ${ch}`)
@@ -332,7 +331,7 @@ async function slashModSlowmode(interaction) {
     });
 
     await interaction.editReply(`${timer}-second slowmode activated for ${duration} minute${duration > 1 ? 's' : ''}.`);
-    await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: interaction.member })
       .setTitle("Channel Slowmode")
       .setDescription(`${interaction.member} set a ${timer}-second slow mode for ${duration} minute${duration > 1 ? 's' : ''} in ${ch}.`)
@@ -358,14 +357,14 @@ async function slashModTrust(interaction) {
   const apply = interaction.options.get("apply").value ?? true;
 
   const role = {
-    'initial': sf.roles.trusted,
-    'plus': sf.roles.trustedplus,
-    'watch': sf.roles.untrusted
+    'initial': u.sf.roles.trusted,
+    'plus': u.sf.roles.trustedplus,
+    'watch': u.sf.roles.untrusted
   }[type];
   const channel = {
-    'initial': sf.channels.modlogs,
-    'plus': sf.channels.modlogs,
-    'watch': sf.channels.modlogsplus
+    'initial': u.sf.channels.modlogs,
+    'plus': u.sf.channels.modlogs,
+    'watch': u.sf.channels.modlogsplus
   }[type];
 
   const embed = u.embed({ author: member });
@@ -379,7 +378,7 @@ async function slashModTrust(interaction) {
       await c.trustPlus(interaction, member);
       return;
     case 'watch':
-      if (member.roles.cache.has(sf.roles.untrusted)) {
+      if (member.roles.cache.has(u.sf.roles.untrusted)) {
         await interaction.editReply({ content: `${member} is already watched.` });
         return;
       }
@@ -393,7 +392,7 @@ async function slashModTrust(interaction) {
   } else {
     switch (type) {
     case 'initial':
-      if (!member.roles.cache.has(sf.roles.trusted)) {
+      if (!member.roles.cache.has(u.sf.roles.trusted)) {
         await interaction.editReply({ content: `${member} isn't trusted yet.` });
         return;
       }
@@ -405,13 +404,13 @@ async function slashModTrust(interaction) {
       ).catch(() => blocked(member));
       embed.setTitle("User Trusted Removed")
       .setDescription(`${interaction.member} untrusted ${member}.`);
-      if (member.roles.cache.has(sf.roles.trustedplus)) {
-        await member.roles.remove(sf.roles.trustedplus);
+      if (member.roles.cache.has(u.sf.roles.trustedplus)) {
+        await member.roles.remove(u.sf.roles.trustedplus);
       }
-      await member.roles.add(sf.roles.untrusted);
+      await member.roles.add(u.sf.roles.untrusted);
       break;
     case 'plus':
-      if (!member.roles.cache.has(sf.roles.trustedplus)) {
+      if (!member.roles.cache.has(u.sf.roles.trustedplus)) {
         interaction.editReply({ content: `${member} isn't trusted+ yet.` });
         return;
       }
@@ -425,7 +424,7 @@ async function slashModTrust(interaction) {
       .setDescription(`${interaction.member} removed the <@&${role}> role from ${member}.`);
       break;
     case 'watch':
-      if (!member.roles.cache.has(sf.roles.untrusted)) {
+      if (!member.roles.cache.has(u.sf.roles.untrusted)) {
         await interaction.editReply({ content: `${member} isn't watched yet.` });
         return;
       }
@@ -461,7 +460,7 @@ async function slashModWarn(interaction) {
     .setDescription(reason)
     .addFields({ name: "Resolved", value: `${u.escapeText(interaction.user.username)} issued a ${value} point warning.` })
     .setTimestamp();
-  const flag = await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [embed] });
+  const flag = await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
 
   await Module.db.infraction.save({
     discordId: member.id,
@@ -482,8 +481,8 @@ async function slashModWarn(interaction) {
 
 Module.addInteraction({
   name: "mod",
-  guild: sf.ldsg,
-  id: sf.commands.slashMod,
+  guild: u.sf.ldsg,
+  id: u.sf.commands.slashMod,
   permissions: p.isMod,
   /** @param {Discord.CommandInteraction} interaction*/
   process: async (interaction) => {

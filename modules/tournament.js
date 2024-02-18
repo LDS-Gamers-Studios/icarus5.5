@@ -3,7 +3,6 @@
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   config = require('../config/config.json'),
-  sf = require('../config/snowflakes.json'),
   { GoogleSpreadsheet } = require('google-spreadsheet'),
   perms = require('../utils/perms'),
   discord = require('discord.js');
@@ -42,15 +41,15 @@ async function champs(int) {
   await doc.useServiceAccountAuth(config.google.creds);
   await doc.loadInfo();
   for (const member of users) {
-    member.roles.add(sf.roles.champion);
+    member.roles.add(u.sf.roles.champion);
     await doc.sheetsByTitle["Tourney Champions"].addRow({ "Tourney Name": tName, "User ID": member.id, "Take Role At": date });
   }
   const s = users.length > 1 ? 's' : '';
-  int.guild.channels.cache.get(sf.channels.announcements).send(`Congratulations to our new tournament champion${s}, ${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
+  int.guild.channels.cache.get(u.sf.channels.announcements).send(`Congratulations to our new tournament champion${s}, ${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
 }
 /** @param {discord.CommandInteraction} int */
 async function participant(int) {
-  const role = int.guild.roles.cache.get(sf.roles.tournamentparticipant);
+  const role = int.guild.roles.cache.get(u.sf.roles.tournamentparticipant);
   const clean = int.options.getBoolean('remove-all');
   const remove = int.options.getBoolean('remove');
   const user = int.options.getMember('user');
@@ -86,7 +85,7 @@ async function participant(int) {
 
 const Module = new Augur.Module()
 .addInteraction({ name: "tournament",
-  id: sf.commands.slashTournament,
+  id: u.sf.commands.slashTournament,
   interactionType: "CommandSlash",
   permissions: (int) => int.options.getSubcommand() == 'list' ? true : perms.isTeam(int),
   process: async (int) => {

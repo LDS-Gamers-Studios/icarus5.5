@@ -1,6 +1,6 @@
 const Augur = require("augurbot-ts"),
   { fetchGalnetFeed, fetchSystemFactions } = require("../utils/EliteApi"),
-  { ldsg, channels: { elitefactionupdates, elitenews } } = require("../config/snowflakes"),
+  { sf: { ldsg, channels: { elitefactionupdates, elitenews } } } = require("../utils/utils"),
   u = require("../utils/utils");
 
 // Default length to trim articles for embeds

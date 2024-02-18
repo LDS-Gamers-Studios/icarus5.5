@@ -1,4 +1,4 @@
-const sf = require("../config/snowflakes.json");
+const { sf } = require("../utils/utils");
 
 const perms = {
   isAdmin: (msg) => sf.adminId.includes((msg.author ?? msg.user).id),

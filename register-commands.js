@@ -1,5 +1,5 @@
 const config = require("./config/config.json"),
-  sf = require("./config/snowflakes.json"),
+  u = require("./utils/utils"),
   path = require("path"),
   axios = require("axios");
 
@@ -71,7 +71,7 @@ for (const command of guildCommandFiles) {
 }
 axios({
   method: "put",
-  url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${sf.ldsg}/commands`,
+  url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${u.sf.ldsg}/commands`,
   headers: { Authorization: `Bot ${config.token}` },
   data: guildCommandLoads
 }).then((response) => {

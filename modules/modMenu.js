@@ -1,6 +1,5 @@
 const Augur = require("augurbot-ts"),
   p = require("../utils/perms"),
-  sf = require("../config/snowflakes"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
   Discord = require("discord.js");
@@ -94,7 +93,7 @@ const processes = {
 
     const targetUser = getTargetUser(target);
 
-    if (menuSelect.values[0] === "modAbuse" && (!targetUser.roles.cache.has(sf.roles.mod) && !targetUser.roles.cache.has(sf.roles.management))) {
+    if (menuSelect.values[0] === "modAbuse" && (!targetUser.roles.cache.has(u.sf.roles.mod) && !targetUser.roles.cache.has(u.sf.roles.management))) {
       await menuSelect.editReply("Only Moderators can be flagged for mod abuse.");
       return;
     }
@@ -157,7 +156,7 @@ const processes = {
 
         if (target.attachments?.size > 0) {embed.setImage(target.attachments?.first()?.url);}
 
-        await target.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [embed] });
+        await target.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
         await interaction.editReply("Pin request sent.");
       }
     } catch (error) { u.errorHandler(error, interaction); }
@@ -271,7 +270,7 @@ const processes = {
     }
 
     // Log it
-    await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: interaction.member })
       .setTitle("Channel Purge")
       .setDescription(`**${interaction.member}** purged messages in ${interaction.channel}`)
@@ -288,7 +287,7 @@ const processes = {
     if (target.attachments && (target.attachments.size > 0)) {
       embed.attachFiles([target.attachments.first().proxyURL]);
     }
-    await interaction.client.channels.cache.get(sf.channels.announcements).send({ embeds: [embed] });
+    await interaction.client.channels.cache.get(u.sf.channels.announcements).send({ embeds: [embed] });
     await interaction.editReply({ content: "Message announced!", ephemeral: true });
   }
 };
@@ -318,7 +317,7 @@ async function modMenu(inter) {
 }
 
 const Module = new Augur.Module()
-.addInteraction({ name: "Moderation", commandId: sf.commands.messageMod, process: modMenu })
-.addInteraction({ name: "Moderation", commandId: sf.commands.userMod, process: modMenu });
+.addInteraction({ name: "Moderation", commandId: u.sf.commands.messageMod, process: modMenu })
+.addInteraction({ name: "Moderation", commandId: u.sf.commands.userMod, process: modMenu });
 
 module.exports = Module;

@@ -1,7 +1,6 @@
 const { ButtonStyle } = require("discord.js"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
-  sf = require("../config/snowflakes.json"),
   { ActionRowBuilder, ButtonBuilder } = require("discord.js");
 
 const modActions = [
@@ -23,7 +22,7 @@ const modActions = [
   * @param {Discord.GuildMember} member The guild member that's blocked.
   */
 function blocked(member) {
-  return member.client.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+  return member.client.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
     u.embed({
       author: member,
       color: 0x00ffff,
@@ -33,9 +32,9 @@ function blocked(member) {
 }
 
 function compareRoles(mod, target) {
-  const modHigh = mod.roles.cache.filter(r => r.id != sf.roles.live)
+  const modHigh = mod.roles.cache.filter(r => r.id != u.sf.roles.live)
     .sort((a, b) => b.comparePositionTo(a)).first();
-  const targetHigh = target.roles.cache.filter(r => r.id != sf.roles.live)
+  const targetHigh = target.roles.cache.filter(r => r.id != u.sf.roles.live)
     .sort((a, b) => b.comparePositionTo(a)).first();
   return (modHigh.comparePositionTo(targetHigh) > 0);
 }
@@ -94,7 +93,7 @@ const modCommon = {
         });
 
         // Save roles
-        targetRoles.set(sf.roles.untrusted, null).set(sf.roles.muted, null).delete(sf.roles.trusted);
+        targetRoles.set(u.sf.roles.untrusted, null).set(u.sf.roles.muted, null).delete(u.sf.roles.trusted);
         const fakeTarget = {
           id: target.id,
           roles: { cache: targetRoles }
@@ -102,7 +101,7 @@ const modCommon = {
         interaction.client.db.user.updateRoles(fakeTarget);
 
         // Log it
-        interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+        interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
           u.embed({ author: target })
           .setTitle("User Ban")
           .setDescription(`**${interaction.member}** banned **${target}** for:\n${reason}`)
@@ -153,10 +152,10 @@ const modCommon = {
       .addField("Jump to Post", `[Original Message](${msg.url})`, true);
     }
 
-    if (msg && msg.channel.parentId == sf.channels.minecraftcategory) {
+    if (msg && msg.channel.parentId == u.sf.channels.minecraftcategory) {
       if (msg.webhookId) embed.addField("User", msg.author.username ?? (await msg.channel.fetchWebhooks()).get(msg.webhookId)?.name ?? "Unknown User");
       else embed.addField("User", (member.displayName ?? (await member.fetch()).displayName), true);
-      client.channels.cache.get(sf.channels.minecraftmods).send({ embeds: [embed] });
+      client.channels.cache.get(u.sf.channels.minecraftmods).send({ embeds: [embed] });
     } else if (msg.webhookId) {
       if (msg.webhookId) embed.addField("User", msg.author.username);
     } else {
@@ -175,20 +174,20 @@ const modCommon = {
 
     if (pingMods) {
       u.clean(msg, 0);
-      const ldsg = client.guilds.cache.get(sf.ldsg);
+      const ldsg = client.guilds.cache.get(u.sf.ldsg);
       content = [];
-      if (!member.roles.cache.has(sf.roles.muted)) {
-        content.push(ldsg.roles.cache.get(sf.roles.mod).toString());
+      if (!member.roles.cache.has(u.sf.roles.muted)) {
+        content.push(ldsg.roles.cache.get(u.sf.roles.mod).toString());
       }
       if (member.bot) {
         content.push("The message has been deleted. The member was *not* muted, on account of being a bot.");
       } else {
-        if (!member.roles?.cache.has(sf.roles.muted)) {
-          await member.roles?.add(ldsg.roles.cache.get(sf.roles.muted));
+        if (!member.roles?.cache.has(u.sf.roles.muted)) {
+          await member.roles?.add(ldsg.roles.cache.get(u.sf.roles.muted));
           if (member.voice?.channel) {
             member.voice?.disconnect("Auto-mute");
           }
-          ldsg.channels.cache.get(sf.channels.muted).send({
+          ldsg.channels.cache.get(u.sf.channels.muted).send({
             content: `${member}, you have been auto-muted in ${msg.guild.name}. Please review our Code of Conduct. A member of the mod team will be available to discuss more details.\n\nhttp://ldsgamers.com/code-of-conduct`,
             allowedMentions: { users: [member.id] }
           });
@@ -198,11 +197,11 @@ const modCommon = {
       content = content.join("\n");
     }
 
-    const card = await client.channels.cache.get(sf.channels.modlogs).send({
+    const card = await client.channels.cache.get(u.sf.channels.modlogs).send({
       content,
       embeds: [embed],
       components: (member.bot || !msg ? undefined : modActions),
-      allowedMentions: { roles: [sf.roles.mod] }
+      allowedMentions: { roles: [u.sf.roles.mod] }
     });
 
     if (!member.bot && msg) {
@@ -284,7 +283,7 @@ const modCommon = {
         });
 
         // Save roles
-        targetRoles.set(sf.roles.untrusted, null).set(sf.roles.muted, null).delete(sf.roles.trusted);
+        targetRoles.set(u.sf.roles.untrusted, null).set(u.sf.roles.muted, null).delete(u.sf.roles.trusted);
         const fakeTarget = {
           id: target.id,
           roles: { cache: targetRoles }
@@ -292,7 +291,7 @@ const modCommon = {
         interaction.client.db.user.updateRoles(fakeTarget);
 
         // Log it
-        interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+        interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
           u.embed({ author: target })
           .setTitle("User Kick")
           .setDescription(`**${interaction.member}** kicked **${target}** for:\n${reason}`)
@@ -318,7 +317,7 @@ const modCommon = {
 
     try {
       // Don't mute if muted
-      if (target.roles.cache.has(sf.roles.muted)) {
+      if (target.roles.cache.has(u.sf.roles.muted)) {
         await interaction.editReply({
           content: `They are already muted.`,
         });
@@ -328,20 +327,20 @@ const modCommon = {
       // muteState.set(target.id, target.voice.serverMute);
 
       // Impose Mute
-      await target.roles.add(sf.roles.muted);
+      await target.roles.add(u.sf.roles.muted);
       if (target.voice.channel) {
         await target.voice.disconnect(reason);
         await target.voice.setMute(true, reason);
       }
 
-      await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
         u.embed({ author: target })
         .setTitle("Member Mute")
         .setDescription(`**${interaction.member}** muted **${target}** for:\n${reason}`)
         .setColor(0x0000ff)
       ] });
 
-      await interaction.guild.channels.cache.get(sf.channels.muted).send(
+      await interaction.guild.channels.cache.get(u.sf.channels.muted).send(
         `${target}, you have been muted in ${interaction.guild.name}. `
       + 'Please review our Code of Conduct. '
       + 'A member of the mod team will be available to discuss more details.\n\n'
@@ -364,7 +363,7 @@ const modCommon = {
       });
       const summary = await interaction.client.db.infraction.getSummary(target.id);
 
-      await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
         u.embed({ author: target })
         .setColor("#0000FF")
         .setDescription(note)
@@ -399,7 +398,7 @@ const modCommon = {
     });
     const summary = await interaction.client.db.infraction.getSummary(target.id);
 
-    interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+    interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: target })
       .setColor("#0000FF")
       .setDescription(comment)
@@ -413,7 +412,7 @@ const modCommon = {
 
   timeout: async function(interaction, target, reason) {
     // Log it
-    await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: interaction.member })
       .setTitle("User Timeout")
       .setDescription(`**${interaction.member}** timed out ${target}`)
@@ -426,7 +425,7 @@ const modCommon = {
   },
 
   trust: async function(interaction, target) {
-    if (target.roles.cache.has(sf.roles.trusted)) {
+    if (target.roles.cache.has(u.sf.roles.trusted)) {
       interaction.editReply({ content: `${target} is already trusted.` });
       return;
     }
@@ -442,22 +441,22 @@ const modCommon = {
     const embed = u.embed({ author: target })
     .setTitle("User Given Trusted")
     .setDescription(`${interaction.member} trusted ${target}.`);
-    if (target.roles.cache.has(sf.roles.untrusted)) {
-      await target.roles.remove(sf.roles.untrusted);
+    if (target.roles.cache.has(u.sf.roles.untrusted)) {
+      await target.roles.remove(u.sf.roles.untrusted);
     }
 
-    await target.roles.add(sf.roles.trusted);
-    await interaction.editReply({ content: `${target} has been given the <@&${sf.roles.trusted}> role!` });
-    await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [embed] });
+    await target.roles.add(u.sf.roles.trusted);
+    await interaction.editReply({ content: `${target} has been given the <@&${u.sf.roles.trusted}> role!` });
+    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
   },
 
   trustPlus: async function(interaction, target) {
-    if (target.roles.cache.has(sf.roles.trustedplus)) {
+    if (target.roles.cache.has(u.sf.roles.trustedplus)) {
       await interaction.editReply({ content: `${target} is already trusted+.` });
       return;
     }
-    if (!target.roles.cache.has(sf.roles.trusted)) {
-      await interaction.editReply({ content: `${target} needs <@&${sf.roles.trusted}> before they can be given <@&${sf.roles.trustedplus}>!` });
+    if (!target.roles.cache.has(u.sf.roles.trusted)) {
+      await interaction.editReply({ content: `${target} needs <@&${u.sf.roles.trusted}> before they can be given <@&${u.sf.roles.trustedplus}>!` });
       return;
     }
     target.send(
@@ -469,17 +468,17 @@ const modCommon = {
 
     const embed = u.embed({ author: target })
     .setTitle("User Given Trusted+")
-    .setDescription(`${interaction.member} gave ${target} the <@&${sf.roles.trustedplus}> role.`);
+    .setDescription(`${interaction.member} gave ${target} the <@&${u.sf.roles.trustedplus}> role.`);
 
-    await target.roles.add(sf.roles.trustedplus);
-    await interaction.editReply({ content: `${target} has been given the <@&${sf.roles.trustedplus}> role!` });
-    await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [embed] });
+    await target.roles.add(u.sf.roles.trustedplus);
+    await interaction.editReply({ content: `${target} has been given the <@&${u.sf.roles.trustedplus}> role!` });
+    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
   },
 
   unmute: async function(interaction, target) {
     try {
       // Don't unmute if not muted
-      if (!target.roles.cache.has(sf.roles.muted)) {
+      if (!target.roles.cache.has(u.sf.roles.muted)) {
         await interaction.editReply({
           content: `${target} isn't muted.`,
         });
@@ -487,11 +486,11 @@ const modCommon = {
       }
 
       // Remove Mute
-      await target.roles.remove(sf.roles.muted);
+      await target.roles.remove(u.sf.roles.muted);
       if (target.voice.channel /* && !muteState.get(target.id)*/) await target.voice.setMute(false, "Mute resolved");
       // muteState.delete(target.id);
 
-      await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
         u.embed({ author: target })
         .setTitle("Member Unmute")
         .setDescription(`**${interaction.member}** unmuted **${target}**`)
