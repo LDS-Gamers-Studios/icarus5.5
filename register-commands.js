@@ -8,7 +8,7 @@ const config = require("./config/config.json"),
  ************************/
 const globalCommandFiles = [
   "messageBookmark.js",
-  "slashAvatar.json"
+  "slashAvatar.js"
 ];
 const guildCommandFiles = [
   "messageMod.js",
@@ -16,7 +16,7 @@ const guildCommandFiles = [
   "slashGospel.js",
   "slashRank.js",
   "slashMod.js",
-  "slashTournament",
+  "slashTournament.js",
   "slashVoice.js",
   "userMod.js"
 ];

@@ -1,4 +1,3 @@
-
 const Discord = require('discord.js');
 const type = Discord.ApplicationCommandOptionType;
 
@@ -80,4 +79,4 @@ module.exports = {
       ]
     }
   ]
-}
+};
