@@ -143,33 +143,35 @@ const modCommon = {
     const embed = u.embed({ color: 0xff0000, author: member });
 
     if (Array.isArray(matches)) matches = matches.join(", ");
-    if (matches) embed.addField("Match", matches);
+    if (matches) embed.addFields({ name: "Match", value: matches });
 
     if (msg) {
       embed.setTimestamp(msg.editedAt ?? msg.createdAt)
       .setDescription((msg.editedAt ? "[Edited]\n" : "") + msg.cleanContent)
-      .addField("Channel", msg.channel?.toString(), true)
-      .addField("Jump to Post", `[Original Message](${msg.url})`, true);
+      .addFields(
+        { name: "Channel", value: msg.channel?.toString(), inline: true },
+        { name: "Jump to Post", value: `[Original Message](${msg.url})`, inline: true }
+      );
     }
 
     if (msg && msg.channel.parentId == u.sf.channels.minecraftcategory) {
-      if (msg.webhookId) embed.addField("User", msg.author.username ?? (await msg.channel.fetchWebhooks()).get(msg.webhookId)?.name ?? "Unknown User");
-      else embed.addField("User", (member.displayName ?? (await member.fetch()).displayName), true);
+      if (msg.webhookId) embed.addFields({ name: "User", value: msg.author.username ?? (await msg.channel.fetchWebhooks()).get(msg.webhookId)?.name ?? "Unknown User" });
+      else embed.addFields({ name: "User", value: (member.displayName ?? (await member.fetch()).displayName), inline: true });
       client.channels.cache.get(u.sf.channels.minecraftmods).send({ embeds: [embed] });
     } else if (msg.webhookId) {
-      if (msg.webhookId) embed.addField("User", msg.author.username);
+      if (msg.webhookId) embed.addFields({ name: "User", value: msg.author.username });
     } else {
-      embed.addField("User", member.toString(), true);
+      embed.addFields({ name: "User", value: member.toString(), inline: true });
     }
 
     let content;
     if (snitch) {
-      embed.addField("Flagged By", snitch.toString(), true)
-      .addField("Reason", flagReason, true);
-      if (furtherInfo) embed.addField("Further Information", furtherInfo, true);
+      embed.addFields({ name: "Flagged By", value: snitch.toString(), inline: true })
+      .addFields({ name: "Reason", value: flagReason, inline: true });
+      if (furtherInfo) embed.addFields({ name: "Further Information", value: furtherInfo, inline: true });
     }
 
-    embed.addField(`Infraction Summary (${infractionSummary.time} Days)`, `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}`);
+    embed.addFields({ name: `Infraction Summary (${infractionSummary.time} Days)`, value: `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}` });
     if (member.bot) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
 
     if (pingMods) {
@@ -367,8 +369,10 @@ const modCommon = {
         u.embed({ author: target })
         .setColor("#0000FF")
         .setDescription(note)
-        .addField("Resolved", `${u.escapeText(interaction.user.username)} added a note.`)
-        .addField(`Infraction Summary (${summary.time} Days)`, `Infractions: ${summary.count}\nPoints: ${summary.points}`)
+        .addFields(
+          { name: "Resolved", value: `${u.escapeText(interaction.user.username)} added a note.` },
+          { name: `Infraction Summary (${summary.time} Days)`, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` }
+        )
         .setTimestamp()
       ] });
 
@@ -402,8 +406,10 @@ const modCommon = {
       u.embed({ author: target })
       .setColor("#0000FF")
       .setDescription(comment)
-      .addField("Resolved", `${interaction.member} changed ${target}'s nickname from ${u.escapeText(oldNick)} to ${u.escapeText(newNick)}.`)
-      .addField(`Infraction Summary (${summary.time} Days) `, `Infractions: ${summary.count}\nPoints: ${summary.points}`)
+      .addFields(
+        { name: "Resolved", value: `${interaction.member} changed ${target}'s nickname from ${u.escapeText(oldNick)} to ${u.escapeText(newNick)}.` },
+        { name: `Infraction Summary (${summary.time} Days) `, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` }
+      )
       .setTimestamp()
     ] });
 
@@ -416,7 +422,7 @@ const modCommon = {
       u.embed({ author: interaction.member })
       .setTitle("User Timeout")
       .setDescription(`**${interaction.member}** timed out ${target}`)
-      .addField('Reason', reason)
+      .addFields({ name: 'Reason', value: reason })
       .setColor(0x00ff00)
     ] });
 

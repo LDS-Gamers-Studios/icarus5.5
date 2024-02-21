@@ -56,9 +56,11 @@ async function slashRankView(interaction) {
       .setTitle("LDSG Season Chat Ranking")
       .setURL("https://my.ldsgamers.com/leaderboard")
       .setFooter({ text: "https://my.ldsgamers.com/leaderboard" })
-      .addField("Rank", `Season: ${record.rank} / ${members.size}\nLifetime: ${record.lifetime} / ${members.size}`, true)
-      .addField("Level", `Current Level: ${level.toLocaleString()}\nNext Level: ${nextLevel} XP`, true)
-      .addField("Exp.", `Season: ${record.currentXP.toLocaleString()} XP\nLifetime: ${record.totalXP.toLocaleString()} XP`, true);
+      .addFields(
+        { name: "Rank", value: `Season: ${record.rank} / ${members.size}\nLifetime: ${record.lifetime} / ${members.size}`, inline: true },
+        { name: "Level", value: `Current Level: ${level.toLocaleString()}\nNext Level: ${nextLevel} XP`, inline: true },
+        { name: "Exp.", value: `Season: ${record.currentXP.toLocaleString()} XP\nLifetime: ${record.totalXP.toLocaleString()} XP`, inline: true }
+      );
 
       await interaction.editReply({ embeds: [embed] });
     } else {
@@ -90,11 +92,13 @@ async function rankClockwork(client) {
               embeds: [
                 u.embed({ author: member })
               .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-              .addField("ID", member.id, true)
-              .addField("Activity", `Posts: ${user.posts}`, true)
-              .addField("Roles", member.roles.cache.map(r => r.name).join(", "))
-              .addField("Joined", `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`)
-              .addField("Account Created", `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`)
+              .addFields(
+                { name: "ID", value: member.id, inline: true },
+                { name: "Activity", value: `Posts: ${user.posts}`, inline: true },
+                { name: "Roles", value: member.roles.cache.map(r => r.name).join(", ") },
+                { name: "Joined", value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>` },
+                { name: "Account Created", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>` }
+              )
               ]
             });
           }

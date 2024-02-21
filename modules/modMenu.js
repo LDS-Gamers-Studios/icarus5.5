@@ -72,7 +72,7 @@ async function menu(options, interaction, target) {
 
   embeds[0].setTitle("Action Selected")
   .setColor("GREEN")
-  .addField("Selection", options.find(o => o.value === menuSelect.values[0]).label);
+  .addFields({ name: "Selection", value: options.find(o => o.value === menuSelect.values[0]).label });
   await interaction.editReply({ embeds, components: [ ] });
 
   return menuSelect;
@@ -150,9 +150,11 @@ const processes = {
         .setTimestamp()
         .setAuthor({ name: target.member.displayName + " 📌", iconURL: target.member.user.displayAvatarURL() })
         .setDescription(target.cleanContent)
-        .addField("Pin Requested By", user.toString())
-        .addField("Channel", target.channel.toString())
-        .addField("Jump to Post", `[Original Message](${target.url})`);
+        .addFields(
+          { name: "Pin Requested By", value: user.toString() },
+          { name: "Channel", value: target.channel.toString() },
+          { name: "Jump to Post", value: `[Original Message](${target.url})` }
+        );
 
         if (target.attachments?.size > 0) {embed.setImage(target.attachments?.first()?.url);}
 
@@ -274,7 +276,7 @@ const processes = {
       u.embed({ author: interaction.member })
       .setTitle("Channel Purge")
       .setDescription(`**${interaction.member}** purged messages in ${interaction.channel}`)
-      .addField('Reason', dm.content)
+      .addFields({ name: 'Reason', value: dm.content })
       .setColor(0x00ff00)
     ] });
     await interaction.followUp({ content: `Channel purged.`, ephemeral: true });
