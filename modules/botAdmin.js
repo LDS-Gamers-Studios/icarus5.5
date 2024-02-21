@@ -130,7 +130,7 @@ const Module = new Augur.Module()
         embed
         .addFields(
           { name: "Shards", value: `Id: ${client.shard.id}\n(${client.shard.count} total)`, inline: true },
-          { name: "Total Bot Reach", value: `${guilds} Servers\n${channels} Channels`, inline: true},
+          { name: "Total Bot Reach", value: `${guilds} Servers\n${channels} Channels`, inline: true },
           { name: "Shard Uptime", value: `${Math.floor(client.uptime / (24 * 60 * 60 * 1000))} days, ${Math.floor(client.uptime / (60 * 60 * 1000)) % 24} hours, ${Math.floor(client.uptime / (60 * 1000)) % 60} minutes`, inline: true },
           { name: "Shard Commands Used", value: `${client.commands.commandCount} (${(client.commands.commandCount / (client.uptime / (60 * 1000))).toFixed(2)}/min)`, inline: true },
           { name: "Total Memory", value: `${mem}MB`, inline: true }
@@ -142,9 +142,9 @@ const Module = new Augur.Module()
         embed
         .addFields(
           { name: "Uptime", value: `Discord: ${Math.floor(client.uptime / (24 * 60 * 60 * 1000))} days, ${Math.floor(client.uptime / (60 * 60 * 1000)) % 24} hours, ${Math.floor(client.uptime / (60 * 1000)) % 60} minutes\nProcess: ${Math.floor(uptime / (24 * 60 * 60))} days, ${Math.floor(uptime / (60 * 60)) % 24} hours, ${Math.floor(uptime / (60)) % 60} minutes`, inline: true },
-          { name: "Reach", value: `${client.guilds.cache.size} Servers\n${client.channels.cache.size} Channels\n${client.users.cache.size} Users`, inline: true},
-          { name: "Commands Used", value: `${client.commands.commandCount} (${(client.commands.commandCount / (client.uptime / (60 * 1000))).toFixed(2)}/min)`, inline: true},
-          { name: "Memory", value: `${Math.round(process.memoryUsage().rss / 1024 / 1000)}MB`, inline: true}
+          { name: "Reach", value: `${client.guilds.cache.size} Servers\n${client.channels.cache.size} Channels\n${client.users.cache.size} Users`, inline: true },
+          { name: "Commands Used", value: `${client.commands.commandCount} (${(client.commands.commandCount / (client.uptime / (60 * 1000))).toFixed(2)}/min)`, inline: true },
+          { name: "Memory", value: `${Math.round(process.memoryUsage().rss / 1024 / 1000)}MB`, inline: true }
         );
 
         msg.channel.send({ embeds: [embed] });
@@ -235,7 +235,7 @@ const Module = new Augur.Module()
       if (m2.length > 0) {
         u.errorLog.send({ embeds: [
           u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in example file but not ${filename + ".json"}`})
+          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in example file but not ${filename + ".json"}` })
         ] });
       }
     }

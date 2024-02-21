@@ -241,7 +241,7 @@ async function slashBankGameRedeem(interaction) {
     .setDescription(`You just redeemed a key for:\n${game["Game Title"]} (${game.System})`)
     .addFields(
       { name: "Cost", value: gb + game.Cost, inline: true },
-      { name: "Balance", value: gb + (balance.balance - game.Cost), inline: true},
+      { name: "Balance", value: gb + (balance.balance - game.Cost), inline: true },
       { name: "Game Key", value: game.Key }
     );
 
@@ -262,7 +262,7 @@ async function slashBankGameRedeem(interaction) {
     embed = u.embed({ author: interaction.member })
     .setDescription(`${interaction.user.username} just redeemed a key for a ${game["Game Title"]} (${game.System}) key.`)
     .addFields(
-      { name: "Cost", value: gb + game.Cost, inline: true},
+      { name: "Cost", value: gb + game.Cost, inline: true },
       { name: "Balance", value: gb + (balance.balance - game.Cost), inline: true }
     );
 
