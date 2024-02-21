@@ -89,8 +89,10 @@ async function slashBankGive(interaction) {
       const gbBalance = await Module.db.bank.getBalance(recipient.id, "gb");
       const emBalance = await Module.db.bank.getBalance(recipient.id, "em");
       const embed = u.embed({ author: interaction.client.user })
-      .addField("Reason", reason)
-      .addField("Your New Balance", `${gb}${gbBalance.balance}\n${ember}${emBalance.balance}`)
+      .addFields(
+        { name: "Reason", value: reason },
+        { name: "Your New Balance", value: `${gb}${gbBalance.balance}\n${ember}${emBalance.balance}` }
+      )
       .setDescription(`${u.escapeText(giver.toString())} just gave you ${coin}${receipt.value}.`);
       recipient.send({ embeds: [embed] }).catch(u.noop);
     }
@@ -108,15 +110,17 @@ async function slashBankGive(interaction) {
     const gbBalance = await Module.db.bank.getBalance(giver.id, "gb");
     const emBalance = await Module.db.bank.getBalance(giver.id, "em");
     const embed = u.embed({ author: interaction.client.user })
-    .addField("Reason", reason)
-    .addField("Your New Balance", `${gb}${gbBalance.balance}\n${ember}${emBalance.balance}`)
+    .addFields(
+      { name: "Reason", value: reason },
+      { name: "Your New Balance", value: `${gb}${gbBalance.balance}\n${ember}${emBalance.balance}` }
+    )
     .setDescription(`You just gave ${coin}${-receipt.value} to ${u.escapeText(recipient.displayName)}.`);
     giver.send({ embeds: [embed] }).catch(u.noop);
 
     if ((currency == "em") && toIcarus) {
       const hoh = interaction.client.channels.cache.get(u.sf.channels.headsofhouse);
       const hohEmbed = u.embed({ author: interaction.client.user })
-      .addField("Reason", reason)
+      .addFields({ name: "Reason", value: reason })
       .setDescription(`**${u.escapeText(giver.displayName)}** gave me ${coin}${value}.`);
       hoh.send({ content: `<@&${u.sf.roles.manager}>`, embeds: [hohEmbed] });
     }
@@ -169,7 +173,7 @@ async function slashBankGameList(interaction) {
       if (game.System?.toLowerCase() == "steam") {
         steamApp = steamGameList.find(g => g.name.toLowerCase() == game["Game Title"].toLowerCase());
       }
-      embed.addField(`${game["Game Title"]} (${game.System})${(game.Rating ? ` [${game.Rating}]` : "")}`, `${gb}${game.Cost}${(steamApp ? ` [[Steam Store Page]](https://store.steampowered.com/app/${steamApp.appid})` : "")}\n\`/bank game redeem ${game.Code}\``);
+      embed.addFields({ name: `${game["Game Title"]} (${game.System})${(game.Rating ? ` [${game.Rating}]` : "")}`, value: `${gb}${game.Cost}${(steamApp ? ` [[Steam Store Page]](https://store.steampowered.com/app/${steamApp.appid})` : "")}\n\`/bank game redeem ${game.Code}\`` });
     }
     embeds.push(embed);
 
@@ -235,14 +239,16 @@ async function slashBankGameRedeem(interaction) {
     let embed = u.embed()
     .setTitle("Game Code Redemption")
     .setDescription(`You just redeemed a key for:\n${game["Game Title"]} (${game.System})`)
-    .addField("Cost", gb + game.Cost, true)
-    .addField("Balance", gb + (balance.balance - game.Cost), true)
-    .addField("Game Key", game.Key);
+    .addFields(
+      { name: "Cost", value: gb + game.Cost, inline: true },
+      { name: "Balance", value: gb + (balance.balance - game.Cost), inline: true},
+      { name: "Game Key", value: game.Key }
+    );
 
     if (systems[game.System?.toLowerCase()]) {
       const sys = systems[game.System.toLowerCase()];
       embed.setURL(sys.redeem + game.Key)
-      .addField("Key Redemption Link", `[Redeem key here](${sys.redeem + game.Key})`)
+      .addFields({ name: "Key Redemption Link", value: `[Redeem key here](${sys.redeem + game.Key})` })
       .setThumbnail(sys.img);
     }
 
@@ -255,8 +261,10 @@ async function slashBankGameRedeem(interaction) {
 
     embed = u.embed({ author: interaction.member })
     .setDescription(`${interaction.user.username} just redeemed a key for a ${game["Game Title"]} (${game.System}) key.`)
-    .addField("Cost", gb + game.Cost, true)
-    .addField("Balance", gb + (balance.balance - game.Cost), true);
+    .addFields(
+      { name: "Cost", value: gb + game.Cost, inline: true},
+      { name: "Balance", value: gb + (balance.balance - game.Cost), inline: true }
+    );
 
     interaction.client.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
 
@@ -302,8 +310,10 @@ async function slashBankDiscount(interaction) {
         interaction.followUp("I wasn't able to send you the code! Do you have DMs allowed for server members? Please check with a member of Management to get your discount code.");
       });
       const embed = u.embed({ author: interaction.member })
-      .addField("Amount", `${gb}${-withdraw.value}\n$${-withdraw.value / 100}`)
-      .addField("Balance", `${gb}${balance.balance + withdraw.value}`)
+      .addFields(
+        { name: "Amount", value:  `${gb}${-withdraw.value}\n$${-withdraw.value / 100}` },
+        { name: "Balance", value: `${gb}${balance.balance + withdraw.value}` }
+      )
       .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb} for a store coupon code.`);
       interaction.client.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
     } else {
@@ -351,8 +361,10 @@ async function slashBankAward(interaction) {
     const gbBalance = await Module.db.bank.getBalance(recipient.id, "gb");
     const emBalance = await Module.db.bank.getBalance(recipient.id, "em");
     let embed = u.embed({ author: interaction.client.user })
-    .addField("Reason", reason)
-    .addField("Your New Balance", `${gb}${gbBalance.balance}\n${ember}${emBalance.balance}`)
+    .addFields(
+      { name:"Reason", value: reason },
+      { name: "Your New Balance", value: `${gb}${gbBalance.balance}\n${ember}${emBalance.balance}` }
+    )
     .setDescription(`${u.escapeText(giver.displayName)} just ${value > 0 ? `awarded you ${ember}${receipt.value}` : `docked you ${ember}${-receipt.value}`}! This counts toward your House's Points.`);
     recipient.send({ embeds: [embed] }).catch(u.noop);
 
@@ -360,7 +372,7 @@ async function slashBankAward(interaction) {
     u.clean(interaction, 60000);
 
     embed = u.embed({ author: interaction.client.user })
-    .addField("Reason", reason)
+    .addFields({ name: "Reason", value: reason })
     .setDescription(`You just gave ${ember}${receipt.value} to ${u.escapeText(recipient.displayName)}. This counts toward their House's Points.`);
     giver.send({ embeds: [embed] }).catch(u.noop);
 
@@ -369,8 +381,10 @@ async function slashBankAward(interaction) {
     const mopbucket = interaction.client.channels.cache.get(u.sf.channels.mopbucketawards);
     embed = u.embed({ author: interaction.client.user })
     .setColor(house.color)
-    .addField("House", house.name)
-    .addField("Reason", reason)
+    .addFields(
+      { name: "House", value: house.name },
+      { name: "Reason", value: reason }
+    )
     .setDescription(`**${giver}** ${value > 0 ? `awarded ${recipient} ${ember}${value}.` : `docked ${recipient} ${ember}${-value}.`}`);
     mopbucket.send({ embeds: [embed] });
   } catch (e) { u.errorHandler(e, interaction); }

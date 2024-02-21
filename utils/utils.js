@@ -189,7 +189,7 @@ const utils = {
       await message.edit({ embeds: [
         response
         .setDescription(`Got your response! Please see original message.\n\`\`\`\n${collected.first()}\n\`\`\``)
-        .addField("Original Question", msg, false)
+        .addFields({ name: "Original Question", value: msg, inline: false })
       ] });
       return collected.first();
     }
@@ -243,16 +243,20 @@ const utils = {
 
       message.channel.send("I've run into an error. I've let my devs know.")
         .then(utils.clean);
-      embed.addField("User", message.author.username, true)
-        .addField("Location", loc, true)
-        .addField("Command", message.cleanContent || "`undefined`", true);
+      embed.addFields(
+        { name: "User", value: message.author.username, inline: true },
+        { name: "Location", value: loc, inline: true },
+        { name: "Command", value: message.cleanContent || "`undefined`", inline: true }
+      );
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.guild ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
       console.error(`Interaction by ${message.user.username} in ${loc}`);
 
       message[((message.deferred || message.replied) ? "editReply" : "reply")]({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop);
-      embed.addField("User", message.user?.username, true)
-        .addField("Location", loc, true);
+      embed.addFields(
+        { name: "User", value: message.user?.username, inline: true },
+        { name: "Location", value: loc, inline: true }
+      );
 
       const descriptionLines = [message.commandId || message.customId || "`undefined`"];
       const { command, data } = parseInteraction(message);
@@ -260,10 +264,10 @@ const utils = {
       for (const datum of data) {
         descriptionLines.push(`${datum.name}: ${datum.value}`);
       }
-      embed.addField("Interaction", descriptionLines.join("\n"));
+      embed.addFields({ name: "Interaction", value: descriptionLines.join("\n") });
     } else if (typeof message === "string") {
       console.error(message);
-      embed.addField("Message", message);
+      embed.addFields({ name: "Message", value: message });
     }
 
     console.trace(error);

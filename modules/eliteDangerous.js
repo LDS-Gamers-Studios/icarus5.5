@@ -63,7 +63,7 @@ async function updateFactions() {
     if (faction.pendingStates.length > 0) states += `\n**Pending State${(faction.pendingStates.length > 1) ? "s" : ""}:** ${faction.pendingStates.map(state => state.state).join(", ")}`;
 
     if (!old) {
-      embed.addField(`${faction.name} (${(100 * faction.influence).toFixed(2)}%)`, states, true);
+      embed.addFields({ name: `${faction.name} (${(100 * faction.influence).toFixed(2)}%)`, value: states, inline: true });
       factions.set(faction.id, faction);
     } else {
       let delta = "";
@@ -74,7 +74,7 @@ async function updateFactions() {
         delta = ` - 📉 ${(100 * (old.influence - faction.influence)).toFixed(2)}%`;
         updated = true;
       }
-      embed.addField(`${faction.name} (${(100 * faction.influence).toFixed(2)}%${delta})`, states, true);
+      embed.addFields({ name: `${faction.name} (${(100 * faction.influence).toFixed(2)}%${delta})`, value: states, inline: true });
       factions.set(faction.id, faction);
     }
   }
