@@ -103,7 +103,7 @@ const Module = new Augur.Module()
         if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
 
         embed.setTitle(member.displayName + " has rejoined the server.")
-          .addField("Roles", roleString);
+          .addFields({ name: "Roles", value: roleString });
         welcomeString = `Welcome back, ${member}! Glad to see you again.`;
 
       } else { // Member is new
@@ -162,9 +162,10 @@ const Module = new Augur.Module()
           title: `${member.displayName} has left the server`,
           color: 0x5865f2,
         })
-        .addField("Joined", moment(member.joinedAt).fromNow(), true)
-        .addField("Posts", (user?.posts || 0) + " Posts", true);
-
+        .addFields(
+          { name: "Joined", value: moment(member.joinedAt).fromNow(), inline: true },
+          { name: "Posts", value: (user?.posts || 0) + " Posts", inline: true }
+        );
         member.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
       }
     }
@@ -180,10 +181,10 @@ const Module = new Augur.Module()
       .setTitle("User Update")
       .setFooter({ text: `${user.posts} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
       if (oldUser.tag !== newUser.tag) {
-        embed.addField("**Username Update**", `**Old:** ${u.escapeText(oldUser.tag)}\n**New:** ${u.escapeText(newUser.tag)}`);
+        embed.addFields({ name: "**Username Update**", value: `**Old:** ${u.escapeText(oldUser.tag)}\n**New:** ${u.escapeText(newUser.tag)}` });
       }
       if (oldUser.avatar !== newUser.avatar) {
-        embed.addField("**Avatar Update**", "See Below").setImage(newUser.displayAvatarURL({ dynamic: true }));
+        embed.addFields({ name: "**Avatar Update**", value: "See Below" }).setImage(newUser.displayAvatarURL({ dynamic: true }));
       } else {
         embed.setThumbnail(newUser.displayAvatarURL());
       }
