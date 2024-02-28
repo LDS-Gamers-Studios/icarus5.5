@@ -1,6 +1,7 @@
 // This file is a place for all the publicly visible bot diagnostic commands usable primarily only by the head bot dev.
 
 const Augur = require("augurbot-ts"),
+  config = require("../config/config.json"),
   p = require("../utils/perms"),
   u = require("../utils/utils");
 
@@ -212,7 +213,7 @@ const Module = new Augur.Module()
 })
 .setInit(async (reload) => {
   try {
-    if (!reload) {
+    if (!reload && !config.silentMode) {
       u.errorLog.send({ embeds: [ u.embed().setDescription("Bot is ready!") ] });
     }
     const testingDeploy = [
@@ -227,16 +228,16 @@ const Module = new Augur.Module()
       const repo = require(filename[0]);
       // console.log(`Checking ${filename}`);
       const [m1, m2] = fieldMismatches(prod, repo);
-      if (m1.length > 0) {
+      if (m1.length > 0 && !config.silentMode) {
         u.errorLog.send({ embeds: [
           u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m1.join("`, `")}\` in file ${filename + ".json"} but not example file.` })
+          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m1.join("`, `")}\` in file ${prod} but not ${repo} file.` })
         ] });
       }
-      if (m2.length > 0) {
+      if (m2.length > 0 && !config.silentMode) {
         u.errorLog.send({ embeds: [
           u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in example file but not ${filename + ".json"}` })
+          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in ${repo} file but not ${prod}` })
         ] });
       }
     }

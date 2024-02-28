@@ -14,13 +14,13 @@
     "model": "database/dbControllers.js",
     "db": "",
     "settings": {
-      "useFindAndModify": false,
       "useNewUrlParser": true,
       "user": "",
       "pass": ""
     }
   },
   "devMode": true,
+  "silentMode": false,
   "error": {
     "url": ""
   },
