@@ -319,7 +319,7 @@ async function modMenu(inter) {
 }
 
 const Module = new Augur.Module()
-.addInteraction({ name: "Moderation", commandId: u.sf.commands.messageMod, process: modMenu })
-.addInteraction({ name: "Moderation", commandId: u.sf.commands.userMod, process: modMenu });
+.addInteraction({ name: "Moderation", id: u.sf.commands.messageMod, process: modMenu })
+.addInteraction({ name: "Moderation", id: u.sf.commands.userMod, process: modMenu });
 
 module.exports = Module;

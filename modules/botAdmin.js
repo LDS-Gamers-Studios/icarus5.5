@@ -215,15 +215,16 @@ const Module = new Augur.Module()
     if (!reload) {
       u.errorLog.send({ embeds: [ u.embed().setDescription("Bot is ready!") ] });
     }
-    const requiredHidden = [
-      "../config/config",
-      "../config/rankConfig",
-      "../config/snowflakes",
-      "../data/banned"
+    const testingDeploy = [
+      ["../config/config.json", "../config/config-example.json"],
+      ["../config/rankConfig-testing.json", "../config/rankConfig.json"],
+      ["../config/snowflakes-testing.json", "../config/snowflakes.json"],
+      ["../config/snowflakes-testing-commands.json", "../config/snowflakes-testing-commands-example.json"],
+      ["../data/banned.json", "../data/banned-example.json"]
     ];
-    for (const filename of requiredHidden) {
-      const prod = require(filename + ".json");
-      const repo = require(filename + "-example.json");
+    for (const filename of testingDeploy) {
+      const prod = require(filename[1]);
+      const repo = require(filename[0]);
       // console.log(`Checking ${filename}`);
       const [m1, m2] = fieldMismatches(prod, repo);
       if (m1.length > 0) {

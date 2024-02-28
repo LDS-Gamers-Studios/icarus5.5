@@ -295,7 +295,7 @@ const Module = new Augur.Module()
   .addInteraction({
     name: "gospel",
     guildId: u.sf.ldsg,
-    commandId: u.sf.commands.slashGospel,
+    id: u.sf.commands.slashGospel,
     process: async (interaction) => {
       switch (interaction.options.getSubcommand(true)) {
       case "verse":
