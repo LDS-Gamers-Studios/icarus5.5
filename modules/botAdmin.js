@@ -231,13 +231,13 @@ const Module = new Augur.Module()
       if (m1.length > 0 && !config.silentMode) {
         u.errorLog.send({ embeds: [
           u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m1.join("`, `")}\` in file ${prod} but not ${repo} file.` })
+          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m1.join("`, `")}\` in file ${filename[1]} but not ${filename[0]} file.` })
         ] });
       }
       if (m2.length > 0 && !config.silentMode) {
         u.errorLog.send({ embeds: [
           u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in ${repo} file but not ${prod}` })
+          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in ${filename[0]} file but not ${filename[1]}` })
         ] });
       }
     }

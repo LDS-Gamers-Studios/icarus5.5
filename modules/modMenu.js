@@ -46,7 +46,7 @@ async function menu(options, interaction, target) {
 
   const targetUser = getTargetUser(target);
   const e = u.embed({ author: targetUser })
-    .setColor("RED");
+    .setColor("Red");
   let embeds = [ e ];
   if (target instanceof Discord.Message) {
     e.setTitle("Select An Action On This Message");
@@ -64,14 +64,14 @@ async function menu(options, interaction, target) {
     .catch(() => menuSelect = null);
 
   if (!menuSelect) {
-    embeds[0].setTitle("Action Timed Out").setColor("BLUE");
+    embeds[0].setTitle("Action Timed Out").setColor("Blue");
     await interaction.editReply({ embeds, components: [ ] });
     return;
   }
   await menuSelect.deferUpdate({ ephemeral: true });
 
   embeds[0].setTitle("Action Selected")
-  .setColor("GREEN")
+  .setColor("Green")
   .addFields({ name: "Selection", value: options.find(o => o.value === menuSelect.values[0]).label });
   await interaction.editReply({ embeds, components: [ ] });
 
@@ -139,7 +139,7 @@ const processes = {
   pinMessage: async function(interaction, target) {
     try {
       const user = interaction.user;
-      if (target.channel.permissionsFor(user).has("MANAGE_MESSAGES")) {
+      if (target.channel.permissionsFor(user).has("ManageMessages")) {
         const messages = await target.channel.messages.fetchPinned().catch(u.noop);
         if (messages?.size == 50) {interaction.editReply(`${user}, I was unable to pin the message since the channel pin limit has been reached.`);} else {
           await target.pin();
@@ -300,7 +300,7 @@ const processes = {
 async function modMenu(inter) {
   await inter.deferReply({ ephemeral: true });
   const includeKey = permCheck(inter);
-  const target = inter.targetType === "MESSAGE" ? inter.options.getMessage("message") : inter.options.getMember("user");
+  const target = inter.isMessageContextMenuCommand() ? inter.options.getMessage("message") : inter.options.getMember("user");
 
   const allMenuItems = new u.Collection()
   .set(0, ['userAvatar']) // 'userInfo',
