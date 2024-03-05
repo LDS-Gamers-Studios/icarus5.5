@@ -24,39 +24,37 @@ const { nanoid } = require("nanoid");
  */
 function parseInteraction(int) {
   if (int.isChatInputCommand() || int.isAutocomplete()) {
-    let command = ""
-    if (int.isAutocomplete()) command += "Autocomplete for "
-    command += "/"
+    let command = "";
+    if (int.isAutocomplete()) command += "Autocomplete for ";
+    command += "/";
     const sg = int.options.getSubcommandGroup(false);
     const sc = int.options.getSubcommand(false);
-    if (sg) command += sg
-    command += int.commandName
-    if (sc) command += sc
+    if (sg) command += sg;
+    command += int.commandName;
+    if (sc) command += sc;
     return {
       command,
       data: int.options.data
     };
-  }
-
-  else if (int.isContextMenuCommand()) {
+  } else if (int.isContextMenuCommand()) {
     return {
-      command: "Button " + int.commandName,
+      command: (int.isUserContextMenuCommand() ? "User" : "Message") + " Context " + int.commandName,
       data: int.options.data
-    }
-  }
-
-  else if (int.isMessageComponent()) {
-    let data = [
+    };
+  } else if (int.isMessageComponent()) {
+    const data = [
       {
         name: "Type",
         value: Discord.ComponentType[int.componentType]
       }
-    ]
-    if (int.isAnySelectMenu()) data.push({
-      name: "Value(s)",
-      value: int.values.join(', ')
-    })
-    return { command: null, data }
+    ];
+    if (int.isAnySelectMenu()) {
+      data.push({
+        name: "Value(s)",
+        value: int.values.join(', ')
+      });
+    }
+    return { command: null, data };
   }
 }
 

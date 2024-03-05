@@ -178,33 +178,11 @@ async function avatar(int) {
 }
 
 const Module = new Augur.Module()
-// .addInteraction({
-//   id: "testingErrorHandler",
-//   type: "SelectMenuString",
-//   process: async (int) => {
-//     return u.errorHandler("AAAHHHH! EXPECTED ERROR!", int)
-//   }
-// })
 .addInteraction({
   name: "avatar",
   id: u.sf.commands.slashAvatar,
   interactionType: 'CommandSlash',
   process: async (interaction) => {
-    // return interaction.reply({
-    //   components: [
-    //     u.actionRow().addComponents([
-    //       u.stringSelectMenu({ customId: "testingErrorHandler", maxValues: 2, options: [{
-    //         label: "Ooga",
-    //         value: "oo"
-    //       },
-    //       {
-    //         label: "Booga",
-    //         value: "bo"
-    //       }
-    //     ] })
-    //     ])
-    //   ]
-    // })
     const file = interaction.options.getAttachment('file');
     if (file && !interaction.options.getString('filter')) return interaction.reply({ content: "You need to specify a filter to apply if you're uploading a file", ephemeral: true });
     if (file && file.size > 4000000) return interaction.reply({ content: "That file is too big for me to process! It needs to be under 4MB.", ephemeral: true });
