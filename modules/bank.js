@@ -6,8 +6,10 @@ const Augur = require("augurbot-ts"),
   gb = `<:gb:${u.sf.emoji.gb}>`,
   ember = `<:ember:${u.sf.emoji.ember}>`;
 
-const { GoogleSpreadsheet } = require("google-spreadsheet"),
-  doc = new GoogleSpreadsheet(config.google.sheets.games);
+const { GoogleSpreadsheet } = require("google-spreadsheet");
+let doc;
+if (config.google.sheets.config) doc = new GoogleSpreadsheet(config.google.sheets.games);
+else console.log("No Sheets ID");
 
 const { customAlphabet } = require("nanoid"),
   chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ",
@@ -394,7 +396,7 @@ const Module = new Augur.Module()
 .addInteraction({
   name: "bank",
   guildId: u.sf.ldsg,
-  commandId: u.sf.commands.slashBank,
+  id: u.sf.commands.slashBank,
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
     case "give":

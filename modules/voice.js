@@ -196,7 +196,7 @@ const Module = new Augur.Module()
 .addInteraction({
   name: "voice",
   guildId: u.sf.ldsg,
-  commandId: u.sf.commands.slashVoice,
+  id: u.sf.commands.slashVoice,
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
     case "lock":
@@ -215,6 +215,7 @@ const Module = new Augur.Module()
   }
 })
 .setInit(async () => {
+  if (!config.google.sheets.config) return console.log("No Sheets ID");
   const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
     await doc.useServiceAccountAuth(config.google.creds);

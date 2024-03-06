@@ -33,6 +33,7 @@ async function bracket(int) {
 }
 /** @param {discord.CommandInteraction} int */
 async function champs(int) {
+  if (!config.google.sheets.config) return console.log("No Sheets ID");
   const tName = int.options.getString('tourney-name');
   const user = (str) => int.options.getMember(str);
   const users = [user('1'), user('2'), user('3'), user('4'), user('5'), user('6')];

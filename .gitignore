@@ -1,11 +1,8 @@
 node_modules
 storage/*
 tmp
-config/*
-!config/README.md
-!config/snowflakes.json
-!config/*-example.json
-!config/*-testing.json
+config/config.json
+config/snowflakes-testing-commands.json
 test.js
 *-.js
 *-.json

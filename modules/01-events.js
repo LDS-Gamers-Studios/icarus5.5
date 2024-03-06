@@ -193,6 +193,7 @@ const Module = new Augur.Module()
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.username)} (${newUser.id})`); }
 })
 .setInit(async () => {
+  if (!config.google.sheets.config) return console.log("No Sheets ID");
   const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
     await doc.useServiceAccountAuth(config.google.creds);
