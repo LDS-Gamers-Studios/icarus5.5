@@ -9,6 +9,7 @@ let banners = new u.Collection();
 
 const Module = new Augur.Module()
 .setInit(async () => {
+  if (!config.google.sheets.config) return console.log("No Sheets ID");
   const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
     await doc.useServiceAccountAuth(config.google.creds);

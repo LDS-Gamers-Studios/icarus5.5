@@ -1,6 +1,7 @@
 // This file is a place for all the publicly visible bot diagnostic commands usable primarily only by the head bot dev.
 
 const Augur = require("augurbot-ts"),
+  config = require("../config/config.json"),
   p = require("../utils/perms"),
   u = require("../utils/utils");
 
@@ -212,30 +213,31 @@ const Module = new Augur.Module()
 })
 .setInit(async (reload) => {
   try {
-    if (!reload) {
+    if (!reload && !config.silentMode) {
       u.errorLog.send({ embeds: [ u.embed().setDescription("Bot is ready!") ] });
     }
-    const requiredHidden = [
-      "../config/config",
-      "../config/rankConfig",
-      "../config/snowflakes",
-      "../data/banned"
+    const testingDeploy = [
+      ["../config/config.json", "../config/config-example.json"],
+      ["../config/rankConfig-testing.json", "../config/rankConfig.json"],
+      ["../config/snowflakes-testing.json", "../config/snowflakes.json"],
+      ["../config/snowflakes-testing-commands.json", "../config/snowflakes-testing-commands-example.json"],
+      ["../data/banned.json", "../data/banned-example.json"]
     ];
-    for (const filename of requiredHidden) {
-      const prod = require(filename + ".json");
-      const repo = require(filename + "-example.json");
+    for (const filename of testingDeploy) {
+      const prod = require(filename[1]);
+      const repo = require(filename[0]);
       // console.log(`Checking ${filename}`);
       const [m1, m2] = fieldMismatches(prod, repo);
-      if (m1.length > 0) {
+      if (m1.length > 0 && !config.silentMode) {
         u.errorLog.send({ embeds: [
           u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m1.join("`, `")}\` in file ${filename + ".json"} but not example file.` })
+          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m1.join("`, `")}\` in file ${filename[1]} but not ${filename[0]} file.` })
         ] });
       }
-      if (m2.length > 0) {
+      if (m2.length > 0 && !config.silentMode) {
         u.errorLog.send({ embeds: [
           u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in example file but not ${filename + ".json"}` })
+          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in ${filename[0]} file but not ${filename[1]}` })
         ] });
       }
     }

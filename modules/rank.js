@@ -135,7 +135,7 @@ const Module = new Augur.Module()
 .addInteraction({
   name: "rank",
   guildId: u.sf.ldsg,
-  commandId: u.sf.commands.slashRank,
+  id: u.sf.commands.slashRank,
   process: async (interaction) => {
     try {
       const subcommand = interaction.options.getSubcommand(true);
