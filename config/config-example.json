@@ -63,6 +63,6 @@
       "applications": ""
     }
   },
-  "prefix": "! (but change this to something unique)",
+  "prefix": "! (change this to something unique)",
   "token": "Put your bot token here (https://discord.com/developers/applications)"
 }
