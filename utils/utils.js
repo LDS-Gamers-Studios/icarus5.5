@@ -164,7 +164,7 @@ const utils = {
       .setTitle("Awaiting Response")
       .setDescription(msg)
       .setFooter({ text: `Times out in ${timeout} seconds.` })
-      .setColor("RED")
+      .setColor("Red")
     ] });
 
     const collected = await message.channel.awaitMessages({
@@ -174,7 +174,7 @@ const utils = {
 
     const response = utils.embed()
       .setTitle("Awaited Response")
-      .setColor("PURPLE");
+      .setColor("Purple");
 
     if (collected.size === 0) {
       await message.edit({ embeds: [
