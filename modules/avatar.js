@@ -11,6 +11,7 @@ const Augur = require("augurbot-ts"),
  * @callback filterFunction
  * @param {discord.ChatInputCommandInteraction} int
  * @param {Jimp} img
+ * @param {Boolean} both
  * @returns {Promise<any>}
  *
  * @callback process
@@ -36,7 +37,8 @@ async function jimpRead(url) {
       img.resize(w == largest ? 256 : Jimp.AUTO, w == largest ? Jimp.AUTO : 256);
     }
     return img;
-  } catch {
+  } catch (e) {
+    u.errorHandler(e);
     return null;
   }
 }
@@ -55,7 +57,7 @@ async function targetImg(int, size = 256) {
   }
   const target = (int.options[int.guild ? "getMember" : "getUser"]('user')) ?? int.user;
   // @ts-ignore
-  return target.displayAvatarURL({ format: 'png', size, dynamic: true });
+  return target.displayAvatarURL({ extension: 'png', size, dynamic: true });
 }
 
 /**
@@ -63,12 +65,15 @@ async function targetImg(int, size = 256) {
  * @param {discord.CommandInteraction} int
  * @param {string} filter filter to apply
  * @param {any[]?} params array of params to pass into the filter function
+ * @param {Boolean} both
  */
-async function basicFilter(int, img, filter, params) {
+async function basicFilter(int, img, filter, params, both) {
   if (params) img[filter](...params);
   else img[filter]();
   const output = await img.getBufferAsync(Jimp.MIME_PNG);
-  return int.editReply({ files: [output] });
+  const image = new discord.AttachmentBuilder(output, { name: "image.png" });
+  const embed = both ? u.embed().setTitle(filter).setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle(filter).setImage(`attachment://${image.name}`);
+  return int.editReply({ embeds: [embed], files: [image] });
 }
 
 /**
@@ -93,32 +98,38 @@ function fourCorners(img, o = 12, run) {
 }
 
 /** @type {filterFunction} */
-async function andywarhol(int, img) {
+async function andywarhol(int, img, both) {
   const output = await fourCorners(img, 12, (x, y, c) => {
     img.color([{ apply: ColorActionName.SPIN, params: [60] }]);
     c.blit(img, x, y);
   }).getBufferAsync(Jimp.MIME_PNG);
-  return await int.editReply({ files: [output] });
+  const image = new discord.AttachmentBuilder(output, { name: "image.png" });
+  const embed = both ? u.embed().setTitle("Andywarhol").setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle("Andywarhol").setImage(`attachment://${image.name}`);
+  return await int.editReply({ embeds: [embed], files: [image] });
 }
 
 /** @type {filterFunction} */
-async function colorme(int, img) {
+async function colorme(int, img, both) {
   const color = Math.floor(Math.random() * 359);
   const output = await img.color([{ apply: ColorActionName.HUE, params: [color] }]).getBufferAsync(Jimp.MIME_PNG);
-  return int.editReply({ content: `Hue: ${color}`, files: [output] });
+  const image = new discord.AttachmentBuilder(output, { name: "image.png" });
+  const embed = both ? u.embed().setTitle(`Colorme Hue: ${color}`).setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle(`Colorme Hue: ${color}`).setImage(`attachment://${image.name}`);
+  return int.editReply({ embeds: [embed], files: [image] });
 }
 
 /** @type {filterFunction} */
-async function deepfry(int, img) {
+async function deepfry(int, img, both) {
   const output = await img.posterize(20)
     .color([{ apply: ColorActionName.SATURATE, params: [100] }])
     .contrast(1)
     .getBufferAsync(Jimp.MIME_PNG);
-  return int.editReply({ files: [output] });
+  const image = new discord.AttachmentBuilder(output, { name: "image.png" });
+  const embed = both ? u.embed().setTitle("Deepfry").setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle("Deepfry").setImage(`attachment://${image.name}`);
+  return int.editReply({ embeds: [embed], files: [image] });
 }
 
 /** @type {filterFunction} */
-async function flex(int, img) {
+async function flex(int, img, both) {
   const right = await Jimp.read("./media/flexArm.png");
   const left = right.clone().flip(true, Math.random() > 0.5);
   const canvas = new Jimp(368, 128, 0x00000000);
@@ -129,11 +140,13 @@ async function flex(int, img) {
     .blit(right, 248, 4)
     .blit(img, 120, 0)
     .getBufferAsync(Jimp.MIME_PNG);
-  return int.editReply({ files: [output] });
+  const image = new discord.AttachmentBuilder(output, { name: "image.png" });
+  const embed = both ? u.embed().setTitle("Flex").setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle("Flex").setImage(`attachment://${image.name}`);
+  return int.editReply({ embeds: [embed], files: [image] });
 }
 
 /** @type {filterFunction} */
-async function metal(int, img) {
+async function metal(int, img, both) {
   const right = await Jimp.read('./media/metalHand.png');
   const left = right.clone().flip(true, false);
   const canvas = new Jimp(368, 128, 0x00000000);
@@ -143,32 +156,41 @@ async function metal(int, img) {
     .blit(left, 248, 4)
     .blit(img, 120, 0)
     .getBufferAsync(Jimp.MIME_PNG);
-  return int.editReply({ files: [output] });
+  const image = new discord.AttachmentBuilder(output, { name: "image.png" });
+  const embed = both ? u.embed().setTitle("Metal").setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle("Metal").setImage(`attachment://${image.name}`);
+  return int.editReply({ embeds: [embed], files: [image] });
 }
 
 /** @type {filterFunction} */
-async function personal(int, img) {
+async function personal(int, img, both) {
   const canvas = await Jimp.read('./media/personalBase.png');
   img.resize(350, 350);
   if (!img.hasAlpha()) img.circle();
   const output = await canvas.blit(img, 1050, 75).getBufferAsync(Jimp.MIME_PNG);
-  return await int.editReply({ files: [output] });
+  const image = new discord.AttachmentBuilder(output, { name: "image.png" });
+  const embed = both ? u.embed().setTitle("personal").setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle("Personal").setImage(`attachment://${image.name}`);
+  return await int.editReply({ embeds: [embed], files: [image] });
 }
 
 /** @type {filterFunction} */
-async function petpet(int) {
+async function petpet(int, both) {
   const gif = await petPetGif(await targetImg(int));
-  return await int.editReply({ files: [{ attachment: gif, name: 'petpet.gif' }] });
+  const image = new discord.AttachmentBuilder(gif, { name: "image.gif" });
+  const embed = both ? u.embed().setTitle("Petpet").setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle("PetPet").setImage(`attachment://${image.name}`);
+  return await int.editReply({ embeds: [embed], files: [image] });
+  // return await int.editReply({ files: [{ attachment: gif, name: 'petpet.gif' }] });
 }
 
 /** @type {filterFunction} */
-async function popart(int, img) {
+async function popart(int, img, both) {
   const output = await fourCorners(img, 12, (x, y, c, i) => {
     if (i == 0) img.color([{ apply: ColorActionName.DESATURATE, params: [100] }, { apply: ColorActionName.SATURATE, params: [50] }]);
     else img.color([{ apply: ColorActionName.SPIN, params: [i == 3 ? 120 : 60] }]);
     c.blit(img, x, y);
   }).getBufferAsync(Jimp.MIME_PNG);
-  return await int.editReply({ files: [output] });
+  const image = new discord.AttachmentBuilder(output, { name: "image.png" });
+  const embed = both ? u.embed().setTitle("Popart").setImage(`attachment://${image.name}`).setFooter({ text: "you provided both a user and a file, so I defaulted to using the file" }) : u.embed().setTitle("Popart").setImage(`attachment://${image.name}`);
+  return await int.editReply({ embeds: [embed], files: [image] });
 }
 
 /**
@@ -188,35 +210,37 @@ const Module = new Augur.Module()
 .addInteraction({
   name: "avatar",
   id: u.sf.commands.slashAvatar,
-  interactionType: 'CommandSlash',
   process: async (interaction) => {
     const file = interaction.options.getAttachment('file');
+    const target = (interaction.options[interaction.guild ? "getMember" : "getUser"]('user')) ?? interaction.user;
     if (file && !interaction.options.getString('filter')) return interaction.reply({ content: "You need to specify a filter to apply if you're uploading a file", ephemeral: true });
     if (file && file.size > 4000000) return interaction.reply({ content: "That file is too big for me to process! It needs to be under 4MB.", ephemeral: true });
+    if (file && file.contentType?.includes('image/webp')) return interaction.reply({ content: "Sorry, webp files are not supported at this time", ephemeral: true });
+    const both = Boolean(file && target);
     await interaction.deferReply();
-
+    //if (file && target) await interaction.editReply({ content: "you provided both a user and a file, so I defaulted to using the file" });
     const img = await jimpRead(await targetImg(interaction));
     if (!img) return errorReading(interaction);
 
     switch (interaction.options.getString('filter')) {
-    case "andywarhol": return andywarhol(interaction, img);
-    case "colorme": return colorme(interaction, img);
-    case "deepfry": return deepfry(interaction, img);
-    case "flex": return flex(interaction, img);
-    case "metal": return metal(interaction, img);
-    case "personal": return personal(interaction, img);
-    case "petpet": return petpet(interaction, img);
-    case "popart": return popart(interaction, img);
+    case "andywarhol": return andywarhol(interaction, img, both);
+    case "colorme": return colorme(interaction, img, both);
+    case "deepfry": return deepfry(interaction, img, both);
+    case "flex": return flex(interaction, img, both);
+    case "metal": return metal(interaction, img, both);
+    case "personal": return personal(interaction, img, both);
+    case "petpet": return petpet(interaction, img, both);
+    case "popart": return popart(interaction, img, both);
 
     // basic filters
-    case "fisheye": return basicFilter(interaction, img, 'fisheye', null);
-    case "invert": return basicFilter(interaction, img, 'invert', null);
-    case "blur": return basicFilter(interaction, img, 'blur', [5]);
-    case "flipx": return basicFilter(interaction, img, 'flip', [true, false]);
-    case "flipy": return basicFilter(interaction, img, 'flip', [false, true]);
-    case "flipxy": return basicFilter(interaction, img, 'flip', [true, true]);
-    case "blurple": return basicFilter(interaction, img, 'color', [[{ apply: "desaturate", params: [100] }, { apply: "saturate", params: [47.7] }, { apply: "hue", params: [227] }]]);
-    case "grayscale": return basicFilter(interaction, img, 'color', [[{ apply: "desaturate", params: [100] }]]);
+    case "fisheye": return basicFilter(interaction, img, 'fisheye', null, both);
+    case "invert": return basicFilter(interaction, img, 'invert', null, both);
+    case "blur": return basicFilter(interaction, img, 'blur', [5], both);
+    case "flipx": return basicFilter(interaction, img, 'flip', [true, false], both);
+    case "flipy": return basicFilter(interaction, img, 'flip', [false, true], both);
+    case "flipxy": return basicFilter(interaction, img, 'flip', [true, true], both);
+    case "blurple": return basicFilter(interaction, img, 'color', [[{ apply: "desaturate", params: [100] }, { apply: "saturate", params: [47.7] }, { apply: "hue", params: [227] }]], both);
+    case "grayscale": return basicFilter(interaction, img, 'color', [[{ apply: "desaturate", params: [100] }]], both);
 
     default: return avatar(interaction);
     }
