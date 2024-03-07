@@ -137,7 +137,7 @@ const modCommon = {
     let { matches } = flagInfo;
     const { pingMods, snitch, flagReason, furtherInfo } = flagInfo;
 
-    const client = msg.client ?? member?.client;
+    const client = msg?.client ?? member?.client;
 
     const infractionSummary = await client.db.infraction.getSummary(member);
     const embed = u.embed({ color: 0xff0000, author: member });
@@ -158,7 +158,7 @@ const modCommon = {
       if (msg.webhookId) embed.addFields({ name: "User", value: msg.author.username ?? (await msg.channel.fetchWebhooks()).get(msg.webhookId)?.name ?? "Unknown User" });
       else embed.addFields({ name: "User", value: (member.displayName ?? (await member.fetch()).displayName), inline: true });
       client.channels.cache.get(u.sf.channels.minecraftmods).send({ embeds: [embed] });
-    } else if (msg.webhookId) {
+    } else if (msg?.webhookId) {
       if (msg.webhookId) embed.addFields({ name: "User", value: msg.author.username });
     } else {
       embed.addFields({ name: "User", value: member.toString(), inline: true });
