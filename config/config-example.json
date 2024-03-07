@@ -4,7 +4,7 @@
     "steam": "",
     "challonge": ""
   },
-  "applicationId": "",
+  "applicationId": "You can find it here: https://discord.com/developers/applications",
   "color": [
     248,
     154,
@@ -12,17 +12,17 @@
   ],
   "db": {
     "model": "database/dbControllers.js",
-    "db": "",
+    "db": "localhost:27017/<database> by default",
     "settings": {
-      "useFindAndModify": false,
       "useNewUrlParser": true,
       "user": "",
       "pass": ""
     }
   },
   "devMode": true,
+  "silentMode": false,
   "error": {
-    "url": ""
+    "url": "Webhook url for errors"
   },
   "events": [
     "channelCreate",
@@ -44,7 +44,7 @@
     "voiceStateUpdate"
   ],
   "google": {
-    "api": "",
+    "api": "You can fill out all this info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
     "creds": {
       "type": "",
       "project_id": "",
@@ -58,11 +58,11 @@
       "client_x509_cert_url": ""
     },
     "sheets": {
-      "config": "",
+      "config": "The testing google sheet ID (https://docs.google.com/spreadsheets/d/THIS_PART_IS_THE_ID_AND_THE_ONLY_THING_THAT_GOES_IN_THIS_PROPERTY)",
       "games": "",
       "applications": ""
     }
   },
-  "prefix": "!",
-  "token": ""
+  "prefix": "! (change this to something unique)",
+  "token": "Put your bot token here (https://discord.com/developers/applications)"
 }

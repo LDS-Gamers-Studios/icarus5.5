@@ -62,6 +62,7 @@ function displayError(error) {
 }
 
 const applicationId = config.applicationId;
+if (!applicationId) return console.log("Please put your application ID in config/config.json\nYou can find the ID here:\nhttps://discord.com/developers/applications");
 const commandPath = path.resolve(require.main ? path.dirname(require.main.filename) : process.cwd(), "./registry");
 
 const guildCommandLoads = [];

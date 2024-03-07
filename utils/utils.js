@@ -19,60 +19,42 @@ const { nanoid } = require("nanoid");
 
 /**
  * Converts an interaction into a more universal format for error messages.
- * @param {Discord.BaseInteraction} inter The interaction to be parsed.
+ * @param {Discord.Interaction} int The interaction to be parsed.
  * @returns {ParsedInteraction} The interaction after it has been broken down.
  */
-function parseInteraction(inter) {
-  if (inter.isCommand()) {
-    const commandParts = [`/${inter.commandName}`];
-    let optionData = inter.options.data;
-    if (optionData.length == 0) {
-      return {
-        command: commandParts.join(" "),
-        data: optionData
-      };
-    }
-
-    if (optionData[0].type == "SUB_COMMAND_GROUP") {
-      commandParts.push(optionData[0].name);
-      optionData = optionData[0].options;
-      if (optionData.length == 0) {
-        return {
-          command: commandParts.join(" "),
-          data: optionData
-        };
-      }
-    }
-
-    if (optionData[0].type == "SUB_COMMAND") {
-      commandParts.push(optionData[0].name);
-      optionData = optionData[0].options;
-      return {
-        command: commandParts.join(" "),
-        data: optionData ?? []
-      };
-    }
-  }
-
-  if (inter.isContextMenu()) {
+function parseInteraction(int) {
+  if (int.isChatInputCommand() || int.isAutocomplete()) {
+    let command = "";
+    if (int.isAutocomplete()) command += "Autocomplete for ";
+    command += "/";
+    const sg = int.options.getSubcommandGroup(false);
+    const sc = int.options.getSubcommand(false);
+    if (sg) command += sg;
+    command += int.commandName;
+    if (sc) command += sc;
     return {
-      command: `[Context Menu] ${inter.commandName}`,
-      data: inter.options.data
+      command,
+      data: int.options.data
     };
-  }
-
-  if (inter.isMessageComponent()) {
-    const data = [{
-      name: "Message",
-      value: inter.message.guild ? `[Original Message](${inter.message.url})` : "(DM)"
-    }];
-    const command = inter.isButton() ? `[Button] ${(inter.component?.emoji?.name ?? "") + (inter.component?.label ?? "")}` : "[Select Menu]";
-
-    if (inter.isSelectMenu()) {
-      data.push({ name: "Selection", value: inter.values.join() });
+  } else if (int.isContextMenuCommand()) {
+    return {
+      command: (int.isUserContextMenuCommand() ? "User" : "Message") + " Context " + int.commandName,
+      data: int.options.data
+    };
+  } else if (int.isMessageComponent()) {
+    const data = [
+      {
+        name: "Type",
+        value: Discord.ComponentType[int.componentType]
+      }
+    ];
+    if (int.isAnySelectMenu()) {
+      data.push({
+        name: "Value(s)",
+        value: int.values.join(', ')
+      });
     }
-
-    return { command, data };
+    return { command: null, data };
   }
 }
 
@@ -122,6 +104,22 @@ const utils = {
    * Shortcut to Discord.Collection. See docs there for reference.
    */
   Collection: Discord.Collection,
+  /** @param {Discord.ActionRowData} data */
+  actionRow: (data) => new Discord.ActionRowBuilder(data),
+  /** @param {Discord.ButtonComponentData} data */
+  button: (data) => new Discord.ButtonBuilder(data),
+  /** @param {Discord.StringSelectMenuComponentData} data */
+  stringSelectMenu: (data) => new Discord.StringSelectMenuBuilder(data),
+  /** @param {Discord.UserSelectMenuComponentData} data */
+  userSelectMenu: (data) => new Discord.UserSelectMenuBuilder(data),
+  /** @param {Discord.RoleSelectMenuComponentData} data */
+  roleSelectMenu: (data) => new Discord.RoleSelectMenuBuilder(data),
+
+
+  /** @param {Discord.ModalComponentData} data */
+  modal: (data) => new Discord.ModalBuilder(data),
+  /** @param {Discord.APITextInputComponent} data */
+  textInput: (data) => new Discord.TextInputBuilder(data),
   /**
    * Confirm Dialog
    * @function confirmInteraction
@@ -260,7 +258,7 @@ const utils = {
 
       const descriptionLines = [message.commandId || message.customId || "`undefined`"];
       const { command, data } = parseInteraction(message);
-      descriptionLines.push(command);
+      if (command) descriptionLines.push(command);
       for (const datum of data) {
         descriptionLines.push(`${datum.name}: ${datum.value}`);
       }
@@ -276,7 +274,7 @@ const utils = {
     if (stack.length > 4096) stack = stack.slice(0, 4000);
 
     embed.setDescription(stack);
-    errorLog.send({ embeds: [embed] });
+    if (!config.silentMode || message instanceof Discord.BaseInteraction) errorLog.send({ embeds: [embed] });
   },
   errorLog,
   /**
