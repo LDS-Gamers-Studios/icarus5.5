@@ -1,4 +1,8 @@
 {
+  "adminId": [
+    ""
+  ],
+  "ownerId": "",
   "api": {
     "snipcart": "",
     "steam": "",
