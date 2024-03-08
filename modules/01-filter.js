@@ -289,7 +289,7 @@ async function processCardAction(interaction) {
       if (member) {
         const quote = u.embed({ author: member })
         .addFields({ name: "Channel", value: `#${interaction.guild.channels.cache.get(infraction.channel).name}` })
-        .setDescription(embed.description)
+        .setDescription(embed.data.description)
         .setTimestamp(flag.createdAt);
 
         const response = (
