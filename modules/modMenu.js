@@ -2,7 +2,7 @@ const Augur = require("augurbot-ts"),
   p = require("../utils/perms"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  sf = require("../config/snowflakes.json"),
+  sf = u.sf,
   Discord = require("discord.js");
 
 const menuOptions = require("../data/modMenuOptions"),

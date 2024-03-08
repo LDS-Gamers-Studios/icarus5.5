@@ -139,6 +139,7 @@ const modCommon = {
     const { pingMods, snitch, flagReason, furtherInfo } = flagInfo;
 
     const client = msg?.client ?? member?.client;
+    if (!client) return u.errorHandler("No client on flag for" + member);
 
     const infractionSummary = await client.db.infraction.getSummary(member);
     const embed = u.embed({ color: 0xff0000, author: member });
@@ -419,14 +420,14 @@ const modCommon = {
   },
 
   spamCleanup: async function(target, guild, auto = false) {
-    const unique = (items) => [...new Set(items)];
     let toDelete = new u.Collection();
     let deleted = 0;
     let notDeleted = false;
-    const contents = auto ? unique(target.messages.map(m => m.content.toLowerCase())) : [target.content.toLowerCase()];
+    const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2);
+    const contents = auto ? u.unique(target.messages.map(m => m.content.toLowerCase())) : [target.content.toLowerCase()];
     for (const [, channel] of guild.channels.cache) {
       if (channel.isTextBased() && channel.messages.cache.size > 0) {
-        const messages = channel.messages.cache.filter(m => Date.now() - (config.spamThreshold.cleanupLimit * (auto ? 1 : 2)) <= m.createdTimestamp && m.author.id == (target.author?.id ?? target.id) && m.content.toLowerCase().includes(contents));
+        const messages = channel.messages.cache.filter(m => m.createdTimestamp <= (timeDiff + target.createdTimestamp) && m.createdTimestamp >= (timeDiff - target.createdTimestamp) && m.author.id == (target.author?.id ?? target.id) && m.content.toLowerCase().includes(contents));
         if (messages.size > 0) toDelete = toDelete.concat(messages);
       }
     }
@@ -437,7 +438,7 @@ const modCommon = {
           await toDelete.at(i).delete();
           deleted++;
         } catch (error) {
-          console.log(error);
+          u.errorHandler(error).then(notDeleted ? u.clean : u.noop);
           notDeleted = true;
         }
         i++;

@@ -48,25 +48,24 @@ function blocked(member) {
 async function spamming(client) {
   const ldsg = client.guilds.cache.get(sf.ldsg);
   const trusted = ldsg.roles.cache.get(sf.roles.trusted).members;
-  const unique = (items) => [...new Set(items)];
   const limit = (type, id) => thresh[type][trusted.has(id) ? 0 : 1];
   const mapped = active.map(a => {
     let verdict = 0;
-    const sameMessages = unique(a.messages.map(m => m.content.toLowerCase()));
-    const sameMSGCount = sameMessages.map(m => ({ content: m, length: a.messages.filter(f => f.content.toLowerCase() == m).length })).filter(m => m.length >= limit('same', a.id));
-    const channels = unique(a.messages.map(m => m.channelId)).length;
-    if (sameMSGCount.length > 0) verdict = 3;
+    const sameMessages = u.unique(a.messages.map(m => m.content.toLowerCase()));
+    const sameMSGCount = sameMessages.map(m => ({ content: m, count: a.messages.filter(f => f.content.toLowerCase() == m).length })).filter(m => m.count >= limit('same', a.id));
+    const channels = u.unique(a.messages.map(m => m.channelId)).length;
+    if (sameMSGCount.count > 0) verdict = 3;
     else if (limit('channels', a.id) <= channels) verdict = 1;
     else if (limit('messages', a.id) <= a.messages.length) verdict = 2;
     a.verdict = verdict;
-    a.count = [null, channels, a.messages.length, sameMSGCount.map(m => m.length).join('+')][verdict];
+    a.count = [null, channels, a.messages.length, sameMSGCount.map(m => m.count).join('+')][verdict];
     return a;
   }).filter(a => a.verdict != 0);
   for (const member of mapped) {
     const msg = member.messages[0];
     const message = ldsg.channels.cache.get(msg.channelId)?.messages.cache.get(msg.id);
     const memb = ldsg.members.cache.get(member.id);
-    const channels = unique(member.messages.map(m => `<#${m.channelId}>`));
+    const channels = u.unique(member.messages.map(m => `<#${m.channelId}>`));
     const verdictString = [
       null,
       `Posted in too many channels (${member.count}/${limit('channels', member.id)}) too fast\nChannels:\n${channels.join('\n')}`,

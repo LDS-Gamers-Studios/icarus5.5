@@ -344,7 +344,7 @@ async function slashModSlowmode(interaction) {
 async function slashModSummary(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user");
-  const time = interaction.options.get("history") ? interaction.options.get("history").value : 28;
+  const time = interaction.options.getInteger("history") ?? 28;
   const e = await getSummaryEmbed(member, time, interaction.guild);
   await interaction.editReply({ embeds: [ e ] });
 }
