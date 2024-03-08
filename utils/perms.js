@@ -1,8 +1,9 @@
 const { sf } = require("../utils/utils");
+const config = require("../config/config");
 
 const perms = {
-  isAdmin: (msg) => sf.adminId.includes((msg.author ?? msg.user).id),
-  isOwner: (msg) => (msg.author ?? msg.user).id === sf.ownerId,
+  isAdmin: (msg) => config.adminId.includes((msg.author ?? msg.user).id),
+  isOwner: (msg) => (msg.author ?? msg.user).id === config.ownerId,
   isMod: function(msg) {
     const roles = msg.member?.roles.cache;
     return roles?.has(sf.roles.mod) || roles?.has(sf.roles.management);
