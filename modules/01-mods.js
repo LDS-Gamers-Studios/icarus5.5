@@ -53,8 +53,8 @@ async function slashModBan(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
   const target = interaction.options.getMember("user");
-  const reason = interaction.options.get("reason").value;
-  const days = interaction.options.get("clean").value ?? 1;
+  const reason = interaction.options.get("reason")?.value;
+  const days = interaction.options.get("clean")?.value ?? 1;
 
   await c.ban(interaction, target, reason, days);
 }
@@ -63,11 +63,11 @@ async function slashModBan(interaction) {
 async function slashModFilter(interaction) {
   const pf = new profanityFilter();
   await interaction.deferReply({ ephemeral: true });
-  const word = interaction.options.get("word").value.toLowerCase().trim();
+  const word = interaction.options.get("word")?.value.toLowerCase().trim();
   const member = interaction.member;
   const modLogs = interaction.guild.channels.cache.get(u.sf.channels.modlogs);
   const filtered = pf.scan(word);
-  const apply = interaction.options.get("apply").value ?? true;
+  const apply = interaction.options.get("apply")?.value ?? true;
   if (!p.isMgmt(interaction) && !p.isMgr(interaction) && !p.isAdmin(interaction)) {
     interaction.editReply("This command is for Management, Discord Manager, and Bot Admins only.");
     return;
@@ -344,7 +344,7 @@ async function slashModSlowmode(interaction) {
 async function slashModSummary(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user");
-  const time = interaction.options.get("history").value ?? 28;
+  const time = interaction.options.get("history")?.value ?? 28;
   const e = await getSummaryEmbed(member, time, interaction.guild);
   await interaction.editReply({ embeds: [ e ] });
 }
@@ -353,8 +353,8 @@ async function slashModSummary(interaction) {
 async function slashModTrust(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user");
-  const type = interaction.options.get("type").value;
-  const apply = interaction.options.get("apply").value ?? true;
+  const type = interaction.options.get("type")?.value;
+  const apply = interaction.options.get("apply")?.value ?? true;
 
   const role = {
     'initial': u.sf.roles.trusted,
@@ -444,8 +444,8 @@ async function slashModTrust(interaction) {
 async function slashModWarn(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user");
-  const reason = interaction.options.get("reason").value;
-  const value = interaction.options.get("value").value ?? 1;
+  const reason = interaction.options.get("reason")?.value;
+  const value = interaction.options.get("value")?.value ?? 1;
 
   const response = "We have received one or more complaints regarding content you posted. "
     + "We have reviewed the content in question and have determined, in our sole discretion, that it is against our code of conduct (<http://ldsgamers.com/code-of-conduct>). "
