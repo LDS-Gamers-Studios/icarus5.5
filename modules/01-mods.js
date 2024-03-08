@@ -98,7 +98,7 @@ async function slashModFilter(interaction) {
 async function slashModFullInfo(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user") ?? interaction.member;
-  const time = interaction.options.get("history").value ?? 28;
+  const time = interaction.options.get("history")?.value ?? 28;
 
   let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
   if (roleString.length > 1024) roleString = roleString.substr(0, roleString.indexOf(", ", 1000)) + " ...";
