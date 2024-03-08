@@ -23,7 +23,7 @@ module.exports = {
      */
   getSummary: async function(discordId, time = 28) {
     discordId = discordId.id ?? discordId;
-    const since = moment().subtract(time, "days");
+    const since = moment().subtract("days", time); // Moment deprecated ordering the parameters of add and subtract as (period, number)
     const records = await Infraction.find({ discordId, timestamp: { $gte: since } }).exec();
     return {
       discordId,
