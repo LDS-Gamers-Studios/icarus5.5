@@ -1,4 +1,8 @@
 {
+  "adminId": [
+    "put any user IDs that need to control the bot here"
+  ],
+  "ownerId": "put your id here",
   "api": {
     "snipcart": "",
     "steam": "",
