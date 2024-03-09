@@ -45,7 +45,7 @@ async function jimpRead(url) {
 /**
  * Send the image as an embed
  * @param {discord.ChatInputCommandInteraction} int
- * @param {Buffer} img
+ * @param {Buffer | String} img
  * @param {String} name
  * @param {String} format
  * @returns {Promise<any>}
@@ -54,7 +54,7 @@ async function sendImg(int, img, name, format = "png") {
   const file = int.options.getAttachment('file');
   const target = (int.options[int.guild ? "getMember" : "getUser"]('user')) ?? int.user;
   const both = Boolean(file && target);
-  const image = new discord.AttachmentBuilder(img, { name: `image.${format}` });
+  const image = u.attachment().setFile(img).setName(`image.${format}`);
   const embed = u.embed().setTitle(name).setImage(`attachment://${image.name}`).setFooter(both ? { text: "you provided both a user and a file, so I defaulted to using the file" } : null);
   return int.editReply({ embeds: [embed], files: [image] });
 }
@@ -72,7 +72,6 @@ async function targetImg(int, size = 256) {
     else return url;
   }
   const target = (int.options[int.guild ? "getMember" : "getUser"]('user')) ?? int.user;
-  // @ts-ignore
   return target.displayAvatarURL({ extension: 'png', size, dynamic: true });
 }
 
@@ -200,7 +199,6 @@ async function avatar(int) {
   if (!targetImage) return errorReading(int);
   const targetUser = (int.options[int.guild ? "getMember" : "getUser"]('user')) ?? int.user;
   const format = targetImage?.includes('.gif') ? 'gif' : 'png';
-  // @ts-ignore
   return await sendImg(int, targetImage, (targetUser.displayName ?? targetUser.username), format);
 }
 
