@@ -200,6 +200,7 @@ const utils = {
    * Shortcut to Discord.Util.escapeMarkdown. See docs there for reference.
    */
   escapeText: escapeMarkdown,
+  attachment: (data) => new Discord.AttachmentBuilder(data),
   /**
    * Returns a MessageEmbed with basic values preset, such as color and timestamp.
    * @param {any} data The data object to pass to the MessageEmbed constructor.
