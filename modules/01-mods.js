@@ -290,6 +290,7 @@ async function slashModSlowmode(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const duration = interaction.options.getInteger("duration") ?? 10;
   const timer = interaction.options.getInteger("timer") ?? 15;
+  const indefinitely = interaction.options.getBoolean("indefinitely") ?? false;
   const ch = interaction.options.getChannel() || interaction.channel;
   const ct = Discord.ChannelType;
 
@@ -298,7 +299,7 @@ async function slashModSlowmode(interaction) {
     return;
   }
 
-  if (duration <= 0) {
+  if (duration == 0) {
     ch.edit({ rateLimitPerUser: 0 }).catch(e => u.errorHandler(e, interaction));
     const old = molasses.get(ch.id);
     if (old) {
@@ -322,19 +323,24 @@ async function slashModSlowmode(interaction) {
     const limit = prev ? prev.limit : ch.rateLimitPerUser;
     await ch.edit({ rateLimitPerUser: timer });
 
-    molasses.set(ch.id, {
-      timeout: setTimeout((channel, rateLimitPerUser) => {
-        channel.edit({ rateLimitPerUser }).catch(error => u.errorHandler(error, "Reset rate limit after slowmode"));
-        molasses.delete(channel.id);
-      }, duration * 60000, ch, limit),
-      limit
-    });
+    var durationStr = "indefinitely";
 
-    await interaction.editReply(`${timer}-second slowmode activated for ${duration} minute${duration > 1 ? 's' : ''}.`);
+    if (duration > 0 && !indefinitely) {
+      molasses.set(ch.id, {
+        timeout: setTimeout((channel, rateLimitPerUser) => {
+          channel.edit({ rateLimitPerUser }).catch(error => u.errorHandler(error, "Reset rate limit after slowmode"));
+          molasses.delete(channel.id);
+        }, duration * 60000, ch, limit),
+        limit
+      });
+      durationStr = `for ${duration.toString()} minute${duration > 1 ? 's' : ''}`;
+    }
+     
+    await interaction.editReply(`${timer}-second slowmode activated ${durationStr}.`);
     await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: interaction.member })
       .setTitle("Channel Slowmode")
-      .setDescription(`${interaction.member} set a ${timer}-second slow mode for ${duration} minute${duration > 1 ? 's' : ''} in ${ch}.`)
+      .setDescription(`${interaction.member} set a ${timer}-second slow mode ${durationStr} in ${ch}.`)
       .setColor(0x00ff00)
     ] });
   }
