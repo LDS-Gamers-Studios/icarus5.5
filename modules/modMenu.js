@@ -2,7 +2,6 @@ const Augur = require("augurbot-ts"),
   p = require("../utils/perms"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  sf = u.sf,
   Discord = require("discord.js");
 
 const menuOptions = require("../data/modMenuOptions"),
@@ -286,7 +285,7 @@ const processes = {
     await interaction.editReply("Beginning cleanup...");
     const cleaned = await c.spamCleanup(target, interaction.guild);
     if (cleaned.deleted < 2) return interaction.editReply({ content: "I wasn't able to find any other messages with this content." });
-    await interaction.guild.channels.cache.get(sf.channels.modlogs).send({ embeds: [
+    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: { name: interaction.member.displayName, iconURL: interaction.member.displayAvatarURL() } })
       .setTitle("Spam Cleanup")
       .setDescription(`**${interaction.member}** cleaned up ${cleaned.deleted} message(s) from ${target.member}`)
