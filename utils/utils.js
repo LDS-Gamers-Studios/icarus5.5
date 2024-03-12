@@ -193,7 +193,7 @@ const utils = {
       return collected.first();
     }
   },
-  db: db
+  db: db,
   /**
    * Shortcut to nanoid. See docs there for reference.
    */
