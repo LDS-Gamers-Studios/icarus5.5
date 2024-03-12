@@ -1,8 +1,10 @@
 const Augur = require("augurbot-ts"),
   banned = require("../data/banned.json"),
   Discord = require("discord.js"),
+  config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
   u = require("../utils/utils"),
+  sf = require("../config/snowflakes-testing.json"),
   c = require("../utils/modCommon");
 
 const bannedWords = new RegExp(banned.words.join("|"), "i"),
@@ -16,6 +18,18 @@ let pf = new profanityFilter();
 const grownups = new Map(),
   processing = new Set();
 
+// first value is for trusted, second is for non-trusted
+const thresh = config.spamThreshold;
+/**
+ * @typedef activeMember
+ * @prop {string} id
+ * @prop {{channelId: string, content: string, id: string}[]} messages
+ * @prop {number} verdict
+ * @prop {number} count
+ */
+/** @type {Discord.Collection<string, activeMember> } */
+const active = new u.Collection();
+
 /**
  * Give the mods a heads up that someone isn't getting their DMs.
  * @param {Discord.GuildMember} member The guild member that's blocked.
@@ -28,6 +42,44 @@ function blocked(member) {
       title: `${member} has me blocked. *sadface*`
     })
   ] });
+}
+
+/** @param {Discord.Client} client*/
+async function spamming(client) {
+  const ldsg = client.guilds.cache.get(sf.ldsg);
+  const trusted = ldsg.roles.cache.get(sf.roles.trusted).members;
+  const limit = (type, id) => thresh[type][trusted.has(id) ? 0 : 1];
+  const mapped = active.map(a => {
+    let verdict = 0;
+    const sameMessages = u.unique(a.messages.map(m => m.content.toLowerCase()));
+    const sameMSGCount = sameMessages.map(m => ({ content: m, count: a.messages.filter(f => f.content.toLowerCase() == m).length })).filter(m => m.count >= limit('same', a.id));
+    const channels = u.unique(a.messages.map(m => m.channelId)).length;
+    if (sameMSGCount.count > 0) verdict = 3;
+    else if (limit('channels', a.id) <= channels) verdict = 1;
+    else if (limit('messages', a.id) <= a.messages.length) verdict = 2;
+    a.verdict = verdict;
+    a.count = [null, channels, a.messages.length, sameMSGCount.map(m => m.count).join('+')][verdict];
+    return a;
+  }).filter(a => a.verdict != 0);
+  for (const member of mapped) {
+    const msg = member.messages[0];
+    const message = ldsg.channels.cache.get(msg.channelId)?.messages.cache.get(msg.id);
+    const memb = ldsg.members.cache.get(member.id);
+    const channels = u.unique(member.messages.map(m => `<#${m.channelId}>`));
+    const verdictString = [
+      null,
+      `Posted in too many channels (${member.count}/${limit('channels', member.id)}) too fast\nChannels:\n${channels.join('\n')}`,
+      `Posted too many messages (${member.count}/${limit('messages', member.id)}) too fast\nChannels:\n${channels.join('\n')}`,
+      `Posted the same message too many times (${member.count}/${limit('same', member.id)})`,
+    ];
+    const flag = await c.createFlag({ msg: message, member: memb, snitch: client.user, flagReason: verdictString[member.verdict] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict == 3 });
+    const cleaned = member.verdict == 3 ? await c.spamCleanup(member, ldsg, true) : null;
+    if (cleaned.notDeleted) {
+      const embed = flag.embeds[0];
+      embed.fields.push({ name: "Further Information", value: `I couldn't delete some of the messages, but I managed to get ${cleaned.deleted}/${cleaned.toDelete} of all their spammed messages` });
+      await flag.edit({ embeds: [embed] });
+    }
+  }
 }
 
 /**
@@ -51,6 +103,12 @@ function filter(msg, text) {
  * @param {Discord.Message} msg Edited message
  */
 function processMessageLanguage(old, msg) {
+  if (!msg && old && !old.author.bot && !old.webhookId) {
+    const id = old.author.id;
+    const messages = active.get(id)?.messages ?? [];
+    messages.push({ id: old.id, channelId: old.channel.id, content: old.content.toLowerCase() });
+    active.set(id, { id: id, messages: messages });
+  }
   if (!msg) msg = old;
   if (msg.guild?.id != u.sf.ldsg) return false; // Only filter LDSG
   if (grownups.has(msg.channel.id)) return false; // Don't filter "Grown Up" channel
@@ -139,7 +197,8 @@ function processDiscordInvites(msg) {
             u.embed({
               description: "It is difficult to know what will be in another Discord server at any given time. *If* you feel that this server is appropriate to share, please only do so in direct messages."
             })
-          ] });
+          ] })
+          .then(u.clean);
         }
       }
     }).catch(e => {
@@ -156,7 +215,8 @@ function processDiscordInvites(msg) {
           u.embed({
             description: "It is difficult to know what will be in another Discord server at any given time. *If* you feel that this server is appropriate to share, please only do so in direct messages."
           })
-        ] });
+        ] })
+        .then(u.clean);
       } else { u.errorHandler(e, msg); }
     });
   }
@@ -333,6 +393,12 @@ const Module = new Augur.Module()
 .addInteraction({ id: "modCardMute", process: processCardAction })
 .addInteraction({ id: "modCardInfo", process: processCardAction })
 .addInteraction({ id: "modCardLink", process: processCardAction })
-.addEvent("filterUpdate", () => pf = new profanityFilter());
+.addEvent("filterUpdate", () => pf = new profanityFilter())
+.addEvent("ready", () => {
+  setInterval(() => {
+    spamming(Module.client);
+    active.clear();
+  }, thresh.time);
+});
 
 module.exports = Module;

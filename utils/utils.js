@@ -345,6 +345,9 @@ const utils = {
     return new Promise((fulfill) => {
       setTimeout(fulfill, t);
     });
+  },
+  unique: function(items) {
+    return [...new Set(items)];
   }
 };
 

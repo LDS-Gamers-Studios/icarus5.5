@@ -1,6 +1,7 @@
 const { ButtonStyle } = require("discord.js"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
+  config = require('../config/config.json'),
   { ActionRowBuilder, ButtonBuilder } = require("discord.js");
 
 const modActions = [
@@ -138,6 +139,7 @@ const modCommon = {
     const { pingMods, snitch, flagReason, furtherInfo } = flagInfo;
 
     const client = msg?.client ?? member?.client;
+    if (!client) return u.errorHandler("No client on flag for" + member);
 
     const infractionSummary = await client.db.infraction.getSummary(member);
     const embed = u.embed({ color: 0xff0000, author: member });
@@ -218,6 +220,7 @@ const modCommon = {
       };
       await client.db.infraction.save(infraction);
     }
+    return card;
   },
 
   getSummaryEmbed: async function(member, time, guild) {
@@ -414,6 +417,34 @@ const modCommon = {
     ] });
 
     await interaction.editReply({ content: `${target}'s nickname changed from ${u.escapeText(oldNick)} to ${u.escapeText(newNick)}.` });
+  },
+
+  spamCleanup: async function(target, guild, auto = false) {
+    let toDelete = new u.Collection();
+    let deleted = 0;
+    let notDeleted = false;
+    const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2);
+    const contents = auto ? u.unique(target.messages.map(m => m.content.toLowerCase())) : [target.content.toLowerCase()];
+    for (const [, channel] of guild.channels.cache) {
+      if (channel.isTextBased() && channel.messages.cache.size > 0) {
+        const messages = channel.messages.cache.filter(m => m.createdTimestamp <= (timeDiff + target.createdTimestamp) && m.createdTimestamp >= (timeDiff - target.createdTimestamp) && m.author.id == (target.author?.id ?? target.id) && m.content.toLowerCase().includes(contents));
+        if (messages.size > 0) toDelete = toDelete.concat(messages);
+      }
+    }
+    let i = 0;
+    if (toDelete.size > 0) {
+      do {
+        try {
+          await toDelete.at(i).delete();
+          deleted++;
+        } catch (error) {
+          u.errorHandler(error).then(notDeleted ? u.clean : u.noop);
+          notDeleted = true;
+        }
+        i++;
+      } while (i < toDelete.size);
+    }
+    return { deleted, notDeleted, toDelete: toDelete.size };
   },
 
   timeout: async function(interaction, target, reason) {
