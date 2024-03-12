@@ -322,7 +322,7 @@ async function slashModSlowmode(interaction) {
     const limit = prev ? prev.limit : ch.rateLimitPerUser;
     await ch.edit({ rateLimitPerUser: timer });
 
-    var durationStr = "indefinitely";
+    let durationStr = "indefinitely";
 
     if (duration > 0 && !indefinitely) {
       molasses.set(ch.id, {
@@ -334,7 +334,7 @@ async function slashModSlowmode(interaction) {
       });
       durationStr = `for ${duration.toString()} minute${duration > 1 ? 's' : ''}`;
     }
-     
+    
     await interaction.editReply(`${timer}-second slowmode activated ${durationStr}.`);
     await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
       u.embed({ author: interaction.member })
