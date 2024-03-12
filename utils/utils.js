@@ -6,6 +6,7 @@ const Discord = require("discord.js"),
   // 2/18/24
   tsf = require("../config/snowflakes-testing.json"),
   csf = require("../config/snowflakes-testing-commands.json"),
+  db = require("../database/dbControllers.js"),
   config = require("../config/config.json");
 
 const errorLog = new Discord.WebhookClient(config.error);
@@ -192,6 +193,7 @@ const utils = {
       return collected.first();
     }
   },
+  db: db,
   /**
    * Shortcut to nanoid. See docs there for reference.
    */
