@@ -51,7 +51,6 @@ async function getSummaryEmbed(member, time, guild) {
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModBan(interaction) {
   await interaction.deferReply({ ephemeral: true });
-  console.log(interaction.options);
   const target = interaction.options.getMember("user");
   const reason = interaction.options.getString("reason");
   const days = interaction.options.getInteger("clean") ?? 1;
