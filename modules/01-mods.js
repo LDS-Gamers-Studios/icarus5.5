@@ -1,3 +1,4 @@
+// @ts-check
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   u = require("../utils/utils"),

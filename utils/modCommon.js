@@ -1,3 +1,4 @@
+// @ts-check
 const { ButtonStyle } = require("discord.js"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
