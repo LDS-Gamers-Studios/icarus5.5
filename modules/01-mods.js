@@ -73,7 +73,7 @@ async function slashModFilter(interaction) {
     return;
   }
   if (apply) {
-    if (filtered != word && pf.add_word(word)) {
+    if (!filtered.includes(word) && pf.add_word(word)) {
       const embed = u.embed({ author: member })
         .setTitle("Word added to the language filter.")
         .setDescription(`${member} added "${word}" to the language filter.`);
