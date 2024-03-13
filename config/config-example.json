@@ -68,5 +68,12 @@
     }
   },
   "prefix": "! (change this to something unique)",
+  "spamThreshold":  {
+    "channels": [7, 3],
+    "messages": [10, 5],
+    "same": [5, 3],
+    "time": 15000,
+    "cleanupLimit": 900000
+  },
   "token": "Put your bot token here (https://discord.com/developers/applications)"
 }
