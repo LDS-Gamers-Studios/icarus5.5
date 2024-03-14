@@ -8,6 +8,7 @@ const Augur = require("augurbot-ts"),
 const bannedWords = new RegExp(banned.words.join("|"), "i"),
   bannedLinks = new RegExp(`\\b(${banned.links.join("|").replaceAll(".", "\\.")})`, "i"),
   hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/,
+  isSafe = new RegExp("https://cdn.discordapp.com"),
   scamLinks = new RegExp(`\\b(${banned.scam.join("|").replaceAll(".", "\\.")})`, "i");
 
 let pf = new profanityFilter();
@@ -66,7 +67,7 @@ function processMessageLanguage(old, msg) {
       // Naughty Links
       c.createFlag({ msg, member: msg.member, matches: match, pingMods: true });
       return true;
-    } else if (match = scamLinks.test(msg.cleanContent)) {
+    } else if (match = scamLinks.test(msg.cleanContent) && !(isSafe.test(link[0]))) {
       // Scam Links
       u.clean(msg, 0);
       msg.reply({ content: "That link is generally believed to be a scam/phishing site. Please be careful!", failIfNotExists: false }).catch(u.noop);
