@@ -10,7 +10,7 @@ const Augur = require("augurbot-ts"),
 const bannedWords = new RegExp(banned.words.join("|"), "i"),
   bannedLinks = new RegExp(`\\b(${banned.links.join("|").replaceAll(".", "\\.")})`, "i"),
   hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/,
-  isSafe = new RegExp("https://cdn.discordapp.com"),
+  isSafe = new RegExp(banned.exception.join("|")),
   scamLinks = new RegExp(`\\b(${banned.scam.join("|").replaceAll(".", "\\.")})`, "i");
 
 let pf = new profanityFilter();
