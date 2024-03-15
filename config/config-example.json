@@ -69,11 +69,11 @@
   },
   "prefix": "! (change this to something unique)",
   "spamThreshold":  {
-    "channels": [7, 3],
-    "messages": [10, 5],
-    "same": [5, 3],
-    "time": 15000,
-    "cleanupLimit": 900000
+    "channels": [10, 1],
+    "messages": [10, 1],
+    "same": [1, 1],
+    "time": 10000,
+    "cleanupLimit": 100000
   },
   "token": "Put your bot token here (https://discord.com/developers/applications)"
 }
