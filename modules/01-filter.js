@@ -394,7 +394,7 @@ const Module = new Augur.Module()
   category: "Mod",
   permissions: msg => msg.member.roles.cache.has(u.sf.roles.mod), // msg.channel.parentID == "363020585988653057" || msg.channel.parentID == "800827468315492352"
   process: (msg, suffix) => {
-    let time = Math.min(30, parseInt(suffix, 10) || 15);
+    const time = Math.min(30, parseInt(suffix, 10) || 15);
     msg.channel.send(`*Whistles and wanders off for ${time} minutes...*`);
     if (grownups.has(msg.channel.id)) clearTimeout(grownups.get(msg.channel.id));
 
