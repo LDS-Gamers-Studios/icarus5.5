@@ -1,3 +1,4 @@
+// @ts-check
 const Augur = require("augurbot-ts"),
   banned = require("../data/banned.json"),
   Discord = require("discord.js"),
@@ -385,6 +386,33 @@ async function processCardAction(interaction) {
 **  Filter Events  **
 ********************/
 const Module = new Augur.Module()
+.addCommand({
+  name: "grownups",
+  description: "The grownups are talking here.",
+  info: "Temporarily (default 15 minutes, max 30 minutes) disable the chat filter in a mod/Team channel to allow for conversation about modding.",
+  syntax: "minutes",
+  category: "Mod",
+  permissions: msg => msg.member.roles.cache.has(u.sf.roles.mod), // msg.channel.parentID == "363020585988653057" || msg.channel.parentID == "800827468315492352"
+  process: (msg, suffix) => {
+    let time = Math.min(30, parseInt(suffix, 10) || 15);
+    msg.channel.send(`*Whistles and wanders off for ${time} minutes...*`);
+    if (grownups.has(msg.channel.id)) clearTimeout(grownups.get(msg.channel.id));
+
+    grownups.set(msg.channel.id, setTimeout((channel) => {
+      grownups.delete(channel.id);
+      channel.send("*I'm watching you again...* :eyes:");
+    }, time * 60 * 1000, msg.channel));
+  },
+  parseParams: false,
+  aliases: [],
+  hidden: false,
+  enabled: true,
+  userPermissions: [],
+  options: [],
+  onlyOwner: false,
+  onlyGuild: false,
+  onlyDm: false
+})
 .addEvent("messageCreate", processMessageLanguage)
 .addEvent("messageUpdate", processMessageLanguage)
 .addInteraction({ id: "modCardClear", process: processCardAction })
