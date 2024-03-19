@@ -40,6 +40,7 @@ module.exports = {
      * @param {String|Discord.User|Discord.GuildMember} data.giver The user giving the currency.
      * @param {String} [data.currency="em"] The type of currency to give ("em" or "gb").
      * @param {Number} data.value The amount to give.
+     * @param {String} data.description Description about the transaction
      * @param {Boolean} [data.hp=false] Whether the addition counts for house points.
      * @return {Promise<CurrencyRecord>} A record of the addition.
      */
