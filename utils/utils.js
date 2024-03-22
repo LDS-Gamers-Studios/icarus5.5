@@ -1,5 +1,5 @@
 const Discord = require("discord.js"),
-  { escapeMarkdown } = require('discord.js'),
+  { escapeMarkdown, ComponentType } = require('discord.js'),
   sf = require("../config/snowflakes.json"),
   // TESTING SNOWFLAKES NEED TO BE DOUBLE CHECKED
   // not sure if all are updated
@@ -150,8 +150,8 @@ const utils = {
     });
 
     const confirm = await interaction.channel.awaitMessageComponent({
-      filter: (button) => button.user.id === interaction.member.id && (button.customId === confirmTrue || button.customId === confirmFalse),
-      componentType: "BUTTON",
+      filter: (button) => button.user.id === interaction.user.id && (button.customId === confirmTrue || button.customId === confirmFalse),
+      componentType: ComponentType.Button,
       time: 60000
     }).catch(() => ({ customId: "confirmTimeout" }));
 

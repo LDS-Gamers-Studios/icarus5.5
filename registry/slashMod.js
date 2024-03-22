@@ -218,6 +218,12 @@ module.exports = {
           "description": "How many seconds between messages? (Default: `15`)",
           "type": type.Integer,
           "required": false
+        },
+        {
+          "name": "indefinitely",
+          "description": "Enable slowmode indefinitely",
+          "type": type.Boolean,
+          "required": false
         }
       ]
     },

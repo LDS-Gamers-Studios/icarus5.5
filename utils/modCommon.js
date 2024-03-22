@@ -1,3 +1,4 @@
+// @ts-check
 const { ButtonStyle } = require("discord.js"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
@@ -160,7 +161,7 @@ const modCommon = {
       if (msg.webhookId) embed.addFields({ name: "User", value: msg.author.username ?? (await msg.channel.fetchWebhooks()).get(msg.webhookId)?.name ?? "Unknown User" });
       else embed.addFields({ name: "User", value: (member.displayName ?? (await member.fetch()).displayName), inline: true });
       client.channels.cache.get(u.sf.channels.minecraftmods).send({ embeds: [embed] });
-    } else if (msg.webhookId) {
+    } else if (msg?.webhookId) {
       if (msg.webhookId) embed.addFields({ name: "User", value: msg.author.username });
     } else {
       embed.addFields({ name: "User", value: member.toString(), inline: true });
