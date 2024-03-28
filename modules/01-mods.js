@@ -14,7 +14,7 @@ const Module = new Augur.Module();
  * @param {Discord.GuildMember} member The guild member that's blocked.
  */
 function blocked(member) {
-  return member.client.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+  return member.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
     u.embed({
       author: member,
       color: 0x00ffff,
@@ -34,8 +34,8 @@ async function getSummaryEmbed(member, time, guild) {
   if ((data.count > 0) && (data.detail.length > 0)) {
     data.detail = data.detail.reverse(); // Newest to oldest is what we want
     for (const record of data.detail) {
-      const mod = guild.members.cache.get(record.mod) || `Unknown Mod (<@${record.mod}>)`;
-      const pointsPart = record.value === 0 && mod.id !== Module.client.user.id ? "Note" : `${record.value} pts`;
+      const mod = record.mod ? guild.members.cache.get(record.mod) : undefined;
+      const pointsPart = record.value === 0 && mod?.id !== Module.client.user?.id ? "Note" : `${record.value} pts`;
       response.push(`\`${record.timestamp.toLocaleDateString()}\` (${pointsPart}, modded by ${mod}): ${record.description}`);
     }
   }
@@ -52,24 +52,34 @@ async function getSummaryEmbed(member, time, guild) {
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModBan(interaction) {
   await interaction.deferReply({ ephemeral: true });
+  if (!interaction.isChatInputCommand()) {
+    return Promise.resolve(u.errorHandler(Error(`Invalid interaction type received: ${interaction}`)));
+  }
   const target = interaction.options.getMember("user");
   const reason = interaction.options.getString("reason");
   const days = interaction.options.getInteger("clean") ?? 1;
 
-  await c.ban(interaction, target, reason, days);
+  return await c.ban(interaction, target, reason, days);
 }
 
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModFilter(interaction) {
   const pf = new profanityFilter();
   await interaction.deferReply({ ephemeral: true });
+  if (!interaction.isChatInputCommand()) {
+    return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+  }
   const word = interaction.options.getString("word")?.toLowerCase().trim();
   const member = interaction.member;
-  const modLogs = interaction.guild.channels.cache.get(u.sf.channels.modlogs);
+  const modLogs = interaction.client.getTextChannel(u.sf.channels.modlogs);
   const filtered = pf.scan(word);
   const apply = interaction.options.getBoolean("apply") ?? true;
   if (!p.isMgmt(interaction) && !p.isMgr(interaction) && !p.isAdmin(interaction)) {
     interaction.editReply("This command is for Management, Discord Manager, and Bot Admins only.");
+    return;
+  }
+  if (!modLogs) {
+    interaction.editReply("modlogs is not set.");
     return;
   }
   if (apply) {
@@ -91,28 +101,46 @@ async function slashModFilter(interaction) {
   } else {
     await interaction.editReply(`"${word}" was not found in the language filter.`);
   }
-  Module.client.emit("filterUpdate");
+  return Module.client.emit("filterUpdate");
 }
 
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModFullInfo(interaction) {
   await interaction.deferReply({ ephemeral: true });
+  if (!interaction.isChatInputCommand()) {
+    return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+  }
   const member = interaction.options.getMember("user") ?? interaction.member;
   const time = interaction.options.getInteger("history") ?? 28;
 
-  let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
+  if (!member) {
+    return u.errorHandler(Error("user/interaction.member is not set or null."), interaction);
+  }
+
+  let roleString = "";
+  if (member.roles instanceof Discord.GuildMemberRoleManager) {
+    member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
+  } else {
+    member.roles.sort().join(", ");
+  }
   if (roleString.length > 1024) roleString = roleString.substr(0, roleString.indexOf(", ", 1000)) + " ...";
 
+  if (!(member instanceof Discord.GuildMember)) {
+    return u.errorHandler(Error(`Member is not a GuildMember.`));
+  }
   const userDoc = await u.db.user.fetchUser(member.id);
 
+  if (!(interaction.guild instanceof Discord.Guild)) {
+    return u.errorHandler(Error("Guild of member is not of type Guild."));
+  }
   const e = await getSummaryEmbed(member, time, interaction.guild);
 
-  await interaction.editReply({ embeds: [
+  return await interaction.editReply({ embeds: [
     e.addFields(
       { name: "ID", value: member.id, inline: true },
-      { name: "Activity", value: `Posts: ${userDoc.posts}`, inline: true },
+      { name: "Activity", value: `Posts: ${"posts" in userDoc ? userDoc.posts : "???"}`, inline: true },
       { name: "Roles", value: roleString },
-      { name: "Joined", value: member.joinedAt.toUTCString(), inline: true },
+      { name: "Joined", value: member.joinedAt ? member.joinedAt.toUTCString() : "unknown", inline: true },
       { name: "Account Created", value: member.user.createdAt.toUTCString(), inline: true }
     )
   ] });
@@ -122,63 +150,85 @@ async function slashModFullInfo(interaction) {
 async function slashModKick(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
+    if (!interaction.isChatInputCommand()) {
+      return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+    }
     const target = interaction.options.getMember("user");
     const reason = interaction.options.getString("reason") || "Violating the Code of Conduct";
 
-    await c.kick(interaction, target, reason);
-  } catch (error) { u.errorHandler(error, interaction); }
+    return await c.kick(interaction, target, reason);
+  } catch (error) {
+    return u.errorHandler(error, interaction);
+  }
 }
 
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModMute(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
+    if (!interaction.isChatInputCommand()) {
+      return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+    }
     const target = interaction.options.getMember("user");
     const reason = interaction.options.getString("reason") || "Violating the Code of Conduct";
     const apply = interaction.options.getBoolean("apply") ?? true;
 
     if (apply) { // Mute 'em
-      await c.mute(interaction, target, reason);
+      return await c.mute(interaction, target, reason);
     } else { // Remove mute
-      await c.unmute(interaction, target);
+      return await c.unmute(interaction, target);
     }
-  } catch (error) { u.errorHandler(error, interaction); }
+  } catch (error) {
+    return u.errorHandler(error, interaction);
+  }
 }
 
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModNote(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
+    if (!interaction.isChatInputCommand()) {
+      return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+    }
     const target = interaction.options.getMember("user");
     const note = interaction.options.getString("note");
 
-    await c.note(interaction, target, note);
-  } catch (error) { u.errorHandler(error, interaction); }
+    return await c.note(interaction, target, note);
+  } catch (error) {
+    return u.errorHandler(error, interaction);
+  }
 }
 
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModOffice(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
+    if (!interaction.isChatInputCommand()) {
+      return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+    }
     const target = interaction.options.getMember("user");
     const reason = interaction.options.getString("reason") || "No reason provided";
     const apply = interaction.options.getBoolean("apply") ?? true;
 
-    if (!target.manageable) {
-      await interaction.editReply({
+    if (!target) {
+      return await interaction.editReply({
+        content: `You cannot put ${target} in the office because they do not exist.`
+      });
+    }
+
+    if ("manageable" in target && !target.manageable) {
+      return await interaction.editReply({
         content: `I have insufficient permissions to put ${target} in the office!`
       });
-      return;
     }
 
     // Send 'em
     if (apply) {
       // Don't bother if it's already done
       if (target.roles.cache.has(u.sf.roles.ducttape)) {
-        await interaction.editReply({
+        return await interaction.editReply({
           content: `They're already in the office.`
         });
-        return;
       }
 
       // Impose "duct tape"
@@ -202,7 +252,7 @@ async function slashModOffice(interaction) {
         + 'http://ldsgamers.com/code-of-conduct'
       );
 
-      await interaction.editReply({
+      return await interaction.editReply({
         content: `Sent ${target} to the office.`
       });
     } else { // Remove "duct tape"
@@ -226,16 +276,21 @@ async function slashModOffice(interaction) {
         .setColor(0x00ff00)
       ] });
 
-      await interaction.editReply({
+      return await interaction.editReply({
         content: `Removed ${target} from the office.`,
       });
     }
-  } catch (error) { u.errorHandler(error, interaction); }
+  } catch (error) {
+    return u.errorHandler(error, interaction);
+  }
 }
 
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModPurge(interaction) {
   await interaction.deferReply({ ephemeral: true });
+  if (!interaction.isChatInputCommand()) {
+    return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+  }
   const number = interaction.options.getInteger("number");
   let num = number;
   const reason = interaction.options.getString("reason");
@@ -269,9 +324,9 @@ async function slashModPurge(interaction) {
       .setColor(0x00ff00)
     ] });
 
-    await interaction.followUp({ content: `${number - num} messages deleted.`, ephemeral: true });
+    return await interaction.followUp({ content: `${number - num} messages deleted.`, ephemeral: true });
   } else {
-    await interaction.editReply({ content: `You need to tell me how many to delete!` });
+    return await interaction.editReply({ content: `You need to tell me how many to delete!` });
   }
 }
 
@@ -280,7 +335,7 @@ async function slashModRename(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const target = interaction.options.getMember("user");
 
-  await c.rename(interaction, target);
+  return await c.rename(interaction, target);
 }
 
 const molasses = new Map();
@@ -288,6 +343,9 @@ const molasses = new Map();
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModSlowmode(interaction) {
   await interaction.deferReply({ ephemeral: true });
+  if (!interaction.isChatInputCommand()) {
+    return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+  }
   const duration = interaction.options.getInteger("duration") ?? 10;
   const timer = interaction.options.getInteger("timer") ?? 15;
   const indefinitely = interaction.options.getBoolean("indefinitely") ?? false;
@@ -349,6 +407,9 @@ async function slashModSlowmode(interaction) {
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModSummary(interaction) {
   await interaction.deferReply({ ephemeral: true });
+  if (!interaction.isChatInputCommand()) {
+    return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+  }
   const member = interaction.options.getMember("user");
   const time = interaction.options.getInteger("history") ?? 28;
   const e = await getSummaryEmbed(member, time, interaction.guild);
@@ -358,6 +419,9 @@ async function slashModSummary(interaction) {
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModTrust(interaction) {
   await interaction.deferReply({ ephemeral: true });
+  if (!interaction.isChatInputCommand()) {
+    return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+  }
   const member = interaction.options.getMember("user");
   const type = interaction.options.getString("type");
   const apply = interaction.options.getBoolean("apply") ?? true;
@@ -449,6 +513,9 @@ async function slashModTrust(interaction) {
 /** @param {Discord.CommandInteraction} interaction*/
 async function slashModWarn(interaction) {
   await interaction.deferReply({ ephemeral: true });
+  if (!interaction.isChatInputCommand()) {
+    return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
+  }
   const member = interaction.options.getMember("user");
   const reason = interaction.options.getString("reason");
   const value = interaction.options.getInteger("value") ?? 1;
@@ -485,60 +552,64 @@ async function slashModWarn(interaction) {
   await interaction.editReply(`${member} has been warned **${value}** points for reason \`${reason}\``);
 }
 
+async function slashModMain(interaction) {
+  try {
+    const subcommand = interaction.options.getSubcommand(true);
+    switch (subcommand) {
+    case "ban":
+      await slashModBan(interaction);
+      break;
+    case "filter":
+      await slashModFilter(interaction);
+      break;
+    case "fullinfo":
+      await slashModFullInfo(interaction);
+      break;
+    case "kick":
+      await slashModKick(interaction);
+      break;
+    case "mute":
+      await slashModMute(interaction);
+      break;
+    case "note":
+      await slashModNote(interaction);
+      break;
+    case "office":
+      await slashModOffice(interaction);
+      break;
+    case "purge":
+      await slashModPurge(interaction);
+      break;
+    case "rename":
+      await slashModRename(interaction);
+      break;
+    case "slowmode":
+      await slashModSlowmode(interaction);
+      break;
+    case "summary":
+      await slashModSummary(interaction);
+      break;
+    case "trust":
+      await slashModTrust(interaction);
+      break;
+    case "warn":
+      await slashModWarn(interaction);
+      break;
+    default:
+      break;
+    // default:
+    //   u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
+    }
+  } catch (error) { u.errorHandler(error, interaction); }
+}
+
 Module.addInteraction({
   name: "mod",
   guild: u.sf.ldsg,
   id: u.sf.commands.slashMod,
   permissions: p.isMod,
   /** @param {Discord.CommandInteraction} interaction*/
-  process: async (interaction) => {
-    try {
-      const subcommand = interaction.options.getSubcommand(true);
-      switch (subcommand) {
-      case "ban":
-        await slashModBan(interaction);
-        break;
-      case "filter":
-        await slashModFilter(interaction);
-        break;
-      case "fullinfo":
-        await slashModFullInfo(interaction);
-        break;
-      case "kick":
-        await slashModKick(interaction);
-        break;
-      case "mute":
-        await slashModMute(interaction);
-        break;
-      case "note":
-        await slashModNote(interaction);
-        break;
-      case "office":
-        await slashModOffice(interaction);
-        break;
-      case "purge":
-        await slashModPurge(interaction);
-        break;
-      case "rename":
-        await slashModRename(interaction);
-        break;
-      case "slowmode":
-        await slashModSlowmode(interaction);
-        break;
-      case "summary":
-        await slashModSummary(interaction);
-        break;
-      case "trust":
-        await slashModTrust(interaction);
-        break;
-      case "warn":
-        await slashModWarn(interaction);
-        break;
-      default:
-        u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
-      }
-    } catch (error) { u.errorHandler(error, interaction); }
-  }
+  process: slashModMain
 });
 
 module.exports = Module;
