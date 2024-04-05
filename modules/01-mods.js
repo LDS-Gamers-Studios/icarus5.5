@@ -7,7 +7,31 @@ const Augur = require("augurbot-ts"),
   c = require("../utils/modCommon");
 
 
-const Module = new Augur.Module();
+let watchlist = new Array();
+const Module = new Augur.Module()
+.addEvent("guildMemberAdd", async (member) => {
+  const modLogsPlus = u.sf.channels.modlogsplus;
+  if (member.guild.id == u.sf.ldsg) {
+    try {
+      const user = await u.db.user.fetchUser(member.id);
+      if (!user || !("roles" in user)) {
+        return;
+      }
+      // We expect user.roles to be a list []
+      if (Array.isArray(user?.roles) && !user?.roles.includes(u.sf.roles.trusted)) {
+        const watchLog = member.client.channels.cache.get(modLogsPlus);
+        if (watchLog && watchLog.type === Discord.ChannelType.GuildText) {
+          watchLog.send(`ℹ️ **${member.displayName}** has been automatically added to the watch list. Use the \`\\mod trust @user(s)\` command to remove them.`);
+        }
+      }
+    } catch (e) { u.errorHandler(e, "Watchlist Auto-Add"); }
+  }
+})
+.addEvent("ready", async () => {
+  watchlist = await u.db.watchlist.fetchWatchlist();
+})
+.addEvent("messageCreate", watch)
+.addEvent("messageUpdate", watch);
 
 /**
  * Give the mods a heads up that someone isn't getting their DMs.
@@ -21,6 +45,71 @@ function blocked(member) {
       description: `${member} has me blocked. *sadface*`
     })
   ] });
+}
+
+async function watch(msg, newMsg) {
+  if (newMsg) msg = newMsg;
+  const modLogsPlus = u.sf.channels.modlogsplus;
+  const watchLog = msg.client.channels.cache.get(modLogsPlus);
+
+  // Update these members
+  if (msg.member?.roles.cache.has(u.sf.roles.untrusted)) {
+    watchlist.push(msg.member.id);
+    await u.db.watchlist.addToWatchlist(msg.member.id, true);
+    await msg.member.roles.remove(u.sf.roles.untrusted);
+    watchLog.send(`${msg.member.id} is affected?`);
+  }
+
+  if ((msg.guild?.id == u.sf.ldsg) && !msg.system && !msg.webhookID && !msg.author.bot &&
+   (!msg.member?.roles.cache.has(u.sf.roles.trusted) || watchlist.includes(msg.member?.id))) {
+    const files = msg.attachments.map(attachment => attachment.url);
+    watchLog.send(`**${msg.member?.displayName || msg.author?.username}** in ${msg.channel}:\n>>> ${msg.cleanContent}`);
+    if (files.length > 0) {
+      watchLog.send({ files: files });
+    }
+  }
+}
+
+async function modWatch(interaction, target) {
+  const embed = u.embed({ author: target });
+  const watchLog = interaction.client.getTextChannel(u.sf.channels.modlogs);
+
+  if (await u.db.watchlist.addToWatchlist(target.id, true)) {
+    watchlist.push(target.id);
+    interaction.editReply(`I'm watching ${target.displayName} :eyes:.`);
+    embed.setTitle("User Watch")
+    .setDescription(`${target} (${target.displayName}) has been added to the watch list by ${interaction.member}. Use \`/mod watch @user false\` command to remove them.`);
+    await watchLog.send({ embeds: [embed] });
+  } else {
+    interaction.editReply(`${target.displayName} was already on the watchlist.`);
+  }
+}
+
+async function modUnwatch(interaction, target) {
+  const embed = u.embed({ author: target });
+  const watchLog = interaction.client.getTextChannel(u.sf.channels.modlogs);
+
+  if (await u.db.watchlist.removeFromWatchlist(target.id)) {
+    watchlist.splice(watchlist.indexOf(target.id));
+    interaction.editReply(`I'm no longer watching ${target.displayName} :zzz:.`);
+    embed.setTitle("User Watch")
+    .setDescription(`${target} (${target.displayName}) has been removed from the watch list by ${interaction.member}.`);
+    await watchLog.send({ embeds: [embed] });
+  } else {
+    interaction.editReply(`${target.displayName} was not on the watchlist.`);
+  }
+}
+
+async function slashModWatch(interaction) {
+  await interaction.deferReply({ ephemeral: true });
+  const target = interaction.options.getMember("user");
+  const apply = interaction.options.getBoolean("apply") ?? true;
+
+  if (apply) {
+    modWatch(interaction, target);
+  } else {
+    modUnwatch(interaction, target);
+  }
 }
 
 /**
@@ -338,6 +427,31 @@ async function slashModRename(interaction) {
   return await c.rename(interaction, target);
 }
 
+async function slashModShowWatchlist(interaction) {
+  await interaction.deferReply({ ephemeral: true });
+  watchlist = await u.db.watchlist.fetchWatchlist();
+
+  const e = u.embed({ author: interaction.member })
+    .setTitle("Watchlist")
+    .setDescription(`List of those who are trusted but watched.`)
+    .setColor(0x00ff00);
+
+  let wlStr = "";
+  for (const member of watchlist) {
+    const user = interaction.guild.members.cache.get(member);
+    wlStr = wlStr.concat(`${user}\n`);
+  }
+  if (wlStr.length == 0) {
+    wlStr = "Nobody is on the list!";
+  }
+
+  console.log(wlStr);
+
+  e.addFields({ name: 'Members', value: wlStr });
+
+  return await interaction.editReply({ embeds: [e] });
+}
+
 const molasses = new Map();
 
 /** @param {Discord.CommandInteraction} interaction*/
@@ -349,7 +463,7 @@ async function slashModSlowmode(interaction) {
   const duration = interaction.options.getInteger("duration") ?? 10;
   const timer = interaction.options.getInteger("timer") ?? 15;
   const indefinitely = interaction.options.getBoolean("indefinitely") ?? false;
-  const ch = interaction.options.getChannel() || interaction.channel;
+  const ch = interaction.options.getChannel("channel") || interaction.channel;
   const ct = Discord.ChannelType;
 
   if ([ ct.GuildCategory, ct.GuildStageVoice, ct.GuildDirectory ].includes(ch.type)) {
@@ -443,22 +557,19 @@ async function slashModTrust(interaction) {
     switch (type) {
     case 'initial':
       await c.trust(interaction, member);
+      await member.roles.add(role);
+      await interaction.editReply({ content: `${member} has been given the <@&${role}> role!` });  
       return;
     case 'plus':
       await c.trustPlus(interaction, member);
+      await member.roles.add(role);
+      await interaction.editReply({ content: `${member} has been given the <@&${role}> role!` });
       return;
     case 'watch':
-      if (member.roles.cache.has(u.sf.roles.untrusted)) {
-        await interaction.editReply({ content: `${member} is already watched.` });
-        return;
-      }
-      embed.setTitle("User Watch")
-      .setDescription(`${member} (${member.displayName}) has been added to the watch list by ${interaction.member}. Use \`/mod trust watch @user false\` command to remove them.`);
+      modWatch(interaction, member);
       break;
     }
 
-    await member.roles.add(role);
-    await interaction.editReply({ content: `${member} has been given the <@&${role}> role!` });
   } else {
     switch (type) {
     case 'initial':
@@ -478,6 +589,8 @@ async function slashModTrust(interaction) {
         await member.roles.remove(u.sf.roles.trustedplus);
       }
       await member.roles.add(u.sf.roles.untrusted);
+      await member.roles.remove(role);
+      await interaction.editReply({ content: `The <@&${role}> role has been removed from ${member}!` });
       break;
     case 'plus':
       if (!member.roles.cache.has(u.sf.roles.trustedplus)) {
@@ -492,19 +605,13 @@ async function slashModTrust(interaction) {
       ).catch(() => blocked(member));
       embed.setTitle("User Trusted+ Removed")
       .setDescription(`${interaction.member} removed the <@&${role}> role from ${member}.`);
+      await member.roles.remove(role);
+      await interaction.editReply({ content: `The <@&${role}> role has been removed from ${member}!` });
       break;
     case 'watch':
-      if (!member.roles.cache.has(u.sf.roles.untrusted)) {
-        await interaction.editReply({ content: `${member} isn't watched yet.` });
-        return;
-      }
-      embed.setTitle("User Unwatched")
-      .setDescription(`${member} (${member.displayName}) has been removed from the watch list by ${interaction.member}. Use \`/mod trust watch @user true\` command to re-add them.`);
+      modUnwatch(interaction, member);
       break;
     }
-
-    await member.roles.remove(role);
-    await interaction.editReply({ content: `The <@&${role}> role has been removed from ${member}!` });
   }
 
   await interaction.guild.channels.cache.get(channel).send({ embeds: [embed] });
@@ -586,6 +693,9 @@ async function slashModMain(interaction) {
     case "slowmode":
       await slashModSlowmode(interaction);
       break;
+    case "watchlist":
+      await slashModShowWatchlist(interaction);
+      break;
     case "summary":
       await slashModSummary(interaction);
       break;
@@ -595,10 +705,11 @@ async function slashModMain(interaction) {
     case "warn":
       await slashModWarn(interaction);
       break;
-    default:
+    case "watch":
+      await slashModWatch(interaction);
       break;
-    // default:
-    //   u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
+    default:
+      u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
     }
   } catch (error) { u.errorHandler(error, interaction); }
 }

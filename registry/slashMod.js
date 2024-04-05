@@ -197,6 +197,12 @@ module.exports = {
       ]
     },
     {
+      "name": "watchlist",
+      "description": "Shows the trusted but watched members",
+      "type": type.Subcommand,
+      "options": []
+    },
+    {
       "name": "slowmode",
       "description": "Set a temporary slow mode on the channel",
       "type": type.Subcommand,
@@ -298,6 +304,26 @@ module.exports = {
           "description": "What value is the warning? (Default: `1`)",
           "type": type.Integer,
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "watch",
+      "description": "Watchlist for LDSG",
+      "default_permission": false,
+      "type": type.Subcommand,
+      "options": [
+        {
+          "name": "user",
+          "description": "Who do you want to put on the watchlist?",
+          "type": type.User,
+          "required": true,
+        },
+        {
+          "name": "apply",
+          "description": "Apply role (default: true)",
+          "type": type.Boolean,
+          "required": false,
         }
       ]
     }

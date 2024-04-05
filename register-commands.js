@@ -18,6 +18,7 @@ const guildCommandFiles = [
   "slashMod.js",
   "slashTournament.js",
   "slashVoice.js",
+  "slashWatch.js",
   "userMod.js"
 ];
 /**********************
@@ -70,6 +71,7 @@ for (const command of guildCommandFiles) {
   const load = require(path.resolve(commandPath, command));
   guildCommandLoads.push(load);
 }
+
 axios({
   method: "put",
   url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${u.sf.ldsg}/commands`,
