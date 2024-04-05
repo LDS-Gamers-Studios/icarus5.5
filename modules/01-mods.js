@@ -445,8 +445,6 @@ async function slashModShowWatchlist(interaction) {
     wlStr = "Nobody is on the list!";
   }
 
-  console.log(wlStr);
-
   e.addFields({ name: 'Members', value: wlStr });
 
   return await interaction.editReply({ embeds: [e] });
@@ -558,7 +556,7 @@ async function slashModTrust(interaction) {
     case 'initial':
       await c.trust(interaction, member);
       await member.roles.add(role);
-      await interaction.editReply({ content: `${member} has been given the <@&${role}> role!` });  
+      await interaction.editReply({ content: `${member} has been given the <@&${role}> role!` });
       return;
     case 'plus':
       await c.trustPlus(interaction, member);
