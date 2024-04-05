@@ -13,7 +13,7 @@ module.exports = {
   },
   fetchWatchlist: async function() {
     const watchlist = await Watch.find({}).exec();
-    let wl = [];
+    const wl = [];
     for (const entry of watchlist) {
       wl.push(entry.discordId);
     }
