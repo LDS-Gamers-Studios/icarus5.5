@@ -1,53 +1,44 @@
-const Discord = require("discord.js");
-
+// @ts-check
 const Bank = require("../models/Bank.model");
 
 /**
  * @typedef {Object} CurrencyRecord
- * @property {String} discordId
+ * @property {String} discordId  The user who recieved the currency.
  * @property {Date} timestamp
- * @property {String} description
- * @property {Number} value
- * @property {String} currency
- * @property {String} giver
- * @property {Boolean} hp
+ * @property {String} description Description about the transaction
+ * @property {Number} value  The amount given.
+ * @property {String} currency The type of currency to give. (em or gb) Defaults to em
+ * @property {String} giver  The user who gave the currency.
+ * @property {Boolean} hp Whether the addition counts for house points.
  */
+
+const outdated = "Expected a Discord ID but likely recieved an object instead. That's deprecated now!";
 
 module.exports = {
   /**
    * Gets a user's current balance for a given currency.
-   *
-   * @async
-   * @function getBalance
-   * @param {String|Discord.User|Discord.GuildMember} discordId The user whose balance you want to view.
-   * @param {String} currency The currency to view ("em" or "gb").
-   * @return {Promise<object>} Object with `discordId`, `currency`, and `balance` properties.
+   * @param {String} discordId The user whose balance you want to view.
+   * @return {Promise<{discordId: string, gb: number, em: number}>} Object with `discordId` and `balance` properties.
    */
-  getBalance: async function(discordId, currency) {
-    if (discordId.id) discordId = discordId.id;
+  getBalance: async function(discordId) {
+    if (typeof discordId != "string") throw new TypeError(outdated);
     const record = await Bank.aggregate([
-      { $match: { discordId, currency } },
-      { $group: { _id: null, balance: { $sum: "$value" } } }
+      { $match: { discordId } },
+      { $group: {
+        _id: null,
+        em: { $sum: { $cond: { if: { $eq: ["$currency", "em"] }, then: "$value", else: 0 } } },
+        gb: { $sum: { $cond: { if: { $eq: ["$currency", "gb"] }, then: "$value", else: 0 } } }
+      } }
     ]).exec();
-    return { discordId, currency, balance: (record[0]?.balance ?? 0) };
+    return { discordId, gb: record[0]?.gb ?? 0, em: record[0]?.em ?? 0 };
   },
   /**
      * Adds currency to a user's account.
-     *
-     * @function addCurrency
-     * @param {Object} data The data object.
-     * @param {String|Discord.User|Discord.GuildMember} data.discordId The user to give the currency.
-     * @param {String|Discord.User|Discord.GuildMember} data.giver The user giving the currency.
-     * @param {String} [data.currency="em"] The type of currency to give ("em" or "gb").
-     * @param {Number} data.value The amount to give.
-     * @param {String} data.description Description about the transaction
-     * @param {Boolean} [data.hp=false] Whether the addition counts for house points.
+     * @param {Omit<CurrencyRecord, "timestamp">} data The data object.
      * @return {Promise<CurrencyRecord>} A record of the addition.
      */
   addCurrency: function(data) {
-    data.discordId = data.discordId.id ?? data.discordId;
-    data.giver = data.giver.id ?? data.giver;
-    const record = new Bank(data);
-    return record.save();
+    if (typeof data.discordId != 'string' || typeof data.giver != 'string') throw new TypeError(outdated);
+    return new Bank(data).save();
   }
 };

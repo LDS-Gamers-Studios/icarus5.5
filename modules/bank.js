@@ -7,8 +7,8 @@ const Augur = require("augurbot-ts"),
   config = require("../config/config.json");
 
 const Module = new Augur.Module(),
-  gb = () => Module.client.emojis.cache.get(u.sf.emoji.gb),
-  ember = () => Module.client.emojis.cache.get(u.sf.emoji.ember),
+  gb = `<:gb:${u.sf.emoji.gb}>`,
+  ember = `<:ember:${u.sf.emoji.ember}>`,
   limit = { gb: 1000, ember: 10000 };
 
 const { GoogleSpreadsheet } = require("google-spreadsheet");
@@ -38,8 +38,9 @@ async function getGameList() {
   try {
     await doc.useServiceAccountAuth(config.google.creds);
     await doc.loadInfo();
+    /** @type {Game[]} */
     // @ts-ignore
-    let games = await doc.sheetsByIndex.getRows();
+    let games = await doc.sheetsByIndex[0].getRows();
     games = games.filter(g => !g.Recipient).filter(filterUnique);
     return games;
   } catch (e) { u.errorHandler(e, "Fetch Game List"); }
@@ -59,20 +60,19 @@ function filterUnique(game, i, games) {
 }
 
 /**
-
  * @param {Discord.GuildMember} member
  */
 function getHouseInfo(member) {
   const houseInfo = new Map([
-    [u.sf.roles.housebb, { name: "Brightbeam", color: "#00a1da" }],
-    [u.sf.roles.housefb, { name: "Freshbeast", color: "#fdd023" }],
-    [u.sf.roles.housesc, { name: "Starcamp", color: "#e32736" }]
+    [u.sf.roles.housebb, { name: "Brightbeam", color: 0x00a1da }],
+    [u.sf.roles.housefb, { name: "Freshbeast", color: 0xfdd023 }],
+    [u.sf.roles.housesc, { name: "Starcamp", color: 0xe32736 }]
   ]);
 
   for (const [k, v] of houseInfo) {
     if (member.roles.cache.has(k)) return v;
   }
-  return { name: "Unsorted", color: config.color };
+  return { name: "Unsorted", color: 0x402a37 };
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
@@ -83,30 +83,31 @@ async function slashBankGive(interaction) {
     const currency = interaction.options.getString("currency", true);
     let value = interaction.options.getInteger("amount", true);
     let reason = interaction.options.getString("reason");
-    if (!recipient) return interaction.reply({ content: "You can't give to *nobody*, silly.", ephemeral: true });
+    if (!recipient) return interaction.reply({ content: "You can't give to ***nobody***, silly.", ephemeral: true });
 
     const toIcarus = recipient.id == interaction.client.user.id;
-    const { coin, MAX } = (currency == "gb" ? { coin: gb(), MAX: limit.gb } : { coin: ember(), MAX: limit.ember });
+    const { coin, MAX } = (currency == "gb" ? { coin: gb, MAX: limit.gb } : { coin: ember, MAX: limit.ember });
 
     if (recipient.id == giver.id) {
-      return interaction.reply({ content: "You can't give to *yourself*, silly.", ephemeral: true });
+      return interaction.reply({ content: "You can't give to ***yourself***, silly.", ephemeral: true });
     } else if (toIcarus && currency == "gb") {
       return interaction.reply({ content: `I don't need any ${coin}! Keep em for yourself.`, ephemeral: true });
+    } else if (!toIcarus && recipient.user.bot) {
+      return interaction.reply({ content: `Bots don't really have a use for ${coin}.`, ephemeral: true });
     } else if (toIcarus && (!reason || reason.length == 0)) {
       return interaction.reply({ content: `You need to have a reason to give ${coin} to me!`, ephemeral: true });
     } else if (value === 0) {
-      return interaction.reply({ content: "You can't give *nothing*.", ephemeral: true });
+      return interaction.reply({ content: "You can't give ***nothing***.", ephemeral: true });
     } else if (value < 0) {
-      return interaction.reply({ content: `One does not simply *take* ${coin}, silly.`, ephemeral: true });
+      return interaction.reply({ content: `One does not simply ***take*** ${coin}, silly.`, ephemeral: true });
     }
 
-
     reason ??= "No particular reason";
-    value = value > MAX ? MAX : (value < -MAX ? -MAX : value);
+    value = Math.min(MAX, value);
 
-    const account = await u.db.bank.getBalance(giver.id, currency);
-    if (value > account.balance) {
-      return interaction.reply({ content: `You don't have enough ${coin} to give! You can give up to ${coin}${account.balance}`, ephemeral: true });
+    const account = await u.db.bank.getBalance(giver.id);
+    if (value > account[currency]) {
+      return interaction.reply({ content: `You don't have enough ${coin} to give! You can give up to ${coin}${account[currency]}`, ephemeral: true });
     }
 
     if (!toIcarus) {
@@ -115,15 +116,15 @@ async function slashBankGive(interaction) {
         discordId: recipient.id,
         description: `From ${giver.displayName}: ${reason}`,
         value,
-        giver: giver.id
+        giver: giver.id,
+        hp: false
       };
       const receipt = await u.db.bank.addCurrency(deposit);
-      const gbBalance = await u.db.bank.getBalance(recipient.id, "gb");
-      const emBalance = await u.db.bank.getBalance(recipient.id, "em");
+      const balance = await u.db.bank.getBalance(recipient.id);
       const embed = u.embed({ author: interaction.client.user })
         .addFields(
           { name: "Reason", value: reason },
-          { name: "Your New Balance", value: `${gb()}${gbBalance.balance}\n${ember()}${emBalance.balance}` }
+          { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
         )
         .setDescription(`${u.escapeText(giver.toString())} just gave you ${coin}${receipt.value}.`);
       recipient.send({ embeds: [embed] }).catch(u.noop);
@@ -136,15 +137,15 @@ async function slashBankGive(interaction) {
       discordId: giver.id,
       description: `To ${recipient.displayName}: ${reason}`,
       value: -value,
-      giver: giver.id
+      giver: giver.id,
+      hp: false
     };
     const receipt = await u.db.bank.addCurrency(withdrawal);
-    const gbBalance = await u.db.bank.getBalance(giver.id, "gb");
-    const emBalance = await u.db.bank.getBalance(giver.id, "em");
+    const balance = await u.db.bank.getBalance(giver.id);
     const embed = u.embed({ author: interaction.client.user })
       .addFields(
         { name: "Reason", value: reason },
-        { name: "Your New Balance", value: `${gb()}${gbBalance.balance}\n${ember()}${emBalance.balance}` }
+        { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
       )
       .setDescription(`You just gave ${coin}${-receipt.value} to ${u.escapeText(recipient.displayName)}.`);
     giver.send({ embeds: [embed] }).catch(u.noop);
@@ -163,19 +164,18 @@ async function slashBankGive(interaction) {
 async function slashBankBalance(interaction) {
   try {
     const member = interaction.member;
-    const gbBalance = await u.db.bank.getBalance(member, "gb");
-    const emBalance = await u.db.bank.getBalance(member, "em");
+    const balance = await u.db.bank.getBalance(member.id);
     const embed = u.embed({ author: member })
-      .setDescription(`${gb()}${gbBalance.balance}\n${ember()}${emBalance.balance}`);
+      .setDescription(`${gb}${balance.gb}\n${ember}${balance.em}`);
     interaction.reply({ embeds: [embed] });
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashBankGameList(interaction) {
-  try {
-    await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ ephemeral: true });
 
+  try {
     let games = await getGameList();
     if (!games) throw new Error("Games List Error");
     for (const game of games.filter(g => !g.Code)) {
@@ -187,11 +187,9 @@ async function slashBankGameList(interaction) {
     // Filter Rated M, unless the member has the Rated M Role
     if (!interaction.member?.roles.cache.has(u.sf.roles.rated_m)) games = games.filter(g => g.Rating.toUpperCase() != "M");
 
-    interaction.editReply(`Watch your DMs for a list of games that can be redeemed with ${gb()}!`);
-
     const embed = u.embed()
       .setTitle("Games Available to Redeem")
-      .setDescription(`Redeem ${gb()} for game codes with the </bank game redeem:${u.sf.commands.slashBank}:> command.`);
+      .setDescription(`Redeem ${gb} for game codes with the </bank game redeem:${u.sf.commands.slashBank}> command.\n\n`);
     let e = embed;
     const embeds = [];
     for (const game of games) {
@@ -199,9 +197,9 @@ async function slashBankGameList(interaction) {
       if (game.System?.toLowerCase() == "steam") {
         steamApp = steamGameList.find(g => g.name.toLowerCase() == game.Title.toLowerCase());
       }
-      const content = `\n**${game.Title}** (${game.System}) ${game.Rating ?? ""}`
-        + `\n${steamApp ? `[Steam Store Page](https://store.steampowered.com/app/${steamApp.appid})` : ""}`
-        + `</bank game redeem code:${game.Code}:${u.sf.commands.slashBank}:>\n`;
+      const content = `${steamApp ? "[" : ""}**${game.Title}** (${game.System})${steamApp ? `](https://store.steampowered.com/app/${steamApp.appid})` : ""}`
+        + ` Rated ${game.Rating ?? ""} - ${gb}${game.Cost}\n`
+        + `</bank game redeem:${u.sf.commands.slashBank}> Code: **${game.Code}**\n\n`;
       if ((e.data.description?.length || 0) + content.length > 2000) {
         embeds.push(e);
         e = embed;
@@ -210,29 +208,18 @@ async function slashBankGameList(interaction) {
     }
     embeds.push(e);
 
-    let embedsToSend = [];
-    let totalLength = 0;
+    let embed2 = embeds.shift();
+    if (!embed2) return;
+    interaction.editReply({ embeds: [embed2] });
     while (embeds.length > 0) {
-      const embed2 = embeds.shift();
+      embed2 = embeds.shift();
       if (!embed2) break;
-      if (totalLength + embed2.length > 6000) {
-        try {
-          await interaction.user.send({ embeds: embedsToSend }).catch(u.noop);
-        } catch (err) {
-          interaction.editReply(`There was an error while sending you the list of games that can be redeemed with ${gb()}. Do you have DMs blocked from members of this server? You can check this in your Privacy Settings for the server.`);
-          embedsToSend = [];
-          break;
-        }
-        embedsToSend = [];
-        totalLength = 0;
+      try {
+        await interaction.followUp({ embeds: [embed2], ephemeral: true }).catch(u.noop);
+      } catch (err) {
+        break;
       }
-      embedsToSend.push(embed2);
-      totalLength += embed2.length;
     }
-    if (embedsToSend.length > 0) {
-      interaction.user.send({ embeds: embedsToSend }).catch(u.noop);
-    }
-
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
@@ -244,7 +231,7 @@ async function slashBankGameRedeem(interaction) {
     if (!games) throw new Error("Get Game List Error");
     const game = games.find(g => (g.Code == interaction.options.getString("code", true).toUpperCase()));
     if (!game) {
-      interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}:>to see available games.`);
+      interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}>to see available games.`);
       return;
     }
 
@@ -255,50 +242,50 @@ async function slashBankGameRedeem(interaction) {
       }
     };
 
-    const balance = await u.db.bank.getBalance(interaction.user.id, "gb");
-    if (balance.balance < game.Cost) {
-      return interaction.editReply(`You don't currently have enough ${gb()}. Sorry!`);
+    const balance = await u.db.bank.getBalance(interaction.user.id);
+    if (balance.gb < parseFloat(game.Cost)) {
+      return interaction.editReply(`You don't currently have enough ${gb}. Sorry!`);
     }
-
-    interaction.editReply("Watch your DMs for the game you redeemed!");
 
     await u.db.bank.addCurrency({
       currency: "gb",
       discordId: interaction.user.id,
       description: `${game.Title} (${game.System}) Game Key`,
       value: -1 * parseInt(game.Cost),
-      giver: interaction.user.id
+      giver: interaction.user.id,
+      hp: false
     });
 
     let embed = u.embed()
-    .setTitle("Game Code Redemption")
-    .setDescription(`You just redeemed a key for:\n${game.Title} (${game.System})`)
-    .addFields(
-      { name: "Cost", value: gb + game.Cost, inline: true },
-      { name: "Balance", value: `${gb()}${balance.balance - parseInt(game.Cost)}`, inline: true },
-      { name: "Game Key", value: game.Key ?? "Uknown" }
-    );
+      .setTitle("Game Code Redemption")
+      .setDescription(`You just redeemed a key for:\n${game.Title} (${game.System})`)
+      .addFields(
+        { name: "Cost", value: gb + game.Cost, inline: true },
+        { name: "Balance", value: `${gb}${balance.gb - parseInt(game.Cost)}`, inline: true },
+        { name: "Game Key", value: game.Key ?? "Uknown" }
+      );
 
     if (systems[game.System?.toLowerCase()]) {
       const sys = systems[game.System.toLowerCase()];
       embed.setURL(sys.redeem + game.Key)
-      .addFields({ name: "Key Redemption Link", value: `[Redeem key here](${sys.redeem + game.Key})` })
-      .setThumbnail(sys.img);
+        .addFields({ name: "Key Redemption Link", value: `[Redeem key here](${sys.redeem + game.Key})` })
+        .setThumbnail(sys.img);
     }
 
     game.Recipient = interaction.user.username;
     game.Date = new Date().toDateString();
     game.save();
+    await interaction.editReply({ content: "I also DMed this message to you so you don't lose the code!", embeds: [embed] });
     interaction.user.send({ embeds: [embed] }).catch(() => {
-      interaction.followUp("I wasn't able to send you the game key! Do you have DMs allowed for server members? Please check with a member of Management to get your game key.");
+      interaction.followUp({ content: "I wasn't able to send you the game key! Do you have DMs allowed for server members? Please note down your game key somewhere safe, and check with a member of Management if you lose it.", ephemeral: true });
     });
 
     embed = u.embed({ author: interaction.member })
-    .setDescription(`${interaction.user.username} just redeemed a key for a ${game.Title} (${game.System}) key.`)
-    .addFields(
-      { name: "Cost", value: gb() + game.Cost, inline: true },
-      { name: "Balance", value: `${gb()}${balance.balance - parseInt(game.Cost)}`, inline: true }
-    );
+      .setDescription(`${interaction.user.username} just redeemed a key for a ${game.Title} (${game.System}) key.`)
+      .addFields(
+        { name: "Cost", value: gb + game.Cost, inline: true },
+        { name: "Balance", value: `${gb}${balance.gb - parseInt(game.Cost)}`, inline: true }
+      );
     interaction.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed] });
   } catch (e) { u.errorHandler(e, interaction); }
 }
@@ -308,12 +295,13 @@ async function slashBankDiscount(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
     const amount = interaction.options.getInteger("amount", true);
-    const balance = await u.db.bank.getBalance(interaction.user.id, "gb");
-    if ((amount > balance.balance) || (amount < 0) || (amount > limit.gb)) {
-      return interaction.editReply(`That amount (${gb()}${amount}) is invalid. You can currently redeem up to ${gb()}${Math.max(balance.balance, limit.gb)}.`);
+    const balance = await u.db.bank.getBalance(interaction.user.id);
+    if ((amount > balance.gb) || (amount < 0) || (amount > limit.gb)) {
+      return interaction.editReply(`That amount (${gb}${amount}) is invalid. You can currently redeem up to ${gb}${Math.min(balance.gb, limit.gb)}.`);
     }
 
-    const snipcart = require("../utils/snipcart")(u.config.api.snipcart);
+    if (!config.api.snipcart) return interaction.editReply("Store discounts are currently unavailable. Sorry for the inconvenience. We're working on it!");
+    const snipcart = require("../utils/snipcart")(config.api.snipcart);
     const discountInfo = {
       name: `${interaction.user.username} ${Date().toLocaleString()}`,
       combinable: false,
@@ -332,21 +320,22 @@ async function slashBankDiscount(interaction) {
         discordId: interaction.user.id,
         description: "LDSG Store Discount Code",
         value: -amount,
-        giver: interaction.user.id
+        giver: interaction.user.id,
+        hp: false
       };
       const withdraw = await u.db.bank.addCurrency(withdrawal);
-
-      await interaction.editReply("Watch your DMs for the code you just redeemed!");
-      interaction.user.send(`You have redeemed ${gb()}${withdraw.value} for a $${discount.amount} discount code in the LDS Gamers Store! <http://ldsgamers.com/shop>\n\nUse code __**${discount.code}**__ at checkout to apply the discount. This code will be good for ${discount.maxNumberOfUsages} use. (Note that means that if you redeem a code and don't use its full value, the remaining value is lost.)\n\nYou now have ${gb()}${balance.balance + withdraw.value}.`)
+      const recieptMessage = `You have redeemed ${gb}${withdraw.value} for a $${discount.amount} discount code in the LDS Gamers Store! <http://ldsgamers.com/shop>\n\nUse code __**${discount.code}**__ at checkout to apply the discount. This code will be good for ${discount.maxNumberOfUsages} use. (Note that means that if you redeem a code and don't use its full value, the remaining value is lost.)\n\nYou now have ${gb}${balance.gb + withdraw.value}.`;
+      await interaction.editReply(recieptMessage + "\nI also DMed this message to you so you don't lose the code!");
+      interaction.user.send(recieptMessage)
       .catch(() => {
-        interaction.followUp({ content: "I wasn't able to send you the code! Do you have DMs allowed for server members? Please check with a member of Management to get your discount code.", ephemeral: true });
+        interaction.followUp({ content: "I wasn't able to send you the code! Do you have DMs allowed for server members? Please copy down your code somewhere safe ASAP. Please check with a member of Management if you lose your discount code.", ephemeral: true });
       });
       const embed = u.embed({ author: interaction.member })
-      .addFields(
-        { name: "Amount", value:  `${gb()}${-withdraw.value}\n$${-withdraw.value / 100}` },
-        { name: "Balance", value: `${gb()}${balance.balance + withdraw.value}` }
-      )
-      .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb()} for a store coupon code.`);
+        .addFields(
+          { name: "Amount", value:  `${gb}${-withdraw.value} ($${-withdraw.value / 100})` },
+          { name: "Balance", value: `${gb}${balance.gb + withdraw.value}` }
+        )
+        .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb} for a store coupon code.`);
       interaction.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed] });
     } else {
       interaction.editReply("Sorry, something went wrong. Please try again.");
@@ -361,16 +350,18 @@ async function slashBankAward(interaction) {
     const recipient = interaction.options.getMember("recipient");
     const reason = interaction.options.getString("reason") || "Astounding feats of courage, wisdom, and heart";
     let value = interaction.options.getInteger("amount", true);
-    if (!recipient) return interaction.reply({ content: "You can't just award *nobody*!" });
+    if (!recipient) return interaction.reply({ content: "You can't just award *nobody*!", ephemeral: true });
 
-    if (!p.calc(giver, { team: true, volunteer: true, house: true })) {
+    if (!p.calc(giver, ["team", "volunteer", "mgr"])) {
       return interaction.reply({ content: `*Nice try!* This command is for Volunteers and Team+ only!`, ephemeral: true });
     } else if (recipient.id == giver.id) {
-      return interaction.reply({ content: `You can't award *yourself* ${ember()}, silly.`, ephemeral: true });
+      return interaction.reply({ content: `You can't award ***yourself*** ${ember}, silly.`, ephemeral: true });
     } else if (recipient.id == interaction.client.user.id) {
-      return interaction.reply({ content: `You can't award *me* ${ember()}, silly.`, ephemeral: true });
-    } if (value === 0) {
-      return interaction.reply({ content: "You can't award *nothing*.", ephemeral: true });
+      return interaction.reply({ content: `You can't award ***me*** ${ember}, silly.`, ephemeral: true });
+    } else if (recipient.id != interaction.client.user.id && recipient.user.bot) {
+      return interaction.reply({ content: `Bots don't really have a use for ${ember}.`, ephemeral: true });
+    } else if (value === 0) {
+      return interaction.reply({ content: "You can't award ***nothing***.", ephemeral: true });
     }
     value = value < 0 ? Math.max(value, -1 * limit.ember) : Math.min(value, limit.ember);
 
@@ -384,18 +375,17 @@ async function slashBankAward(interaction) {
     };
 
     const receipt = await u.db.bank.addCurrency(award);
-    const gbBalance = await u.db.bank.getBalance(recipient.id, "gb");
-    const emBalance = await u.db.bank.getBalance(recipient.id, "em");
-    const str = (m) => value > 0 ? `awarded ${m} ${ember()}${receipt.value}` : `docked ${ember()}${-receipt.value} from ${m}`;
+    const balance = await u.db.bank.getBalance(recipient.id);
+    const str = (/** @type {string} */ m) => value > 0 ? `awarded ${m} ${ember}${receipt.value}` : `docked ${ember}${-receipt.value} from ${m}`;
     let embed = u.embed({ author: interaction.client.user })
       .addFields(
         { name:"Reason", value: reason },
-        { name: "Your New Balance", value: `${gb()}${gbBalance.balance}\n${ember()}${emBalance.balance}` }
+        { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
       )
       .setDescription(`${u.escapeText(giver.displayName)} just ${str("you")}! This counts toward your House's Points.`);
-    recipient.send({ embeds: [embed] }).catch(u.noop);
 
     await interaction.reply(`Successfully ${str(recipient.displayName)} for ${reason}`);
+    recipient.send({ embeds: [embed] }).catch(() => interaction.followUp({ content: `I wasn't able to alert ${recipient} about the award. Please do so yourself.`, ephemeral: true }));
     u.clean(interaction, 60000);
 
     embed = u.embed({ author: interaction.client.user })
@@ -405,15 +395,14 @@ async function slashBankAward(interaction) {
 
     const house = getHouseInfo(recipient);
 
-    const mopbucket = interaction.client.getTextChannel(u.sf.channels.mopbucketawards);
     embed = u.embed({ author: interaction.client.user })
       .setColor(house.color)
       .addFields(
         { name: "House", value: house.name },
         { name: "Reason", value: reason }
       )
-      .setDescription(`**${giver}** ${str(recipient)}`);
-    mopbucket?.send({ embeds: [embed] });
+      .setDescription(`**${giver}** ${str(recipient.displayName)}`);
+    interaction.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
