@@ -314,27 +314,32 @@ async function slashModOffice(interaction) {
     // Send 'em
     if (apply) {
       // Don't bother if it's already done
-      if (target.roles.cache.has(u.sf.roles.ducttape)) {
+      if ((target.roles instanceof Discord.GuildMemberRoleManager && target.roles.cache.has(u.sf.roles.ducttape)) ||
+         (target.roles instanceof Array && target.roles.includes(u.sf.roles.ducttape))) {
         return await interaction.editReply({
           content: `They're already in the office.`
         });
       }
 
       // Impose "duct tape"
-      await target.roles.add(u.sf.roles.ducttape);
+      if (target.roles instanceof Discord.GuildMemberRoleManager) {
+        await target.roles.add(u.sf.roles.ducttape);
+      } else {
+        target.roles.push(u.sf.roles.ducttape);
+      }
       // if (target.voice.channel) await target.voice.disconnect(reason);
       // muteState.set(target.id, target.voice.serverMute);
       // await target.voice.setMute(true, reason);
 
-      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
         u.embed({ author: target })
         .setTitle("Member Sent to Office")
         .setDescription(`**${interaction.member}** sent **${target}** to the office for:\n${reason}`)
         .setColor(0x0000ff)
       ] });
 
-      await interaction.guild.channels.cache.get(u.sf.channels.office).send(
-        `${target}, you have been sent to the office in ${interaction.guild.name}. `
+      await interaction.client.getTextChannel(u.sf.channels.office)?.send(
+        `${target}, you have been sent to the office in ${interaction.guild?.name}. `
         + 'This allows you and the mods to have a private space to discuss any issues without restricting access to the rest of the server. '
         + 'Please review our Code of Conduct. '
         + 'A member of the mod team will be available to discuss more details.\n\n'
@@ -346,7 +351,7 @@ async function slashModOffice(interaction) {
       });
     } else { // Remove "duct tape"
       // Don't bother if it's already done
-      if (!target.roles.cache.has(u.sf.roles.ducttape)) {
+      if (target.roles instanceof Discord.GuildMemberRoleManager && !target.roles.cache.has(u.sf.roles.ducttape)) {
         await interaction.editReply({
           content: `They aren't in the office.`,
         });
@@ -354,11 +359,13 @@ async function slashModOffice(interaction) {
       }
 
       // Remove "duct tape""
-      await target.roles.remove(u.sf.roles.ducttape);
-      // if (muteState.get(target.id)) await target.voice.setMute(false, "Mute resolved");
-      // muteState.delete(target.id);
+      if (target.roles instanceof Discord.GuildMemberRoleManager && !target.roles.cache.has(u.sf.roles.ducttape)) {
+        await target.roles.remove(u.sf.roles.ducttape);
+        // if (muteState.get(target.id)) await target.voice.setMute(false, "Mute resolved");
+        // muteState.delete(target.id);
+      }
 
-      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
         u.embed({ author: target })
         .setTitle("Member Released from Office")
         .setDescription(`**${interaction.member}** let **${target}** out of the office.`)
@@ -380,20 +387,22 @@ async function slashModPurge(interaction) {
   if (!interaction.isChatInputCommand()) {
     return u.errorHandler(Error(`Invalid interaction type received: ${interaction}`));
   }
-  const number = interaction.options.getInteger("number");
+  const number = interaction.options.getInteger("number") ?? 1;
   let num = number;
   const reason = interaction.options.getString("reason");
 
   const channel = interaction.channel;
-  if (num > 0) {
+  if (num && num > 0 && channel) {
     await interaction.editReply({ content: `Deleting ${num} messages...` });
 
     // Use bulkDelete() first
-    while (num > 0) {
-      const deleting = Math.min(num, 50);
-      const deleted = await channel.bulkDelete(deleting, true);
-      num -= deleted.size;
-      if (deleted.size != deleting) { break; }
+    if (channel instanceof Discord.TextChannel) {
+      while (num > 0) {
+        const deleting = Math.min(num, 50);
+        const deleted = await channel.bulkDelete(deleting, true);
+        num -= deleted.size;
+        if (deleted.size != deleting) { break; }
+      }
     }
     // Handle the remainder one by one
     while (num > 0) {
@@ -405,7 +414,7 @@ async function slashModPurge(interaction) {
       if (msgsToDelete.size != fetching) { break; }
     }
     // Log it
-    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+    await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
       u.embed({ author: interaction.member })
       .setTitle("Channel Purge")
       .setDescription(`**${interaction.member}** purged ${number - num} messages in ${interaction.channel}`)
@@ -461,12 +470,16 @@ async function slashModSlowmode(interaction) {
   const duration = interaction.options.getInteger("duration") ?? 10;
   const timer = interaction.options.getInteger("timer") ?? 15;
   const indefinitely = interaction.options.getBoolean("indefinitely") ?? false;
-  const ch = interaction.options.getChannel("channel") || interaction.channel;
+  const ch = interaction.options.getChannel("channel") ?? interaction.channel;
   const ct = Discord.ChannelType;
 
+  if (!ch || !(ch instanceof Discord.TextChannel)) {
+    u.errorHandler(Error("Invalid channel in slashModSlowmode"));
+    return interaction.editReply("I've got an invalid channel.");
+  }
+
   if ([ ct.GuildCategory, ct.GuildStageVoice, ct.GuildDirectory ].includes(ch.type)) {
-    await interaction.editReply("You can't set slowmode in that channel.");
-    return;
+    return await interaction.editReply("You can't set slowmode in that channel.");
   }
 
   if (duration == 0) {
@@ -478,7 +491,7 @@ async function slashModSlowmode(interaction) {
     }
 
     interaction.editReply("Slowmode deactivated.");
-    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+    await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
       u.embed({ author: { name: interaction.member } })
         .setTitle("Channel Slowmode")
         .setDescription(`${interaction.member} disabled slowmode in ${ch}`)
@@ -507,7 +520,7 @@ async function slashModSlowmode(interaction) {
     }
 
     await interaction.editReply(`${timer}-second slowmode activated ${durationStr}.`);
-    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+    await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
       u.embed({ author: interaction.member })
       .setTitle("Channel Slowmode")
       .setDescription(`${interaction.member} set a ${timer}-second slow mode ${durationStr} in ${ch}.`)
@@ -524,8 +537,15 @@ async function slashModSummary(interaction) {
   }
   const member = interaction.options.getMember("user");
   const time = interaction.options.getInteger("history") ?? 28;
-  const e = await getSummaryEmbed(member, time, interaction.guild);
-  await interaction.editReply({ embeds: [ e ] });
+
+  if (!member || !(member instanceof Discord.GuildMember)) {
+    return u.errorHandler(Error("Invalid member given."));
+  }
+
+  if (interaction.guild) {
+    const e = await getSummaryEmbed(member, time, interaction.guild);
+    await interaction.editReply({ embeds: [ e ] });
+  }
 }
 
 /** @param {Discord.CommandInteraction} interaction*/
@@ -549,7 +569,15 @@ async function slashModTrust(interaction) {
     'watch': u.sf.channels.modlogsplus
   }[type];
 
+  if (!member || !(member instanceof Discord.GuildMember)) {
+    return u.errorHandler(Error("Invalid member given to /mod trust"));
+  }
+
   const embed = u.embed({ author: member });
+
+  if (!(member.roles instanceof Discord.GuildMemberRoleManager)) {
+    return u.errorHandler(Error("member.roles is not an instance of GuildMemberRoleManager"));
+  }
 
   if (apply) {
     switch (type) {
@@ -576,7 +604,7 @@ async function slashModTrust(interaction) {
         return;
       }
       await member.send(
-        `You have been removed from "Trusted" in ${interaction.guild.name}. `
+        `You have been removed from "Trusted" in ${interaction.guild?.name}. `
         + "This means you no longer have the ability to post images. "
         + "Please remember to follow the Code of Conduct when posting images or links.\n"
         + "<http://ldsgamers.com/code-of-conduct>"
@@ -596,7 +624,7 @@ async function slashModTrust(interaction) {
         return;
       }
       await member.send(
-        `You have been removed from "Trusted+" in ${interaction.guild.name}. `
+        `You have been removed from "Trusted+" in ${interaction.guild?.name}. `
         + "This means you no longer have the ability to stream video in the server. "
         + "Please remember to follow the Code of Conduct.\n"
         + "<http://ldsgamers.com/code-of-conduct>"
@@ -612,7 +640,7 @@ async function slashModTrust(interaction) {
     }
   }
 
-  await interaction.guild.channels.cache.get(channel).send({ embeds: [embed] });
+  await interaction.client.getTextChannel(channel)?.send({ embeds: [embed] });
 }
 
 /** @param {Discord.CommandInteraction} interaction*/
@@ -625,11 +653,24 @@ async function slashModWarn(interaction) {
   const reason = interaction.options.getString("reason");
   const value = interaction.options.getInteger("value") ?? 1;
 
+  if (!member || !(member instanceof Discord.GuildMember)) {
+    return u.errorHandler(Error("Invalid member given to /mod warn"));
+  }
+
+  const mod = interaction.member;
+
+  let modId = "unknown";
+  let modName = "unknown mod";
+  if (mod instanceof Discord.GuildMember) {
+    modId = mod.id;
+    modName = mod.displayName;
+  }
+
   const response = "We have received one or more complaints regarding content you posted. "
     + "We have reviewed the content in question and have determined, in our sole discretion, that it is against our code of conduct (<http://ldsgamers.com/code-of-conduct>). "
     + "This content was removed on your behalf. "
     + "As a reminder, if we believe that you are frequently in breach of our code of conduct or are otherwise acting inconsistently with the letter or spirit of the code, we may limit, suspend or terminate your access to the LDSG Discord server.\n\n"
-    + `**${u.escapeText(interaction.member.displayName)}** has issued you a warning for:\n`
+    + `**${u.escapeText(modName)}** has issued you a warning for:\n`
     + reason;
   await member.send(response).catch(() => blocked(member));
 
@@ -638,22 +679,22 @@ async function slashModWarn(interaction) {
     .setDescription(reason)
     .addFields({ name: "Resolved", value: `${u.escapeText(interaction.user.username)} issued a ${value} point warning.` })
     .setTimestamp();
-  const flag = await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
+  const flag = await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
 
   await u.db.infraction.save({
     discordId: member.id,
     value: value,
-    description: reason,
+    description: reason ?? "",
     message: interaction.id,
-    flag: flag.id,
-    channel: interaction.channel.id,
-    mod: interaction.member.id
+    flag: flag?.id ?? "unknown",
+    channel: interaction.channel?.id ?? "unknown",
+    mod: modId
   });
 
   const summary = await u.db.infraction.getSummary(member.id);
   embed.addFields({ name: `Infraction Summary (${summary.time} Days) `, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` });
 
-  flag.edit({ embeds: [embed] });
+  flag?.edit({ embeds: [embed] });
   await interaction.editReply(`${member} has been warned **${value}** points for reason \`${reason}\``);
 }
 

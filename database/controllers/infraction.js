@@ -52,7 +52,7 @@ module.exports = {
      * @param {String} data.flag The mod flag created for the infraction
      * @param {String} data.description The description of the infraction
      * @param {String|Discord.User|Discord.GuildMember} data.mod The mod's Discord Id
-     * @param {String} data.value The point value of the infraction
+     * @param {Number} data.value The point value of the infraction
      */
   save: function(data) {
     if (data.message instanceof Discord.Message) {
