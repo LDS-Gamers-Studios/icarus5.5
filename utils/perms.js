@@ -1,7 +1,35 @@
+// @ts-check
+
 const { sf } = require("../utils/utils");
-const config = require("../config/config");
+const config = require("../config/config.json");
+const Discord = require("discord.js");
+
+const permFuncs = {
+  botOwner: m => config.ownerId === m.id,
+  botAdmin: m => config.adminId.includes(m.id) || permFuncs.botOwner(m),
+  mgmt: m => m.roles.cache.has(sf.roles.management),
+  mgr: m => m.roles.cache.has(sf.roles.manager),
+  mod: m => m.roles.cache.has(sf.roles.mod),
+  team: m => m.roles.cache.has(sf.roles.team),
+  volunteer: m => m.roles.cache.has(sf.roles.volunteer),
+  trustPlus: m => m.roles.cache.has(sf.roles.trustedplus),
+  trusted: m => m.roles.cache.has(sf.roles.trusted),
+  notMuted: m => !m.roles.cache.has(sf.roles.muted),
+  everyone: () => true
+};
 
 const perms = {
+  /** @param {Discord.GuildMember} member @param {(keyof permFuncs)[]} permArr*/
+  calc: (member, permArr) => {
+    let result = false;
+    const arr = [...new Set(permArr.concat(["botAdmin", "mgmt"]))];
+    for (const perm of arr) {
+      const p = permFuncs[perm];
+      if (p) result = p(member);
+      if (result) break;
+    }
+    return result;
+  },
   isAdmin: (msg) => config.adminId.includes((msg.author ?? msg.user).id),
   isOwner: (msg) => (msg.author ?? msg.user).id === config.ownerId,
   isMod: function(msg) {
