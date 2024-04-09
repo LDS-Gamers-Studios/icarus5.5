@@ -1,10 +1,20 @@
 const mongoose = require('mongoose'),
   Schema = mongoose.Schema;
 
+
 const UserSchema = new Schema({
-  discordId: String,
-  roles: [String],
-  badges: [String],
+  discordId: {
+    type: String,
+    required: true
+  },
+  roles: {
+    type: [String],
+    default: []
+  },
+  badges: {
+    type: [String],
+    default: []
+  },
   posts: {
     type: Number,
     default: 0
