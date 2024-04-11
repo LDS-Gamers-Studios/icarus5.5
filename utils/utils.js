@@ -277,7 +277,7 @@ const utils = {
     if (stack.length > 4096) stack = stack.slice(0, 4000);
 
     embed.setDescription(stack);
-    if (!config.silentMode || message instanceof Discord.BaseInteraction) errorLog.send({ embeds: [embed] });
+    errorLog.send({ embeds: [embed] });
   },
   errorLog,
   /**

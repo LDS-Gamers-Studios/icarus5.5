@@ -174,8 +174,8 @@ const Module = new Augur.Module()
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setFooter({ text: `${user?.posts ?? 0} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
-      if (oldUser.tag !== newUser.tag) {
-        embed.addFields({ name: "**Username Update**", value: `**Old:** ${u.escapeText(oldUser?.tag)}\n**New:** ${u.escapeText(newUser.tag)}` });
+      if (oldUser.displayName !== newUser.displayName || oldUser.username !== newUser.username) {
+        embed.addFields({ name: "**Username Update**", value: `**Old:** ${u.escapeText(`${oldUser?.username} (displaying as ${oldUser?.displayName})`)}\n**New:** ${u.escapeText(`${newUser.username} (displaying as ${newUser.displayName})`)}` });
       }
       if (oldUser.avatar !== newUser.avatar) {
         embed.addFields({ name: "**Avatar Update**", value: "See Below" }).setImage(newUser.displayAvatarURL({ extension: "png" }));
@@ -185,6 +185,29 @@ const Module = new Augur.Module()
       ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser}: ${newUser.id}`, embeds: [embed] });
     }
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.username)} (${newUser.id})`); }
+})
+.addEvent("guildMemberUpdate", async (oldMember, newMember) => {
+  try {
+    const ldsg = newMember.client.guilds.cache.get(u.sf.ldsg);
+    if (oldMember.partial) oldMember = await oldMember.fetch();
+    if (newMember.partial) newMember = await newMember.fetch();
+    if (oldMember.guild.id != u.sf.ldsg) return;
+    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || newMember.roles.cache.has(u.sf.roles.untrusted))) {
+      const user = await u.db.user.fetchUser(newMember.id, true).catch(u.noop);
+      const embed = u.embed({ author: oldMember })
+        .setTitle("User Update")
+        .setFooter({ text: `${user?.posts ?? 0} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
+      if (oldMember.nickname !== newMember.nickname) {
+        embed.addFields({ name: "**Nickname Update**", value: `**Old:** ${u.escapeText(oldMember?.nickname ?? "")}\n**New:** ${u.escapeText(newMember.nickname ?? "")}` });
+      }
+      if (oldMember.avatar !== newMember.avatar) {
+        embed.addFields({ name: "**Server Avatar Update**", value: "See Below" }).setImage(newMember.displayAvatarURL({ extension: "png" }));
+      } else {
+        embed.setThumbnail(newMember.displayAvatarURL());
+      }
+      if ((embed.data.fields?.length || 0) > 0) ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newMember}: ${newMember.id}`, embeds: [embed] });
+    }
+  } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newMember?.user.username)} (${newMember.id})`); }
 })
 .setInit(async () => {
   if (!config.google.sheets.config) return console.log("No Sheets ID");
@@ -208,7 +231,7 @@ const Module = new Augur.Module()
     for (const [sponsor, emoji] of emojis) {
       if (msg.mentions.members?.has(sponsor)) await msg.react(emoji).catch(u.noop);
       // Filter out sponsors and test for trigger words
-      else if (!msg.guild.members.cache.has(sponsor) && !isNaN(sponsor) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
+      else if (!msg.guild.members.cache.has(sponsor) && isNaN(sponsor) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
     }
   }
 });

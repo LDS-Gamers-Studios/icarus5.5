@@ -34,10 +34,6 @@ const UserSchema = new Schema({
   priorTenure: {
     type: Number,
     default: 0
-  },
-  twitchFollow: {
-    type: Boolean,
-    default: false
   }
 });
 

@@ -14,6 +14,7 @@
     154,
     34
   ],
+  "xpScale": 200,
   "db": {
     "model": "database/dbControllers.js",
     "db": "localhost:27017/<database> by default",
