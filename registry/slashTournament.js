@@ -1,82 +1,59 @@
-const Discord = require('discord.js');
-const type = Discord.ApplicationCommandOptionType;
+// @ts-check
+const u = require("./regUtils");
 
-module.exports = {
-  "name": "tournament",
-  "description": "Get or update information on tournaments in the server",
-  "type": Discord.ApplicationCommandType.ChatInput,
-  "options": [
-    {
-      "type": type.Subcommand,
-      "name": "list",
-      "description": "Find upcoming LDSG tournaments."
-    },
-    {
-      "type": type.Subcommand,
-      "name": "champion",
-      "description": "[TEAM] Declare an LDSG Champion!",
-      "options": [
-        {
-          "type": type.String,
-          "name": "tourney-name",
-          "description": "The name of the tournament",
-          "required": true
-        },
-        {
-          "type": type.User,
-          "name": "1",
-          "description": "User 1",
-          "required": true
-        },
-        {
-          "type": type.User,
-          "name": "2",
-          "description": "User 2"
-        },
-        {
-          "type": type.User,
-          "name": "3",
-          "description": "User 3"
-        },
-        {
-          "type": type.User,
-          "name": "4",
-          "description": "User 4"
-        },
-        {
-          "type": type.User,
-          "name": "5",
-          "description": "User 5"
-        },
-        {
-          "type": type.User,
-          "name": "6",
-          "description": "User 6"
-        }
-      ]
-    },
-    {
-      "type": type.Subcommand,
-      "name": "participant",
-      "description": "[TEAM] Add or remove someone from the Tournament Access role",
-      "options": [
-        {
-          "type": type.User,
-          "name": "user",
-          "description": "The user to add or remove",
-          "required": true
-        },
-        {
-          "type": type.Boolean,
-          "name": "remove",
-          "description": "Whether or not to remove the role (defaults to false)"
-        },
-        {
-          "type": type.Boolean,
-          "name": "remove-all",
-          "description": "[DANGER] Removes the tournament role from all users"
-        }
-      ]
-    }
-  ]
-};
+/**
+ *
+ * @param {number | null} num
+ * @param {boolean} [req]
+ * @returns
+ */
+const user = (num, req = false) => new u.user()
+  .setName(`${num ?? "user"}`)
+  .setDescription(`User ${num ?? ""}`)
+  .setRequired(num == 1 || req);
+
+const list = new u.sub()
+  .setName("list")
+  .setDescription("Find upcoming LDSG tournaments.");
+
+const champion = new u.sub()
+  .setName("champion")
+  .setDescription("[TEAM] Declare an LDSG Champion!")
+  .addStringOption(
+    new u.string()
+      .setName("tourney-name")
+      .setDescription("The name of the tournament")
+      .setRequired(true)
+  )
+  .addUserOption(user(1))
+  .addUserOption(user(2))
+  .addUserOption(user(3))
+  .addUserOption(user(4))
+  .addUserOption(user(5))
+  .addUserOption(user(6));
+
+const participant = new u.sub()
+    .setName("participant")
+    .setDescription("[TEAM] Add or remove someone from the Tournament Access role")
+    .addUserOption(user(null, true))
+    .addBooleanOption(
+      new u.bool()
+        .setName("remove")
+        .setDescription("Whether or not to remove the role (defaults to false)")
+        .setRequired(false)
+    )
+    .addBooleanOption(
+      new u.bool()
+        .setName("remove-all")
+        .setDescription("[DANGER] Removes the tournament role from all users")
+        .setRequired(false)
+    );
+
+module.exports = new u.cmd()
+  .setName("tournament")
+  .setDescription("Get or update information on tournaments in the server.")
+  .addSubcommand(list)
+  .addSubcommand(champion)
+  .addSubcommand(participant)
+  .setDMPermission(false)
+  .toJSON();
