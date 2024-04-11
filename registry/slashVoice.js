@@ -1,44 +1,40 @@
-const Discord = require('discord.js');
-const type = Discord.ApplicationCommandOptionType;
+// @ts-check
+const u = require("./regUtils");
 
-module.exports = {
-  "name": "voice",
-  "description": "Voice options.",
-  "type": Discord.ApplicationCommandType.ChatInput,
-  "options": [
-    {
-      "type": type.Subcommand,
-      "name": "lock",
-      "description": "Lock your voice channel to new members.",
-      "options": [
-        {
-          "type": type.String,
-          "name": "users",
-          "description": "Mentions of users you would like to allow in the channel."
-        }
-      ]
-    },
-    {
-      "type": type.Subcommand,
-      "name": "unlock",
-      "description": "Unlock your voice channel to new members."
-    },
-    {
-      "type": type.Subcommand,
-      "name": "streamlock",
-      "description": "Restrict voice for new members of your channel.",
-      "options": [
-        {
-          "type": type.String,
-          "name": "users",
-          "description": "Mentions of users you want to allow to speak/stream in the channel."
-        }
-      ]
-    },
-    {
-      "type": type.Subcommand,
-      "name": "refresh",
-      "description": "Check that there are voice channels to join, and create a channel if not."
-    }
-  ]
-};
+const lock = new u.sub()
+  .setName("lock")
+  .setDescription("Lock your voice channel")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("A user to allow in the channel")
+      .setRequired(false)
+  );
+
+const unlock = new u.sub()
+  .setName("unlock")
+  .setDescription("Unlock your voice channel");
+
+const streamlock = new u.sub()
+  .setName("streamlock")
+  .setDescription("Restrict voice activity for people joining your voice channel")
+  .addUserOption(
+    new u.user()
+    .setName("user")
+    .setDescription("A user to allow speaking and streaming permissions in the channel")
+    .setRequired(false)
+  );
+
+const refresh = new u.sub()
+  .setName("refresh")
+  .setDescription("Creates a new voice channel if none are available");
+
+module.exports = new u.cmd()
+  .setName("voice")
+  .setDescription("Voice channel options")
+  .addSubcommand(lock)
+  .addSubcommand(unlock)
+  .addSubcommand(streamlock)
+  .addSubcommand(refresh)
+  .setDMPermission(false)
+  .toJSON();

@@ -1,41 +1,41 @@
-const Discord = require('discord.js');
-const type = Discord.ApplicationCommandOptionType;
+// @ts-check
+const u = require("./regUtils");
 
-module.exports = {
-  "name": "rank",
-  "description": "Interact with the XP system",
-  "type": Discord.ApplicationCommandType.ChatInput,
-  "options": [
-    {
-      "type": type.Subcommand,
-      "name": "view",
-      "description": "View the rank of a user",
-      "options": [
-        {
-          "name": "user",
-          "description": "The user you want to get the rank of.",
-          "type": type.User,
-          "required": false
-        }
-      ]
-    },
-    {
-      "name": "leaderboard",
-      "description": "Shows the current leaderboard",
-      "type": type.Subcommand
-    },
-    {
-      "type": type.Subcommand,
-      "name": "track",
-      "description": "Whether or not you want to track XP.",
-      "options": [
-        {
-          "type": type.Boolean,
-          "name": "choice",
-          "description": "Whether or not you want to track XP. ",
-          "required": true
-        }
-      ]
-    }
-  ]
-};
+const rank = new u.sub()
+  .setName("rank")
+  .setDescription("View the rank of a user")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("The user you want to get the rank of")
+      .setRequired(false)
+  );
+
+const leaderboard = new u.sub()
+.setName("leaderboard")
+.setDescription("Shows the current leaderboard")
+.addBooleanOption(
+  new u.bool()
+    .setName("lifetime")
+    .setDescription("Show the lifetime leaderboard instead of the season")
+    .setRequired(false)
+);
+
+const track = new u.sub()
+.setName("track")
+.setDescription("Toggle tracking XP or view your current tracking status")
+.addBooleanOption(
+  new u.bool()
+    .setName("choice")
+    .setDescription("Wheter or not you want to track XP")
+    .setRequired(false)
+);
+
+module.exports = new u.cmd()
+  .setName("rank")
+  .setDescription("Interact with the XP system")
+  .setDMPermission(false)
+  .addSubcommand(rank)
+  .addSubcommand(leaderboard)
+  .addSubcommand(track)
+  .toJSON();
