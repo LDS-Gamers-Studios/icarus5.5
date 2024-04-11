@@ -389,7 +389,7 @@ async function slashModPurge(interaction) {
   }
   const number = interaction.options.getInteger("number") ?? 1;
   let num = number;
-  const reason = interaction.options.getString("reason");
+  const reason = interaction.options.getString("reason") ?? "";
 
   const channel = interaction.channel;
   if (num && num > 0 && channel) {
@@ -418,7 +418,7 @@ async function slashModPurge(interaction) {
       u.embed({ author: interaction.member })
       .setTitle("Channel Purge")
       .setDescription(`**${interaction.member}** purged ${number - num} messages in ${interaction.channel}`)
-      .addFields({ name: 'Reason', value: reason })
+      .addFields({ name: "Reason", value: reason })
       .setColor(0x00ff00)
     ] });
 
@@ -755,7 +755,7 @@ async function slashModMain(interaction) {
 
 Module.addInteraction({
   name: "mod",
-  guild: u.sf.ldsg,
+  // guild: u.sf.ldsg,
   id: u.sf.commands.slashMod,
   permissions: p.isMod,
   /** @param {Discord.CommandInteraction} interaction*/
