@@ -1,7 +1,7 @@
-const Discord = require('discord.js');
-const type = Discord.ApplicationCommandType;
+// @ts-check
+const u = require("./regUtils");
 
-module.exports = {
-  "name": "Bookmark",
-  "type": type.Message
-};
+module.exports = u.msgContext()
+  .setName("Bookmark")
+  .setDMPermission(true)
+  .toJSON();

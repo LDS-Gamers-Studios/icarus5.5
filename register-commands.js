@@ -10,6 +10,7 @@ const globalCommandFiles = [
   "messageBookmark.js",
   "slashAvatar.js"
 ];
+
 const guildCommandFiles = [
   "messageMod.js",
   "slashBank.js",
@@ -45,11 +46,18 @@ function getCommandType(typeId) {
 
 function displayError(error) {
   if (error.response) {
-    // The request was made and the server responded with a status code
-    // that falls out of the range of 2xx
-    console.log(error.response.data);
-    console.log(error.response.status);
-    console.log(error.response.headers);
+    if (error.response.status == 429) {
+      console.log("You're being rate limited! try again after " + error.response.data.retry_after + " seconds. Starting countdown...");
+      return setTimeout(() => console.log("try now!"), error.response.data.retry_after * 1000);
+    } else if (error.response.status == 400) {
+      return console.log("You've got a bad bit of code somewhere! Unfortunately it won't tell me where :(");
+    } else {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.log(error.response.data);
+      console.log(error.response.status);
+      console.log(error.response.headers);
+    }
   } else if (error.request) {
     // The request was made but no response was received
     // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
@@ -60,6 +68,7 @@ function displayError(error) {
     console.log('Error', error.message);
   }
   console.log(error.config);
+  process.exit();
 }
 
 const applicationId = config.applicationId;
@@ -105,4 +114,5 @@ axios({
     console.log(`${c.name} (${commandType}): ${c.id}`);
   }
   console.log();
+  process.exit();
 }).catch(displayError);

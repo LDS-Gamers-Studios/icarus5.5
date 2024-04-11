@@ -1,7 +1,7 @@
-const Discord = require('discord.js');
-const type = Discord.ApplicationCommandType;
+// @ts-check
+const u = require("./regUtils");
 
-module.exports = {
-  "name": "Moderation",
-  "type": type.User
-};
+module.exports = u.userContext()
+  .setName("Moderation")
+  .setDMPermission(false)
+  .toJSON();
