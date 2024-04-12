@@ -79,7 +79,7 @@ const utils = {
   },
   /**
    * After the given amount of time, attempts to delete the message.
-   * @param {Discord.Message|Discord.BaseInteraction} msg The message to delete.
+   * @param {Discord.Message|Discord.APIMessage|Discord.BaseInteraction} msg The message to delete.
    * @param {number} t The length of time to wait before deletion, in milliseconds.
    */
   clean: async function(msg, t = 20000) {

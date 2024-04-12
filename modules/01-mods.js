@@ -599,8 +599,9 @@ async function slashModMain(interaction) {
 
 Module.addInteraction({
   name: "mod",
-  // guild: u.sf.ldsg,
+  guildId: u.sf.ldsg,
   id: u.sf.commands.slashMod,
+  onlyGuild: true,
   permissions: (int) => p.calc(int.member, ["mod"]),
   process: slashModMain
 });

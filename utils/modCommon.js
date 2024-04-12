@@ -466,7 +466,7 @@ const modCommon = {
         await msg.delete();
         deleted++;
       } catch (error) {
-        u.errorHandler(error)?.then(notDeleted ? u.clean : u.noop);
+        u.errorHandler(error)?.then(m => {notDeleted ? u.clean(m) : u.noop();});
         notDeleted = true;
       }
     }
