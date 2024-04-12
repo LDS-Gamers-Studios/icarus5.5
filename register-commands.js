@@ -19,7 +19,6 @@ const guildCommandFiles = [
   "slashMod.js",
   "slashTournament.js",
   "slashVoice.js",
-  "slashWatch.js",
   "userMod.js"
 ];
 /**********************

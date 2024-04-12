@@ -3,17 +3,19 @@ const { ButtonStyle } = require("discord.js"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
   config = require('../config/config.json'),
-  { ActionRowBuilder, ButtonBuilder } = require("discord.js");
+  { ActionRowBuilder, ButtonBuilder } = require("discord.js"),
+  Augur = require('augurbot-ts');
+
 
 const modActions = [
-  new ActionRowBuilder().addComponents(
+  new ActionRowBuilder().setComponents(
     new ButtonBuilder().setCustomId("modCardClear").setEmoji("✅").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId("modCardVerbal").setEmoji("🗣").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("modCardMinor").setEmoji("⚠").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("modCardMajor").setEmoji("⛔").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("modCardMute").setEmoji("🔇").setStyle(ButtonStyle.Danger)
   ),
-  new ActionRowBuilder().addComponents(
+  new ActionRowBuilder().setComponents(
     new ButtonBuilder().setCustomId("modCardInfo").setEmoji("👤").setLabel("User Info").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle(ButtonStyle.Secondary)
   )
@@ -24,7 +26,7 @@ const modActions = [
   * @param {Discord.GuildMember} member The guild member that's blocked.
   */
 function blocked(member) {
-  return member.client.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+  return member.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
     u.embed({
       author: member,
       color: 0x00ffff,
@@ -33,11 +35,17 @@ function blocked(member) {
   ] });
 }
 
+/**
+ * See if a user is manageable by a mod
+ * @param {Discord.GuildMember} mod
+ * @param {Discord.GuildMember} target
+ */
 function compareRoles(mod, target) {
   const modHigh = mod.roles.cache.filter(r => r.id != u.sf.roles.live)
     .sort((a, b) => b.comparePositionTo(a)).first();
   const targetHigh = target.roles.cache.filter(r => r.id != u.sf.roles.live)
     .sort((a, b) => b.comparePositionTo(a)).first();
+  if (!modHigh || !targetHigh) return false;
   return (modHigh.comparePositionTo(targetHigh) > 0);
 }
 
@@ -49,17 +57,23 @@ function nameGen() {
 }
 
 const modCommon = {
+  blocked,
+  compareRoles,
+  nameGen,
+  /**
+   * BAN HAMMER!!!
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   * @param {string} reason
+   * @param {number} days
+   */
   ban: async function(interaction, target, reason, days) {
     try {
       if (!compareRoles(interaction.member, target)) {
-        await interaction.editReply({
-          content: `You have insufficient permissions to ban ${target}!`
-        });
+        interaction.editReply(`You have insufficient permissions to ban ${target}!`);
         return;
       } else if (!target.bannable) {
-        await interaction.editReply({
-          content: `I have insufficient permissions to ban ${target}!`
-        });
+        interaction.editReply(`I have insufficient permissions to ban ${target}!`);
         return;
       }
 
@@ -74,7 +88,7 @@ const modCommon = {
           .setTitle("User Ban")
           .setDescription(`You have been banned in ${interaction.guild.name} for:\n${reason}`)
         ] }).catch(() => blocked(target));
-        await target.ban({ days, reason });
+        await target.ban({ deleteMessageSeconds: days * 24 * 60 * 60, reason });
 
         // Edit interaction
         await interaction.editReply({
@@ -87,7 +101,7 @@ const modCommon = {
         });
 
         // Save infraction
-        interaction.client.db.infraction.save({
+        u.db.infraction.save({
           discordId: target.id,
           description: `[User Ban]: ${reason}`,
           value: 30,
@@ -95,15 +109,11 @@ const modCommon = {
         });
 
         // Save roles
-        targetRoles.set(u.sf.roles.untrusted, null).set(u.sf.roles.muted, null).delete(u.sf.roles.trusted);
-        const fakeTarget = {
-          id: target.id,
-          roles: { cache: targetRoles }
-        };
-        interaction.client.db.user.updateRoles(fakeTarget);
+        targetRoles.delete(u.sf.roles.trusted);
+        u.db.user.updateRoles(target, targetRoles);
 
         // Log it
-        interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+        interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
           u.embed({ author: target })
           .setTitle("User Ban")
           .setDescription(`**${interaction.member}** banned **${target}** for:\n${reason}`)
@@ -122,8 +132,7 @@ const modCommon = {
 
   /**
    * Generate and send a warning card in #mod-logs
-   * @async
-   * @function createFlag
+   * @param {object} flagInfo
    * @param {Discord.Message} flagInfo.msg The message for the warning.
    * @param {Discord.GuildMember} flagInfo.member The member for the warning.
    * @param {String|[String]} flagInfo.matches If automatic, the reason for the flag.
@@ -133,41 +142,27 @@ const modCommon = {
    * @param {String} flagInfo.furtherInfo Where required, further information.
    */
   createFlag: async function(flagInfo) {
-    const { msg } = flagInfo;
-    let { member } = flagInfo;
-    member = member ?? msg?.member ?? msg?.author;
     let { matches } = flagInfo;
-    const { pingMods, snitch, flagReason, furtherInfo } = flagInfo;
+    const { msg, member, pingMods, snitch, flagReason, furtherInfo } = flagInfo;
+    const client = msg.client;
 
-    const client = msg?.client ?? member?.client;
-    if (!client) return u.errorHandler("No client on flag for" + member);
+    if (!msg.inGuild()) return null;
 
-    const infractionSummary = await client.db.infraction.getSummary(member);
+    const infractionSummary = await u.db.infraction.getSummary(member.id);
     const embed = u.embed({ color: 0xff0000, author: member });
 
     if (Array.isArray(matches)) matches = matches.join(", ");
     if (matches) embed.addFields({ name: "Match", value: matches });
 
-    if (msg) {
-      embed.setTimestamp(msg.editedAt ?? msg.createdAt)
+    embed.setTimestamp(msg.editedAt ?? msg.createdAt)
       .setDescription((msg.editedAt ? "[Edited]\n" : "") + msg.cleanContent)
       .addFields(
         { name: "Channel", value: msg.channel?.toString(), inline: true },
-        { name: "Jump to Post", value: `[Original Message](${msg.url})`, inline: true }
+        { name: "Jump to Post", value: `[Original Message](${msg.url})`, inline: true },
+        { name: "User", value: msg.webhookId ? msg.author.username ?? (await msg.fetchWebhook()).name : member.displayName ?? "Unknown User" }
       );
-    }
 
-    if (msg && msg.channel.parentId == u.sf.channels.minecraftcategory) {
-      if (msg.webhookId) embed.addFields({ name: "User", value: msg.author.username ?? (await msg.channel.fetchWebhooks()).get(msg.webhookId)?.name ?? "Unknown User" });
-      else embed.addFields({ name: "User", value: (member.displayName ?? (await member.fetch()).displayName), inline: true });
-      client.channels.cache.get(u.sf.channels.minecraftmods).send({ embeds: [embed] });
-    } else if (msg?.webhookId) {
-      if (msg.webhookId) embed.addFields({ name: "User", value: msg.author.username });
-    } else {
-      embed.addFields({ name: "User", value: member.toString(), inline: true });
-    }
-
-    let content;
+    if (msg.channel.parentId == u.sf.channels.minecraftcategory && msg.webhookId) return; // I lied actually do stuff
     if (snitch) {
       embed.addFields({ name: "Flagged By", value: snitch.toString(), inline: true })
       .addFields({ name: "Reason", value: flagReason, inline: true });
@@ -175,85 +170,94 @@ const modCommon = {
     }
 
     embed.addFields({ name: `Infraction Summary (${infractionSummary.time} Days)`, value: `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}` });
-    if (member.bot) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
+    if (member.user.bot) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
 
+    const content = [];
     if (pingMods) {
       u.clean(msg, 0);
       const ldsg = client.guilds.cache.get(u.sf.ldsg);
-      content = [];
       if (!member.roles.cache.has(u.sf.roles.muted)) {
-        content.push(ldsg.roles.cache.get(u.sf.roles.mod).toString());
+        content.push(ldsg?.roles.cache.get(u.sf.roles.mod)?.toString());
       }
-      if (member.bot) {
+      if (member.user.bot) {
         content.push("The message has been deleted. The member was *not* muted, on account of being a bot.");
       } else {
         if (!member.roles?.cache.has(u.sf.roles.muted)) {
-          await member.roles?.add(ldsg.roles.cache.get(u.sf.roles.muted));
+          await member.roles?.add(u.sf.roles.muted);
           if (member.voice?.channel) {
             member.voice?.disconnect("Auto-mute");
           }
-          ldsg.channels.cache.get(u.sf.channels.muted).send({
+          ldsg?.client.getTextChannel(u.sf.channels.muted)?.send({
             content: `${member}, you have been auto-muted in ${msg.guild.name}. Please review our Code of Conduct. A member of the mod team will be available to discuss more details.\n\nhttp://ldsgamers.com/code-of-conduct`,
             allowedMentions: { users: [member.id] }
           });
         }
         content.push("The mute role has been applied and message deleted.");
       }
-      content = content.join("\n");
     }
 
-    const card = await client.channels.cache.get(u.sf.channels.modlogs).send({
-      content,
+    const card = await client.getTextChannel(u.sf.channels.modlogs)?.send({
+      content: content.join('\n'),
       embeds: [embed],
-      components: (member.bot || !msg ? undefined : modActions),
+      // @ts-ignore its being dumb
+      components: (member.user.bot || !msg ? undefined : modActions),
       allowedMentions: { roles: [u.sf.roles.mod] }
     });
 
-    if (!member.bot && msg) {
+    if (!card) throw new Error("Card creation failed!");
+
+    if (!member.user.bot && msg) {
       const infraction = {
         discordId: member.id,
-        channel: msg?.channel.id,
-        message: msg?.id,
+        channel: msg.channel.id,
+        message: msg.id,
         flag: card.id,
-        description: msg?.cleanContent,
+        description: msg.cleanContent,
         mod: client.user.id,
         value: 0
       };
-      await client.db.infraction.save(infraction);
+      await u.db.infraction.save(infraction);
     }
     return card;
   },
 
-  getSummaryEmbed: async function(member, time, guild) {
-    const data = await member.client.db.infraction.getSummary(member.id, time);
+  /**
+   * Get a summary embed
+   * @param {Discord.GuildMember} member
+   * @param {number} [time]
+   */
+  getSummaryEmbed: async function(member, time) {
+    const data = await u.db.infraction.getSummary(member.id, time);
     const response = [`**${member}** has had **${data.count}** infraction(s) in the last **${data.time}** day(s), totaling **${data.points}** points.`];
     if ((data.count > 0) && (data.detail.length > 0)) {
       data.detail = data.detail.reverse(); // Newest to oldest is what we want
       for (const record of data.detail) {
-        const mod = guild.members.cache.get(record.mod) || `Unknown Mod (<@${record.mod}>)`;
-        const pointsPart = record.value === 0 && mod.id !== member.client.user.id ? "Note" : `${record.value} pts`;
-        response.push(`\`${record.timestamp.toLocaleDateString()}\` (${pointsPart}, modded by ${mod}): ${record.description}`);
+        const mod = member.guild.members.cache.get(record.mod);
+        const pointsPart = record.value === 0 && (mod?.id != member.client.user.id) ? "Note" : `${record.value} pts`;
+        response.push(`\`${record.timestamp.toLocaleDateString()}\` (${pointsPart}, modded by ${mod || `Unknown Mod (<@${record.mod }>)`}): ${record.description}`);
       }
     }
     let text = response.join("\n");
-    text = text.length > 4090 ? text.substring(0, 4090) + "..." : text;
+    text = text.length > 4090 ? text.substring(0, 4086) + "..." : text;
     return u.embed({ author: member })
       .setTitle("Infraction Summary")
       .setDescription(text)
       .setColor(0x00ff00);
   },
 
+  /**
+   * They get the boot
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   * @param {string} reason
+   */
   kick: async function(interaction, target, reason) {
     try {
       if (!compareRoles(interaction.member, target)) {
-        await interaction.editReply({
-          content: `You have insufficient permissions to kick ${target}!`
-        });
+        interaction.editReply(`You have insufficient permissions to kick ${target}!`);
         return;
       } else if (!target.kickable) {
-        await interaction.editReply({
-          content: `I have insufficient permissions to kick ${target}!`
-        });
+        interaction.editReply(`I have insufficient permissions to kick ${target}!`);
         return;
       }
 
@@ -268,7 +272,7 @@ const modCommon = {
           .setTitle("User Kick")
           .setDescription(`You have been kicked in ${interaction.guild.name} for:\n${reason}`)
         ] }).catch(() => blocked(target));
-        await target.kick({ reason });
+        await target.kick(reason);
 
         // Edit interaction
         await interaction.editReply({
@@ -281,7 +285,7 @@ const modCommon = {
         });
 
         // Save infraction
-        interaction.client.db.infraction.save({
+        u.db.infraction.save({
           discordId: target.id,
           description: `[User Kick]: ${reason}`,
           value: 30,
@@ -289,15 +293,11 @@ const modCommon = {
         });
 
         // Save roles
-        targetRoles.set(u.sf.roles.untrusted, null).set(u.sf.roles.muted, null).delete(u.sf.roles.trusted);
-        const fakeTarget = {
-          id: target.id,
-          roles: { cache: targetRoles }
-        };
-        interaction.client.db.user.updateRoles(fakeTarget);
+        targetRoles.delete(u.sf.roles.trusted);
+        u.db.user.updateRoles(target, targetRoles);
 
         // Log it
-        interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+        interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
           u.embed({ author: target })
           .setTitle("User Kick")
           .setDescription(`**${interaction.member}** kicked **${target}** for:\n${reason}`)
@@ -313,63 +313,71 @@ const modCommon = {
     } catch (error) { u.errorHandler(error, interaction); }
   },
 
+  /**
+   * Prevent someone from talking
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   * @param {string} reason
+   */
   mute: async function(interaction, target, reason) {
-    if (!target.manageable) {
-      await interaction.editReply({
-        content: `I have insufficient permissions to mute ${target}!`
-      });
+    if (!compareRoles(interaction.member, target)) {
+      interaction.editReply(`You have insufficient permissions to mute ${target}!`);
+      return;
+    } else if (!target.manageable) {
+      interaction.editReply(`I have insufficient permissions to mute ${target}!`);
       return;
     }
 
     try {
       // Don't mute if muted
       if (target.roles.cache.has(u.sf.roles.muted)) {
-        await interaction.editReply({
-          content: `They are already muted.`,
-        });
+        interaction.editReply(`They are already muted.`);
         return;
       }
 
-      // muteState.set(target.id, target.voice.serverMute);
-
       // Impose Mute
       await target.roles.add(u.sf.roles.muted);
+
       if (target.voice.channel) {
         await target.voice.disconnect(reason);
         await target.voice.setMute(true, reason);
       }
 
-      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
         u.embed({ author: target })
         .setTitle("Member Mute")
         .setDescription(`**${interaction.member}** muted **${target}** for:\n${reason}`)
         .setColor(0x0000ff)
       ] });
 
-      await interaction.guild.channels.cache.get(u.sf.channels.muted).send(
+      await interaction.client.getTextChannel(u.sf.channels.muted)?.send(
         `${target}, you have been muted in ${interaction.guild.name}. `
       + 'Please review our Code of Conduct. '
       + 'A member of the mod team will be available to discuss more details.\n\n'
       + 'http://ldsgamers.com/code-of-conduct'
       );
 
-      await interaction.editReply({
-        content: `Muted ${target}.`,
-      });
+      interaction.editReply(`Muted ${target}.`);
     } catch (error) { u.errorHandler(error, interaction); }
   },
 
+  /**
+   *
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   * @param {string} note
+   */
   note: async function(interaction, target, note) {
     try {
-      await interaction.client.db.infraction.save({
+      await u.db.infraction.save({
         discordId: target.id,
         value: 0,
         description: note,
         mod: interaction.user.id
       });
-      const summary = await interaction.client.db.infraction.getSummary(target.id);
+      const summary = await u.db.infraction.getSummary(target.id);
 
-      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
         u.embed({ author: target })
         .setColor("#0000FF")
         .setDescription(note)
@@ -380,92 +388,121 @@ const modCommon = {
         .setTimestamp()
       ] });
 
-      await interaction.editReply({ content: `Note added for user ${target.toString()}.` });
+      await interaction.editReply(`Note added for user ${target.toString()}.`);
     } catch (error) { u.errorHandler(error, interaction); }
   },
 
-  rename: async function(interaction, target) {
-    const newNick = interaction.options?.getString("name") || nameGen();
+  /**
+   *
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   */
+  rename: async function(interaction, target, reset = false) {
+    const newNick = interaction.options.getString("name") ?? nameGen();
     const oldNick = target.displayName;
 
-    if (!target.manageable) {
-      await interaction.editReply(`I have insufficient permissions to rename ${target}!`);
+    if (!compareRoles(interaction.member, target)) {
+      interaction.editReply(`You have insufficient permissions to rename ${target}!`);
+      return;
+    } else if (!target.manageable) {
+      interaction.editReply(`I have insufficient permissions to rename ${target}!`);
       return;
     }
-    await target.setNickname(newNick);
+    await target.setNickname(reset ? null : newNick);
 
-    const comment = `Set nickname to ${u.escapeText(newNick)} from ${u.escapeText(oldNick)}.`;
+    const comment = `Set nickname to ${u.escapeText(reset ? "default" : newNick)} from ${u.escapeText(oldNick)}.`;
 
-    await interaction.client.db.infraction.save({
-      discordId: target.id,
-      value: 0,
-      description: comment,
-      message: interaction.id,
-      channel: interaction.channel.id,
-      mod: interaction.member.id
-    });
-    const summary = await interaction.client.db.infraction.getSummary(target.id);
+    if (!reset) {
+      await u.db.infraction.save({
+        discordId: target.id,
+        value: 0,
+        description: comment,
+        message: interaction.id,
+        channel: interaction.channel?.id,
+        mod: interaction.member.id
+      });
+    }
+    const summary = await u.db.infraction.getSummary(target.id);
 
-    interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+    interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
       u.embed({ author: target })
       .setColor("#0000FF")
       .setDescription(comment)
       .addFields(
-        { name: "Resolved", value: `${interaction.member} changed ${target}'s nickname from ${u.escapeText(oldNick)} to ${u.escapeText(newNick)}.` },
+        { name: "Resolved", value: `${interaction.member} changed ${target}'s nickname from ${u.escapeText(oldNick)} to ${u.escapeText(reset ? "default" : newNick)}.` },
         { name: `Infraction Summary (${summary.time} Days) `, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` }
       )
       .setTimestamp()
     ] });
 
-    await interaction.editReply({ content: `${target}'s nickname changed from ${u.escapeText(oldNick)} to ${u.escapeText(newNick)}.` });
+    interaction.editReply(`${target}'s nickname changed from ${u.escapeText(oldNick)} to ${u.escapeText(reset ? "default" : newNick)}.`);
   },
 
-  spamCleanup: async function(target, guild, auto = false) {
+  /**
+   * @param {string[]} searchContent
+   * @param {Discord.Guild} guild
+   * @param {Discord.Message<true>} message
+   * @param {boolean} auto
+   */
+  spamCleanup: async function(searchContent, guild, message, auto = false) {
+    /** @type {Discord.Collection<string, Discord.Message<true>>} */
     let toDelete = new u.Collection();
     let deleted = 0;
     let notDeleted = false;
     const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2);
-    const contents = auto ? u.unique(target.messages.map(m => m.content.toLowerCase())) : [target.content.toLowerCase()];
+    const contents = u.unique(searchContent);
     for (const [, channel] of guild.channels.cache) {
       if (channel.isTextBased() && channel.messages.cache.size > 0) {
-        const messages = channel.messages.cache.filter(m => m.createdTimestamp <= (timeDiff + target.createdTimestamp) && m.createdTimestamp >= (timeDiff - target.createdTimestamp) && m.author.id == (target.author?.id ?? target.id) && m.content.toLowerCase().includes(contents));
+        const messages = channel.messages.cache.filter(m =>
+          m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
+          m.createdTimestamp >= (timeDiff - message.createdTimestamp) &&
+          m.author.id == (message.author.id ?? message.id) &&
+          contents.includes(message.content.toLowerCase()));
         if (messages.size > 0) toDelete = toDelete.concat(messages);
       }
     }
-    let i = 0;
-    if (toDelete.size > 0) {
-      do {
-        try {
-          await toDelete.at(i).delete();
-          deleted++;
-        } catch (error) {
-          u.errorHandler(error).then(notDeleted ? u.clean : u.noop);
-          notDeleted = true;
-        }
-        i++;
-      } while (i < toDelete.size);
+    for (const [, msg] of toDelete) {
+      try {
+        await msg.delete();
+        deleted++;
+      } catch (error) {
+        u.errorHandler(error)?.then(notDeleted ? u.clean : u.noop);
+        notDeleted = true;
+      }
     }
+
     return { deleted, notDeleted, toDelete: toDelete.size };
   },
 
-  timeout: async function(interaction, target, reason) {
+  /**
+   * Briefly prevent someone from talking
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   * @param {number} time Minutes, default is 10
+   * @param {string} reason
+   */
+  timeout: async function(interaction, target, time = 10, reason) {
+    // Do it
+    await target.timeout(time * 60 * 1000, reason);
+
     // Log it
-    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+    interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
       u.embed({ author: interaction.member })
       .setTitle("User Timeout")
       .setDescription(`**${interaction.member}** timed out ${target}`)
       .addFields({ name: 'Reason', value: reason })
       .setColor(0x00ff00)
     ] });
-
-    // Do it
-    await target.timeout(10 * 60 * 1000, reason);
   },
 
+  /**
+   * Give someone the Trusted Role
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   */
   trust: async function(interaction, target) {
     if (target.roles.cache.has(u.sf.roles.trusted)) {
-      interaction.editReply({ content: `${target} is already trusted.` });
-      return;
+      return interaction.editReply(`${target} is already trusted.`);
     }
 
     target.send(
@@ -477,25 +514,25 @@ const modCommon = {
     ).catch(() => blocked(target));
 
     const embed = u.embed({ author: target })
-    .setTitle("User Given Trusted")
-    .setDescription(`${interaction.member} trusted ${target}.`);
-    if (target.roles.cache.has(u.sf.roles.untrusted)) {
-      await target.roles.remove(u.sf.roles.untrusted);
-    }
-
+      .setTitle("User Given Trusted")
+      .setDescription(`${interaction.member} trusted ${target}.`);
+    await u.db.user.updateWatch(target.id, false);
     await target.roles.add(u.sf.roles.trusted);
-    await interaction.editReply({ content: `${target} has been given the <@&${u.sf.roles.trusted}> role!` });
-    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
+    await interaction.editReply(`${target} has been given the <@&${u.sf.roles.trusted}> role!`);
+    interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
   },
 
+  /**
+   * Give someone the Trusted+ Role
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   */
   trustPlus: async function(interaction, target) {
     if (target.roles.cache.has(u.sf.roles.trustedplus)) {
-      await interaction.editReply({ content: `${target} is already trusted+.` });
-      return;
+      return interaction.editReply(`${target} is already trusted+.`);
     }
     if (!target.roles.cache.has(u.sf.roles.trusted)) {
-      await interaction.editReply({ content: `${target} needs <@&${u.sf.roles.trusted}> before they can be given <@&${u.sf.roles.trustedplus}>!` });
-      return;
+      return interaction.editReply(`${target} needs <@&${u.sf.roles.trusted}> before they can be given <@&${u.sf.roles.trustedplus}>!`);
     }
     target.send(
       "Congratulations! "
@@ -505,39 +542,39 @@ const modCommon = {
     ).catch(u.noop);
 
     const embed = u.embed({ author: target })
-    .setTitle("User Given Trusted+")
-    .setDescription(`${interaction.member} gave ${target} the <@&${u.sf.roles.trustedplus}> role.`);
+      .setTitle("User Given Trusted+")
+      .setDescription(`${interaction.member} gave ${target} the <@&${u.sf.roles.trustedplus}> role.`);
 
     await target.roles.add(u.sf.roles.trustedplus);
-    await interaction.editReply({ content: `${target} has been given the <@&${u.sf.roles.trustedplus}> role!` });
-    await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
+    await interaction.editReply(`${target} has been given the <@&${u.sf.roles.trustedplus}> role!`);
+    await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
   },
 
+  /**
+   * Let someone talk again
+   * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+   * @param {Discord.GuildMember} target
+   */
   unmute: async function(interaction, target) {
     try {
       // Don't unmute if not muted
       if (!target.roles.cache.has(u.sf.roles.muted)) {
-        await interaction.editReply({
-          content: `${target} isn't muted.`,
-        });
+        interaction.editReply(`${target} isn't muted.`);
         return;
       }
 
       // Remove Mute
       await target.roles.remove(u.sf.roles.muted);
-      if (target.voice.channel /* && !muteState.get(target.id)*/) await target.voice.setMute(false, "Mute resolved");
-      // muteState.delete(target.id);
+      if (target.voice.channel) await target.voice.setMute(false, "Mute resolved");
 
-      await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [
+      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
         u.embed({ author: target })
-        .setTitle("Member Unmute")
-        .setDescription(`**${interaction.member}** unmuted **${target}**`)
-        .setColor(0x00ff00)
+          .setTitle("Member Unmute")
+          .setDescription(`**${interaction.member}** unmuted **${target}**`)
+          .setColor(0x00ff00)
       ] });
 
-      await interaction.editReply({
-        content: `Unmuted ${target}.`,
-      });
+      interaction.editReply(`Unmuted ${target}.`);
     } catch (error) { u.errorHandler(error, interaction); }
   }
 };

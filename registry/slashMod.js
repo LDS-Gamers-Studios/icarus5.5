@@ -109,6 +109,12 @@ const rename = new u.sub()
       .setName("name")
       .setDescription("What name should I apply? (Defaults to a random silly name)")
       .setRequired(false)
+  )
+  .addBooleanOption(
+    new u.bool()
+      .setName("reset")
+      .setDescription("Resets their nickname to default")
+      .setRequired(false)
   );
 
 const watchlist = new u.sub()

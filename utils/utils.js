@@ -126,7 +126,7 @@ const utils = {
    * @function confirmInteraction
    * @param {Discord.BaseInteraction} interaction The interaction to confirm
    * @param {String} prompt The prompt for the confirmation
-   * @returns {Boolean}
+   * @returns {Promise<Boolean>}
    */
   confirmInteraction: async (interaction, prompt = "Are you sure?", title = "Confirmation Dialog") => {
     const reply = (interaction.deferred || interaction.replied) ? "editReply" : "reply";
@@ -228,7 +228,7 @@ const utils = {
   /**
    * Handles a command exception/error. Most likely called from a catch.
    * Reports the error and lets the user know.
-   * @param {Error} error The error to report.
+   * @param {Error | null} [error] The error to report.
    * @param {any} message Any Discord.Message, Discord.BaseInteraction, or text string.
    */
   errorHandler: function(error, message = null) {
@@ -277,7 +277,7 @@ const utils = {
     if (stack.length > 4096) stack = stack.slice(0, 4000);
 
     embed.setDescription(stack);
-    if (!config.silentMode || message instanceof Discord.BaseInteraction) errorLog.send({ embeds: [embed] });
+    return errorLog.send({ embeds: [embed] });
   },
   errorLog,
   /**
