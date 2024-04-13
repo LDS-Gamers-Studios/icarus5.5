@@ -173,6 +173,20 @@ const trust = new u.sub()
   )
   .addBooleanOption(apply("role", "add"));
 
+const timeout = new u.sub()
+  .setName("timeout")
+  .setDescription("Prevent someone from chatting without muting them")
+  .addUserOption(user("timeout"))
+  .addIntegerOption(
+    new u.int()
+      .setName("time")
+      .setDescription("How many minutes do you want to time them out for? (0 resets)")
+      .setRequired(false)
+      .setMinValue(0)
+      .setMaxValue(30)
+  )
+  .addStringOption(reason("timed out", false));
+
 const warn = new u.sub()
   .setName("warn")
   .setDescription("Give a user a warning")
@@ -208,6 +222,7 @@ module.exports = new u.cmd()
   .addSubcommand(slowmode)
   .addSubcommand(summary)
   .addSubcommand(trust)
+  .addSubcommand(timeout)
   .addSubcommand(warn)
   .addSubcommand(watch)
   .setDMPermission(false)

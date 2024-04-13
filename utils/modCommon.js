@@ -562,7 +562,7 @@ const modCommon = {
    * @param {Augur.GuildInteraction<"CommandSlash">} interaction
    * @param {Discord.GuildMember} target
    * @param {number} time Minutes, default is 10
-   * @param {string} reason
+   * @param {string} [reason]
    */
   timeout: async function(interaction, target, time = 10, reason) {
     const apply = time > 0;
@@ -575,20 +575,20 @@ const modCommon = {
       else if (!target.manageable) return `I have insufficient permissions to ${t} ${target}!`;
 
       // Don't mute if muted or vice versa
-      if (target.roles.cache.has(u.sf.roles.muted) == apply) return `They are already ${td}.`;
+      if (!apply && !target.communicationDisabledUntil) return `${target} is already ${td}.`;
 
       // Impose Timeout
-      await target.timeout(time * 60 * 1000, reason);
+      await target.timeout(time * 60 * 1000 || null, reason);
       success = true; // role changed
 
       await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
         u.embed({ author: target })
         .setTitle(`User ${T}`)
-        .setDescription(`**${interaction.member}** ${td} **${target}** for:\n${reason}`)
+        .setDescription(`**${interaction.member}** ${td} **${target}** ${apply ? `for ${time} minutes\n` : ""}\nReason:\n${reason ?? "[No Reason Provided]"}`)
         .setColor(apply ? 0x0000ff : 0x00ff00)
       ] });
 
-      return `${target} ${T}.`;
+      return `${target} has been ${td}${apply ? ` for ${time} minutes` : ""}.`;
     } catch (error) {
       await u.errorHandler(error, interaction);
       return "I ran into an error! " + (success ? `They *were* ${td} though.` : `I wasn't able to do the ${t}`);

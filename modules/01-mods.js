@@ -330,6 +330,19 @@ async function slashModTrust(interaction) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
+async function slashModTimeout(interaction) {
+  await interaction.deferReply({ ephemeral: true });
+  const member = interaction.options.getMember("user");
+  const time = interaction.options.getInteger("time") ?? 15;
+  const reason = interaction.options.getString("reason");
+  if (!member) return interaction.editReply(noTarget);
+
+  // evaluate and give appropriate trust level
+  const timeout = await c.timeout(interaction, member, time, reason ?? undefined);
+  return interaction.editReply(timeout);
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModWarn(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user");
@@ -384,6 +397,7 @@ Module.addInteraction({
       case "watchlist": return slashModShowWatchlist(interaction);
       case "summary": return slashModSummary(interaction);
       case "trust": return slashModTrust(interaction);
+      case "timeout": return slashModTimeout(interaction);
       case "warn": return slashModWarn(interaction);
       case "watch": return slashModWatch(interaction);
       case "grownups": return slashModGrownups(interaction);
