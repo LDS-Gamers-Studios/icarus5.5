@@ -5,7 +5,7 @@ const Augur = require("augurbot-ts"),
   config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
   u = require("../utils/utils"),
-  sf = require("../config/snowflakes-testing.json"),
+  p = require("../utils/perms"),
   c = require("../utils/modCommon");
 
 
@@ -36,8 +36,8 @@ async function spamming(client) {
   if (active.size == 0) return;
 
   // get resources
-  const ldsg = client.guilds.cache.get(sf.ldsg);
-  const trusted = ldsg?.roles.cache.get(sf.roles.trusted)?.members;
+  const ldsg = client.guilds.cache.get(u.sf.ldsg);
+  const trusted = ldsg?.roles.cache.get(u.sf.roles.trusted)?.members;
 
   // Get the limit for the type of verdict
   /** @param {string} type @param {string} id */
@@ -116,8 +116,8 @@ function filter(msg, text) {
  * @param {Discord.Message} msg Message
  */
 function processMessageLanguage(msg) {
+  if (!msg.inGuild() || msg.guild.id != u.sf.ldsg || msg.channel.id == u.sf.channels.modlogsplus) return;
   // catch spam
-  if (!msg.inGuild() || msg.guild.id != u.sf.ldsg) return;
   if (!msg.author.bot && !msg.webhookId && !c.grownups.has(msg.channel.id)) {
     const messages = active.get(msg.author.id)?.messages ?? [];
     messages.push(msg);
@@ -170,12 +170,15 @@ function processMessageLanguage(msg) {
   // HARD LANGUAGE FILTER
   if (matchedWords = msg.cleanContent.match(bannedWords)) {
     c.createFlag({ msg, member: msg.member, matches: matchedWords, pingMods: true, flagReason: "Automute word detected" });
+    c.watch(msg, msg.member, true);
     return true;
   }
 
   // SOFT LANGUAGE FILTER
   filter(msg, msg.cleanContent);
 
+  // LINK PREVIEW FILTER
+  if (msg.author.bot) return;
   for (const embed of msg.embeds) {
     const preview = [embed.author?.name ?? "", embed.title ?? "", embed.description ?? ""].join("\n").toLowerCase();
     const previewBad = preview.match(bannedWords) ?? [];
@@ -277,7 +280,6 @@ async function processCardAction(interaction) {
       return processing.delete(flag.id);
     }
 
-    // NEED TO ADD RETRACTIONS
     if (interaction.customId == "modCardInfo") {
       await interaction.deferReply({ ephemeral: true });
       // Don't count this as processing
@@ -291,25 +293,18 @@ async function processCardAction(interaction) {
 
       const e = await c.getSummaryEmbed(member);
 
-      interaction.editReply({ embeds: [
-        e.addFields(
-          { name: "ID", value: member.id, inline: true },
-          { name: "Activity", value: `Posts: ${userDoc.posts}`, inline: true },
-          { name: "Roles", value: roleString },
-          { name: "Joined", value: member.joinedAt?.toUTCString() ?? "Unknown", inline: true },
-          { name: "Account Created", value: member.user.createdAt.toUTCString(), inline: true }
-        )
-      ] });
+      interaction.editReply({ embeds: [e] });
       return;
     } else if (interaction.customId == "modCardClear") {
       // IGNORE FLAG
       await interaction.deferUpdate();
-
-      await u.db.infraction.remove(flag.id);
+      infraction.value = -1;
+      infraction.handler = mod.id;
+      await u.db.infraction.update(infraction);
       embed.setColor(0x00FF00)
         .addFields({ name: "Resolved", value: `${mod.toString()} cleared the flag.` });
-      embed.data.fields = embed.data.fields?.filter(f => !f.name.startsWith("Jump"));
-      await interaction.editReply({ embeds: [embed], components: [] });
+      embed.data.fields = embed.data.fields?.filter(f => !f.name.startsWith("Reverted"));
+      await interaction.editReply({ embeds: [embed], components: [c.revert] });
     } else if (interaction.customId == "modCardLink") {
       // LINK TO #MODDISCUSSION
       const md = interaction.client.getTextChannel(u.sf.channels.moddiscussion);
@@ -317,10 +312,31 @@ async function processCardAction(interaction) {
 
       embed.setFooter({ text: `Linked by ${u.escapeText(mod.displayName)}` });
       md?.send({ embeds: [embed] }).catch(u.noop);
+    } else if (interaction.customId == "modCardRetract") {
+      // Only the person who acted on the card (or someone in management) can retract an action
+      if (infraction.handler != mod.id && !p.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", ephemeral: true });
+      await interaction.deferUpdate();
+      const verbal = embed.data.fields?.find(f => f.value.includes("verbal"));
+      const revertedMsg = "The offending message can't be restored" + (infraction.value > 9 ? " and the Muted role may have to be removed and the user unwatched." : ".");
+      embed.setColor(0xFF0000)
+      .setFields(embed.data.fields?.filter(f => !f.name.startsWith("Resolved") && !f.name.startsWith("Reverted")) ?? [])
+      .addFields({ name: "Reverted", value: `${interaction.member} reverted the previous decision. ${infraction.value > 0 ? revertedMsg : ""}` });
+
+      await interaction.editReply({ embeds: [embed], components: c.modActions });
+      if (infraction.value > 0 || verbal) {
+        await interaction.guild.members.cache.get(infraction.discordId)?.send(
+          "## Moderation Update:"
+          + "\nThe LDSG Mods have retracted their previous decision. It may be that they previously clicked the wrong button or are considering a different outcome."
+          + "\nPlease be patient while the mods continue to review your case. If you don't hear anything soon from me or the mods, your case was likely cleared."
+        );
+      }
+      infraction.value = 0;
+      infraction.handler = undefined;
+      await u.db.infraction.update(infraction);
     } else {
       await interaction.deferUpdate();
       embed.setColor(0x0000FF);
-      infraction.mod = mod.id;
+      infraction.handler = mod.id;
       const member = interaction.guild.members.cache.get(infraction.discordId);
 
       switch (interaction.customId) {
@@ -349,10 +365,12 @@ async function processCardAction(interaction) {
             }).catch(u.noop);
           } catch (error) { u.errorHandler(error, "Mute user via card"); }
         } else if (!member) {
-          const roles = (await u.db.user.fetchUser(infraction.discordId))?.roles.concat(u.sf.roles.muted, u.sf.roles.untrusted) ?? [];
+          // Apply muted roles in post
+          const roles = (await u.db.user.fetchUser(infraction.discordId))?.roles.concat(u.sf.roles.muted) ?? [];
           await u.db.user.updateRoles(undefined, roles, infraction.discordId);
+          await c.watch(interaction, member ?? infraction.discordId, true);
         }
-        embed.addFields({ name: "Resolved", value: `${mod.toString()} muted the member.` });
+        embed.addFields({ name: "Resolved", value: `${mod} muted the member.` });
         break;
       }
       await u.db.infraction.update(infraction);
@@ -364,21 +382,21 @@ async function processCardAction(interaction) {
           .setDescription(embed.data.description ?? null)
           .setTimestamp(flag.createdAt);
 
-        const response = (
+        const response = "## 🚨 Message from the LDSG Mods:\n" + (
           (infraction.value == 0) ?
-            `The LDSG Mods would like to speak with you about the following post. It may be that they're looking for some additional context or just want to handle things informally.\n\n**${mod.toString()}** will be reaching out to you shortly, if they haven't already.` :
-            `We have received one or more complaints regarding content you posted. We have reviewed the content in question and have determined, in our sole discretion, that it is against our code of conduct (<https://ldsgamers.com/code-of-conduct>). This content was removed on your behalf. As a reminder, if we believe that you are frequently in breach of our code of conduct or are otherwise acting inconsistently with the letter or spirit of the code, we may limit, suspend or terminate your access to the LDSG Discord server.\n\n**${mod.toString()}** has issued this warning.`
+            `We would like to speak with you about the following post. It may be that we're looking for some additional context or just want to handle things informally.\n\n**${mod.toString()}** will be reaching out to you shortly, if they haven't already.` :
+            c.warnMessage(mod.displayName)
         );
 
         member.send({ content: response, embeds: [quote] }).catch(() => c.blocked(member));
       }
 
       const dummy = { value: "" };
-      embed.data.fields = embed.data.fields?.filter(f => !f.name || !f.name.startsWith("Jump"));
+      embed.data.fields = embed.data.fields?.filter(f => !f.name || !f.name.startsWith("Jump") && !f.name.startsWith("Reverted"));
       (embed.data.fields?.find(f => f.name?.startsWith("Infraction")) ?? dummy).vlaue = `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}`;
 
-      await interaction.editReply({ embeds: [embed], components: [] }).catch(() => {
-        interaction.message.edit({ embeds: [embed], components: [] }).catch((error) => u.errorHandler(error, interaction));
+      await interaction.editReply({ embeds: [embed], components: [c.revert] }).catch(() => {
+        interaction.message.edit({ embeds: [embed], components: [c.revert] }).catch((error) => u.errorHandler(error, interaction));
       });
 
       if (infraction.value > 0) {
@@ -402,13 +420,15 @@ const Module = new Augur.Module()
   if (newMsg.partial) newMsg = await newMsg.fetch();
   processMessageLanguage(newMsg);
 })
-.addInteraction({ id: "modCardClear", type: "Button", onlyGuild: true, process: processCardAction })
-.addInteraction({ id: "modCardVerbal", type: "Button", onlyGuild: true, process: processCardAction })
-.addInteraction({ id: "modCardMinor", type: "Button", onlyGuild: true, process: processCardAction })
-.addInteraction({ id: "modCardMajor", type: "Button", onlyGuild: true, process: processCardAction })
-.addInteraction({ id: "modCardMute", type: "Button", onlyGuild: true, process: processCardAction })
-.addInteraction({ id: "modCardInfo", type: "Button", onlyGuild: true, process: processCardAction })
-.addInteraction({ id: "modCardLink", type: "Button", onlyGuild: true, process: processCardAction })
+.addEvent("interactionCreate", (int) => {
+  if (!int.inCachedGuild() || !int.isButton()) return;
+  if (!p.calc(int.member, ["mod"])) {
+    int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
+    return;
+  }
+  if (['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract'] // mod card actions minus the modCard part
+    .includes(int.customId.replace("modCard", "").toLowerCase())) return processCardAction(int);
+})
 // @ts-ignore
 .addEvent("filterUpdate", () => pf = new profanityFilter())
 .addEvent("ready", () => {

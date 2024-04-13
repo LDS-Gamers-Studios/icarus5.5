@@ -334,6 +334,15 @@ const utils = {
     return selections[Math.floor(Math.random() * selections.length)];
   },
   /**
+   * Convert to a fancier time string
+   * @param {Date} time The input time
+   * @param {Discord.TimestampStylesString} format The format to display in
+   * @returns {"<t:time:format>"}
+   */
+  time: function(time, format = "f") {
+    return Discord.time(time, format);
+  },
+  /**
    * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
    */
   sf: config.devMode ? Object.assign(tsf, csf) : sf,
