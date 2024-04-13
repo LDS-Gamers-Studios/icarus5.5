@@ -48,7 +48,7 @@ const Module = new Augur.Module()
         u.errorLog.send({ embeds: [
           u.embed({
             title: "Update New Channel Permissions",
-            description: `Insufficient permissions to update channel ${channel.name}. Muted permissions need to be applied manually. Default permissions for Muted ${ductTapeExclude ? "and Duct Tape " : ""}are:\n${JSON.stringify(mutedPerms, null, 2)}`
+            description: `Insufficient permissions to update channel ${channel.name}. Muted permissions need to be applied manually. Default permissions for Muted ${ductTapeExclude ? "and Duct Tape " : ""}are:\n${JSON.stringify(mutedPerms, null, 2).replace(/[{}"]/g, "")}`
           })
         ] });
       }
@@ -66,7 +66,8 @@ const Module = new Augur.Module()
         u.embed({
           author: user,
           title: `${user.username} has been banned`,
-          color: 0x0000ff
+          color: 0x0000ff,
+          description: user.toString()
         })
       ]
     });
@@ -96,12 +97,15 @@ const Module = new Augur.Module()
           !guild.roles.cache.get(role)?.managed &&
           !dangerRoles.includes(role)
         ));
+        const oldDanger = user.roles.filter(role => guild.roles.cache.has(role) && dangerRoles.includes(role))
+          .map(r => guild.roles.cache.get(r));
         if (user.roles.length > 0) member = await member.roles.add(toAdd);
 
-        let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
+        let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.toString()).join(", ") + (oldDanger.length > 0 ? "\nOld roles not given: " + oldDanger.join(", ") : "") ;
         if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
 
         embed.setTitle(member.displayName + " has rejoined the server.")
+          .setDescription(member.toString())
           .addFields({ name: "Roles", value: roleString });
         welcomeString = `Welcome back, ${member}! Glad to see you again.`;
 
@@ -150,10 +154,12 @@ const Module = new Augur.Module()
     if (member.guild.id == u.sf.ldsg) {
       if (member.partial) member = await member.fetch();
       await u.db.user.updateTenure(member);
+      await u.db.user.updateRoles(member);
       const user = await u.db.user.fetchUser(member.id);
       const embed = u.embed({
         author: member,
         title: `${member.displayName} has left the server`,
+        description: member.toString(),
         color: 0x5865f2,
       })
       .addFields(
@@ -173,6 +179,7 @@ const Module = new Augur.Module()
       const user = await u.db.user.fetchUser(newMember.id, true).catch(u.noop);
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
+        .setDescription(newUser.toString())
         .setFooter({ text: `${user?.posts ?? 0} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
       if (oldUser.displayName !== newUser.displayName || oldUser.username !== newUser.username) {
         embed.addFields({ name: "**Username Update**", value: `**Old:** ${u.escapeText(`${oldUser?.username} (displaying as ${oldUser?.displayName})`)}\n**New:** ${u.escapeText(`${newUser.username} (displaying as ${newUser.displayName})`)}` });
@@ -196,6 +203,7 @@ const Module = new Augur.Module()
       const user = await u.db.user.fetchUser(newMember.id, true).catch(u.noop);
       const embed = u.embed({ author: oldMember })
         .setTitle("User Update")
+        .setDescription(newMember.toString())
         .setFooter({ text: `${user?.posts ?? 0} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
       if (oldMember.nickname !== newMember.nickname) {
         embed.addFields({ name: "**Nickname Update**", value: `**Old:** ${u.escapeText(oldMember?.nickname ?? "")}\n**New:** ${u.escapeText(newMember.nickname ?? "")}` });

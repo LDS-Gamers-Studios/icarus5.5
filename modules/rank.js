@@ -10,10 +10,7 @@ const active = new Set();
 
 /**
  * @typedef Role
- * @prop {string} base
- * @prop {string} color
- * @prop {string[]} parents
- * @prop {boolean} keepOthers
+ * @prop {string} role
  * @prop {number} level
  */
 
@@ -24,19 +21,22 @@ let rewards = new u.Collection();
 async function slashRankLeaderboard(interaction) {
   try {
     await interaction.deferReply();
-
+    const lifetime = interaction.options.getBoolean("lifetime") ?? false;
     const members = interaction.guild.members.cache;
     const leaderboard = await u.db.user.getLeaderboard({
       members,
-      member: interaction.member.id
+      member: interaction.member.id,
+      season: !lifetime
     });
-    const records = leaderboard.map(l => `${l.rank}: ${members.get(l.discordId)} (${(l.currentXP ?? 0).toLocaleString()} XP)`);
+    const records = leaderboard.map(l => `${l.rank}: ${members.get(l.discordId)} (${(lifetime ? l.totalXP : l.currentXP ?? 0).toLocaleString()} XP)`);
     const embed = u.embed()
-    .setTitle("LDSG Season Chat Leaderboard")
-    .setThumbnail(interaction.guild.iconURL({ extension: "png" }))
-    .setURL("https://my.ldsgamers.com/leaderboard")
-    .setDescription("Current season chat rankings:\n" + records.join("\n"))
-    .setFooter({ text: "Use `/rank track` to join the leaderboard!" });
+      .setTitle("LDSG Season Chat Leaderboard")
+      .setThumbnail(interaction.guild.iconURL({ extension: "png" }))
+      .setURL("https://my.ldsgamers.com/leaderboard")
+      .setDescription(`${lifetime ? "Lifetime" : "Current season"} chat rankings:\n`
+        + records.join("\n")
+        + `\n\nUse </rank track:${u.sf.commands.slashRank}> to join the leaderboard!`
+      );
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) { u.errorHandler(error, interaction); }
@@ -89,7 +89,7 @@ async function slashRankView(interaction) {
         "ain't interested in no XP gettin'.",
         "don't talk to me no more, so I ignore 'em."
       ];
-      await interaction.editReply(`**${member}** ${u.rand(snark)}\n(Try \`/rank track\` if you want to participate in chat ranks!)`);
+      await interaction.editReply(`**${member}** ${u.rand(snark)}\n(Try </rank track:${u.sf.commands.slashRank}> if you want to participate in chat ranks!)`).then(u.clean);
     }
   } catch (error) { u.errorHandler(error, interaction); }
 }
@@ -103,10 +103,10 @@ async function rankClockwork(client) {
       for (const user of response.users) {
         const member = ldsg?.members.cache.get(user.discordId) ?? await ldsg?.members.fetch(user.discordId).catch(u.noop);
         if (!member) continue;
-
         try {
           // Remind mods to trust people!
-          if ((user.posts % 25 == 0) && !member.roles.cache.has(u.sf.roles.trusted) && !member.roles.cache.has(u.sf.roles.untrusted)) {
+          const trustStatus = await u.db.user.fetchUser(member.id);
+          if ((user.posts % 25 == 0) && !member.roles.cache.has(u.sf.roles.trusted) && !trustStatus?.watching) {
             const modLogs = client.getTextChannel(u.sf.channels.modlogs);
             modLogs?.send({
               content: `${member} has posted ${user.posts} times in chat without being trusted!`,
@@ -133,13 +133,11 @@ async function rankClockwork(client) {
               let message = `${u.rand(Rank.messages)} ${u.rand(Rank.levelPhrase).replace("%LEVEL%", lvl)}`;
 
               if (rewards.has(lvl)) {
-                const reward = ldsg?.roles.cache.get(rewards.get(lvl)?.base ?? "");
-                const roles = new Set(member.roles.cache.keys());
+                const reward = ldsg?.roles.cache.get(rewards.get(lvl)?.role ?? "");
                 if (!reward) throw new Error(`Rank Role ${rewards.get(lvl)} couldn't be found!`);
-                for (const [, rewardInfo] of rewards) { roles.delete(rewardInfo.base); }
-                roles.add(reward.id);
-                await member.roles.set(Array.from(roles.values()));
-                message += `\n\nYou have been awarded the ${reward.name} role!`;
+                await member.roles.remove(rewards.map(r => r.role));
+                await member.roles.add(reward);
+                message += `\n\nYou have been awarded the **${reward.name}** role!`;
               }
               member.send(message).catch(u.noop);
             }
@@ -156,24 +154,16 @@ async function rankClockwork(client) {
 const Module = new Augur.Module()
 .addInteraction({
   name: "rank",
-  // guildId: u.sf.ldsg,
+  guildId: u.sf.ldsg,
+  onlyGuild: true,
   id: u.sf.commands.slashRank,
   process: async (interaction) => {
     try {
       const subcommand = interaction.options.getSubcommand(true);
-
-      if (subcommand === "view") {
-        await slashRankView(interaction);
-      } else if (subcommand === "leaderboard") {
-        await slashRankLeaderboard(interaction);
-      } else if (subcommand === "track") {
-        await slashRankTrack(interaction);
-      } else {
-        interaction.reply({
-          content: "Well, this is embarrasing. I don't know what you asked for.",
-          ephemeral: true
-        });
-        u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
+      switch (subcommand) {
+      case "view": return slashRankView(interaction);
+      case "leaderboard": return slashRankLeaderboard(interaction);
+      case "track": return slashRankTrack(interaction);
       }
     } catch (error) {
       u.errorHandler(error, interaction);
@@ -191,21 +181,11 @@ const Module = new Augur.Module()
     await doc.useServiceAccountAuth(config.google.creds);
     await doc.loadInfo();
     /** @type {any[]} */
-    // @ts-ignore
+    // @ts-ignore cuz google sheets be dumb
     const roles = await doc.sheetsByTitle["Roles"].getRows();
-    const a = roles.filter(r => r["Local ID"]?.startsWith("R")).map(/** @return {Role} */ r => {
-      const parents = [];
-      if (r["Parent Roles"].length > 0) {
-        for (const role of r["Parent Roles"].split(" ")) {
-          const found = roles.find(b => b["Local ID"] == role);
-          if (found) parents.push(found);
-        }
-      }
+    const a = roles.filter(r => r["Local ID"]?.startsWith("R")).map(r => {
       return {
-        base: r["Base Role ID"],
-        color: r["Color Role ID"],
-        parents,
-        keepOthers: false,
+        role: r["Base Role ID"],
         level: parseInt(r["Level"])
       };
     });
@@ -225,10 +205,10 @@ const Module = new Augur.Module()
     !u.parse(msg) &&
     !msg.author.bot
   ) {
-    console.log("GONNA GIVE!!!")
     active.add(msg.author.id);
   }
 })
+// @ts-ignore i quit getting this to work, it works but the typing on augur's end is nasty
 .setClockwork(() => {
   try {
     return setInterval(rankClockwork, 60000, Module.client);
