@@ -12,6 +12,7 @@ const Infraction = require("../models/Infraction.model");
  * @prop {String} description The description of the infraction
  * @prop {Number} value The point value of the infraction
  * @prop {String} mod The mod's Discord Id
+ * @prop {String} [handler] Who handled the flag
  * @prop {Date} timestamp The time the flag was created
  */
 
@@ -37,7 +38,11 @@ module.exports = {
     if (typeof discordId != "string") throw new TypeError(outdated);
     const since = moment().subtract(time, "days");
     /** @type {Infraction[]} */
-    const records = (await Infraction.find({ discordId, timestamp: { $gte: since } }).exec()).map(r => r.toObject());
+    const records = (await Infraction.find({ discordId, timestamp: { $gte: since } })
+      .exec())
+      .map(r => r.toObject())
+      // -1 is cleared
+      .filter(r => r.value > -1);
     return {
       discordId,
       count: records.length,
@@ -53,7 +58,7 @@ module.exports = {
      */
   remove: function(flag) {
     if (typeof flag != "string") throw new TypeError(outdated);
-    return Infraction.findOneAndDelete({ flag }).exec().then(f => f?.toObject());
+    return Infraction.findOneAndDelete({ flag }, { new: false }).exec().then(f => f?.toObject());
   },
   /**
      * Save an infraction
@@ -65,15 +70,16 @@ module.exports = {
     if (data.channel && typeof data.channel != "string") throw new TypeError(outdated);
     if (data.flag && typeof data.flag != "string") throw new TypeError(outdated);
     if (data.mod && typeof data.mod != "string") throw new TypeError(outdated);
+    if (data.handler && typeof data.handler != "string") throw new TypeError(outdated);
 
     return new Infraction(data).save().then(i => i.toObject());
   },
   /**
-     * Update an infraction
-     * @param {Infraction & {_id: string}} infraction The infraction, post-update
-     * @return {Promise<Infraction | undefined>}
-     */
+   * Update an infraction
+   * @param {Infraction} infraction The edited infraction
+   * @return {Promise<Infraction | undefined>}
+   */
   update: function(infraction) {
-    return Infraction.findByIdAndUpdate(infraction._id, infraction, { new: true }).exec().then(f => f?.toObject());
+    return Infraction.findOneAndUpdate({ flag: infraction.flag }, { handler: infraction.handler, value: infraction.value }, { new: true }).exec().then(f => f?.toObject());
   }
 };

@@ -176,14 +176,15 @@ const models = {
   /**
    * Update a member's roles in the database
    * @function updateRoles
-   * @param {Discord.GuildMember} member The member to update
-   * @param {Discord.Collection<string, Discord.Role>} [roles]
+   * @param {Discord.GuildMember} [member] The member to update
+   * @param {string[]} [roles]
+   * @param {string} [backupId]
    * @return {Promise<UserRecord>}
    */
-  updateRoles: function(member, roles) {
+  updateRoles: function(member, roles, backupId) {
     return User.findOneAndUpdate(
-      { discordId: member.id },
-      { $set: { roles: Array.from((roles ?? member.roles.cache).keys()) } },
+      { discordId: backupId ?? member?.id },
+      { $set: { roles: Array.from(roles ?? member?.roles.cache.keys() ?? []) } },
       { new: true, upsert: true }
     ).exec().then(u => u.toObject());
   },

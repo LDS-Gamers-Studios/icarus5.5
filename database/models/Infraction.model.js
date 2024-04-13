@@ -33,6 +33,10 @@ const InfractionSchema = new Schema({
   mod: {
     type: String,
     required: true
+  },
+  handler: {
+    type: String,
+    required: false
   }
 });
 
