@@ -2,18 +2,30 @@ const mongoose = require("mongoose"),
   Schema = mongoose.Schema;
 
 const BankSchema = new Schema({
-  discordId: String,
+  discordId: {
+    type: String,
+    required: true
+  },
   timestamp: {
     type: Date,
     default: Date.now
   },
-  description: String,
-  value: Number,
+  description: {
+    type: String,
+    required: true
+  },
+  value: {
+    type: Number,
+    required: true
+  },
   currency: {
     type: String,
     default: "em"
   },
-  giver: String,
+  giver: {
+    type: String,
+    required: true
+  },
   hp: {
     type: Boolean,
     default: false
