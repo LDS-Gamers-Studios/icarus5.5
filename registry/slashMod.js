@@ -44,6 +44,18 @@ const filter = new u.sub()
   )
   .addBooleanOption(apply('word', 'add'));
 
+const grownups = new u.sub()
+  .setName("grownups")
+  .setDescription("The grownups are talking here, so I'll ignore the messages sent here for a bit.")
+  .addIntegerOption(
+    new u.int()
+      .setName("time")
+      .setDescription("How long do you want me to leave?")
+      .setRequired(false)
+      .setMinValue(0)
+      .setMaxValue(30)
+  );
+
 const summary = new u.sub()
   .setName("summary")
   .setDescription("Check user details and infractions")
@@ -185,6 +197,7 @@ module.exports = new u.cmd()
   .setDescription("Modding actions within LDSG")
   .addSubcommand(ban)
   .addSubcommand(filter)
+  .addSubcommand(grownups)
   .addSubcommand(kick)
   .addSubcommand(mute)
   .addSubcommand(note)

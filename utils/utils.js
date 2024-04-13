@@ -348,6 +348,11 @@ const utils = {
       setTimeout(fulfill, t);
     });
   },
+  /**
+   * @template T
+   * @param {T[]} items
+   * @returns {T[]}
+   */
   unique: function(items) {
     return [...new Set(items)];
   }

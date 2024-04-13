@@ -110,7 +110,7 @@ const modCommon = {
 
         // Save roles
         targetRoles.delete(u.sf.roles.trusted);
-        u.db.user.updateRoles(target, targetRoles);
+        u.db.user.updateRoles(target, targetRoles.map(r => r.id));
 
         // Log it
         interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
@@ -134,17 +134,19 @@ const modCommon = {
    * Generate and send a warning card in #mod-logs
    * @param {object} flagInfo
    * @param {Discord.Message} flagInfo.msg The message for the warning.
-   * @param {Discord.GuildMember} flagInfo.member The member for the warning.
-   * @param {String|[String]} flagInfo.matches If automatic, the reason for the flag.
-   * @param {Boolean} flagInfo.pingMods Whether to ping the mods.
-   * @param {Discord.GuildMember} flagInfo.snitch The user bringing up the message.
+   * @param {Discord.GuildMember|Discord.User} flagInfo.member The member for the warning.
+   * @param {String|String[]} [flagInfo.matches] If automatic, the reason for the flag.
+   * @param {Boolean} [flagInfo.pingMods] Whether to ping the mods.
+   * @param {String} [flagInfo.snitch] The user bringing up the message.
    * @param {String} flagInfo.flagReason The reason the user is bringing it up.
-   * @param {String} flagInfo.furtherInfo Where required, further information.
+   * @param {String} [flagInfo.furtherInfo] Where required, further information.
    */
   createFlag: async function(flagInfo) {
     let { matches } = flagInfo;
     const { msg, member, pingMods, snitch, flagReason, furtherInfo } = flagInfo;
     const client = msg.client;
+    const isMember = member instanceof Discord.GuildMember;
+    const bot = () => isMember ? member.user.bot : member.bot;
 
     if (!msg.inGuild()) return null;
 
@@ -164,25 +166,25 @@ const modCommon = {
 
     if (msg.channel.parentId == u.sf.channels.minecraftcategory && msg.webhookId) return; // I lied actually do stuff
     if (snitch) {
-      embed.addFields({ name: "Flagged By", value: snitch.toString(), inline: true })
+      embed.addFields({ name: "Flagged By", value: snitch, inline: true })
       .addFields({ name: "Reason", value: flagReason, inline: true });
       if (furtherInfo) embed.addFields({ name: "Further Information", value: furtherInfo, inline: true });
     }
 
     embed.addFields({ name: `Infraction Summary (${infractionSummary.time} Days)`, value: `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}` });
-    if (member.user.bot) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
+    if (bot()) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
 
     const content = [];
     if (pingMods) {
       u.clean(msg, 0);
       const ldsg = client.guilds.cache.get(u.sf.ldsg);
-      if (!member.roles.cache.has(u.sf.roles.muted)) {
+      if (isMember ? !member.roles.cache.has(u.sf.roles.muted) : true) {
         content.push(ldsg?.roles.cache.get(u.sf.roles.mod)?.toString());
       }
-      if (member.user.bot) {
+      if (bot()) {
         content.push("The message has been deleted. The member was *not* muted, on account of being a bot.");
       } else {
-        if (!member.roles?.cache.has(u.sf.roles.muted)) {
+        if (isMember && !member.roles?.cache.has(u.sf.roles.muted)) {
           await member.roles?.add(u.sf.roles.muted);
           if (member.voice?.channel) {
             member.voice?.disconnect("Auto-mute");
@@ -206,7 +208,7 @@ const modCommon = {
 
     if (!card) throw new Error("Card creation failed!");
 
-    if (!member.user.bot && msg) {
+    if (!bot() && msg) {
       const infraction = {
         discordId: member.id,
         channel: msg.channel.id,
@@ -294,7 +296,7 @@ const modCommon = {
 
         // Save roles
         targetRoles.delete(u.sf.roles.trusted);
-        u.db.user.updateRoles(target, targetRoles);
+        u.db.user.updateRoles(target, targetRoles.map(r => r.id));
 
         // Log it
         interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
@@ -449,7 +451,7 @@ const modCommon = {
     let toDelete = new u.Collection();
     let deleted = 0;
     let notDeleted = false;
-    const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2);
+    const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2) * 1000;
     const contents = u.unique(searchContent);
     for (const [, channel] of guild.channels.cache) {
       if (channel.isTextBased() && channel.messages.cache.size > 0) {
@@ -576,7 +578,9 @@ const modCommon = {
 
       interaction.editReply(`Unmuted ${target}.`);
     } catch (error) { u.errorHandler(error, interaction); }
-  }
+  },
+  /** @type {Discord.Collection<string, any>} */
+  grownups: new u.Collection()
 };
 
 module.exports = modCommon;

@@ -53,7 +53,7 @@ module.exports = {
      */
   remove: function(flag) {
     if (typeof flag != "string") throw new TypeError(outdated);
-    return Infraction.findOneAndDelete({ flag }).exec().then(f => f?.toObject());
+    return Infraction.findOneAndDelete({ flag }, { new: false }).exec().then(f => f?.toObject());
   },
   /**
      * Save an infraction
@@ -70,10 +70,10 @@ module.exports = {
   },
   /**
      * Update an infraction
-     * @param {Infraction & {_id: string}} infraction The infraction, post-update
+     * @param {Infraction} infraction The edited infraction
      * @return {Promise<Infraction | undefined>}
      */
   update: function(infraction) {
-    return Infraction.findByIdAndUpdate(infraction._id, infraction, { new: true }).exec().then(f => f?.toObject());
+    return Infraction.findOneAndUpdate({ flag: infraction.flag }, { mod: infraction.mod, value: infraction.value }, { new: true }).exec().then(f => f?.toObject());
   }
 };

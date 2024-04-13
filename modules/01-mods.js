@@ -389,8 +389,8 @@ async function slashModSlowmode(interaction) {
   const ch = interaction.channel;
   if (!ch) return;
 
-  if (duration == 0) {
-    await ch.edit({ rateLimitPerUser: 0 }).catch(e => u.errorHandler(e, interaction));
+  if (duration == 0 || delay == 0) {
+    await ch.setRateLimitPerUser(0).catch(e => u.errorHandler(e, interaction));
     const old = molasses.get(ch.id);
     if (old) {
       clearTimeout(old);
@@ -411,7 +411,7 @@ async function slashModSlowmode(interaction) {
     if (prev) clearTimeout(prev.timeout);
 
     const limit = prev ? prev.limit : ch.rateLimitPerUser;
-    await ch.edit({ rateLimitPerUser: delay });
+    await ch.setRateLimitPerUser(delay);
 
     let durationStr = "indefinitely";
 
@@ -545,52 +545,44 @@ async function slashModWarn(interaction) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
+async function slashModGrownups(interaction) {
+  const time = Math.min(30, interaction.options.getInteger("time") ?? 15);
+  if (!interaction.channel) return interaction.reply({ content: "Well that's awkward, I can't access the channel you're in!", ephemeral: true });
+
+  interaction.reply(time == 0 ? `*Whistles and wanders back in*` : `*Whistles and wanders off for ${time} minutes...*`);
+
+  if (c.grownups.has(interaction.channel.id)) {
+    clearTimeout(c.grownups.get(interaction.channel.id));
+  }
+  if (time == 0) {
+    c.grownups.delete(interaction.channel.id);
+  } else {
+    c.grownups.set(interaction.channel.id, setTimeout((channel) => {
+      c.grownups.delete(channel.id);
+      channel.send("*I'm watching you again...* :eyes:");
+    }, time * 60 * 1000, interaction.channel));
+  }
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModMain(interaction) {
   try {
     const subcommand = interaction.options.getSubcommand(true);
     switch (subcommand) {
-    case "ban":
-      await slashModBan(interaction);
-      break;
-    case "filter":
-      await slashModFilter(interaction);
-      break;
-    case "kick":
-      await slashModKick(interaction);
-      break;
-    case "mute":
-      await slashModMute(interaction);
-      break;
-    case "note":
-      await slashModNote(interaction);
-      break;
-    case "office":
-      await slashModOffice(interaction);
-      break;
-    case "purge":
-      await slashModPurge(interaction);
-      break;
-    case "rename":
-      await slashModRename(interaction);
-      break;
-    case "slowmode":
-      await slashModSlowmode(interaction);
-      break;
-    case "watchlist":
-      await slashModShowWatchlist(interaction);
-      break;
-    case "summary":
-      await slashModSummary(interaction);
-      break;
-    case "trust":
-      await slashModTrust(interaction);
-      break;
-    case "warn":
-      await slashModWarn(interaction);
-      break;
-    case "watch":
-      await slashModWatch(interaction);
-      break;
+    case "ban": return slashModBan(interaction);
+    case "filter": return slashModFilter(interaction);
+    case "kick": return slashModKick(interaction);
+    case "mute": return slashModMute(interaction);
+    case "note": return slashModNote(interaction);
+    case "office": return slashModOffice(interaction);
+    case "purge": return slashModPurge(interaction);
+    case "rename": return slashModRename(interaction);
+    case "slowmode": return slashModSlowmode(interaction);
+    case "watchlist": return slashModShowWatchlist(interaction);
+    case "summary": return slashModSummary(interaction);
+    case "trust": return slashModTrust(interaction);
+    case "warn": return slashModWarn(interaction);
+    case "watch": return slashModWatch(interaction);
+    case "grownups": return slashModGrownups(interaction);
     default:
       u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
     }
