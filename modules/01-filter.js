@@ -125,7 +125,7 @@ function processMessageLanguage(msg) {
   }
 
   processDiscordInvites(msg);
-  console.log("msg");
+
   if (c.grownups.has(msg.channel.id)) return;
 
   /** @param {string} prop @param {{tld: string | undefined, url: string}} l */

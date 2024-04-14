@@ -169,7 +169,6 @@ const modCommon = {
         { name: "Jump to Post", value: `[Original Message](${msg.url})`, inline: true },
         { name: "User", value: msg.webhookId ? msg.author.username ?? (await msg.fetchWebhook()).name : member.displayName ?? "Unknown User" }
       );
-    console.log('msg2');
     if (msg.channel.parentId == u.sf.channels.minecraftcategory && msg.webhookId) {
       msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({ embeds: [embed] });
     }
