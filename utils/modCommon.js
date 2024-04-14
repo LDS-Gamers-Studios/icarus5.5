@@ -546,7 +546,7 @@ const modCommon = {
     }
     for (const [, msg] of toDelete) {
       try {
-        await msg.delete();
+        await u.clean(msg, 0);
         deleted++;
       } catch (error) {
         u.errorHandler(error)?.then(m => {notDeleted ? u.clean(m) : u.noop();});
