@@ -103,11 +103,10 @@ async function spamming(client) {
  */
 function filter(msg, text) {
   // PROFANITY FILTER
-  if (!msg.member) return;
   const noWhiteSpace = text.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~"'()?|]/g, "").replace(/\s\s+/g, " ");
   const filtered = pf.scan(noWhiteSpace);
   if ((filtered.length > 0) && filtered[0] && (noWhiteSpace.length > 0)) {
-    c.createFlag({ msg, member: msg.member, matches: filtered, flagReason: "Profanity detected" });
+    c.createFlag({ msg, member: msg.member ?? msg.author, matches: filtered, flagReason: "Profanity detected" });
     return true;
   } else { return false; }
 }
@@ -126,8 +125,8 @@ function processMessageLanguage(msg) {
   }
 
   processDiscordInvites(msg);
-
-  if (c.grownups.has(msg.channel.id) || !msg.member) return;
+  console.log("msg");
+  if (c.grownups.has(msg.channel.id)) return;
 
   /** @param {string} prop @param {{tld: string | undefined, url: string}} l */
   const linkFilter = (prop, l) => new RegExp(banned[prop].join('|'), 'gi').test(linkMap(l));
@@ -148,21 +147,21 @@ function processMessageLanguage(msg) {
     const scamLinks = matchedLinks.filter(l => linkFilter("scam", l)).filter(l => !linkFilter("exception", l)).map(linkMap);
     if (bannedLinks.length > 0) {
       // Naughty Links
-      c.createFlag({ msg, member: msg.member, matches: bannedLinks, pingMods: true, flagReason: "Dangerous Link" });
+      c.createFlag({ msg, member: msg.member ?? msg.author, matches: bannedLinks, pingMods: true, flagReason: "Dangerous Link" });
       return true;
     } else if (scamLinks.length > 0) {
       // Scam Links
       u.clean(msg, 0);
       msg.reply({ content: "That link is generally believed to be a scam/phishing site. Please be careful!", failIfNotExists: false }).catch(u.noop);
-      c.createFlag({ msg, member: msg.member, matches: scamLinks, flagReason: "Suspected scam links (Auto-Removed)" });
+      c.createFlag({ msg, member: msg.member ?? msg.author, matches: scamLinks, flagReason: "Suspected scam links (Auto-Removed)" });
       return true;
     } else if (bannedWords.exec(msg.cleanContent) && matchedLinks.find(l => l.url.includes("tenor") || l.url.includes("giphy"))) {
       // Bad gif link
       u.clean(msg, 0);
       msg.reply({ content: "Looks like that link might have some harsh language. Please be careful!", failIfNotExists: false }).catch(u.noop);
-      c.createFlag({ msg, member: msg.member, matches: matchedLinks.map(l => (l.tld ?? "") + l.url), flagReason: "Gif Link Language (Auto-Removed)" });
+      c.createFlag({ msg, member: msg.member ?? msg.author, matches: matchedLinks.map(l => (l.tld ?? "") + l.url), flagReason: "Gif Link Language (Auto-Removed)" });
       return true;
-    } else if (!msg.webhookId && !msg.author.bot && !msg.member.roles.cache.has(u.sf.roles.trusted)) {
+    } else if (!msg.webhookId && !msg.author.bot && msg.member && !msg.member.roles.cache.has(u.sf.roles.trusted)) {
       // General untrusted link flag
       c.createFlag({ msg, member: msg.member, matches: matchedLinks.map(l => (l.tld ?? "") + l.url), flagReason: "Links prior to being trusted" });
     }
@@ -170,8 +169,8 @@ function processMessageLanguage(msg) {
 
   // HARD LANGUAGE FILTER
   if (matchedWords = msg.cleanContent.match(bannedWords)) {
-    c.createFlag({ msg, member: msg.member, matches: matchedWords, pingMods: true, flagReason: "Automute word detected" });
-    c.watch(msg, msg.member, true);
+    c.createFlag({ msg, member: msg.member ?? msg.author, matches: matchedWords, pingMods: true, flagReason: "Automute word detected" });
+    c.watch(msg, msg.member ?? msg.author.id, true);
     return true;
   }
 
@@ -179,18 +178,18 @@ function processMessageLanguage(msg) {
   filter(msg, msg.cleanContent);
 
   // LINK PREVIEW FILTER
-  if (msg.author.bot) return;
+  if (msg.author.id == msg.client.user.id) return; // ignore icarus because he's infallable... right? (no but it'll flag its own logs)
   for (const embed of msg.embeds) {
     const preview = [embed.author?.name ?? "", embed.title ?? "", embed.description ?? ""].join("\n").toLowerCase();
     const previewBad = preview.match(bannedWords) ?? [];
     if (previewBad.length > 0) {
-      msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
-      c.createFlag({ msg, member: msg.member, matches: previewBad, flagReason: "Link preview language (Auto-Removed)" });
+      if (!msg.author.bot) msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
+      c.createFlag({ msg, member: msg.member ?? msg.author, matches: previewBad, flagReason: "Link preview language (Auto-Removed)" });
       u.clean(msg, 0);
       break;
     }
     if (filter(msg, preview)) {
-      msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
+      if (!msg.author.bot) msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
       msg.suppressEmbeds().catch(u.noop);
       break;
     }
@@ -221,8 +220,7 @@ function reportInvites(msg, rawInvites, invites) {
       msg.channel.send({ embeds: [embed, ...msg.embeds], files: Array.from(msg.attachments.values()) });
       return;
     }
-    if (!msg.member) return;
-    c.createFlag({ msg, member: msg.member, matches: external.join("\n"), flagReason: "Automatic Discord invite removal" });
+    c.createFlag({ msg, member: msg.member ?? msg.author, matches: external.join("\n"), flagReason: "Automatic Discord invite removal" });
     u.clean(msg, 0);
     msg.channel.send({ embeds: [
       u.embed({

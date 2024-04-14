@@ -29,11 +29,11 @@ const Module = new Augur.Module()
 .addEvent("messageCreate", watch)
 .addEvent("messageUpdate", async (msg, newMsg) => {
   if (newMsg.partial) newMsg = await newMsg.fetch();
-  watch(newMsg);
+  watch(newMsg, true);
 });
 
 /** @param {Discord.Message} msg */
-async function watch(msg) {
+async function watch(msg, edited = false) {
   if (!msg.guild) return;
   const watchLog = msg.client.getTextChannel(u.sf.channels.modWatchList);
 
@@ -43,7 +43,7 @@ async function watch(msg) {
     (!msg.member?.roles.cache.has(u.sf.roles.trusted) || c.watchlist.has(msg.author.id)) // only untrusted and watched
   ) {
     const files = msg.attachments.map(attachment => attachment.url);
-    watchLog?.send(`**${msg.member?.displayName || msg.author?.username}** in ${msg.channel}:\n>>> ${msg.cleanContent}`);
+    watchLog?.send(`**${msg.member?.displayName || msg.author?.username}** in ${msg.channel}:\n>>> ${edited ? "[EDITED]: " : ""}${msg.cleanContent}`);
     if (files.length > 0) {
       watchLog?.send({ files: files });
     }

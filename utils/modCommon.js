@@ -154,7 +154,6 @@ const modCommon = {
     const client = msg.client;
     const isMember = member instanceof Discord.GuildMember;
     const bot = () => isMember ? member.user.bot : member.bot;
-
     if (!msg.inGuild()) return null;
 
     const infractionSummary = await u.db.infraction.getSummary(member.id);
@@ -170,8 +169,10 @@ const modCommon = {
         { name: "Jump to Post", value: `[Original Message](${msg.url})`, inline: true },
         { name: "User", value: msg.webhookId ? msg.author.username ?? (await msg.fetchWebhook()).name : member.displayName ?? "Unknown User" }
       );
-
-    if (msg.channel.parentId == u.sf.channels.minecraftcategory && msg.webhookId) return; // I lied actually do stuff
+    console.log('msg2');
+    if (msg.channel.parentId == u.sf.channels.minecraftcategory && msg.webhookId) {
+      msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({ embeds: [embed] });
+    }
     if (snitch) {
       embed.addFields({ name: "Flagged By", value: snitch, inline: true })
       .addFields({ name: "Reason", value: flagReason, inline: true });
@@ -436,7 +437,7 @@ const modCommon = {
     let success = false;
     try {
       const put = apply ? `put ${target} in` : `release ${target} from`;
-      if (!modCommon.compareRoles(interaction.member, target)) return `You have insufficient permissions to ${put} the office!`;
+      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to ${put} the office!`;
       else if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
 
       // don't do it if it wont do anything
@@ -686,8 +687,9 @@ const modCommon = {
   watch: async function(interaction, target, apply = true) {
     let success = true;
     try {
-      const watchlist = await u.db.user.getUsers({ watching: true });
+      if (typeof target != 'string' && (target.user.bot)) return `${target} is a bot and shouldn't be watched.`;
       const id = typeof target == "string" ? target : target.id;
+      const watchlist = await u.db.user.getUsers({ watching: true });
       if (apply && (watchlist.find(w => w.discordId == id) || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
       if (!apply && (!watchlist.find(w => w.discordId == id) && !modCommon.watchlist.has(id))) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
 

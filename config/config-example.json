@@ -28,6 +28,7 @@
   "error": {
     "url": "Webhook url for errors"
   },
+  "mcTestingWebhook": "Webhook url for testing interactions with Minecraft chat",
   "events": [
     "channelCreate",
     "channelUpdate",
