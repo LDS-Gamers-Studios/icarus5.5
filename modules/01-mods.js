@@ -138,7 +138,7 @@ async function slashModMute(interaction) {
     await interaction.deferReply({ ephemeral: true });
     const target = interaction.options.getMember("user");
     const apply = interaction.options.getBoolean("apply") ?? true;
-    const reason = interaction.options.getString("reason") || apply ? "Violating the Code of Conduct" : "Case Closed";
+    const reason = interaction.options.getString("reason") || (apply ? "Violating the Code of Conduct" : "Case Closed");
     if (!target) return interaction.editReply(noTarget);
 
     const mute = await c.mute(interaction, target, reason, apply);
