@@ -71,10 +71,11 @@ async function spamming(client) {
 
   for (const member of offending) {
     const message = member.messages[0];
+    /** @type {Discord.Collection<string, {channel: string, count: number}>} */
     const channels = new u.Collection();
     for (const msg of member.messages) {
       const prev = channels.get(msg.channelId);
-      channels.set(msg.channelId, { channel: msg.channel.toString(), count: (prev ?? 0) + 1 });
+      channels.set(msg.channelId, { channel: msg.channel.toString(), count: (prev?.count ?? 0) + 1 });
     }
 
     const verdictString = [
