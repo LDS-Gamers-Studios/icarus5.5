@@ -17,7 +17,7 @@ const Module = new Augur.Module()
     try {
       const user = await u.db.user.fetchUser(member.id);
       if (!user || user.roles.includes(u.sf.roles.trusted)) return;
-      const watchLog = member.client.getTextChannel(u.sf.channels.modlogsplus);
+      const watchLog = member.client.getTextChannel(u.sf.channels.modWatchList);
       watchLog?.send(`ℹ️ **${member.displayName}** has been automatically added to the watch list. Use the \`\\mod trust @user(s)\` command to remove them.`);
     } catch (e) { u.errorHandler(e, "Watchlist Auto-Add"); }
   }
@@ -35,7 +35,7 @@ const Module = new Augur.Module()
 /** @param {Discord.Message} msg */
 async function watch(msg) {
   if (!msg.guild) return;
-  const watchLog = msg.client.getTextChannel(u.sf.channels.modlogsplus);
+  const watchLog = msg.client.getTextChannel(u.sf.channels.modWatchList);
 
   if (
     msg.guild.id == u.sf.ldsg && // only LDSG
@@ -358,7 +358,7 @@ async function slashModWarn(interaction) {
 async function slashModGrownups(interaction) {
   const time = Math.min(30, interaction.options.getInteger("time") ?? 15);
   if (!interaction.channel) return interaction.reply({ content: "Well that's awkward, I can't access the channel you're in!", ephemeral: true });
-
+  if ((interaction.channel.parentId || "") != u.sf.channels.staffCategory) return interaction.reply({ content: "This command can only be used in the LDSG-Staff Category!", ephemeral: true });
   interaction.reply(time == 0 ? `*Whistles and wanders back in*` : `*Whistles and wanders off for ${time} minutes...*`);
 
   if (c.grownups.has(interaction.channel.id)) {

@@ -65,14 +65,14 @@ const utils = {
    * @param {Discord.Message} msg The Discord message to check for bot spam.
    */
   botSpam: function(msg) {
-    if (msg.guild?.id === config.ldsg && // Is in server
-      msg.channel.id !== config.channels.botspam && // Isn't in bot-lobby
-      msg.channel.id !== config.channels.bottesting && // Isn't in Bot Testing
-      msg.channel.parentID !== config.channels.moderation) { // Isn't in the moderation category
+    if (msg.guild?.id === utils.sf.ldsg && // Is in server
+      msg.channel.id !== utils.sf.channels.botspam && // Isn't in bot-lobby
+      msg.channel.id !== utils.sf.channels.bottesting && // Isn't in Bot Testing
+      msg.channel.parentID !== utils.sf.channels.staffCategory) { // Isn't in the moderation category
 
-      msg.reply(`I've placed your results in <#${config.channels.botspam}> to keep things nice and tidy in here. Hurry before they get cold!`)
+      msg.reply(`I've placed your results in <#${utils.sf.channels.botspam}> to keep things nice and tidy in here. Hurry before they get cold!`)
         .then(utils.clean);
-      return msg.guild.channels.cache.get(config.channels.botspam);
+      return msg.guild.channels.cache.get(utils.sf.channels.botspam);
     } else {
       return msg.channel;
     }

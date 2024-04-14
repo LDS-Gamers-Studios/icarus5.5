@@ -117,7 +117,7 @@ function filter(msg, text) {
  * @param {Discord.Message} msg Message
  */
 function processMessageLanguage(msg) {
-  if (!msg.inGuild() || msg.guild.id != u.sf.ldsg || msg.channel.id == u.sf.channels.modlogsplus) return;
+  if (!msg.inGuild() || msg.guild.id != u.sf.ldsg || msg.channel.id == u.sf.channels.modWatchList) return;
   // catch spam
   if (!msg.author.bot && !msg.webhookId && !c.grownups.has(msg.channel.id)) {
     const messages = active.get(msg.author.id)?.messages ?? [];
