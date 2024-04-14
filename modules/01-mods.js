@@ -225,10 +225,11 @@ async function slashModPurge(interaction) {
 async function slashModRename(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const target = interaction.options.getMember("user");
+  const newNick = interaction.options.getString("name") ?? c.nameGen();
   const reset = interaction.options.getBoolean("reset") ?? false;
   if (!target) return interaction.editReply(noTarget);
 
-  const rename = await c.rename(interaction, target, reset);
+  const rename = await c.rename(interaction, target, newNick, reset);
   return interaction.editReply(rename);
 }
 

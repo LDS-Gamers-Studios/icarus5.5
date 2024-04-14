@@ -105,20 +105,13 @@ const utils = {
    * Shortcut to Discord.Collection. See docs there for reference.
    */
   Collection: Discord.Collection,
-  /** @param {Discord.ActionRowData} data */
-  actionRow: (data) => new Discord.ActionRowBuilder(data),
-  /** @param {Discord.ButtonComponentData} data */
-  button: (data) => new Discord.ButtonBuilder(data),
-  /** @param {Discord.StringSelectMenuComponentData} data */
-  stringSelectMenu: (data) => new Discord.StringSelectMenuBuilder(data),
-  /** @param {Discord.UserSelectMenuComponentData} data */
-  userSelectMenu: (data) => new Discord.UserSelectMenuBuilder(data),
-  /** @param {Discord.RoleSelectMenuComponentData} data */
-  roleSelectMenu: (data) => new Discord.RoleSelectMenuBuilder(data),
+  actionRow: Discord.ActionRowBuilder,
+  button: Discord.ButtonBuilder,
+  stringSelectMenu: Discord.StringSelectMenuBuilder,
+  userSelectMenu: Discord.UserSelectMenuBuilder,
+  roleSelectMenu: Discord.RoleSelectMenuBuilder,
 
-
-  /** @param {Discord.ModalComponentData} data */
-  modal: (data) => new Discord.ModalBuilder(data),
+  modal: Discord.ModalBuilder,
   /** @param {Discord.APITextInputComponent} data */
   textInput: (data) => new Discord.TextInputBuilder(data),
   /**

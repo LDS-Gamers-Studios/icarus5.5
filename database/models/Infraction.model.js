@@ -24,7 +24,7 @@ const InfractionSchema = new Schema({
   },
   description: {
     type: String,
-    required: true
+    required: false
   },
   value: {
     type: Number,
