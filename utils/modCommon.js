@@ -29,6 +29,9 @@ const retract = new ActionRowBuilder().setComponents([
   new ButtonBuilder().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
 ]);
 
+const messageFromMods = "## 🚨 Message from the LDSG Mods:\n";
+const code = "[Code of Conduct](<http://ldsgamers.com/code-of-conduct>) (<http://ldsgamers.com/code-of-conduct>)";
+
 /**
   * Give the mods a heads up that someone isn't getting their DMs.
   * @param {Discord.GuildMember} member The guild member that's blocked.
@@ -94,7 +97,7 @@ const modCommon = {
 
         // The actual ban part
         const targetRoles = target.roles.cache.clone();
-        await target.send({ embeds: [ u.embed()
+        await target.send({ content: messageFromMods, embeds: [ u.embed()
           .setTitle("User Ban")
           .setDescription(`You have been banned in ${interaction.guild.name} for:\n${reason}`)
         ] }).catch(() => blocked(target));
@@ -197,7 +200,7 @@ const modCommon = {
             member.voice?.disconnect("Auto-mute");
           }
           ldsg?.client.getTextChannel(u.sf.channels.muted)?.send({
-            content: `${member}, you have been auto-muted in ${msg.guild.name}. Please review our Code of Conduct. A member of the mod team will be available to discuss more details.\n\nhttp://ldsgamers.com/code-of-conduct`,
+            content: `${member}, you have been auto-muted in ${msg.guild.name}. Please review our ${code}. A member of the mod team will be available to discuss more details.`,
             allowedMentions: { users: [member.id] }
           });
         }
@@ -290,7 +293,7 @@ const modCommon = {
       } else if (confirm) {
         // The actual kick part
         const targetRoles = target.roles.cache.clone();
-        await target.send({ embeds: [
+        await target.send({ content: messageFromMods, embeds: [
           u.embed()
           .setTitle("User Kick")
           .setDescription(`You have been kicked in ${interaction.guild.name} for:\n${reason}`)
@@ -373,9 +376,8 @@ const modCommon = {
       if (apply) {
         await interaction.client.getTextChannel(u.sf.channels.muted)?.send(
           `${target}, you have been muted in ${interaction.guild.name}. `
-        + 'Please review our Code of Conduct. '
-        + 'A member of the mod team will be available to discuss more details.\n\n'
-        + 'http://ldsgamers.com/code-of-conduct'
+        + `Please review our ${code}.\n`
+        + 'A member of the mod team will be available to discuss more details.'
         );
       }
 
@@ -393,7 +395,7 @@ const modCommon = {
   /**
    * Write down a note on a user
    * @param {Augur.GuildInteraction<"CommandSlash">} interaction
-   * @param {Discord.GuildMember} target
+   * @param {Discord.GuildMember|Discord.User} target
    * @param {string} note
    */
   note: async function(interaction, target, note) {
@@ -457,11 +459,10 @@ const modCommon = {
 
       if (apply) {
         await interaction.client.getTextChannel(u.sf.channels.office)?.send(
-          `${target}, you have been sent to the office in ${interaction.guild.name}. `
-          + 'This allows you and the mods to have a private space to discuss any issues without restricting access to the rest of the server. '
-          + 'Please review our Code of Conduct. '
-          + 'A member of the mod team will be available to discuss more details.\n\n'
-          + 'http://ldsgamers.com/code-of-conduct'
+          `${target}, you have been sent to the office in ${interaction.guild.name}.\n`
+          + 'This allows you and the mods to have a private space to discuss issues or concerns.\n'
+          + `Please review our ${code}.`
+          + 'A member of the mod team will be available to discuss more details.'
         );
       }
 
@@ -488,6 +489,13 @@ const modCommon = {
 
       await target.setNickname(reset ? null : newNick);
       success = true;
+
+      if (!reset) {
+        await target.send(
+          messageFromMods + `We have found that your ${oldNick == target.user.displayName ? "username" : "server nickname"} is in violation of our ${code}.\n`
+          + `We've taken the liberty of setting a new ${interaction.options.getString('name') ? "randomly generated " : ""}server nickname (**${newNick}**) for you. Please reach out if you have any questions.`
+        ).catch(() => blocked(target));
+      }
 
       const comment = `Set nickname to ${u.escapeText(reset ? "default" : newNick)} from ${u.escapeText(oldNick)}.`;
 
@@ -609,20 +617,20 @@ const modCommon = {
         await target.roles.add(u.sf.roles.trusted);
         success = true;
         target.send(
-          `You have been marked as "Trusted" in ${interaction.guild.name} . `
+          "## Congratulations!\n"
+          + `You have been marked as "Trusted" in ${interaction.guild.name} . `
           + "This means you are now permitted to post images and links in chat. "
-          + "Please remember to follow the [Code of Conduct](<http://ldsgamers.com/code-of-conduct>) when doing so.\n"
-          + "<http://ldsgamers.com/code-of-conduct>\n\n"
+          + `Please remember to follow our ${code} when doing so.\n\n`
           + "If you'd like to join one of our in-server Houses, you can visit <http://3houses.live> to get started!"
         ).catch(() => blocked(target));
         embed.setTitle("User Given Trusted").setDescription(`${interaction.member} trusted ${target} (${target.user.username}).`);
       } else {
         await target.roles.remove([u.sf.roles.trusted, u.sf.roles.trustedplus]);
         success = true;
-        target.send(`You have been removed from "Trusted" in ${interaction.guild.name}. `
-        + "This means you no longer have the ability to post images. "
-        + "Please remember to follow the [Code of Conduct](<http://ldsgamers.com/code-of-conduct>) when posting images or links.\n"
-        + "<http://ldsgamers.com/code-of-conduct>");
+        target.send(messageFromMods + `You have been removed from "Trusted" in ${interaction.guild.name}.\n`
+          + "This means you no longer have the ability to post images. "
+          + `Please remember to follow our ${code} when posting images or links in the future.\n`
+        ).catch(() => blocked(target));
         embed.setTitle("User Trust Removed").setDescription(`${interaction.member} untrusted ${target} (${target.user.username}).`);
       }
       await modCommon.watch(interaction, target, !apply);
@@ -650,21 +658,20 @@ const modCommon = {
         await target.roles.add(u.sf.roles.trustedplus);
         success = true;
         target.send(
-          "Congratulations! "
+          "## Congratulations!\n"
           + "You've been added to the Trusted+ list in LDSG, allowing you to stream to voice channels!\n\n"
-          + "While streaming, please remember the Streaming Guidelines ( https://goo.gl/Pm3mwS ) and LDSG Code of Conduct ( http://ldsgamers.com/code-of-conduct ). "
+          + `While streaming, please remember the Streaming Guidelines ( https://goo.gl/Pm3mwS ) and our ${code}.\n`
           + "Also, please be aware that LDSG may make changes to the Trusted+ list from time to time at its discretion."
-        ).catch(u.noop);
+        ).catch(() => blocked(target));
         embed.setTitle("User Given Trusted+").setDescription(`${interaction.member} gave ${target} (${target.user.username}) the <@&${u.sf.roles.trustedplus}> role.`);
       } else {
         await target.roles.remove(u.sf.roles.trustedplus);
         success = true;
-        target.send(
+        target.send(messageFromMods +
           `You have been removed from "Trusted+" in ${interaction.guild.name}. `
-          + "This means you no longer have the ability to stream video in the server. "
-          + "Please remember to follow the Code of Conduct.\n"
-          + "<http://ldsgamers.com/code-of-conduct>"
-        ).catch(() => modCommon.blocked(target));
+          + "This means you no longer have the ability to stream video in the server.\n"
+          + `Please remember to follow our ${code}`
+        ).catch(() => blocked(target));
 
         embed.setTitle("User Trusted+ Removed")
         .setDescription(`${interaction.member} removed the <@&${u.sf.roles.trustedplus}> role from ${target} (${target.user.username}).`);
@@ -698,14 +705,15 @@ const modCommon = {
       success = true;
 
       if (typeof target != 'string') {
-        const watchLog = interaction.client.getTextChannel(u.sf.channels.modlogs);
+        const watchLog = interaction.client.getTextChannel(u.sf.channels.modWatchList);
         const notifDesc = [
-          `**added** to the watchlist by ${interaction.member}. Use </mod watch:${u.sf.commands.slashMod}> \`apply: false\` command to remove them.`,
-          `**removed** from the watchlist by ${interaction.member}. Use </mod watch:${u.sf.commands.slashMod}> \`apply: true\` command to re-add them.`
+          `**added** to the watchlist by ${interaction.member}.\nUse </mod watch:${u.sf.commands.slashMod}> to remove them.`,
+          `**removed** from the watchlist by ${interaction.member}.\nUse </mod watch:${u.sf.commands.slashMod}> to re-add them.`
         ];
         const embed = u.embed({ author: target })
-          .setTitle("User Watch")
-          .setDescription(`${target} (${target.displayName}) has been ${notifDesc[apply ? 0 : 1]}`);
+          .setTitle(apply ? "Watching User 👀" : "Un-Watching User 💤")
+          .setColor(apply ? 0x00FF00 : 0xFF8800)
+          .setDescription(`${target} has been ${notifDesc[apply ? 0 : 1]}`);
         watchLog?.send({ embeds: [embed] });
       }
       return `I'm${apply ? "" : " no longer"} watching ${target} ${apply ? "now :eyes:" : "anymore :zzz:"}.`;
@@ -745,9 +753,9 @@ const modCommon = {
       });
       success = true;
 
-      let response = "## 🚨 Message from the LDSG Mods:\n" + modCommon.warnMessage(u.escapeText(interaction.member?.displayName ?? "")) + `\n\n**Reason:** ${reason}`;
+      let response = messageFromMods + modCommon.warnMessage(u.escapeText(interaction.member?.displayName ?? "")) + `\n\n**Reason:** ${reason}`;
       if (message?.cleanContent) response += `\n\n###Message:\n${message.cleanContent}`;
-      await target.send(response).catch(() => modCommon.blocked(target));
+      await target.send(response).catch(() => blocked(target));
 
       const sum = await u.db.infraction.getSummary(target.id);
       embed.addFields({ name: `Infraction Summary (${sum.time} Days) `, value: `Infractions: ${sum.count}\nPoints: ${sum.points}` });
@@ -761,10 +769,10 @@ const modCommon = {
   },
   /** @param {string} mod */
   warnMessage: function(mod) {
-    return "We have received one or more complaints regarding content you posted."
-    + "\nWe have reviewed the content in question and have determined, in our sole discretion, that it is against our [Code of Conduct](https://ldsgamers.com/code-of-conduct) (https://ldsgamers.com/code-of-conduct)."
-    + "\nThis content was removed on your behalf. As a reminder, if we believe that you are frequently in breach of our code of conduct or are otherwise acting inconsistently with the letter or spirit of the code, we may limit, suspend or terminate your access to the LDSG Discord server."
-    + `\n\n**${mod}** has issued this warning.`;
+    return "We have received one or more complaints regarding content you posted.\n"
+    + `We have reviewed the content in question and have determined, in our sole discretion, that it is against our ${code}.\n`
+    + "This content was removed on your behalf. As a reminder, if we believe that you are frequently in breach of our Code of Conduct or are otherwise acting inconsistently with the letter or spirit of the code, we may limit, suspend or terminate your access to the LDSG Discord server.\n\n"
+    + `**${mod}** has issued this warning.`;
   },
   /** @type {Set<string>} */
   watchlist: new Set(),
