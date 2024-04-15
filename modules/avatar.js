@@ -5,6 +5,8 @@ const Augur = require("augurbot-ts"),
   discord = require("discord.js"),
   petPetGif = require('pet-pet-gif'),
   Jimp = require("jimp"),
+  pixels = require("image-pixels"),
+  palette = require("image-palette"),
   { ColorActionName } = require("@jimp/plugin-color");
 
 /**
@@ -23,6 +25,101 @@ const Augur = require("augurbot-ts"),
 /** @param {discord.ChatInputCommandInteraction} int*/
 const errorReading = (int) => int.editReply("Sorry, but I couldn't get the image. Let my developers know if this is a reoccurring problem").then(u.clean);
 
+/*
+ * colorMap should return a decimal 0-26, based on the RGB index normalized to trinary.
+ * Normalization works since luminosity/saturation doesn't matter, only hue.
+ */
+const colorMap = ([r, g, b]) => {
+  const dom = Math.max(r, g, b);
+  if (dom < 40) return "000";
+  return parseInt([r, g, b].map(c => Math.round(2 * c / dom)).join(""), 3);
+};
+
+const baseColors = [
+  // Index matters here, it's a trinary-based color space.
+  { trinaryCode: "001", color: "navyblue", hue: 240 },
+  { trinaryCode: "002", color: "blue", hue: 240 },
+  { trinaryCode: "010", color: "darkgreen", hue: 120 },
+  { trinaryCode: "011", color: "darkcyan", hue: 180 },
+  { trinaryCode: "012", color: "oceanblue", hue: 210 },
+  { trinaryCode: "020", color: "green", hue: 120 },
+  { trinaryCode: "021", color: "springgreen", hue: 150 },
+  { trinaryCode: "022", color: "cyan", hue: 180 },
+  { trinaryCode: "100", color: "maroon", hue: 0 },
+  { trinaryCode: "101", color: "purple", hue: 300 },
+  { trinaryCode: "102", color: "violet", hue: 270 },
+  { trinaryCode: "110", color: "darkyellow", hue: 60 },
+  { trinaryCode: "112", color: "lightblue", hue: 240 },
+  { trinaryCode: "120", color: "chartreuse", hue: 90 },
+  { trinaryCode: "121", color: "lightgreen", hue: 120 },
+  { trinaryCode: "122", color: "lightcyan", hue: 180 },
+  { trinaryCode: "200", color: "red", hue: 0 },
+  { trinaryCode: "201", color: "fuchsia", hue: 330 },
+  { trinaryCode: "202", color: "magenta", hue: 300 },
+  { trinaryCode: "210", color: "orange", hue: 30 },
+  { trinaryCode: "211", color: "lightred", hue: 0 },
+  { trinaryCode: "212", color: "lightmagenta", hue: 300 },
+  { trinaryCode: "220", color: "yellow", hue: 60 },
+  { trinaryCode: "221", color: "lightyellow", hue: 60 },
+];
+
+async function getBaseColor(member) {
+  const url = member?.displayAvatarURL({ extension: "png" });
+  if (!url) return { color: null, hue: null };
+  try {
+    const { colors } = palette(await pixels(url), 5);
+    for (let i = 0; i < colors.length; i++) {
+      const key = colorMap(colors[i]);
+      const base = baseColors[key];
+      if (isNaN(base?.hue)) continue;
+      return base;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return { color: null, hue: null };
+}
+
+async function getSpin(member, dest) {
+  try {
+    const base = await getBaseColor(member);
+    const spin = base.hue !== null ? (baseColors.find(c => c.color == dest)?.hue ?? 0) - base.hue : baseColors.find(c => c.color == dest)?.hue;
+    const white = base.hue == null ? true : false;
+    return { spin, white };
+  } catch (error) {
+    console.error(error);
+    return {};
+  }
+}
+
+async function colorMe(int, target, color) {
+  getSpin(target, color)
+  .then(async ({ spin, white }) => {
+    const url = await targetImg(int);
+    const img = await jimpRead(url);
+    if (!img) return null;
+    const output = white ? img.color([{ apply: ColorActionName.SATURATE, params: [47.7] }, { apply: ColorActionName.SPIN, params: [spin] }]) : img.color([{ apply: ColorActionName.SPIN, params: [spin] }]);
+    console.log(output);
+    const def = await output.getBufferAsync(Jimp.MIME_PNG);
+    switch (int.options.getString('filter')) {
+    case "andywarhol": return andywarhol(int, output);
+    case "colorize": return colorize(int, output);
+    case "deepfry": return deepfry(int, output);
+    case "flex": return flex(int, output);
+    case "metal": return metal(int, output);
+    case "personal": return personal(int, output);
+    case "popart": return popart(int, output);
+    case "fisheye": return basicFilter(int, output, 'fisheye', null);
+    case "invert": return basicFilter(int, output, 'invert', null);
+    case "blur": return basicFilter(int, output, 'blur', [5]);
+    case "flipx": return basicFilter(int, output, 'flip', [true, false]);
+    case "flipy": return basicFilter(int, output, 'flip', [false, true]);
+    case "flipxy": return basicFilter(int, output, 'flip', [true, true]);
+    default: return await sendImg(int, def, `Reshade: ${color}`);
+    }
+  })
+  .catch(console.error);
+}
 
 /** @param {string | null} url */
 async function jimpRead(url) {
@@ -62,17 +159,12 @@ async function sendImg(int, img, name, format = "png") {
 /**
  * Get the image from an interaction.
  * @param {discord.ChatInputCommandInteraction} int
- * @param {number} size size of the image
+ * @param {16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096 | undefined} size size of the image
  * @returns {Promise<string | null>} image url
  */
 async function targetImg(int, size = 256) {
-  if (int.options.getAttachment('file')) {
-    const url = int.options.getAttachment('file', true).url;
-    if (!await jimpRead(url)) return null;
-    else return url;
-  }
   const target = (int.options[int.guild ? "getMember" : "getUser"]('user')) ?? int.user;
-  return target.displayAvatarURL({ extension: 'png', size, dynamic: true });
+  return (target instanceof discord.User || target instanceof discord.GuildMember) ? target.displayAvatarURL({ extension: 'png', size, dynamic: true }) : null;
 }
 
 /**
@@ -85,7 +177,7 @@ async function basicFilter(int, img, filter, params) {
   if (params) img[filter](...params);
   else img[filter]();
   const output = await img.getBufferAsync(Jimp.MIME_PNG);
-  return await sendImg(int, output, filter);
+  return await sendImg(int, output, (filter == "color") ? "Colorized" : filter);
 }
 
 /**
@@ -119,7 +211,7 @@ async function andywarhol(int, img) {
 }
 
 /** @type {filterFunction} */
-async function colorme(int, img) {
+async function colorize(int, img) {
   const color = Math.floor(Math.random() * 359);
   const output = await img.color([{ apply: ColorActionName.HUE, params: [color] }]).getBufferAsync(Jimp.MIME_PNG);
   return await sendImg(int, output, `Colorize Hue: ${color}`);
@@ -207,17 +299,33 @@ const Module = new Augur.Module()
   name: "avatar",
   id: u.sf.commands.slashAvatar,
   process: async (interaction) => {
-    const file = interaction.options.getAttachment('file');
-    if (file && !interaction.options.getString('filter')) return interaction.reply({ content: "You need to specify a filter to apply if you're uploading a file", ephemeral: true });
-    if (file && file.size > 4000000) return interaction.reply({ content: "That file is too big for me to process! It needs to be under 4MB.", ephemeral: true });
-    if (file && file.contentType?.includes('image/webp')) return interaction.reply({ content: "Sorry, webp files are not supported at this time", ephemeral: true });
+    const targetUser = (interaction.options[interaction.guild ? "getMember" : "getUser"]('user')) ?? interaction.user;
     await interaction.deferReply();
     const img = await jimpRead(await targetImg(interaction));
     if (!img) return errorReading(interaction);
 
+    if (interaction.options.getString('reshade')) {
+      switch (interaction.options.getString('reshade')) {
+      case "blue": return colorMe(interaction, targetUser, "blue");
+      case "oceanblue": return colorMe(interaction, targetUser, "oceanblue");
+      case "green": return colorMe(interaction, targetUser, "green");
+      case "springgreen": return colorMe(interaction, targetUser, "springgreen");
+      case "cyan": return colorMe(interaction, targetUser, "cyan");
+      case "maroon": return colorMe(interaction, targetUser, "maroon");
+      case "purple": return colorMe(interaction, targetUser, "purple");
+      case "violet": return colorMe(interaction, targetUser, "violet");
+      case "red": return colorMe(interaction, targetUser, "red");
+      case "fuchsia": return colorMe(interaction, targetUser, "fuchsia");
+      case "magenta": return colorMe(interaction, targetUser, "magenta");
+      case "orange": return colorMe(interaction, targetUser, "orange");
+      case "yellow": return colorMe(interaction, targetUser, "yellow");
+      case "blurple": return basicFilter(interaction, img, 'color', [[{ apply: "desaturate", params: [100] }, { apply: "saturate", params: [47.7] }, { apply: "hue", params: [227] }]]);
+      }
+    }
+
     switch (interaction.options.getString('filter')) {
     case "andywarhol": return andywarhol(interaction, img);
-    case "colorme": return colorme(interaction, img);
+    case "colorize": return colorize(interaction, img);
     case "deepfry": return deepfry(interaction, img);
     case "flex": return flex(interaction, img);
     case "metal": return metal(interaction, img);
@@ -232,7 +340,6 @@ const Module = new Augur.Module()
     case "flipx": return basicFilter(interaction, img, 'flip', [true, false]);
     case "flipy": return basicFilter(interaction, img, 'flip', [false, true]);
     case "flipxy": return basicFilter(interaction, img, 'flip', [true, true]);
-    case "blurple": return basicFilter(interaction, img, 'color', [[{ apply: "desaturate", params: [100] }, { apply: "saturate", params: [47.7] }, { apply: "hue", params: [227] }]]);
     case "grayscale": return basicFilter(interaction, img, 'color', [[{ apply: "desaturate", params: [100] }]]);
 
     default: return avatar(interaction);

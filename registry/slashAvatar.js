@@ -32,7 +32,22 @@ const reshade = new u.string()
   .setName("reshade")
   .setDescription("Change the dominant color in the image")
   .setRequired(false)
-  .setChoices(/** OHGO NEEDS TO FILL THIS IN :) */);
+  .setChoices(
+    { name: "Red", value: "red" },
+    { name: "Orange", value: "orange" },
+    { name: "Yellow", value: "yellow" },
+    { name: "Green", value: "green" },
+    { name: "Blue", value: "blue" },
+    { name: "Purple", value: "purple" },
+    { name: "Violet", value: "violet" },
+    { name: "Magenta", value: "magenta" },
+    { name: "Maroon", value: "maroon" },
+    { name: "Cyan", value: "cyan" },
+    { name: "Fuchsia", value: "fuchsia" },
+    { name: "Ocean Blue", value: "oceanblue" },
+    { name: "Spring Green", value: "springgreen" },
+    { name: "Blurple", value: "blurple" }
+  );
 
 module.exports = new u.cmd()
   .setName("avatar")
