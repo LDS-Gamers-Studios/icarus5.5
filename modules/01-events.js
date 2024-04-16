@@ -76,7 +76,7 @@ const Module = new Augur.Module()
     if (member.guild.id == u.sf.ldsg) {
       const guild = member.guild;
 
-      const user = await Module.db.user.fetchUser(member.id, false);
+      const user = await u.db.user.fetchUser(member.id, false);
       const general = guild.channels.cache.get(u.sf.channels.general);
       const welcomeChannel = guild.channels.cache.get(u.sf.channels.welcome);
       const modLogs = guild.channels.cache.get(u.sf.channels.modlogs);
@@ -131,7 +131,7 @@ const Module = new Augur.Module()
         welcomeString = `${welcome}, ${member}! ${info1} ${welcomeChannel} ${info2}. ${info3}\n\nTry \`!profile\` over in <#${u.sf.channels.botspam}> if you'd like to opt in to roles or share IGNs.`;
         embed.setTitle(member.displayName + " has joined the server.");
 
-        Module.db.user.newUser(member.id);
+        u.db.user.newUser(member.id);
       }
 
       if (!member.client.ignoreNotifications?.has(member.id)) {
@@ -154,9 +154,9 @@ const Module = new Augur.Module()
 .addEvent("guildMemberRemove", async (member) => {
   try {
     if (member.guild.id == u.sf.ldsg) {
-      await Module.db.user.updateTenure(member);
+      await u.db.user.updateTenure(member);
       if (!member.client.ignoreNotifications?.has(member.id)) {
-        const user = await Module.db.user.fetchUser(member);
+        const user = await u.db.user.fetchUser(member);
         const embed = u.embed({
           author: member,
           title: `${member.displayName} has left the server`,
@@ -176,7 +176,7 @@ const Module = new Augur.Module()
     const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
     const newMember = ldsg.members.cache.get(newUser.id);
     if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || newMember.roles.cache.has(u.sf.roles.untrusted))) {
-      const user = await Module.db.user.fetchUser(newMember).catch(u.noop);
+      const user = await u.db.user.fetchUser(newMember).catch(u.noop);
       const embed = u.embed({ author: oldUser })
       .setTitle("User Update")
       .setFooter({ text: `${user.posts} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });

@@ -1,4 +1,8 @@
 {
+  "adminId": [
+    "put any user IDs that need to control the bot here"
+  ],
+  "ownerId": "put your id here",
   "api": {
     "snipcart": "",
     "steam": "",
@@ -64,5 +68,12 @@
     }
   },
   "prefix": "! (change this to something unique)",
+  "spamThreshold":  {
+    "channels": [10, 1],
+    "messages": [10, 1],
+    "same": [1, 1],
+    "time": 10000,
+    "cleanupLimit": 100000
+  },
   "token": "Put your bot token here (https://discord.com/developers/applications)"
 }
