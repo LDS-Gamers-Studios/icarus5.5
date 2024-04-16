@@ -16,7 +16,14 @@ To set up a test intance of Icarus, here's what you'll need to do:
 ![Clone Repo](https://github.com/LDS-Gamers-Studios/icarus5.5/blob/main/docs/clonerepo.png?raw=true)
 
 4. Run `node register-commands.js` to register all of the interaction commands with the Discord API. Note the IDs of the commands for configuring the bot later.
-5. Create a [local database](https://www.mongodb.com/try/download/community), or try the server based [Atlas Shared Tier](https://www.mongodb.com/cloud/atlas/register)
+5. Create a [local database](https://www.mongodb.com/try/download/community), or try the server based [Atlas Shared Tier](https://www.mongodb.com/cloud/atlas/register). For the sake of this tutorial, I will be using the server based version.
+    1. Sign up for an Atlas Shared Tier, selecting the free M0 option
+    
+    ![M0 Free Tier](https://github.com/LDS-Gamers-Studios/icarus5.5/blob/main/docs/mzero.png?raw=true)
+
+    2. When prompted to connect, choose the Compass option. If you haven't installed Compass yet, it will provide instructions to do so. Installing it is not required, but will help with setup.
+    3. Take note of your connection string. It'll have the format of `mongodb+srv://<username>:<password>@<connection>`. You can copy and paste that into Compass and try connecting. Note this somewhere you can come back to later.
+    4. Create a new database called `icarus`, and a collection called `bank`. This will act as a base to start, and Icarus should be able to create new collections and records on its own.
 6. Create the following files, based on their matching `-example` file: `config/config.json`, `config/snowflake-testing-commands.json`, and `data/banned.json`. Explanations of these files can be found below.
 7. Within the root folder of the repo, run `npm ci`.
 8. The start-up command is `node .`. If you want to be fancy, you can start a debugging instance as well.
@@ -27,14 +34,17 @@ For the bot to successfully run, you'll need to create or edit a few files first
 ### `config/config.json`
 Required items:
 
+(Just as a general rule of thumb, if there's a placeholder string you should probably change it to the correct value.)
 - `adminId`: put your ID in there.
 - `ownerId`: put your ID there
 - `api.snipcart`: required to run `/bank discount`. Can otherwise be left blank.
 - `api.steam`: required to run `/bank game list`. Can otherwise be left blank, but will create an error message on loading `bank.js`. An API key can be requested [here](https://steamcommunity.com/dev/apikey).
 - `applicationId`: The applicationId you took note of during bot creation
-- `db.db`: a connection string used in `dbModels.js` passed to [`mongoose.connect()`](https://mongoosejs.com/docs/5.x/docs/api/mongoose.html#mongoose_Mongoose-connect). See also [here](https://mongoosejs.com/docs/5.x/docs/connections.html).
-- `db.settings`: an object used in `dbModels.js` passed to [`mongoose.connect()`](https://mongoosejs.com/docs/5.x/docs/api/mongoose.html#mongoose_Mongoose-connect). See also [here](https://mongoosejs.com/docs/5.x/docs/connections.html).
-- `error.url`: the URL of a Discord webhook for posting error messages.
+- `db`: This is the connection info for Mongo. Recall the connection string you noted down earlier. The format is `mongodb+srv://<username>:<password>@<connection>`
+- - `db.db`: `mongodb+srv://<connection>/icarus`
+- - `db.settings.user`: the `<username>` part of the string.
+- - `db.settings.pass`: the `<password>` part of the string.
+- `error.url`: the URL of a Discord webhook for posting error messages. This can be obtained by pinging the current Bot Owner and asking for it.
 - `google`: information for the Google API. You can obtain API credentials [here](https://console.cloud.google.com/apis/library/sheets.googleapis.com). IDs for the testing sheets can be found in the [#info](https://discord.com/channels/1207041599608061962/1208925579743854638) channel.
 - `prefix`: Change this to something unique
 - `token`: the bot's token for login.
