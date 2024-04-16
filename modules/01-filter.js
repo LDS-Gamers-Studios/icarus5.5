@@ -1,13 +1,16 @@
 const Augur = require("augurbot-ts"),
   banned = require("../data/banned.json"),
   Discord = require("discord.js"),
+  config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
   u = require("../utils/utils"),
+  sf = require("../config/snowflakes-testing.json"),
   c = require("../utils/modCommon");
 
 const bannedWords = new RegExp(banned.words.join("|"), "i"),
   bannedLinks = new RegExp(`\\b(${banned.links.join("|").replaceAll(".", "\\.")})`, "i"),
   hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/,
+  isSafe = new RegExp(banned.exception.join("|")),
   scamLinks = new RegExp(`\\b(${banned.scam.join("|").replaceAll(".", "\\.")})`, "i");
 
 let pf = new profanityFilter();
@@ -15,6 +18,18 @@ let pf = new profanityFilter();
 /** @type {Map<string, Discord.Channel} */
 const grownups = new Map(),
   processing = new Set();
+
+// first value is for trusted, second is for non-trusted
+const thresh = config.spamThreshold;
+/**
+ * @typedef activeMember
+ * @prop {string} id
+ * @prop {{channelId: string, content: string, id: string}[]} messages
+ * @prop {number} verdict
+ * @prop {number} count
+ */
+/** @type {Discord.Collection<string, activeMember> } */
+const active = new u.Collection();
 
 /**
  * Give the mods a heads up that someone isn't getting their DMs.
@@ -28,6 +43,44 @@ function blocked(member) {
       title: `${member} has me blocked. *sadface*`
     })
   ] });
+}
+
+/** @param {Discord.Client} client*/
+async function spamming(client) {
+  const ldsg = client.guilds.cache.get(sf.ldsg);
+  const trusted = ldsg.roles.cache.get(sf.roles.trusted).members;
+  const limit = (type, id) => thresh[type][trusted.has(id) ? 0 : 1];
+  const mapped = active.map(a => {
+    let verdict = 0;
+    const sameMessages = u.unique(a.messages.map(m => m.content.toLowerCase()));
+    const sameMSGCount = sameMessages.map(m => ({ content: m, count: a.messages.filter(f => f.content.toLowerCase() == m).length })).filter(m => m.count >= limit('same', a.id));
+    const channels = u.unique(a.messages.map(m => m.channelId)).length;
+    if (sameMSGCount.count > 0) verdict = 3;
+    else if (limit('channels', a.id) <= channels) verdict = 1;
+    else if (limit('messages', a.id) <= a.messages.length) verdict = 2;
+    a.verdict = verdict;
+    a.count = [null, channels, a.messages.length, sameMSGCount.map(m => m.count).join('+')][verdict];
+    return a;
+  }).filter(a => a.verdict != 0);
+  for (const member of mapped) {
+    const msg = member.messages[0];
+    const message = ldsg.channels.cache.get(msg.channelId)?.messages.cache.get(msg.id);
+    const memb = ldsg.members.cache.get(member.id);
+    const channels = u.unique(member.messages.map(m => `<#${m.channelId}>`));
+    const verdictString = [
+      null,
+      `Posted in too many channels (${member.count}/${limit('channels', member.id)}) too fast\nChannels:\n${channels.join('\n')}`,
+      `Posted too many messages (${member.count}/${limit('messages', member.id)}) too fast\nChannels:\n${channels.join('\n')}`,
+      `Posted the same message too many times (${member.count}/${limit('same', member.id)})`,
+    ];
+    const flag = await c.createFlag({ msg: message, member: memb, snitch: client.user, flagReason: verdictString[member.verdict] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict == 3 });
+    const cleaned = member.verdict == 3 ? await c.spamCleanup(member, ldsg, true) : null;
+    if (cleaned.notDeleted) {
+      const embed = flag.embeds[0];
+      embed.fields.push({ name: "Further Information", value: `I couldn't delete some of the messages, but I managed to get ${cleaned.deleted}/${cleaned.toDelete} of all their spammed messages` });
+      await flag.edit({ embeds: [embed] });
+    }
+  }
 }
 
 /**
@@ -51,6 +104,12 @@ function filter(msg, text) {
  * @param {Discord.Message} msg Edited message
  */
 function processMessageLanguage(old, msg) {
+  if (!msg && old && !old.author.bot && !old.webhookId) {
+    const id = old.author.id;
+    const messages = active.get(id)?.messages ?? [];
+    messages.push({ id: old.id, channelId: old.channel.id, content: old.content.toLowerCase() });
+    active.set(id, { id: id, messages: messages });
+  }
   if (!msg) msg = old;
   if (msg.guild?.id != u.sf.ldsg) return false; // Only filter LDSG
   if (grownups.has(msg.channel.id)) return false; // Don't filter "Grown Up" channel
@@ -66,7 +125,7 @@ function processMessageLanguage(old, msg) {
       // Naughty Links
       c.createFlag({ msg, member: msg.member, matches: match, pingMods: true });
       return true;
-    } else if (match = scamLinks.test(msg.cleanContent)) {
+    } else if (match = scamLinks.test(msg.cleanContent) && !(isSafe.test(link[0]))) {
       // Scam Links
       u.clean(msg, 0);
       msg.reply({ content: "That link is generally believed to be a scam/phishing site. Please be careful!", failIfNotExists: false }).catch(u.noop);
@@ -139,7 +198,8 @@ function processDiscordInvites(msg) {
             u.embed({
               description: "It is difficult to know what will be in another Discord server at any given time. *If* you feel that this server is appropriate to share, please only do so in direct messages."
             })
-          ] });
+          ] })
+          .then(u.clean);
         }
       }
     }).catch(e => {
@@ -156,7 +216,8 @@ function processDiscordInvites(msg) {
           u.embed({
             description: "It is difficult to know what will be in another Discord server at any given time. *If* you feel that this server is appropriate to share, please only do so in direct messages."
           })
-        ] });
+        ] })
+        .then(u.clean);
       } else { u.errorHandler(e, msg); }
     });
   }
@@ -181,7 +242,7 @@ async function processCardAction(interaction) {
 
     const mod = interaction.member,
       embed = u.embed(flag.embeds[0]),
-      infraction = await Module.db.infraction.getByFlag(flag);
+      infraction = await u.db.infraction.getByFlag(flag);
 
     if (mod.id == infraction.discordId) {
       await interaction.reply({ content: "You can't handle your own flag!", ephemeral: true });
@@ -200,9 +261,9 @@ async function processCardAction(interaction) {
       let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
       if (roleString.length > 1024) roleString = roleString.substr(0, roleString.indexOf(", ", 1000) + " ...");
 
-      const userDoc = await Module.db.user.fetchUser(member);
+      const userDoc = await u.db.user.fetchUser(member);
 
-      const infractionSummary = await Module.db.infraction.getSummary(member.id);
+      const infractionSummary = await u.db.infraction.getSummary(member.id);
       let infractionDescription = [`**${member.toString()}** has had **${infractionSummary.count}** infraction(s) in the last **${infractionSummary.time}** days, totaling **${infractionSummary.points}** points.`];
       for (const record of infractionSummary.detail) {
         const recordMod = await interaction.guild.members.fetch(record.mod);
@@ -227,7 +288,7 @@ async function processCardAction(interaction) {
     } else if (interaction.customId == "modCardClear") {
       // IGNORE FLAG
 
-      await Module.db.infraction.remove(flag);
+      await u.db.infraction.remove(flag);
       embed.setColor(0x00FF00)
       .addFields([{ name: "Resolved", value: `${mod.toString()} cleared the flag.` }]);
       embed.data.fields = embed.data.fields.filter(f => !f.name.startsWith("Jump"));
@@ -272,8 +333,8 @@ async function processCardAction(interaction) {
             }).catch(u.noop);
           } catch (error) { u.errorHandler(error, "Mute user via card"); }
         } else if (!member) {
-          const roles = (await Module.db.user.fetchUser(infraction.discordId)).roles.concat(u.sf.roles.muted, u.sf.roles.untrusted);
-          await Module.db.user.updateRoles({
+          const roles = (await u.db.user.fetchUser(infraction.discordId)).roles.concat(u.sf.roles.muted, u.sf.roles.untrusted);
+          await u.db.user.updateRoles({
             id: infraction.discordId,
             roles: {
               cache: new u.Collection(roles.map(r => ([r, r])))
@@ -283,13 +344,13 @@ async function processCardAction(interaction) {
         embed.addFields({ name: "Resolved", value: `${mod.toString()} muted the member.` });
         break;
       }
-      await Module.db.infraction.update(infraction);
-      const infractionSummary = await Module.db.infraction.getSummary(infraction.discordId);
+      await u.db.infraction.update(infraction);
+      const infractionSummary = await u.db.infraction.getSummary(infraction.discordId);
 
       if (member) {
         const quote = u.embed({ author: member })
         .addFields({ name: "Channel", value: `#${interaction.guild.channels.cache.get(infraction.channel).name}` })
-        .setDescription(embed.description)
+        .setDescription(embed.data.description)
         .setTimestamp(flag.createdAt);
 
         const response = (
@@ -333,6 +394,12 @@ const Module = new Augur.Module()
 .addInteraction({ id: "modCardMute", process: processCardAction })
 .addInteraction({ id: "modCardInfo", process: processCardAction })
 .addInteraction({ id: "modCardLink", process: processCardAction })
-.addEvent("filterUpdate", () => pf = new profanityFilter());
+.addEvent("filterUpdate", () => pf = new profanityFilter())
+.addEvent("ready", () => {
+  setInterval(() => {
+    spamming(Module.client);
+    active.clear();
+  }, thresh.time);
+});
 
 module.exports = Module;

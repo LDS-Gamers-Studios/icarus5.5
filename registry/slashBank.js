@@ -1,118 +1,107 @@
-const Discord = require('discord.js');
-const type = Discord.ApplicationCommandOptionType;
+// @ts-check
+const u = require('./regUtils');
 
-module.exports = {
-  "name": "bank",
-  "description": "Interact with the server currencies.",
-  "type": Discord.ApplicationCommandType.ChatInput,
-  "options": [
-    {
-      "type": type.Subcommand,
-      "name": "give",
-      "description": "Give someone a currency.",
-      "options": [
-        {
-          "type": type.User,
-          "name": "recipient",
-          "description": "Who do you want to give currency to?",
-          "required": true
-        },
-        {
-          "type": type.String,
-          "name": "currency",
-          "description": "What do you want to give them?",
-          "choices": [
-            {
-              "name": "Ghostbucks",
-              "value": "gb"
-            },
-            {
-              "name": "Ember",
-              "value": "em"
-            }
-          ],
-          "required": true
-        },
-        {
-          "type": type.Integer,
-          "name": "amount",
-          "description": "How much do you want to send? (Max 1,000 GB or 10,000 Ember.)",
-          "required": true
-        },
-        {
-          "type": type.String,
-          "name": "reason",
-          "description": "But ... why?"
-        }
-      ]
-    },
-    {
-      "type": type.Subcommand,
-      "name": "balance",
-      "description": "View your current currency balance."
-    },
-    {
-      "type": type.SubcommandGroup,
-      "name": "game",
-      "description": "Interact with the GhostBucks game store.",
-      "options": [
-        {
-          "type": type.Subcommand,
-          "name": "list",
-          "description": "View the games that can be purchased with GhostBucks."
-        },
-        {
-          "type": type.Subcommand,
-          "name": "redeem",
-          "description": "Purchase a game with GhostBucks.",
-          "options": [
-            {
-              "type": type.String,
-              "name": "code",
-              "description": "What is the code you'd like to redeem?",
-              "required": true
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": type.Subcommand,
-      "name": "discount",
-      "description": "Use GhostBucks to create a discount code for the LDSG store. 1 GB = 1¢",
-      "options": [
-        {
-          "type": type.Integer,
-          "name": "amount",
-          "description": "How many GB would you like to use? Limit 1,000 ($10).",
-          "required": true
-        }
-      ]
-    },
-    {
-      "type": type.Subcommand,
-      "name": "award",
-      "description": "[TEAM] Award ember to a member for the house cup.",
-      "options": [
-        {
-          "type": type.User,
-          "name": "recipient",
-          "description": "Who do you want to award?",
-          "required": true
-        },
-        {
-          "type": type.Integer,
-          "name": "amount",
-          "description": "How much ember do you want to give them?",
-          "required": true
-        },
-        {
-          "type": type.String,
-          "name": "reason",
-          "description": "But ... why?",
-          "required": true
-        }
-      ]
-    }
-  ]
-};
+const give = new u.sub()
+  .setName("give")
+  .setDescription("Give someone a currency")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Who do you want to give currency to?")
+      .setRequired(true)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("currency")
+      .setDescription("What do you want to give them?")
+      .setChoices(
+        { name: "GhostBucks", value: "gb" },
+        { name: "Ember", value: "em" }
+      )
+      .setRequired(true)
+  )
+  .addIntegerOption(
+    new u.int()
+      .setName("amount")
+      .setDescription("How much do you want to give them? (Max 1,000 GB or 10,000 Ember.)")
+      .setRequired(true)
+      .setMinValue(1)
+      .setMaxValue(10000)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("reason")
+      .setDescription("But... why?")
+      .setRequired(false)
+  );
+
+const balance = new u.sub()
+  .setName("balance")
+  .setDescription("View your current currency balance");
+
+const gameList = new u.sub()
+  .setName("list")
+  .setDescription("View the games that can be purchased with GhostBucks");
+
+const gameRedeem = new u.sub()
+  .setName("redeem")
+  .setDescription("Purchase a game with GhostBucks")
+  .addStringOption(
+    new u.string()
+      .setName("code")
+      .setDescription("What is the code you'd like to redeem?")
+      .setRequired(true)
+  );
+
+const game = new u.subGroup()
+  .setName("game")
+  .setDescription("Interact with the GhostBucks game store.")
+  .addSubcommand(gameList)
+  .addSubcommand(gameRedeem);
+
+const discount = new u.sub()
+  .setName("discount")
+  .setDescription("Use GhostBucks to create a discount code for the LDSG store. 1GB = 1¢")
+  .addIntegerOption(
+    new u.int()
+      .setName("amount")
+      .setDescription("How many GB would you like to use? Limit 1,000GB ($10)")
+      .setMinValue(1)
+      .setMaxValue(1000)
+      .setRequired(true)
+  );
+
+const award = new u.sub()
+  .setName("award")
+  .setDescription("[TEAM] Award ember to a member for the house cup.")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Who do you want to award?")
+      .setRequired(true)
+  )
+  .addIntegerOption(
+    new u.int()
+      .setName("amount")
+      .setDescription("How many ember do you want to give them?")
+      .setRequired(true)
+      .setMinValue(1)
+      .setMaxValue(10000)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("reason")
+      .setDescription("But... why?")
+      .setRequired(false)
+  );
+
+module.exports = new u.cmd()
+  .setName("bank")
+  .setDescription("Interact with the server currencies.")
+  .setDMPermission(false)
+  .addSubcommand(give)
+  .addSubcommand(balance)
+  .addSubcommandGroup(game)
+  .addSubcommand(discount)
+  .addSubcommand(award)
+  .toJSON();

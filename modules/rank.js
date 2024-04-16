@@ -10,7 +10,7 @@ async function slashRankLeaderboard(interaction) {
     await interaction.deferReply();
 
     const members = interaction.guild.members.cache;
-    const leaderboard = await Module.db.user.getLeaderboard({
+    const leaderboard = await u.db.user.getLeaderboard({
       members,
       member: interaction.member
     });
@@ -32,7 +32,7 @@ async function slashRankTrack(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
     const track = interaction.options.getBoolean("choice");
-    await Module.db.user.trackXP(interaction.user, track);
+    await u.db.user.trackXP(interaction.user, track);
     await interaction.editReply({
       content: `Ok! I'll ${track ? "start" : "stop"} tracking your XP!`,
       ephemeral: true
@@ -46,7 +46,7 @@ async function slashRankView(interaction) {
     await interaction.deferReply();
     const members = interaction.guild.members.cache;
     const member = interaction.options.getMember("user") ?? interaction.member;
-    const record = await Module.db.user.getRank(member, members);
+    const record = await u.db.user.getRank(member, members);
 
     if (record) {
       const level = Rank.level(record.totalXP);
@@ -76,7 +76,7 @@ async function slashRankView(interaction) {
 
 async function rankClockwork(client) {
   try {
-    const response = await Module.db.user.addXp(active);
+    const response = await u.db.user.addXp(active);
     if (response.users.length > 0) {
       const ldsg = client.guilds.cache.get(u.sf.ldsg);
       for (const user of response.users) {

@@ -6,6 +6,7 @@ const Discord = require("discord.js"),
   // 2/18/24
   tsf = require("../config/snowflakes-testing.json"),
   csf = require("../config/snowflakes-testing-commands.json"),
+  db = require("../database/dbControllers.js"),
   config = require("../config/config.json");
 
 const errorLog = new Discord.WebhookClient(config.error);
@@ -164,7 +165,7 @@ const utils = {
       .setTitle("Awaiting Response")
       .setDescription(msg)
       .setFooter({ text: `Times out in ${timeout} seconds.` })
-      .setColor("RED")
+      .setColor("Red")
     ] });
 
     const collected = await message.channel.awaitMessages({
@@ -174,7 +175,7 @@ const utils = {
 
     const response = utils.embed()
       .setTitle("Awaited Response")
-      .setColor("PURPLE");
+      .setColor("Purple");
 
     if (collected.size === 0) {
       await message.edit({ embeds: [
@@ -192,6 +193,7 @@ const utils = {
       return collected.first();
     }
   },
+  db: db,
   /**
    * Shortcut to nanoid. See docs there for reference.
    */
@@ -200,6 +202,7 @@ const utils = {
    * Shortcut to Discord.Util.escapeMarkdown. See docs there for reference.
    */
   escapeText: escapeMarkdown,
+  attachment: (data) => new Discord.AttachmentBuilder(data),
   /**
    * Returns a MessageEmbed with basic values preset, such as color and timestamp.
    * @param {any} data The data object to pass to the MessageEmbed constructor.
@@ -344,6 +347,9 @@ const utils = {
     return new Promise((fulfill) => {
       setTimeout(fulfill, t);
     });
+  },
+  unique: function(items) {
+    return [...new Set(items)];
   }
 };
 

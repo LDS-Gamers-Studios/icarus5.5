@@ -10,5 +10,9 @@
     "scam": [
         "americasfrontlinedoctors.org",
         "api.org"
+    ],
+    "exception": [
+        "https://cdn.discordapp.com",
+        "ldsgamers.com"
     ]
 }

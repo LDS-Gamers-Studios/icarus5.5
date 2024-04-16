@@ -28,7 +28,7 @@ function blocked(member) {
  * @param {Discord.Guild} guild
  */
 async function getSummaryEmbed(member, time, guild) {
-  const data = await Module.db.infraction.getSummary(member.id, time);
+  const data = await u.db.infraction.getSummary(member.id, time);
   const response = [`**${member}** has had **${data.count}** infraction(s) in the last **${data.time}** day(s), totaling **${data.points}** points.`];
   if ((data.count > 0) && (data.detail.length > 0)) {
     data.detail = data.detail.reverse(); // Newest to oldest is what we want
@@ -103,7 +103,7 @@ async function slashModFullInfo(interaction) {
   let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
   if (roleString.length > 1024) roleString = roleString.substr(0, roleString.indexOf(", ", 1000)) + " ...";
 
-  const userDoc = await Module.db.user.fetchUser(member.id);
+  const userDoc = await u.db.user.fetchUser(member.id);
 
   const e = await getSummaryEmbed(member, time, interaction.guild);
 
@@ -344,7 +344,7 @@ async function slashModSlowmode(interaction) {
 async function slashModSummary(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user");
-  const time = interaction.options.get("history").value ?? 28;
+  const time = interaction.options.getInteger("history") ?? 28;
   const e = await getSummaryEmbed(member, time, interaction.guild);
   await interaction.editReply({ embeds: [ e ] });
 }
@@ -462,7 +462,7 @@ async function slashModWarn(interaction) {
     .setTimestamp();
   const flag = await interaction.guild.channels.cache.get(u.sf.channels.modlogs).send({ embeds: [embed] });
 
-  await Module.db.infraction.save({
+  await u.db.infraction.save({
     discordId: member.id,
     value: value,
     description: reason,
@@ -472,7 +472,7 @@ async function slashModWarn(interaction) {
     mod: interaction.member.id
   });
 
-  const summary = await Module.db.infraction.getSummary(member.id);
+  const summary = await u.db.infraction.getSummary(member.id);
   embed.addFields({ name: `Infraction Summary (${summary.time} Days) `, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` });
 
   flag.edit({ embeds: [embed] });
