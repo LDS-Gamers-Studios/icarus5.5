@@ -1,3 +1,4 @@
+// @ts-check
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils");
 
@@ -6,19 +7,21 @@ const Augur = require("augurbot-ts"),
 const Module = new Augur.Module()
 .addInteraction({ name: "Bookmark",
   id: u.sf.commands.messageBookmark,
+  type: "ContextMessage",
   process: async (interaction) => {
     try {
-      await interaction.deferReply?.({ ephemeral: true });
-      const message = await interaction.channel.messages.fetch(interaction.targetId);
+      await interaction.deferReply({ ephemeral: true });
+      const message = await interaction.channel?.messages.fetch(interaction.targetId);
       if (message) {
-        await interaction.editReply({ content: "I'm sending you a DM!", ephemeral: true });
-        const embed = u.embed({ author: message.member ?? message.user })
-          .setDescription(message.cleanContent)
-          .setColor(message.member?.displayColor)
-          .setTimestamp(message.createdAt);
-        interaction.user.send({ embeds: [embed].concat(message.embeds), files: Array.from(message.attachments.values()) }).catch(u.noop);
+        await interaction.editReply("I'm sending you a DM!");
+        const embed = u.embed({ author: message.member ?? message.author })
+          .setDescription(message.cleanContent || null)
+          .setColor(message.member?.displayColor ?? null)
+          .setTimestamp(message.createdAt)
+          .addFields({ name: "Jump to Post", value: `[Original Message](${message.url})` });
+        interaction.user.send({ embeds: [embed, ...message.embeds], files: Array.from(message.attachments.values()) }).catch(u.noop);
       } else {
-        interaction.editReply({ content: "Against all odds, I couldn't find that message.", ephemeral: true });
+        interaction.editReply("Against all odds, I couldn't find that message.");
       }
     } catch (error) {
       u.errorHandler(error, interaction);
