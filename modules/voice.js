@@ -9,7 +9,7 @@ const u = require("../utils/utils"),
 let channelNames = new Array();
 
 function isCommunityVoice(channel) {
-  return (channel?.parentId == u.sf.channels.communityVoice) && (channel?.id != u.sf.channels.voiceAFK);
+  return (channel?.parentId == u.sf.channels.voiceCategory) && (channel?.id != u.sf.channels.voiceAFK);
 }
 
 function getIDsFromMentionString(mentionString) {
@@ -22,7 +22,7 @@ function getIDsFromMentionString(mentionString) {
 
 async function ensureVoiceChannelsOpen(client) {
   if (!client) return;
-  const communityVoice = client.channels.cache.get(u.sf.channels.communityVoice);
+  const communityVoice = client.channels.cache.get(u.sf.channels.voiceCategory);
   let openVoiceChannels = [...communityVoice.children.values()];
   const channelsOpenedArr = [];
   while (openVoiceChannels.filter((x => (x.id != u.sf.channels.voiceAFK) && (x.members.size == 0))).length < 2) {
@@ -34,7 +34,7 @@ async function ensureVoiceChannelsOpen(client) {
       const newChannel = await communityVoice.guild.channels.create(name, {
         type: "GUILD_VOICE",
         bitrate,
-        parent: u.sf.channels.communityVoice,
+        parent: u.sf.channels.voiceCategory,
         permissionOverwrites: [
           {
             id: u.sf.roles.muted,
@@ -186,7 +186,7 @@ async function slashVoiceRefresh(interaction) {
     interaction.reply({ content: "I opened " + channels.map(x => "<#" + x.id + ">").join(" and ") + ". The mods have been notified, and will change the bitrate if needed.", ephemeral: true });
   } else {
     // Let the user know what channels are open.
-    const channelsOpen = [...interaction.client.channels.cache.get(u.sf.channels.communityVoice).children.values()]
+    const channelsOpen = [...interaction.client.channels.cache.get(u.sf.channels.voiceCategory).children.values()]
       .filter((x => (x.id != u.sf.channels.voiceAFK) && (x.members.size == 0)));
     interaction.reply({ content: "The channels " + channelsOpen.map(x => "<#" + x + ">").join(" and ") + " are already open! Join one of those!", ephemeral: true });
   }
@@ -243,7 +243,7 @@ const Module = new Augur.Module()
         await guild.channels.create(name, {
           type: "GUILD_VOICE",
           bitrate,
-          parent: u.sf.channels.communityVoice,
+          parent: u.sf.channels.voiceCategory,
           permissionOverwrites: [
             {
               id: u.sf.roles.muted,

@@ -1,3 +1,4 @@
+// @ts-check
 const config = require("../config/config.json"),
   mongoose = require("mongoose");
 

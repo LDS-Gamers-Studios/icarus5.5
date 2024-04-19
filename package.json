@@ -5,7 +5,8 @@
   "main": "icarus.js",
   "scripts": {
     "lint": "eslint . --max-warnings=0",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "register": "node register-commands.js"
   },
   "repository": {
     "type": "git",
@@ -20,7 +21,7 @@
   "dependencies": {
     "augurbot-ts": "github:BobbyTheCatfish/augurbot",
     "axios": "^1.6.7",
-    "discord.js": "^14.13.0",
+    "discord.js": "^14.14.1",
     "forever": "^4.0.1",
     "google-spreadsheet": "^3.1.15",
     "jimp": "^0.22.10",
@@ -30,7 +31,8 @@
     "pet-pet-gif": "^1.0.9",
     "profanity-matcher": "^1.0.1",
     "rss-parser": "^3.12.0",
-    "steamapi": "^2.1.3"
+    "steamapi": "^2.1.3",
+    "typescript": "^5.4.3"
   },
   "devDependencies": {
     "eslint": "^8.52.0",

@@ -1,6 +1,7 @@
 // This file is a place for all the publicly visible bot diagnostic commands usable primarily only by the head bot dev.
 
 const Augur = require("augurbot-ts"),
+  Discord = require("discord.js"),
   config = require("../config/config.json"),
   p = require("../utils/perms"),
   u = require("../utils/utils");
@@ -205,6 +206,14 @@ const Module = new Augur.Module()
       if (!role) msg.reply(`I couldn't find a role named ${suffix}.`);
       else msg.channel.send(`${role.name}: ${role.id}`);
     }
+  }
+})
+.addCommand({ name: "mcweb",
+  permissions: () => config.devMode,
+  process: (msg, suffix) => {
+    if (!config.mcTestingWebhook) return msg.reply("Make sure to set a webhook for mcTestingWebhook! You need it to run this command.");
+    const webhook = new Discord.WebhookClient({ url: config.mcTestingWebhook });
+    webhook.send(suffix);
   }
 })
 // When the bot is fully online, fetch all the ldsg members, since it will only autofetch for small servers and we want them all.
