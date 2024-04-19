@@ -1,4 +1,6 @@
+// @ts-check
 const Augur = require("augurbot-ts"),
+  Discord = require("discord.js"),
   { ActionRowBuilder, ButtonBuilder } = require('discord.js');
 const { ButtonStyle } = require("discord.js");
 
@@ -32,6 +34,7 @@ const dict = {
   "zeroWidthSpace": "​"
 };
 
+/** @param {String} sga */
 function translate(sga) {
   let to = "";
 
@@ -52,6 +55,7 @@ function translate(sga) {
   return to;
 }
 
+/** @param {Discord.Message} msg */
 async function handleMessage(msg) {
   if (msg.author.bot || !([...msg.content].some(char => Object.keys(dict).includes(char)))) {
     return;
@@ -65,11 +69,13 @@ async function handleMessage(msg) {
       .setStyle(ButtonStyle.Primary),
   );
 
-  await msg.reply({
+  return await msg.reply({
+    // @ts-ignore
     components: [row]
   });
 }
 
+/** @param {Discord.Interaction} inter */
 async function handleButton(inter) {
   if (!inter.isButton() || inter.customId !== "sgaTranslate") return;
 
@@ -84,7 +90,7 @@ async function handleButton(inter) {
   }
 
   const translated = translate(message.content);
-  await inter.reply({ content: translated, ephemeral: true });
+  return await inter.reply({ content: translated, ephemeral: true });
 }
 
 const Module = new Augur.Module()
