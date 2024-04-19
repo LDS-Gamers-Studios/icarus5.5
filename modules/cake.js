@@ -62,7 +62,7 @@ async function testBirthdays(testMember, testDate) {
     const celebrating = [];
     for (const birthday of birthdays) {
       try {
-        const date = moment(new Date(birthday.ign));
+        const date = moment(new Date(birthday.ign).valueOf() + 10 * 60 * 60 * 1000);
         if (checkDate(date, now, false)) {
           const member = guild.members.cache.get(birthday.discordId);
           celebrating.push(member);
@@ -182,6 +182,11 @@ const Module = new Augur.Module()
   } catch (e) {
     u.errorHandler(e, "Cakeday Init");
   }
+})
+// Janky stuff, but it works!!! (for now lol)
+.setUnload((date, type) => {
+  if (type == "cake") testCakeDays(undefined, date);
+  else if (type == "bday") testBirthdays(undefined, date);
 })
 .addCommand({ name: "bday",
   permissions: () => config.devMode,
