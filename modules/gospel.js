@@ -1,9 +1,17 @@
+// @ts-check
 const Augur = require("augurbot-ts");
-const { Interaction } = require("discord.js");
+const Discord = require("discord.js");
 const Parser = require("rss-parser");
 const u = require("../utils/utils");
+const books = require("../data/gospel/books.json");
 
 const abbreviationTable = new Map(); // abbreviation: { bookName, work }
+
+books.forEach(([bookName, urlAbbrev, work, abbreviations = []]) => {
+  if (typeof bookName === 'string' && typeof urlAbbrev === 'string' && typeof work === 'string' && Array.isArray(abbreviations)) {
+    refAbbrBuild(bookName, urlAbbrev, work, abbreviations);
+  }
+});
 
 const works = {
   "ot": "old-testament",
@@ -13,8 +21,10 @@ const works = {
   "pgp": "pearl-of-great-price"
 };
 
-const manuals = new Map([
-  [2022, "old-testament-2022"]
+const manuals = new u.Collection([
+  [2022, "old-testament-2022"],
+  [2023, "new-testament-2023"],
+  [2024, "book-of-mormon-2024"]
 ]);
 
 /**
@@ -45,14 +55,13 @@ function getScriptureMastery() {
 
 /**
  * Displays a verse that's requested, or a random verse if none is specified.
- * @param {Interaction} interaction The interaction that caused this command.
+ * @param {Discord.ChatInputCommandInteraction} interaction The interaction that caused this command.
  */
 async function slashGospelVerse(interaction) {
   let book = interaction.options.getString("book", false);
-  let chapter = interaction.options.getInteger("chapter", false);
+  let chapter = interaction.options.getString("chapter", false);
   let verses = interaction.options.getString("verses", false);
-
-  if (!book || !chapter) {
+  if (!book || !chapter || !verses) {
     // Get a random one from scripture mastery.
     ({ book, chapter, verses } = getScriptureMastery());
   }
@@ -108,14 +117,14 @@ async function slashGospelVerse(interaction) {
 function parseVerseRange(verses) {
   let versesNums;
   if (verses) {
+    if (verses.charAt(0) == "-") throw new SyntaxError("Invalid verse range."); // catch people giving negative verse to be silly
     verses = verses.replace(/ /g, "");
     const versesList = verses.split(/[,;]/);
-    versesNums = new Array();
+    versesNums = [];
     const rangeRegex = /(\d+)(?:-(\d+))?/;
     for (const range of versesList) {
       const results = range.match(rangeRegex);
-      const low = results[1],
-        high = results[2];
+      const [low, high] = results ? [results[1], results[2]] : [null, null];
       if (!low) {
         throw new SyntaxError("Invalid verse range.");
       } else if (!high) {
@@ -155,12 +164,13 @@ async function slashGospelComeFollowMe(interaction) {
   const manual = manuals.get(date.getFullYear());
   if (manual) {
     // Add full weeks and check partial weeks by day of week comparison
-    const week = ((date.getDay() + 6) % 7 < (jan1.getDay() + 6) % 7 ? 2 : 1) + Math.floor((date - jan1) / (1000 * 60 * 60 * 24 * 7));
+    const week = ((date.getDay() + 6) % 7 < (jan1.getDay() + 6) % 7 ? 2 : 1) + Math.floor((date.getTime() - jan1.getTime()) / (1000 * 60 * 60 * 24 * 7));
     // Account for General Conference - this was needed in 2020 but is kept here commented in case it's needed again.
     // if ((date.getMonth() == 3 && (date.getDate() - date.getDay()) >= 0) || date.getMonth() > 3) week -= 1;
     // if ((date.getMonth() == 9 && (date.getDate() - date.getDay()) >= 0) || date.getMonth() > 9) week -= 1;
 
-    const link = `https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-individuals-and-families-${manual}/${week.toString().padStart(2, "0")}`;
+    // Current implementation only gets the current manual, but im leaving this extra functionality for URL format in case we ever expand off it to get any past entreis
+    const link = date.getFullYear() < 2024 ? `https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-individuals-and-families-${manual}/${week.toString().padStart(2, "0")}` : `https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-home-and-church-${manual}/${week.toString().padStart(2, "0")}`;
 
     // This would be cool as an embed, but I think Discord's built in style is better.
     interaction.reply(`__Come, Follow Me Lesson for the week of ${displayDate.toLocaleDateString()}:__\n${link}`);
@@ -171,122 +181,19 @@ async function slashGospelComeFollowMe(interaction) {
 
 async function slashGospelNews(interaction) {
   const parser = new Parser();
-  let url, author;
-  switch (interaction.options.getString("source")) {
-  case "newsroom":
-    url = "https://newsroom.churchofjesuschrist.org/rss";
-    author = "Newsroom";
-    break;
-  case "choir":
-    url = "https://www.thetabernaclechoir.org/content/motab/en/blog.rss.xml";
-    author = "The Tabernacle Choir at Temple Square";
-    break;
-  }
+  const url = "https://newsroom.churchofjesuschrist.org/rss";
+  const author = "Newsroom";
   const feed = await parser.parseURL(url);
   const newsItem = feed.items[0];
   const embed = u.embed()
-    .setAuthor({ name: author, url: feed.link.startsWith("http") ? feed.link : "https://" + feed.link })
-    .setTitle(newsItem.title)
-    .setURL(newsItem.link)
-    .setDescription(newsItem.content.replace(/<[\s\S]+?>/g, "")) // Remove all HTML tags from the description
-    .setTimestamp(new Date(newsItem.pubDate));
+    .setAuthor({ name: author, url: feed.link?.startsWith("http") ? feed.link : "https://" + feed.link })
+    .setTitle(newsItem.title || "Title")
+    .setURL(newsItem.link || "Url")
+    .setDescription((newsItem.content || "Description").replace(/<[\s\S]+?>/g, "")) // Remove all HTML tags from the description
+    .setTimestamp(new Date(newsItem.pubDate || 1));
   interaction.reply({ embeds: [embed] });
 
 }
-
-// On module load, load all the abbreviations in.
-refAbbrBuild("Genesis", "gen", "ot");
-refAbbrBuild("Exodus", "ex", "ot");
-refAbbrBuild("Leviticus", "lev", "ot");
-refAbbrBuild("Numbers", "num", "ot");
-refAbbrBuild("Deuteronomy", "deut", "ot");
-refAbbrBuild("Joshua", "josh", "ot");
-refAbbrBuild("Judges", "judg", "ot");
-refAbbrBuild("Ruth", "ruth", "ot");
-refAbbrBuild("1 Samuel", "1-sam", "ot", ["1sam", "1 sam"]);
-refAbbrBuild("2 Samuel", "2-sam", "ot", ["2sam", "2 sam"]);
-refAbbrBuild("1 Kings", "1-kgs", "ot", ["1kgs", "1 kgs"]);
-refAbbrBuild("2 Kings", "2-kgs", "ot", ["2kgs", "2 kgs"]);
-refAbbrBuild("1 Chronicles", "1-chr", "ot", ["1chr", "1 chr"]);
-refAbbrBuild("2 Chronicles", "2-chr", "ot", ["2chr", "2 chr"]);
-refAbbrBuild("Ezra", "ezra", "ot");
-refAbbrBuild("Nehemiah", "neh", "ot");
-refAbbrBuild("Esther", "esth", "ot");
-refAbbrBuild("Job", "job", "ot");
-refAbbrBuild("Psalms", "ps", "ot", ["psalm"]);
-refAbbrBuild("Proverbs", "prov", "ot");
-refAbbrBuild("Ecclesiastes", "eccl", "ot");
-refAbbrBuild("Song of Solomon", "song", "ot", ["sos"]);
-refAbbrBuild("Isaiah", "isa", "ot");
-refAbbrBuild("Jeremiah", "jer", "ot");
-refAbbrBuild("Lamentations", "lam", "ot");
-refAbbrBuild("Ezekiel", "ezek", "ot");
-refAbbrBuild("Daniel", "dan", "ot");
-refAbbrBuild("Hosea", "hosea", "ot");
-refAbbrBuild("Joel", "joel", "ot");
-refAbbrBuild("Amos", "amos", "ot");
-refAbbrBuild("Obadiah", "obad", "ot");
-refAbbrBuild("Jonah", "jonah", "ot");
-refAbbrBuild("Micah", "micah", "ot");
-refAbbrBuild("Nahum", "nahum", "ot");
-refAbbrBuild("Habakkuk", "hab", "ot");
-refAbbrBuild("Zephaniah", "zeph", "ot");
-refAbbrBuild("Haggai", "hag", "ot");
-refAbbrBuild("Zechariah", "zech", "ot");
-refAbbrBuild("Malachi", "mal", "ot");
-// New Testament
-refAbbrBuild("Matthew", "matt", "nt");
-refAbbrBuild("Mark", "mark", "nt");
-refAbbrBuild("Luke", "luke", "nt");
-refAbbrBuild("John", "john", "nt");
-refAbbrBuild("Acts", "acts", "nt");
-refAbbrBuild("Romans", "rom", "nt");
-refAbbrBuild("1 Corinthians", "1-cor", "nt", ["1cor", "1 cor"]);
-refAbbrBuild("2 Corinthians", "2-cor", "nt", ["2cor", "2 cor"]);
-refAbbrBuild("Galatians", "gal", "nt");
-refAbbrBuild("Ephesians", "eph", "nt");
-refAbbrBuild("Philippians", "philip", "nt");
-refAbbrBuild("Colossians", "col", "nt");
-refAbbrBuild("1 Thessalonians", "1-thes", "nt", ["1thes", "1 thes"]);
-refAbbrBuild("2 Thessalonians", "2-thes", "nt", ["2thes", "2 thes"]);
-refAbbrBuild("1 Timothy", "1-tim", "nt", ["1tim", "1 tim"]);
-refAbbrBuild("2 Timothy", "2-tim", "nt", ["2tim", "2 tim"]);
-refAbbrBuild("Titus", "titus", "nt");
-refAbbrBuild("Philemon", "philem", "nt");
-refAbbrBuild("Hebrews", "heb", "nt");
-refAbbrBuild("James", "james", "nt");
-refAbbrBuild("1 Peter", "1-pet", "nt", ["1pet", "1 pet"]);
-refAbbrBuild("2 Peter", "2-pet", "nt", ["2pet", "2 pet"]);
-refAbbrBuild("1 John", "1-jn", "nt", ["1jn", "1john", "1 john"]);
-refAbbrBuild("2 John", "2-jn", "nt", ["2jn", "2john", "2 john"]);
-refAbbrBuild("3 John", "3-jn", "nt", ["3jn", "3john", "3 john"]);
-refAbbrBuild("Jude", "jude", "nt");
-refAbbrBuild("Revelation", "rev", "nt", ["revel"]);
-// Book of Mormon
-refAbbrBuild("1 Nephi", "1-ne", "bofm", ["1ne", "1 ne"]);
-refAbbrBuild("2 Nephi", "2-ne", "bofm", ["2ne", "2 ne"]);
-refAbbrBuild("Jacob", "jacob", "bofm", ["jac"]);
-refAbbrBuild("Enos", "enos", "bofm");
-refAbbrBuild("Jarom", "jarom", "bofm");
-refAbbrBuild("Omni", "omni", "bofm");
-refAbbrBuild("Words of Mormon", "w of m", "bofm", ["wom"]);
-refAbbrBuild("Mosiah", "mosiah", "bofm");
-refAbbrBuild("Alma", "alma", "bofm");
-refAbbrBuild("Helaman", "hel", "bofm");
-refAbbrBuild("3 Nephi", "3-ne", "bofm", ["3ne", "3 ne"]);
-refAbbrBuild("4 Nephi", "4-ne", "bofm", ["4 ne", "4ne"]);
-refAbbrBuild("Mormon", "morm", "bofm");
-refAbbrBuild("Ether", "ether", "bofm");
-refAbbrBuild("Moroni", "moro", "bofm");
-// Doctrine and Covenants
-refAbbrBuild("Doctrine & Covenants", "dc", "dc-testament", ["d&c", "d & c", "doctrine and covenants"]);
-// Pearl of Great Price
-refAbbrBuild("Moses", "moses", "pgp");
-refAbbrBuild("Abraham", "abr", "pgp");
-refAbbrBuild("Joseph Smith - Matthew", "js-m", "pgp", ["jsm", "joseph smith matthew", "js matthew"]);
-refAbbrBuild("Joseph Smith - History", "js-h", "pgp", ["jsh", "joseph smith history", "js history"]);
-refAbbrBuild("Articles of Faith", "a-of-f", "pgp", ["aof"]);
-
 
 const Module = new Augur.Module()
   .setInit(() => {
@@ -294,7 +201,6 @@ const Module = new Augur.Module()
   })
   .addInteraction({
     name: "gospel",
-    guildId: u.sf.ldsg,
     id: u.sf.commands.slashGospel,
     process: async (interaction) => {
       switch (interaction.options.getSubcommand(true)) {
