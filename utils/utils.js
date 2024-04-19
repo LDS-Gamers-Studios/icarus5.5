@@ -326,9 +326,9 @@ const utils = {
   },
   /**
    * Choose a random element from an array
-   * @function rand
-   * @param {Array} selections Items to choose from
-   * @returns {*} A random element from the array
+   * @template K
+   * @param {K[]} selections
+   * @returns {K}
    */
   rand: function(selections) {
     return selections[Math.floor(Math.random() * selections.length)];

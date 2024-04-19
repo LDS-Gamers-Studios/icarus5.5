@@ -29,17 +29,7 @@ const comefollowme = new u.sub()
 
 const news = new u.sub()
   .setName("news")
-  .setDescription("Gets LDS news")
-  .addStringOption(
-    new u.string()
-      .setName("source")
-      .setDescription("The news source")
-      .setRequired(false)
-      .setChoices(
-        { name: "Newsroom", value: "newsroom" },
-        { name: "Tabernacle Choir", value: "choir" }
-      )
-  );
+  .setDescription("Gets LDS news");
 
 module.exports = new u.cmd()
   .setName("gospel")
