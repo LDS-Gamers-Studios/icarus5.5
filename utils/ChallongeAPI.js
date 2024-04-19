@@ -1,7 +1,9 @@
+// @ts-check
 const request = require("request");
+const config = require('../config/config.json');
 
 const ChallongeApi = {
-  api_key: null,
+  api_key: config.api.challonge,
   // GENERAL
   callApi: function(call, params = {}, method = "get") {
     const self = ChallongeApi;

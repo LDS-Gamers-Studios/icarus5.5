@@ -1,4 +1,4 @@
-// STILL NEEDS TO BE UPDATED TO v14
+// @ts-check
 
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
@@ -7,7 +7,7 @@ const Augur = require("augurbot-ts"),
   perms = require('../utils/perms'),
   discord = require('discord.js');
 
-/** @param {discord.CommandInteraction} int */
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function bracket(int) {
   const challonge = require("../utils/ChallongeAPI").init(config.api.challonge);
   const embed = u.embed().setTitle("Upcoming and Current LDSG Tournaments");
@@ -28,56 +28,60 @@ async function bracket(int) {
   }
 
   if (displayTourneys.length == 0) return int.editReply({ content: "Looks like there aren't any tourneys scheduled right now." });
-  else embed.description = `\n\nCommunity Tournaments:\n${displayTourneys.join('\n')}`;
+  else embed.setDescription(`\n\nCommunity Tournaments:\n${displayTourneys.join('\n')}`);
   int.editReply({ embeds: [embed] });
 }
-/** @param {discord.CommandInteraction} int */
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function champs(int) {
   if (!config.google.sheets.config) return console.log("No Sheets ID");
   const tName = int.options.getString('tourney-name');
   const user = (str) => int.options.getMember(str);
-  const users = [user('1'), user('2'), user('3'), user('4'), user('5'), user('6')];
-  const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf().toString();
+  const users = [user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(Boolean);
+  console.log(users);
+  const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).toString();
   const doc = new GoogleSpreadsheet(config.google.sheets.config);
   await doc.useServiceAccountAuth(config.google.creds);
   await doc.loadInfo();
   for (const member of users) {
-    member.roles.add(u.sf.roles.champion);
-    await doc.sheetsByTitle["Tourney Champions"].addRow({ "Tourney Name": tName, "User ID": member.id, "Take Role At": date });
+    member?.roles.add(u.sf.roles.champion);
+    // @ts-ignore
+    await doc.sheetsByTitle["Tourney Champions"].addRow({ "Tourney Name": tName, "User ID": member?.id, "Take Role At": date });
   }
   const s = users.length > 1 ? 's' : '';
-  int.guild.channels.cache.get(u.sf.channels.announcements).send(`Congratulations to our new tournament champion${s}, ${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
+  Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send(`Congratulations to our new tournament champion${s}, ${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
+  int.reply({ ephemeral: true, content: "Champions registered!" });
 }
-/** @param {discord.CommandInteraction} int */
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function participant(int) {
   const role = int.guild.roles.cache.get(u.sf.roles.tournamentparticipant);
+  if (!role) return;
   const clean = int.options.getBoolean('remove-all');
   const remove = int.options.getBoolean('remove');
   const user = int.options.getMember('user');
   let succeeded = 0;
   if (clean) {
     let i = 0;
-    const members = role.members;
+    const members = role?.members ?? new discord.Collection;
     while (i < members.size) {
       const member = members.at(i);
       try {
-        await member.roles.remove(role.id);
+        await member?.roles.remove(role.id);
         succeeded++;
       } catch (error) {null;}
       i++;
     }
     return int.reply({ content: `Removed ${succeeded}/${members.size} people from the ${role} role`, ephemeral: true });
   } else if (remove) {
-    if (user.roles.cache.has(role.id)) {
+    if (user?.roles.cache.has(role.id)) {
       let content = `I removed the ${role} role from ${user}`;
       await user.roles.remove(role.id).catch(() => content = `I couldn't remove the ${role} role from ${user}`);
       return int.reply({ content, ephemeral: true });
     } else {
       return int.reply({ content: `${user} doesn't have the ${role} role`, ephemeral: true });
     }
-  } else if (!user.roles.cache.has(role.id)) {
+  } else if (!user?.roles.cache.has(role.id)) {
     let content = `I added the ${role} role to ${user}`;
-    await user.roles.add(role.id).catch(() => content = `I couldn't add the ${role} role to ${user}`);
+    await user?.roles.add(role.id).catch(() => content = `I couldn't add the ${role} role to ${user}`);
     return int.reply({ content, ephemeral: true });
   } else {
     return int.reply({ content: `${user} already has the ${role} role`, ephemeral: true });
@@ -87,7 +91,7 @@ async function participant(int) {
 const Module = new Augur.Module()
 .addInteraction({ name: "tournament",
   id: u.sf.commands.slashTournament,
-  interactionType: "CommandSlash",
+  onlyGuild: true,
   permissions: (int) => int.options.getSubcommand() == 'list' ? true : perms.isTeam(int),
   process: async (int) => {
     switch (int.options.getSubcommand()) {
