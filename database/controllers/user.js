@@ -1,69 +1,84 @@
+// @ts-check
 const Discord = require("discord.js"),
   moment = require("moment");
 
 const User = require("../models/User.model");
 
+/**
+ * @typedef UserRecord
+ * @prop {string} discordId
+ * @prop {string[]} roles
+ * @prop {string[]} badges
+ * @prop {number} posts
+ * @prop {boolean} excludeXP
+ * @prop {number} currentXP
+ * @prop {number} totalXP
+ * @prop {number} priorTenure
+ * @prop {boolean} watching
+ */
+
+/**
+ * @typedef leaderboardOptions Options for the leaderboard fetch
+ * @prop {Discord.Collection | Array} [members] Collection or Array of snowflakes to include in the leaderboard
+ * @prop {number} [limit] The number of users to limit the search to
+ * @prop {string} [member] A user to include in the results, no matter their ranking.
+ * @prop {boolean} [season] Whether to fetch the current season (`true`, default) or lifetime (`false`) leaderboard.
+ */
+
+const outdated = "Expected a Discord ID but likely recieved an object instead. That's deprecated now!";
+
 const models = {
   /**
      * Add XP to a set of users
-     * @function addXp
-     * @param {Set<String>} users Users to add XP
-     * @returns {Promise<User>}
+     * @param {string[]} users Users to add XP
+     * @returns {Promise<{users: UserRecord[], xp: number}>}
      */
   addXp: async function(users) {
-    users = Array.from(users.values());
-    const response = { users: [], xp: 0 };
+    const xp = Math.floor(Math.random() * 11) + 15;
     if (users.length == 0) {
-      return response;
+      return { users: [], xp: 0 };
     } else {
-      const xp = Math.floor(Math.random() * 11) + 15;
-      response.xp = xp;
       // Update XP for ranked users
       await User.updateMany(
         { discordId: { $in: users }, excludeXP: false },
         { $inc: { currentXP: xp, totalXP: xp } },
-        { new: true, upsert: false }
+        { new: true, upsert: true }
       ).exec();
       // Update post count for all users
       await User.updateMany(
         { discordId: { $in: users } },
         { $inc: { posts: 1 } },
-        { new: true, upsert: false }
+        { new: true, upsert: true }
       ).exec();
       const userDocs = await User.find(
-        { discordId: { $in: users } }
+        { discordId: { $in: users } }, null, { upsert: true }
       ).exec();
-      response.users = userDocs;
-      return response;
+      return { users: userDocs.map(d => d.toObject()), xp };
     }
   },
   /**
-     * Fetch a user record from the database.
-     * @function fetchUser
-     * @param {(string|Discord.User|Discord.GuildMember)} discordId The user record to fetch.
-     * @returns {Promise<User>}
-     */
+   * Fetch a user record from the database.
+   * @param {string} discordId The user record to fetch.
+   * @param {boolean} [createIfNotFound] Defaults to true
+   * @returns {Promise<UserRecord | undefined>}
+   */
   fetchUser: async function(discordId, createIfNotFound = true) {
-    discordId = discordId.id ?? discordId;
-    let user = await User.findOne({ discordId }).exec();
+    if (typeof discordId != "string") throw new TypeError(outdated);
+    /** @type  {UserRecord | undefined}*/
+    let user = (await User.findOne({ discordId }).exec())?.toObject();
     if (!user && createIfNotFound) {
       user = await models.newUser(discordId);
     }
     return user;
   },
   /**
-     * Get the top X of the leaderboard
-     * @function getLeaderboard
-     * @param {Object} leaderboardOptions Options for the leaderboard fetch
-     * @param {Discord.Collection|Array} leaderboardOptions.members Collection or Array of snowflakes to include in the leaderboard
-     * @param {Number} leaderboardOptions.limit
-     * @param {(string|Discord.User|Discord.GuildMember)} leaderboardOptions.member A user to include in the results, no matter their ranking.
-     * @param {Boolean} leaderboardOptions.season Whether to fetch the current season (`true`, default) or lifetime (`false`) leaderboard.
-     * @returns {Promise<Array(User)>}
-     */
+   * Get the top X of the leaderboard
+   * @param {leaderboardOptions} options
+   * @returns {Promise<(UserRecord & {rank: number})[]>}
+   */
   getLeaderboard: async function(options = {}) {
     const members = (options.members instanceof Discord.Collection ? Array.from(options.members.keys()) : options.members);
-    const member = options.member?.id || options.member;
+    const member = options.member;
     const season = options.season ?? true;
     const limit = options.limit ?? 10;
 
@@ -76,125 +91,127 @@ const models = {
     else query.sort({ totalXP: "desc" });
 
     if (limit) query.limit(limit);
-
     const records = await query.exec();
-    for (let i = 0; i < records.length; i++) {
-      records[i].rank = i + 1;
-    }
+    /** @type {(UserRecord & {rank: number})[]} */
+    const ranked = records.map((r, i) => {
+      return { ...r.toObject(), rank: i + 1 };
+    });
 
     // Get requested user
-    const hasMember = records.some(r => r.discordId == member);
+    const hasMember = ranked.some(r => r.discordId == member);
     if (member && !hasMember) {
       const record = await models.getRank(member, members);
-      if (!season) record.rank = record.lifetime;
-      if (record) records.push(record);
+      if (record) {
+        ranked.push({ ...record, rank: season ? record.rank.season : record.rank.lifetime });
+      }
     }
 
-    return records;
+    return ranked;
   },
   /**
      * Get a user's rank
      * @function getRank
-     * @param {(string|Discord.User|Discord.GuildMember)} member The member whose ranking you want to view.
-     * @param {Discord.Collection|Array} members Collection or Array of snowflakes to include in the leaderboard
-     * @returns {Promise<User>}
+     * @param {string} [member] The member whose ranking you want to view.
+     * @param {Discord.Collection|Array} [members] Collection or Array of snowflakes to include in the leaderboard
+     * @returns {Promise<(UserRecord & {rank: {season: number, lifetime: number}}) | null>}
      */
   getRank: async function(member, members) {
     if (!member) return null;
-    member = member?.id || member;
     members = (members instanceof Discord.Collection ? Array.from(members.keys()) : members);
 
     // Get requested user
+
     const record = await User.findOne({ discordId: member, excludeXP: false }).exec();
     if (!record) return null;
 
-    let countParams = { excludeXP: false, currentXP: { $gt: record.currentXP } };
-    if (members) countParams.discordId = { $in: members };
-    const currentCount = await User.count(countParams);
-    record.rank = currentCount + 1;
+    const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP } };
+    if (members) seasonParams.discordId = { $in: members };
+    const seasonCount = await User.count(seasonParams);
 
-    countParams = { excludeXP: false, totalXP: { $gt: record.totalXP } };
-    if (members) countParams.discordId = { $in: members };
-    const lifetime = await User.count(countParams);
-    record.lifetime = lifetime + 1;
+    const lifetimeParams = { excludeXP: false, totalXP: { $gt: record.totalXP } };
+    if (members) lifetimeParams.discordId = { $in: members };
+    const lifeCount = await User.count(lifetimeParams);
 
-    return record;
+    return { ...record.toObject(), rank: { season: seasonCount + 1, lifetime: lifeCount + 1 } };
   },
   /**
-     * Run a user database query
-     * @function getUsers
-     * @param {object} query
-     * @returns {Promise<users>}
-     */
+   * Run a user database query
+   * @param {object} query
+   * @returns {Promise<UserRecord[]>}
+   */
   getUsers: function(query) {
-    return User.find(query).exec();
+    return User.find(query).exec().then(users => users.map(u => u.toObject()));
   },
   /**
-     * Create a new user record
-     * @function newUser
-     * @param {string|Discord.GuildMember|Discord.User} discordId The guild member record to create
-     * @returns {Promise<User>}
-     */
+   * Create a new user record
+   * @function newUser
+   * @param {string} discordId The guild member record to create
+   * @returns {Promise<UserRecord>}
+   */
   newUser: async function(discordId) {
-    if (discordId.id) discordId = discordId.id;
+    if (typeof discordId != "string") throw new TypeError(outdated);
     const exists = await User.findOne({ discordId }).exec();
     if (exists) {
-      return exists;
+      return exists.toObject();
     } else {
       const newMember = new User({
-        discordId,
-        currentXP: 0,
-        totalXP: 0,
-        posts: 0,
-        stars: 0,
-        preferences: 0,
-        ghostBucks: 0,
-        house: null,
-        excludeXP: true,
-        twitchFollow: false,
-        roles: []
+        discordId
       });
-      return newMember.save();
+      return newMember.save().then(m => m.toObject());
     }
   },
   /**
-     * Update a member's track XP preference
-     * @function trackXp
-     * @param {Discord.GuildMember} member The guild member to update.
-     * @param {Boolean} track Whether to track the member's XP.
-     * @returns {Promise<User>}
-     */
+   * Update a member's track XP preference
+   * @param {string} member The guild member to update.
+   * @param {boolean} track Whether to track the member's XP.
+   * @returns {Promise<UserRecord>}
+   */
   trackXP: function(member, track = true) {
     return User.findOneAndUpdate(
-      { discordId: member.id ?? member },
+      { discordId: member },
       { $set: { excludeXP: !track } },
-      { new: true, upsert: false }
-    ).exec();
+      { new: true, upsert: true }
+    ).exec().then(d => d.toObject());
   },
   /**
-     * Update a member's roles in the database
-     * @function updateRoles
-     * @param {Discord.GuildMember} member The member to update
-     */
-  updateRoles: function(member) {
+   * Update a member's roles in the database
+   * @function updateRoles
+   * @param {Discord.GuildMember} [member] The member to update
+   * @param {string[]} [roles]
+   * @param {string} [backupId]
+   * @return {Promise<UserRecord>}
+   */
+  updateRoles: function(member, roles, backupId) {
     return User.findOneAndUpdate(
-      { discordId: member.id },
-      { $set: { roles: Array.from(member.roles.cache.keys()) } },
-      { new: true, upsert: false }
-    ).exec();
+      { discordId: backupId ?? member?.id },
+      { $set: { roles: Array.from(roles ?? member?.roles.cache.keys() ?? []) } },
+      { new: true, upsert: true }
+    ).exec().then(u => u.toObject());
   },
   /**
-     * Updates a guild member's tenure in the server database.
-     *
-     * @param {Discord.GuildMember} member The guild member to update.
-     * @returns {Promise<User>}
-     */
+   * Updates a guild member's tenure in the server database.
+   * @param {Discord.GuildMember} member The guild member to update.
+   * @returns {Promise<UserRecord>}
+   */
   updateTenure: function(member) {
     return User.findOneAndUpdate(
       { discordId: member.id },
       { $inc: { priorTenure: (moment().diff(moment(member.joinedAt), "days") || 0) } },
-      { new: true, upsert: false }
-    ).exec();
+      { new: true, upsert: true }
+    ).exec().then(m => m.toObject());
+  },
+  /**
+   * Watches or unwatches a user
+   * @param {string} member The guild member to watch/unwatch
+   * @param {boolean} status Set to watched or not (Default: true)
+   * @returns {Promise<UserRecord>}
+   */
+  updateWatch: function(member, status = true) {
+    return User.findOneAndUpdate(
+      { discordId: member },
+      { $set: { watching: status } },
+      { new: true, upsert: true }
+    ).exec().then(d => d.toObject());
   }
 };
 
