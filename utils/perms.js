@@ -36,7 +36,7 @@ const perms = {
     const roles = msg.member?.roles.cache;
     return roles?.has(sf.roles.mod) || roles?.has(sf.roles.management);
   },
-  isMgmt: (msg) => msg.member?.roles.cache.has(sf.roles.management),
+  isMgmt: (member) => member.roles.cache.has(sf.roles.management),
   isMgr: (msg) => msg.member?.roles.cache.has(sf.roles.manager),
   isTeam: function(msg) {
     const roles = msg.member?.roles.cache;
