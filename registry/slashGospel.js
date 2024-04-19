@@ -9,12 +9,14 @@ const verse = new u.sub()
       .setName("book")
       .setDescription("The name of the book. `1 Nephi`, `Mosiah`, etc.")
       .setRequired(false)
+      .setAutocomplete(true)
   )
-  .addStringOption(
-    new u.string()
+  .addIntegerOption(
+    new u.int()
       .setName("chapter")
       .setDescription("The chapter in the book")
       .setRequired(false)
+      .setMinValue(1)
   )
   .addStringOption(
     new u.string()
