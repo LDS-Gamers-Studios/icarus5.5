@@ -125,17 +125,14 @@ function overwrite(channel, perms) {
         current = currentOverwrites[i - 1];
       }
       for (const allow of perm.allow ?? []) {
-        if (current.allow.has(allow)) continue;
         current.deny.delete(allow);
         current.allow.add(allow);
       }
       for (const deny of perm.deny ?? []) {
-        if (current.deny.has(deny)) continue;
         current.allow.delete(deny);
         current.deny.add(deny);
       }
       for (const remove of perm.remove ?? []) {
-        if (!current.deny.has(remove) && !current.allow.has(remove)) continue;
         current.allow.delete(remove);
         current.deny.delete(remove);
       }
@@ -393,7 +390,7 @@ async function updateChannels(oldState, newState) {
   const used = channels.map(c => c.isVoiceBased() ? c.bitrate : 0);
   const bitrate = bitrates.find(c => !used.includes(c * 1000)) ?? u.rand(bitrates);
   if (open.size < 2 || channels.size < 3) {
-    const unused = (cn) => cn.filter(c => !channels.find(ch => ch.name.includes(c)));
+    const unused = (/** @type {string[]} */ cn) => cn.filter(c => !channels.find(ch => ch.name.includes(c)));
     const name = u.rand(unused(channelNames)) ?? u.rand(unused(channelNames.map(c => c + " 2"))) ?? "Room Error";
     communityVoice.children.create({
       name: `${name} (${bitrate} kbps)`,
