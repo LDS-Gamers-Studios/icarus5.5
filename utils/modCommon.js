@@ -437,7 +437,7 @@ const modCommon = {
   office: async function(interaction, target, reason, apply = true) {
     let success = false;
     try {
-      const put = apply ? `put ${target} in` : `release ${target} from`;
+      const put = apply ? `put ${target} in` : `released ${target} from`;
       if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to ${put} the office!`;
       else if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
 
