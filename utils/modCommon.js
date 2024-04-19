@@ -346,8 +346,7 @@ const modCommon = {
     const M = apply ? "Mute" : "Unmute";
     let success = 0;
     try {
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to ${m} ${target}!`;
-      else if (!target.manageable) return `I have insufficient permissions to ${m} ${target}!`;
+      if (!target.manageable) return `I have insufficient permissions to ${m} ${target}!`;
 
       // Don't mute if muted or vice versa
       if (target.roles.cache.has(u.sf.roles.muted) == apply) return `${target} is already ${m}d.`;
@@ -438,8 +437,7 @@ const modCommon = {
     let success = false;
     try {
       const put = apply ? `put ${target} in` : `released ${target} from`;
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to ${put} the office!`;
-      else if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
+      if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
 
       // don't do it if it wont do anything
       if (target.roles.cache.has(u.sf.roles.ducttape) == apply) return `They're ${apply ? "already" : "not"} in the office.`;
@@ -483,9 +481,7 @@ const modCommon = {
     try {
       const newNick = interaction.options.getString("name") ?? nameGen();
       const oldNick = target.displayName;
-
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to rename ${target}!`;
-      else if (!target.manageable) return `I have insufficient permissions to rename ${target}!`;
+      if (!target.manageable) return `I have insufficient permissions to rename ${target}!`;
 
       await target.setNickname(reset ? null : newNick);
       success = true;
@@ -579,8 +575,7 @@ const modCommon = {
     const T = apply ? "Timed Out" : "Released from Time Out";
     let success = false;
     try {
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to ${t} ${target}!`;
-      else if (!target.manageable) return `I have insufficient permissions to ${t} ${target}!`;
+      if (!target.manageable) return `I have insufficient permissions to ${t} ${target}!`;
 
       // Don't mute if muted or vice versa
       if (!apply && !target.communicationDisabledUntil) return `${target} is already ${td}.`;
