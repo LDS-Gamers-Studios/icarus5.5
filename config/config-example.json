@@ -28,6 +28,7 @@
   "error": {
     "url": "Webhook url for errors"
   },
+  "mcTestingWebhook": "Webhook url for testing interactions with Minecraft chat",
   "events": [
     "channelCreate",
     "channelUpdate",
@@ -72,8 +73,8 @@
     "channels": [10, 1],
     "messages": [10, 1],
     "same": [1, 1],
-    "time": 10000,
-    "cleanupLimit": 100000
+    "time": 10,
+    "cleanupLimit": 90
   },
   "token": "Put your bot token here (https://discord.com/developers/applications)"
 }

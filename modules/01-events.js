@@ -156,7 +156,7 @@ const Module = new Augur.Module()
     if (member.guild.id == u.sf.ldsg) {
       await u.db.user.updateTenure(member);
       if (!member.client.ignoreNotifications?.has(member.id)) {
-        const user = await u.db.user.fetchUser(member);
+        const user = await u.db.user.fetchUser(member.id);
         const embed = u.embed({
           author: member,
           title: `${member.displayName} has left the server`,
@@ -176,7 +176,7 @@ const Module = new Augur.Module()
     const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
     const newMember = ldsg.members.cache.get(newUser.id);
     if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || newMember.roles.cache.has(u.sf.roles.untrusted))) {
-      const user = await u.db.user.fetchUser(newMember).catch(u.noop);
+      const user = await u.db.user.fetchUser(newMember.id).catch(u.noop);
       const embed = u.embed({ author: oldUser })
       .setTitle("User Update")
       .setFooter({ text: `${user.posts} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
