@@ -2,20 +2,42 @@ const mongoose = require("mongoose"),
   Schema = mongoose.Schema;
 
 const InfractionSchema = new Schema({
-  discordId: String,
-  channel: String,
-  message: String,
-  flag: String,
+  discordId: {
+    type: String,
+    required: true
+  },
+  channel: {
+    type: String,
+    required: false
+  },
+  message: {
+    type: String,
+    required: false
+  },
+  flag: {
+    type: String,
+    required: false
+  },
   timestamp: {
     type: Date,
     default: Date.now
   },
-  description: String,
+  description: {
+    type: String,
+    required: true
+  },
   value: {
     type: Number,
     default: 0
   },
-  mod: String
+  mod: {
+    type: String,
+    required: true
+  },
+  handler: {
+    type: String,
+    required: false
+  }
 });
 
 module.exports = mongoose.model("Infraction", InfractionSchema);

@@ -1,5 +1,5 @@
 const Discord = require("discord.js"),
-  { escapeMarkdown } = require('discord.js'),
+  { escapeMarkdown, ComponentType } = require('discord.js'),
   sf = require("../config/snowflakes.json"),
   // TESTING SNOWFLAKES NEED TO BE DOUBLE CHECKED
   // not sure if all are updated
@@ -65,21 +65,21 @@ const utils = {
    * @param {Discord.Message} msg The Discord message to check for bot spam.
    */
   botSpam: function(msg) {
-    if (msg.guild?.id === config.ldsg && // Is in server
-      msg.channel.id !== config.channels.botspam && // Isn't in bot-lobby
-      msg.channel.id !== config.channels.bottesting && // Isn't in Bot Testing
-      msg.channel.parentID !== config.channels.moderation) { // Isn't in the moderation category
+    if (msg.guild?.id === utils.sf.ldsg && // Is in server
+      msg.channel.id !== utils.sf.channels.botspam && // Isn't in bot-lobby
+      msg.channel.id !== utils.sf.channels.bottesting && // Isn't in Bot Testing
+      msg.channel.parentID !== utils.sf.channels.staffCategory) { // Isn't in the moderation category
 
-      msg.reply(`I've placed your results in <#${config.channels.botspam}> to keep things nice and tidy in here. Hurry before they get cold!`)
+      msg.reply(`I've placed your results in <#${utils.sf.channels.botspam}> to keep things nice and tidy in here. Hurry before they get cold!`)
         .then(utils.clean);
-      return msg.guild.channels.cache.get(config.channels.botspam);
+      return msg.guild.channels.cache.get(utils.sf.channels.botspam);
     } else {
       return msg.channel;
     }
   },
   /**
    * After the given amount of time, attempts to delete the message.
-   * @param {Discord.Message|Discord.BaseInteraction} msg The message to delete.
+   * @param {Discord.Message|Discord.APIMessage|Discord.BaseInteraction} msg The message to delete.
    * @param {number} t The length of time to wait before deletion, in milliseconds.
    */
   clean: async function(msg, t = 20000) {
@@ -126,7 +126,7 @@ const utils = {
    * @function confirmInteraction
    * @param {Discord.BaseInteraction} interaction The interaction to confirm
    * @param {String} prompt The prompt for the confirmation
-   * @returns {Boolean}
+   * @returns {Promise<Boolean>}
    */
   confirmInteraction: async (interaction, prompt = "Are you sure?", title = "Confirmation Dialog") => {
     const reply = (interaction.deferred || interaction.replied) ? "editReply" : "reply";
@@ -150,8 +150,8 @@ const utils = {
     });
 
     const confirm = await interaction.channel.awaitMessageComponent({
-      filter: (button) => button.user.id === interaction.member.id && (button.customId === confirmTrue || button.customId === confirmFalse),
-      componentType: "BUTTON",
+      filter: (button) => button.user.id === interaction.user.id && (button.customId === confirmTrue || button.customId === confirmFalse),
+      componentType: ComponentType.Button,
       time: 60000
     }).catch(() => ({ customId: "confirmTimeout" }));
 
@@ -228,7 +228,7 @@ const utils = {
   /**
    * Handles a command exception/error. Most likely called from a catch.
    * Reports the error and lets the user know.
-   * @param {Error} error The error to report.
+   * @param {Error | null} [error] The error to report.
    * @param {any} message Any Discord.Message, Discord.BaseInteraction, or text string.
    */
   errorHandler: function(error, message = null) {
@@ -277,7 +277,7 @@ const utils = {
     if (stack.length > 4096) stack = stack.slice(0, 4000);
 
     embed.setDescription(stack);
-    if (!config.silentMode || message instanceof Discord.BaseInteraction) errorLog.send({ embeds: [embed] });
+    return errorLog.send({ embeds: [embed] });
   },
   errorLog,
   /**
@@ -334,6 +334,15 @@ const utils = {
     return selections[Math.floor(Math.random() * selections.length)];
   },
   /**
+   * Convert to a fancier time string
+   * @param {Date} time The input time
+   * @param {Discord.TimestampStylesString} format The format to display in
+   * @returns {"<t:time:format>"}
+   */
+  time: function(time, format = "f") {
+    return Discord.time(time, format);
+  },
+  /**
    * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
    */
   sf: config.devMode ? Object.assign(tsf, csf) : sf,
@@ -348,6 +357,11 @@ const utils = {
       setTimeout(fulfill, t);
     });
   },
+  /**
+   * @template T
+   * @param {T[]} items
+   * @returns {T[]}
+   */
   unique: function(items) {
     return [...new Set(items)];
   }
