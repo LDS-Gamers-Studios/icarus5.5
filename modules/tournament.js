@@ -89,21 +89,21 @@ async function participant(int) {
       } catch (error) {null;}
       i++;
     }
-    return int.reply({ content: `Removed ${succeeded}/${members.size} people from the ${role} role`, ephemeral: true });
+    return int.editReply({ content: `Removed ${succeeded}/${members.size} people from the ${role} role` });
   } else if (remove) {
     if (user?.roles.cache.has(role.id)) {
       let content = `I removed the ${role} role from ${user}`;
       await user.roles.remove(role.id).catch(() => content = `I couldn't remove the ${role} role from ${user}`);
-      return int.reply({ content, ephemeral: true });
+      return int.editReply({ content });
     } else {
-      return int.reply({ content: `${user} doesn't have the ${role} role`, ephemeral: true });
+      return int.editReply({ content: `${user} doesn't have the ${role} role` });
     }
   } else if (!user?.roles.cache.has(role.id)) {
     let content = `I added the ${role} role to ${user}`;
     await user?.roles.add(role.id).catch(() => content = `I couldn't add the ${role} role to ${user}`);
-    return int.reply({ content, ephemeral: true });
+    return int.editReply({ content });
   } else {
-    return int.reply({ content: `${user} already has the ${role} role`, ephemeral: true });
+    return int.editReply({ content: `${user} already has the ${role} role` });
   }
 }
 
