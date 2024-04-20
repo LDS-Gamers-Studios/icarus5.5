@@ -167,16 +167,6 @@ const Module = new Augur.Module()
     }
   }
 })
-.addCommand({ name: "ping",
-  category: "Bot Admin",
-  description: "Gets the current total ping time for the bot.",
-  hidden: true,
-  permissions: (msg) => p.isOwner(msg) || p.isMod(msg) || p.isTeam(msg),
-  process: async (msg) => {
-    const sent = await msg.reply({ content: 'Pinging...', allowedMentions: { repliedUser: false } });
-    sent.edit({ content: `Pong! Took ${sent.createdTimestamp - (msg.editedTimestamp ? msg.editedTimestamp : msg.createdTimestamp)}ms`, allowedMentions: { repliedUser: false } });
-  }
-})
 .addCommand({ name: "mcweb",
   permissions: () => config.devMode,
   process: (msg, suffix) => {
@@ -186,7 +176,7 @@ const Module = new Augur.Module()
   }
 })
 .addEvent("interactionCreate", (int) => {
-  if (!int.isAutocomplete() || int.commandId != u.sf.commands.slashBot || !p.isAdmin(int.member)) return;
+  if (!int.isAutocomplete() || int.commandId != u.sf.commands.slashBot || !int.inCachedGuild() || !p.isAdmin(int.member)) return;
   const fs = require('fs');
   const path = require("path");
   const option = int.options.getFocused();
