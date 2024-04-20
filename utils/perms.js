@@ -10,6 +10,7 @@ const permFuncs = {
   mgmt: m => m.roles.cache.has(sf.roles.management),
   mgr: m => m.roles.cache.has(sf.roles.manager),
   mod: m => m.roles.cache.has(sf.roles.mod),
+  botTeam: m => m.roles.cache.has(sf.roles.botTeam),
   team: m => m.roles.cache.has(sf.roles.team),
   volunteer: m => m.roles.cache.has(sf.roles.volunteer),
   trustPlus: m => m.roles.cache.has(sf.roles.trustedplus),
@@ -30,8 +31,8 @@ const perms = {
     }
     return result;
   },
-  isAdmin: (msg) => config.adminId.includes((msg.author ?? msg.user).id),
-  isOwner: (msg) => (msg.author ?? msg.user).id === config.ownerId,
+  isAdmin: (member) => config.adminId.includes(member.id) || perms.isOwner(member),
+  isOwner: (member) => member.id === config.ownerId,
   isMod: function(msg) {
     const roles = msg.member?.roles.cache;
     return roles?.has(sf.roles.mod) || roles?.has(sf.roles.management);

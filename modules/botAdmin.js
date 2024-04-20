@@ -1,3 +1,4 @@
+// @ts-check
 // This file is a place for all the publicly visible bot diagnostic commands usable primarily only by the head bot dev.
 
 const Augur = require("augurbot-ts"),
@@ -53,19 +54,117 @@ function fieldMismatches(obj1, obj2) {
   return [m1, m2];
 }
 
-const Module = new Augur.Module()
-.addCommand({ name: "gotobed",
-  description: "The gotobed command shuts down the bot. This is good for a quick test for things !reload doesn't cover.", // It is reccomended to be used in conjunction with forever.js so the bot automatically restarts
-  category: "Bot Admin",
-  hidden: true,
-  aliases: ["q", "restart"],
-  permissions: p.isAdmin,
-  process: async function(msg) {
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function goToBed(int) {
+  try {
+    await int.editReply("Good night! 🛏");
+    await int.client.destroy();
+    process.exit();
+  } catch (error) {
+    u.errorHandler(error, int);
+  }
+}
+/**
+ * @param {Augur.GuildInteraction<"CommandSlash">} int
+ * @param {Discord.InteractionResponse} msg
+ */
+async function ping(int, msg) {
+  const sent = await int.editReply("Pinging...");
+  return int.editReply(`Pong! Took ${sent.createdTimestamp - msg.createdTimestamp}ms`);
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function pull(int) {
+  const spawn = require("child_process").spawn;
+  const cmd = spawn("git", ["pull"], { cwd: process.cwd() });
+  const stdout = [];
+  const stderr = [];
+  cmd.stdout.on("data", data => {
+    stdout.push(data);
+  });
+
+  cmd.stderr.on("data", data => {
+    stderr.push(data);
+  });
+
+  cmd.on("close", code => {
+    if (code == 0) {
+      int.editReply(stdout.join("\n") + "\n\nCompleted with code: " + code);
+    } else {
+      int.editReply(`ERROR CODE ${code}:\n${stderr.join("\n")}`);
+    }
+  });
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function pulse(int) {
+  const client = int.client;
+  const uptime = process.uptime();
+
+  const embed = u.embed()
+    .setAuthor({ name: client.user.username + " Heartbeat", iconURL: client.user.displayAvatarURL() })
+    .setTimestamp()
+    .addFields([
+      { name: "Uptime", value: `Discord: ${Math.floor(client.uptime / (24 * 60 * 60 * 1000))} days, ${Math.floor(client.uptime / (60 * 60 * 1000)) % 24} hours, ${Math.floor(client.uptime / (60 * 1000)) % 60} minutes\nProcess: ${Math.floor(uptime / (24 * 60 * 60))} days, ${Math.floor(uptime / (60 * 60)) % 24} hours, ${Math.floor(uptime / (60)) % 60} minutes`, inline: true },
+      { name: "Reach", value: `${client.guilds.cache.size} Servers\n${client.channels.cache.size} Channels\n${client.users.cache.size} Users`, inline: true },
+      { name: "Commands Used", value: `${client.commands.commandCount} (${(client.commands.commandCount / (client.uptime / (60 * 1000))).toFixed(2)}/min)`, inline: true },
+      { name: "Memory", value: `${Math.round(process.memoryUsage().rss / 1024 / 1000)}MB`, inline: true }
+    ]);
+  return int.editReply({ embeds: [embed] });
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function reload(int) {
+  const fs = require("fs"),
+    path = require("path");
+
+  let files = int.options.getString("module")?.split(" ") ?? [];
+
+  if (!files) files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
+
+  for (const file of files) {
     try {
-      await msg.react("🛏");
-      await msg.client.destroy();
-      process.exit();
-    } catch (e) { u.errorHandler(e, msg); }
+      // @ts-expect-error augur goof, functions correctly
+      int.client.moduleHandler.reload(path.resolve(__dirname, file));
+    } catch (error) { return u.errorHandler(error, int); }
+  }
+  return int.editReply("Reloaded!");
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function getId(int) {
+  const mentionable = int.options.getMentionable("mentionable");
+  const channel = int.options.getChannel("channel");
+  const emoji = int.options.getString("emoji");
+
+  const results = [];
+  if (mentionable) results.push({ str: mentionable.toString(), id: mentionable.id });
+  if (channel) results.push({ str: channel.toString(), id: channel.id });
+  if (emoji) {
+    const emojis = emoji.split(" ");
+    for (const e of emojis) results.push({ str: e, id: `\\${e}` });
+  }
+  return int.editReply(`I got the following results:\n${results.map(r => `${r.str}: ${r.id}`).join("\n")}`);
+}
+
+const Module = new Augur.Module()
+.addInteraction({ name: "bot",
+  id: u.sf.commands.slashBot,
+  onlyGuild: true,
+  hidden: true,
+  permissions: (int) => p.calc(int.member, ["botTeam"]),
+  process: async (int) => {
+    if (int.isAutocomplete()) return;
+    if (!p.calc(int.member, ["botTeam"])) return; // don't even bother replying
+    const subcommand = int.options.getSubcommand(true);
+    const forThePing = await int.deferReply({ ephemeral: true });
+    if (["gotobed", "reload"].includes(subcommand) && !p.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
+    if (["pull", "pulse"].includes(subcommand) && !p.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
+    switch (subcommand) {
+    case "gotobed": return goToBed(int);
+    case "ping": return ping(int, forThePing);
+    case "pull": return pull(int);
+    case "pulse": return pulse(int);
+    case "reload": return reload(int);
+    case "getid": return getId(int);
+    }
   }
 })
 .addCommand({ name: "ping",
@@ -78,136 +177,6 @@ const Module = new Augur.Module()
     sent.edit({ content: `Pong! Took ${sent.createdTimestamp - (msg.editedTimestamp ? msg.editedTimestamp : msg.createdTimestamp)}ms`, allowedMentions: { repliedUser: false } });
   }
 })
-.addCommand({ name: "pull",
-  category: "Bot Admin",
-  description: "Pull bot updates from git",
-  hidden: true,
-  permissions: p.isOwner,
-  process: (msg) => {
-    const spawn = require("child_process").spawn;
-
-    u.clean(msg);
-
-    const cmd = spawn("git", ["pull"], { cwd: process.cwd() });
-    const stdout = [];
-    const stderr = [];
-
-    cmd.stdout.on("data", data => {
-      stdout.push(data);
-    });
-
-    cmd.stderr.on("data", data => {
-      stderr.push(data);
-    });
-
-    cmd.on("close", code => {
-      if (code == 0) {
-        msg.channel.send(stdout.join("\n") + "\n\nCompleted with code: " + code).then(u.clean);
-      } else {
-        msg.channel.send(`ERROR CODE ${code}:\n${stderr.join("\n")}`).then(u.clean);
-      }
-    });
-  }
-})
-.addCommand({ name: "pulse",
-  category: "Bot Admin",
-  hidden: true,
-  description: "The pulse command get basic information about the bot's current health and uptime for each shard (if applicable).",
-  permissions: p.isOwner,
-  process: async function(msg) {
-    try {
-      const client = msg.client;
-
-      const embed = u.embed()
-      .setAuthor({ name: client.user.username + " Heartbeat", iconURL: client.user.displayAvatarURL() })
-      .setTimestamp();
-
-      if (client.shard) {
-        let guilds = await client.shard.fetchClientValues('guilds.cache.size');
-        guilds = guilds.reduce((prev, val) => prev + val, 0);
-        let channels = client.shard.fetchClientValues('channels.cache.size');
-        channels = channels.reduce((prev, val) => prev + val, 0);
-        let mem = client.shard.broadcastEval("Math.round(process.memoryUsage().rss / 1024 / 1000)");
-        mem = mem.reduce((t, c) => t + c);
-        embed
-        .addFields(
-          { name: "Shards", value: `Id: ${client.shard.id}\n(${client.shard.count} total)`, inline: true },
-          { name: "Total Bot Reach", value: `${guilds} Servers\n${channels} Channels`, inline: true },
-          { name: "Shard Uptime", value: `${Math.floor(client.uptime / (24 * 60 * 60 * 1000))} days, ${Math.floor(client.uptime / (60 * 60 * 1000)) % 24} hours, ${Math.floor(client.uptime / (60 * 1000)) % 60} minutes`, inline: true },
-          { name: "Shard Commands Used", value: `${client.commands.commandCount} (${(client.commands.commandCount / (client.uptime / (60 * 1000))).toFixed(2)}/min)`, inline: true },
-          { name: "Total Memory", value: `${mem}MB`, inline: true }
-        );
-
-        msg.channel.send({ embeds: [embed] });
-      } else {
-        const uptime = process.uptime();
-        embed
-        .addFields(
-          { name: "Uptime", value: `Discord: ${Math.floor(client.uptime / (24 * 60 * 60 * 1000))} days, ${Math.floor(client.uptime / (60 * 60 * 1000)) % 24} hours, ${Math.floor(client.uptime / (60 * 1000)) % 60} minutes\nProcess: ${Math.floor(uptime / (24 * 60 * 60))} days, ${Math.floor(uptime / (60 * 60)) % 24} hours, ${Math.floor(uptime / (60)) % 60} minutes`, inline: true },
-          { name: "Reach", value: `${client.guilds.cache.size} Servers\n${client.channels.cache.size} Channels\n${client.users.cache.size} Users`, inline: true },
-          { name: "Commands Used", value: `${client.commands.commandCount} (${(client.commands.commandCount / (client.uptime / (60 * 1000))).toFixed(2)}/min)`, inline: true },
-          { name: "Memory", value: `${Math.round(process.memoryUsage().rss / 1024 / 1000)}MB`, inline: true }
-        );
-
-        msg.channel.send({ embeds: [embed] });
-      }
-    } catch (e) { u.errorHandler(e, msg); }
-  }
-})
-.addCommand({ name: "reload",
-  category: "Bot Admin",
-  hidden: true,
-  syntax: "[file1.js] [file2.js]",
-  description: "This command reloads one or more modules. Good for loading in small fixes.",
-  info: "Use the command without a suffix to reload all command files.\n\nUse the command with the module name (including the `.js`) to reload a specific file.",
-  parseParams: true,
-  permissions: p.isAdmin,
-  process: (msg, ...files) => {
-    u.clean(msg);
-    const fs = require("fs"),
-      path = require("path");
-    if (files.length === 0) files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
-
-    for (const file of files) {
-      try {
-        msg.client.moduleHandler.reload(path.resolve(__dirname, file));
-      } catch (error) { msg.client.errorHandler(error, msg); }
-    }
-    msg.react("👌").catch(u.noop);
-  }
-})
-.addCommand({ name: "emojiid",
-  description: "Get an emoji ID",
-  syntax: "<emoji name>",
-  category: "Admin",
-  hidden: true,
-  permissions: (msg) => msg.guild,
-  process: (msg, suffix) => {
-    if (!suffix) {
-      msg.reply("you need to tell me an emoji name!").then(u.clean);
-    } else {
-      const emoji = msg.guild.emojis.cache.find(r => r.name.toLowerCase() == suffix.toLowerCase());
-      if (!emoji) msg.reply(`I couldn't find an emoji named ${suffix}.`);
-      else msg.channel.send(`${emoji} \`${emoji.name}: ${emoji.id}\``);
-    }
-  }
-})
-.addCommand({ name: "roleid",
-  description: "Get a role ID",
-  syntax: "<role name>",
-  category: "Admin",
-  hidden: true,
-  permissions: (msg) => msg.guild,
-  process: (msg, suffix) => {
-    if (!suffix) {
-      msg.reply("you need to tell me a role name!").then(u.clean);
-    } else {
-      const role = msg.guild.roles.cache.find(r => r.name.toLowerCase() == suffix.toLowerCase());
-      if (!role) msg.reply(`I couldn't find a role named ${suffix}.`);
-      else msg.channel.send(`${role.name}: ${role.id}`);
-    }
-  }
-})
 .addCommand({ name: "mcweb",
   permissions: () => config.devMode,
   process: (msg, suffix) => {
@@ -216,13 +185,21 @@ const Module = new Augur.Module()
     webhook.send(suffix);
   }
 })
+.addEvent("interactionCreate", (int) => {
+  if (!int.isAutocomplete() || int.commandId != u.sf.commands.slashBot || !p.isAdmin(int.member)) return;
+  const fs = require('fs');
+  const path = require("path");
+  const option = int.options.getFocused();
+  const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js") && file.startsWith(option));
+  int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
+})
 // When the bot is fully online, fetch all the ldsg members, since it will only autofetch for small servers and we want them all.
 .addEvent("ready", () => {
-  Module.client.guilds.cache.get(u.sf.ldsg).members.fetch();
+  Module.client.guilds.cache.get(u.sf.ldsg)?.members.fetch();
 })
-.setInit(async (reload) => {
+.setInit(async (reloaded) => {
   try {
-    if (!reload && !config.silentMode) {
+    if (!reloaded && !config.silentMode) {
       u.errorLog.send({ embeds: [ u.embed().setDescription("Bot is ready!") ] });
     }
     const testingDeploy = [

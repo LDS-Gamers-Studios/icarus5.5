@@ -27,6 +27,8 @@
     "messageMod": "938657362246533140",
     "slashAvatar": "",
     "slashBank": "882719721068331149",
+    "slashBot": "",
+    "slashBotHidden": "",
     "slashGospel": "970560664844247061",
     "slashManagement": "",
     "slashMod": "928690734473814057",
@@ -47,6 +49,7 @@
     "ghost": "96335658997526528"
   },
   "roles": {
+    "botTeam": "925797333092954202",
     "champion": "490580944009297945",
     "destinyclansmanager": "803315372613697536",
     "ducttape": "771516264618262607",

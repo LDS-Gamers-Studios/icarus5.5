@@ -252,8 +252,8 @@ const utils = {
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.guild ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
       console.error(`Interaction by ${message.user.username} in ${loc}`);
-
-      message[((message.deferred || message.replied) ? "editReply" : "reply")]({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop);
+      if (message.isRepliable() && (message.deferred || message.replied)) message.editReply("I've run into an error. I've let my devs know.").catch(utils.noop).then(utils.clean);
+      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop).then(utils.clean);
       embed.addFields(
         { name: "User", value: message.user?.username, inline: true },
         { name: "Location", value: loc, inline: true }
