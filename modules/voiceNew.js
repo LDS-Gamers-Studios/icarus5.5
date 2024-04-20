@@ -2,12 +2,13 @@
 const Augur = require('augurbot-ts'),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
+  perm = require("../utils/perms"),
   u = require('../utils/utils');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { nanoid } = require('nanoid');
 
 
-/** @typedef {(int: Augur.GuildInteraction<"Button">, channel: Discord.BaseGuildVoiceChannel) => Promise<any>} voice */
+/** @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">}|Discord.Interaction<"cached">|false>} voice */
 /** @type {Discord.Collection<string, string>} */
 let owners = new u.Collection();
 
@@ -43,6 +44,8 @@ const actionRow = (options) => {
   ];
 };
 
+const noUser = "I couldn't find that person!";
+
 /**
  * @param {Discord.User} user
  * @param {Discord.BaseGuildVoiceChannel} channel
@@ -67,7 +70,8 @@ function getComponents(user, channel, oldMsg) {
     { name: "Allowed Users", value: allowedUsers.length > 0 ? allowedUsers.join("\n") : locked ? "Nobody" : "Everyone!", inline: true },
     { name: "Can Speak", value: allowedSpeak.length > 0 ? allowedSpeak.join("\n") : streamlocked ? "Nobody" : "Everyone!", inline: true },
     { name: "Banned Users", value: banned.length > 0 ? banned.join("\n") : "Nobody", inline: true },
-  ]).setDescription(`Current Owner: <@${owners.get(channel.id)}>`);
+  ]).setDescription(`Current Owner: <@${owners.get(channel.id)}>`)
+  .setTitle("VC Control Panel");
   const components = actionRow({ locked, streamlocked, allowedSpeak, allowedUsers });
   return { embeds: [embed], components, content: null };
 }
@@ -88,7 +92,7 @@ function getComponents(user, channel, oldMsg) {
 async function edit(int, channel, content) {
   // Return an error message of some sort
   if (content) {
-    return int.editReply({ content });
+    return int.editReply({ ...getComponents(int.user, channel, int.message), content });
   }
   // Edit the card
   return int.editReply(getComponents(int.user, channel, int.message));
@@ -116,23 +120,23 @@ function overwrite(channel, perms) {
       deny: new Set(p.deny.toArray())
     };
   });
-  for (const perm of perms) {
-    for (const user of perm.users) {
+  for (const permission of perms) {
+    for (const user of permission.users) {
       if (user == channel.client.user.id || user == u.sf.roles.icarus) continue;
       let current = currentOverwrites.find(o => o.id == user);
       if (!current) {
         const i = currentOverwrites.push({ id: user, allow: new Set(), deny: new Set() });
         current = currentOverwrites[i - 1];
       }
-      for (const allow of perm.allow ?? []) {
+      for (const allow of permission.allow ?? []) {
         current.deny.delete(allow);
         current.allow.add(allow);
       }
-      for (const deny of perm.deny ?? []) {
+      for (const deny of permission.deny ?? []) {
         current.allow.delete(deny);
         current.deny.add(deny);
       }
-      for (const remove of perm.remove ?? []) {
+      for (const remove of permission.remove ?? []) {
         current.allow.delete(remove);
         current.deny.delete(remove);
       }
@@ -147,16 +151,15 @@ function overwrite(channel, perms) {
 /**
  * @param {Discord.ButtonInteraction<"cached">} int
  * @param {string} action
- * @param {number} [max]
  */
-async function selectUsers(int, action, max) {
+async function selectUsers(int, action) {
   const components = int.message.components;
   const id = nanoid(10);
   const menu = new Discord.UserSelectMenuBuilder()
   .setCustomId(id)
   .setMinValues(1)
-  .setPlaceholder(`The user(s) to ${action}`);
-  if (max) menu.setMaxValues(max);
+  .setMaxValues(1)
+  .setPlaceholder(`The user to ${action}`);
   const select = new Discord.ActionRowBuilder().addComponents([menu]);
   // @ts-ignore
   const m = await int.editReply({ components: [...components, select] });
@@ -168,164 +171,248 @@ async function selectUsers(int, action, max) {
   return received;
 }
 
+/** @param {Augur.GuildInteraction<"Button"|"CommandSlash">} int*/
+async function getUser(int, string) {
+  if (int instanceof Discord.ButtonInteraction) {
+    const selected = await selectUsers(int, string);
+    if (!selected) return null;
+    await selected.deferUpdate();
+    const member = selected.members.first();
+    if (!member) return { member: null, newInt: selected };
+    return { member, newInt: selected };
+  } else {
+    const member = int.options.getMember("user");
+    if (!member) return { member: null, newInt: int };
+    return { member, newInt: int };
+  }
+}
+
 // Locking and unlocking of voice channel connecting
 /** @type {voice} */
-async function lock(int, channel) {
+async function lock(int, channel, trying = false) {
   // Allow connected users back in
-  if (isLocked(channel)) return edit(int, channel, "Your voice channel is already locked!");
+  if (isLocked(channel)) {
+    if (!trying && int instanceof Discord.ButtonInteraction) {
+      const tryUnlock = await unlock(int, channel, true);
+      if (tryUnlock instanceof Discord.ButtonInteraction) return int;
+    }
+    return { msg: "Your voice channel is already locked!", int };
+  }
   const newPerms = overwrite(channel, [{ users: channel.members.map(m => m.id), allow: ["Connect", "SendMessages"] }, { users: [int.guildId], deny: ["Connect", "SendMessages"] }]);
   await channel.permissionOverwrites.set(newPerms);
-  return edit(int, channel);
+  return int;
 }
+
 /** @type {voice} */
-async function unlock(int, channel) {
-  if (!isLocked(channel)) return edit(int, channel, "Your voice channel isn't locked!");
+async function unlock(int, channel, trying = false) {
+  if (!isLocked(channel)) {
+    if (!trying && int instanceof Discord.ButtonInteraction) {
+      const tryLock = await lock(int, channel, true);
+      if (tryLock instanceof Discord.ButtonInteraction) return int;
+    }
+    return { msg: "Your voice channel isn't locked!", int };
+  }
   // remove perms for people who could join before
   const toRemove = channel.permissionOverwrites.cache.filter(p => p.allow.has("Connect")).map(p => p.id).concat([u.sf.ldsg]);
   const newPerms = overwrite(channel, [{ users: toRemove, remove: ["Connect", "SendMessages"] }]);
   await channel.permissionOverwrites.set(newPerms);
-  return edit(int, channel);
+  return int;
 }
+
 /** @type {voice} */
 async function allowUser(int, channel) {
-  if (!isLocked(channel)) return edit(int, channel, "Your voice channel isn't locked!" + (isStreamLocked(channel) ? " Try the button for allowing to speak." : ""));
-  const selected = await selectUsers(int, "allow to join");
-  if (!selected) return;
-  await selected.deferUpdate();
+  if (!isLocked(channel)) return { msg: "Your voice channel isn't locked!" + (isStreamLocked(channel) ? " Try the button for allowing to speak." : ""), int };
+  // get user (either selected or a provided option)
+  const user = await getUser(int, "allow to join");
+  if (user == null) return false;
+
+  const { member, newInt } = user;
+  if (!member) return { msg: noUser, int: newInt };
   const allowedJoin = channel.permissionOverwrites.cache.filter(p => p.allow.has("Connect")).map(p => p.id);
-  const people = selected.members.map(m => m.user.id).filter(m => !allowedJoin.includes(m));
-  if (people.length == 0) return edit(selected, channel, "All of the people you selected are already able to join!");
-  const newPerms = overwrite(channel, [{ users: people, allow: ["Connect", "SendMessages"] }]);
+  if (allowedJoin.includes(member.id)) return { msg: `${member} can already join!`, int: newInt };
+  // create overwrite
+  const newPerms = overwrite(channel, [{ users: [member.id], allow: ["Connect", "SendMessages"] }]);
   await channel.permissionOverwrites.set(newPerms);
-  channel.send({ content: selected.members.map(m => m.toString()).join(' ') + " you can join now!", allowedMentions: { users: selected.members.map(m => m.id) } }).then(u.clean);
-  return edit(selected, channel);
+  // notify user
+  channel.send({ content: `${member}, you can join now!`, allowedMentions: { parse: ["users"] } }).then(u.clean);
+  return newInt;
 }
 
 // Locking and unlocking of voice channel speaking
 /** @type {voice} */
-async function streamLock(int, channel) {
-  if (isStreamLocked(channel)) return edit(int, channel, "Your voice channel is already stream locked!");
+async function streamLock(int, channel, trying = false) {
+  if (isStreamLocked(channel)) {
+    if (!trying && int instanceof Discord.ButtonInteraction) {
+      const tryUnlock = await streamUnlock(int, channel, true);
+      if (tryUnlock instanceof Discord.ButtonInteraction) return int;
+    }
+    return { msg: "Your voice channel is already stream locked!", int };
+  }
   // let only owner speak
   const newPerms = overwrite(channel, [{ users: [int.member.id], allow: ["Speak"] }, { users: [int.guildId], deny: ["Speak"] }]);
   await channel.permissionOverwrites.set(newPerms);
-  return edit(int, channel);
+  return int;
 }
 /** @type {voice} */
-async function streamUnlock(int, channel) {
-  if (!isStreamLocked(channel)) return edit(int, channel, "Your voice channel isn't stream locked!");
+async function streamUnlock(int, channel, trying = false) {
+  if (!isStreamLocked(channel)) {
+    if (!trying && int instanceof Discord.ButtonInteraction) {
+      const tryLock = await streamLock(int, channel, true);
+      if (tryLock instanceof Discord.ButtonInteraction) return int;
+    }
+    return { msg: "Your voice channel isn't stream locked!", int };
+  }
   // remove perms for people who could speak before
   const toRemove = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id).concat([u.sf.ldsg]);
   const newPerms = overwrite(channel, [{ users: toRemove, remove: ["Speak"] }]);
   await channel.permissionOverwrites.set(newPerms);
-  return edit(int, channel);
+  return int;
 }
 /** @type {voice} */
 async function streamAllow(int, channel) {
-  if (!isStreamLocked(channel)) return edit(int, channel, "Your voice channel isn't stream locked!" + (isLocked(channel) ? " Try the button for kicking users." : ""));
-  const selected = await selectUsers(int, "allow to talk");
-  if (!selected) return;
-  await selected.deferUpdate();
+  if (!isStreamLocked(channel)) return { msg: "Your voice channel isn't stream locked!", int };
+  const user = await getUser(int, "allow to talk");
+  if (user == null) return false;
+
+  const { member, newInt } = user;
+  if (!member) return { msg: noUser, int: newInt };
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id);
-  const people = selected.members.map(m => m.user.id).filter(m => !allowedSpeak.includes(m));
-  if (people.length == 0) return edit(selected, channel, "Everybody you selected is already able to talk!");
+  const people = [member.id].filter(m => !allowedSpeak.includes(m));
+  if (people.length == 0) return { msg: `${member} is already able to talk!`, int: newInt };
+
   const newPerms = overwrite(channel, [{ users: people, allow: ["Speak"] }]);
   await channel.permissionOverwrites.set(newPerms);
-  return edit(selected, channel);
+  return newInt;
 }
 /** @type {voice} */
 async function streamDeny(int, channel) {
-  if (!isStreamLocked(channel)) return edit(int, channel, "Your voice channel isn't stream locked!" + (isLocked(channel) ? " Try the button for kicking users." : ""));
-  const selected = await selectUsers(int, "prevent from talking");
-  if (!selected) return;
-  await selected.deferUpdate();
-  const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id);
-  const people = selected.members.map(m => m.user.id).filter(m => allowedSpeak.includes(m));
-  if (people.length == 0) return edit(selected, channel, "Nobody you selected is able to talk!");
-  const newPerms = overwrite(channel, [{ users: people, remove: ["Speak"] }]);
-  await channel.permissionOverwrites.set(newPerms);
-  return edit(selected, channel);
-}
+  if (!isStreamLocked(channel)) return { msg: "Your voice channel isn't stream locked!" + (isLocked(channel) ? " Try the button for kicking users." : ""), int };
+  const user = await getUser(int, "prevent from talking");
+  if (user == null) return false;
 
+  const { member, newInt } = user;
+  if (!member) return { msg: noUser, int: newInt };
+  const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id);
+  if (!allowedSpeak.includes(member.id)) return { msg: `${member} wasn't able to speak in the first place!`, int: newInt };
+
+  const newPerms = overwrite(channel, [{ users: [member.id], remove: ["Speak"] }]);
+  await channel.permissionOverwrites.set(newPerms);
+  return newInt;
+}
 
 /** @type {voice} */
 async function kickUser(int, channel) {
-  const selected = await selectUsers(int, "kick from the channel");
-  if (!selected) return;
-  await selected.deferReply({ ephemeral: true });
-  const members = channel.members.filter(m => selected.members.has(m.id));
-  if (members.size == 0) return edit(selected, channel, "Nobody you selected is in your channel!");
-  members.map(m => m.voice.disconnect());
-  await selected.editReply("I disconnected those people!");
-  return edit(int, channel);
+  const user = await getUser(int, "kick from the channel");
+  if (user == null) return false;
+
+  const { member, newInt } = user;
+  if (!member) return { msg: noUser, int: newInt };
+  if (!channel.members.has(member.id)) return { msg: `${member} isn't in your channel!`, int: newInt };
+  await member.voice.disconnect();
+  return newInt;
 }
 /** @type {voice} */
 async function banUser(int, channel) {
-  const selected = await selectUsers(int, "ban from joining the channel");
-  if (!selected) return;
-  await selected.deferUpdate();
-  const newPerms = overwrite(channel, [{ users: selected.members.map(m => m.id), deny: ["Connect", "SendMessages"] }]);
+  const user = await getUser(int, "ban from joining the channel");
+  if (user == null) return false;
+
+  const { member, newInt } = user;
+  if (!member) return { msg: noUser, int: newInt };
+  const banned = channel.permissionOverwrites.cache.filter(p => p.deny.has("Connect")).map(p => p.id);
+  if (banned.includes(member.id)) return { msg: `${member} was already banned!`, int: newInt };
+  const newPerms = overwrite(channel, [{ users: [member.id], deny: ["Connect", "SendMessages"] }]);
   await channel.permissionOverwrites.set(newPerms);
-  let i = 0;
-  while (i < selected.members.size) {
-    const member = selected.members.at(i);
-    if (member?.voice.channelId == channel.id) await member.voice.disconnect();
-    i++;
-  }
-  return edit(selected, channel);
+  await member.voice.disconnect();
+  return newInt;
 }
 /** @type {voice} */
 async function unbanUser(int, channel) {
-  const selected = await selectUsers(int, "unban from joining the channel");
-  if (!selected) return;
-  await selected.deferUpdate();
-  const people = selected.members.map(m => m.id).filter(m => channel.permissionOverwrites.cache.get(m)?.deny.has("Connect"));
-  if (people.length == 0) return edit(selected, channel, "None of the users you selected were banned!");
-  const newPerms = overwrite(channel, [{ users: selected.members.map(m => m.id), remove: ["Connect", "SendMessages"] }]);
+  const user = await getUser(int, "unban from joining the channel");
+  if (user == null) return false;
+
+  const { member, newInt } = user;
+  if (!member) return { msg: noUser, int: newInt };
+  if (!channel.permissionOverwrites.cache.get(member.id)?.deny.has("Connect")) return { msg: `${member} wasn't banned in the first place!`, int: newInt };
+  const newPerms = overwrite(channel, [{ users: [member.id], remove: ["Connect", "SendMessages"] }]);
   await channel.permissionOverwrites.set(newPerms);
-  let i = 0;
-  while (i < selected.members.size) {
-    const member = selected.members.at(i);
-    if (member?.voice.channelId == channel.id) await member.voice.disconnect();
-    i++;
-  }
-  return edit(selected, channel);
+  return newInt;
 }
 /** @type {voice} */
 async function setOwner(int, channel) {
-  const selected = await selectUsers(int, "set as the new owner", 1);
-  if (!selected) return;
-  await selected.deferUpdate();
-  const member = selected.members.first();
-  if (!member) return u.errorHandler(new Error("Couldn't find selected member"), int);
-  const unacceptable = member.id == int.member.id ? "You're already in control!" : member.user.bot ? `A bot can't own this channel!` : member.voice.channelId == channel.id ? "Someone who's not connected can't own the channel!" : null;
-  if (unacceptable) return edit(selected, channel, unacceptable);
+  const user = await getUser(int, "set as the new owner");
+  if (user == null) return false;
+
+  const { member, newInt } = user;
+  if (!member) return { msg: noUser, int: newInt };
+  const unacceptable = member.id == int.member.id ? "You're already in control!" : member.user.bot ? `A bot can't own this channel!` : member.voice.channelId != channel.id ? "Someone who's not connected can't own the channel!" : null;
+  if (unacceptable) return { msg: unacceptable, int: newInt };
   if (isStreamLocked(channel)) await channel.permissionOverwrites.set(overwrite(channel, [{ users: [member.id], allow: ["Speak"] }, { users: [int.member.id], remove: ["Speak"] }]));
-  return edit(selected, channel);
+  owners.set(channel.id, member.id);
+  channel.send({ content: `${member}, you've been set as the owner of this voice channel!`, allowedMentions: { parse: ["users"] } });
+  return newInt;
 }
 
 const Module = new Augur.Module()
 .addEvent("interactionCreate", async (int) => {
-  if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return;
+  if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return false;
   const channel = int.member.voice.channel;
   if (!channel) return int.reply({ content: "You need to be connected to a voice channel to use these buttons!", ephemeral: true });
   if (owners.get(channel.id) != int.user.id) return int.reply({ content: "You aren't the owner of this voice channel!", ephemeral: true });
   await int.deferUpdate();
+  let result;
   switch (int.customId) {
-  case "voiceUnlock": return unlock(int, channel);
-  case "voiceStreamUnlock": return streamUnlock(int, channel);
-  case "voiceAllowUser": return allowUser(int, channel);
-  case "voiceStreamAllow": return streamAllow(int, channel);
-  case "voiceStreamDeny": return streamDeny(int, channel);
+  case "voiceUnlock": result = await unlock(int, channel); break;
+  case "voiceStreamUnlock": result = await streamUnlock(int, channel); break;
+  case "voiceAllowUser": result = await allowUser(int, channel); break;
+  case "voiceStreamAllow": result = await streamAllow(int, channel); break;
+  case "voiceStreamDeny": result = await streamDeny(int, channel); break;
 
-  // Only show sometimes
-  case "voiceLock": return lock(int, channel);
-  case "voiceStreamLock": return streamLock(int, channel);
+  // Only shresult = ow sometimes
+  case "voiceLock": result = await lock(int, channel); break;
+  case "voiceStreamLock": result = await streamLock(int, channel); break;
 
-  // Second row
-  case "voiceKickUser": return kickUser(int, channel);
-  case "voiceBanUser": return banUser(int, channel);
-  case "voiceUnbanUser": return unbanUser(int, channel);
-  case "voiceSetOwner": return setOwner(int, channel);
+  // Second roresult = w
+  case "voiceKickUser": result = await kickUser(int, channel); break;
+  case "voiceBanUser": result = await banUser(int, channel); break;
+  case "voiceUnbanUser": result = await unbanUser(int, channel); break;
+  case "voiceSetOwner": result = await setOwner(int, channel); break;
+  default: return;
+  }
+  if (result == false) return;
+  else if (result instanceof Discord.ButtonInteraction || result instanceof Discord.UserSelectMenuInteraction) edit(result, channel);
+  else if ("int" in result && !(result.int instanceof Discord.ChatInputCommandInteraction)) edit(result.int, channel, result.msg);
+  else console.log(result);
+
+})
+.addInteraction({ name: "slashVoice",
+  id: u.sf.commands.slashVoice,
+  onlyGuild: true,
+  permissions: (int) => perm.calc(int.member, ["notMuted"]),
+  process: async (int) => {
+    const subcommand = int.options.getSubcommand(true);
+    const channel = int.member.voice.channel;
+    await int.deferReply({ ephemeral: true });
+    // handled seperately cuz they might not be able to join
+    if (subcommand == "refresh") {
+      updateChannels(undefined, undefined, true);
+      return int.editReply("I've added empty voice channels if there weren't before.");
+    }
+    if (!channel) return int.editReply("You need to be in a voice channel to run these commands!");
+    if (owners.get(channel.id) != int.member.id) return int.editReply("You aren't in charge of this voice channel!");
+    let result;
+    const user = int.options.getUser("user");
+    switch (subcommand) {
+    case "lock": result = await (user ? !isLocked(channel) ? lock(int, channel).then(() => allowUser(int, channel)) : allowUser(int, channel) : lock(int, channel)); break;
+    case "unlock": result = await unlock(int, channel); break;
+    case "streamlock": result = await (user ? !isStreamLocked(channel) ? streamLock(int, channel).then(() => streamAllow(int, channel)) : streamAllow(int, channel) : streamLock(int, channel)); break;
+    case "stream-unlock": result = await streamUnlock(int, channel); break;
+    case "kick": result = await kickUser(int, channel); break;
+    case "ban": result = await ((int.options.getString("action") ?? "true") == "true" ? banUser(int, channel) : unbanUser(int, channel)); break;
+    default: return int.editReply("You did something I don't know how to process!");
+    }
+    if (result == false) return;
+    else if (result instanceof Discord.BaseInteraction) return int.editReply(`${subcommand} successful!`);
+    else int.editReply(result?.msg ?? "I ran into an error.");
   }
 })
 .addEvent("voiceStateUpdate", (oldState, newState) => {
@@ -365,18 +452,24 @@ let channelNames = [];
  * @param {Discord.VoiceState} [oldState]
  * @param {Discord.VoiceState} [newState]
  */
-async function updateChannels(oldState, newState) {
+async function updateChannels(oldState, newState, bypass = false) {
   if (oldState && newState) {
-    if (oldState.channel &&
-      oldState.channel.members.size === 0 &&
-      oldState.channel.parentId == u.sf.channels.communityVoice &&
-      oldState.channel.id != u.sf.channels.voiceAFK
-    ) {
-      const id = oldState.channel.id;
-      await oldState.channel.delete();
-      owners.delete(id);
+    // delete channel or set new owner
+    const channel = oldState.channel;
+    if (channel && channel.parentId == u.sf.channels.communityVoice && channel.id != u.sf.channels.voiceAFK) {
+      // delete channel
+      if (oldState.channel.members.size === 0) {
+        owners.delete(channel.id);
+        await channel.delete();
+      } else if (owners.get(channel.id) == oldState.member?.id && oldState.channelId != newState.channelId) {
+        const member = u.rand([...channel.members.values()]);
+        owners.set(channel.id, member.id);
+        channel.send({ content: `${member}, you've been set as the new owner of this voice channel!`, allowedMentions: { parse: ["users"] } });
+      }
+    } else if (processing) {
+      return;
     }
-  } else if (processing) {
+  } else if (processing && !bypass) {
     return;
   }
   processing = true;
@@ -390,8 +483,7 @@ async function updateChannels(oldState, newState) {
   const used = channels.map(c => c.isVoiceBased() ? c.bitrate : 0);
   const bitrate = bitrates.find(c => !used.includes(c * 1000)) ?? u.rand(bitrates);
   if (open.size < 2 || channels.size < 3) {
-    const unused = (/** @type {string[]} */ cn) => cn.filter(c => !channels.find(ch => ch.name.includes(c)));
-    const name = u.rand(unused(channelNames)) ?? u.rand(unused(channelNames.map(c => c + " 2"))) ?? "Room Error";
+    const name = u.rand(channelNames.filter(cn => !channels.find(ch => ch.name.includes(cn)))) ?? "Room Error";
     communityVoice.children.create({
       name: `${name} (${bitrate} kbps)`,
       type: Discord.ChannelType.GuildVoice,
