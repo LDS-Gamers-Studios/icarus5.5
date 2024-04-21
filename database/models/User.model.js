@@ -34,6 +34,10 @@ const UserSchema = new Schema({
   priorTenure: {
     type: Number,
     default: 0
+  },
+  watching: {
+    type: Boolean,
+    default: false
   }
 });
 

@@ -14,6 +14,7 @@ const User = require("../models/User.model");
  * @prop {number} currentXP
  * @prop {number} totalXP
  * @prop {number} priorTenure
+ * @prop {boolean} watching
  */
 
 /**
@@ -58,6 +59,7 @@ const models = {
   /**
    * Fetch a user record from the database.
    * @param {string} discordId The user record to fetch.
+   * @param {boolean} [createIfNotFound] Defaults to true
    * @returns {Promise<UserRecord | undefined>}
    */
   fetchUser: async function(discordId, createIfNotFound = true) {
@@ -118,7 +120,6 @@ const models = {
     members = (members instanceof Discord.Collection ? Array.from(members.keys()) : members);
 
     // Get requested user
-
     const record = await User.findOne({ discordId: member }).exec();
     if (!record || record.excludeXP) return null;
 
@@ -174,13 +175,15 @@ const models = {
   /**
    * Update a member's roles in the database
    * @function updateRoles
-   * @param {Discord.GuildMember} member The member to update
+   * @param {Discord.GuildMember} [member] The member to update
+   * @param {string[]} [roles]
+   * @param {string} [backupId]
    * @return {Promise<UserRecord>}
    */
-  updateRoles: function(member) {
+  updateRoles: function(member, roles, backupId) {
     return User.findOneAndUpdate(
-      { discordId: member.id },
-      { $set: { roles: Array.from(member.roles.cache.keys()) } },
+      { discordId: backupId ?? member?.id },
+      { $set: { roles: Array.from(roles ?? member?.roles.cache.keys() ?? []) } },
       { new: true, upsert: true }
     ).exec().then(u => u.toObject());
   },
@@ -195,6 +198,19 @@ const models = {
       { $inc: { priorTenure: (moment().diff(moment(member.joinedAt), "days") || 0) } },
       { new: true, upsert: true }
     ).exec().then(m => m.toObject());
+  },
+  /**
+   * Watches or unwatches a user
+   * @param {string} member The guild member to watch/unwatch
+   * @param {boolean} status Set to watched or not (Default: true)
+   * @returns {Promise<UserRecord>}
+   */
+  updateWatch: function(member, status = true) {
+    return User.findOneAndUpdate(
+      { discordId: member },
+      { $set: { watching: status } },
+      { new: true, upsert: true }
+    ).exec().then(d => d.toObject());
   }
 };
 

@@ -176,7 +176,7 @@ const Module = new Augur.Module()
     const newMember = ldsg?.members.cache.get(newUser.id);
     if (oldUser.partial) oldUser = await oldUser.fetch();
     if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || newMember.roles.cache.has(u.sf.roles.untrusted))) {
-      const user = await u.db.user.fetchUser(newMember.id, true).catch(u.noop);
+      const user = await u.db.user.fetchUser(newMember.id).catch(u.noop);
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setDescription(newUser.toString())

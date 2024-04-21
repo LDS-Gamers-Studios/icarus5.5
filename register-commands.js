@@ -1,3 +1,4 @@
+// @ts-check
 const config = require("./config/config.json"),
   u = require("./utils/utils"),
   path = require("path"),
@@ -16,6 +17,7 @@ const guildCommandFiles = [
   "slashBank.js",
   "slashGospel.js",
   "slashRank.js",
+  "slashManagement.js",
   "slashMod.js",
   "slashTournament.js",
   "slashVoice.js",
@@ -43,13 +45,19 @@ function getCommandType(typeId) {
   return commandType;
 }
 
+/** @param {axios.AxiosError} error */
 function displayError(error) {
   if (error.response) {
     if (error.response.status == 429) {
       console.log("You're being rate limited! try again after " + error.response.data.retry_after + " seconds. Starting countdown...");
-      return setTimeout(() => console.log("try now!"), error.response.data.retry_after * 1000);
+      setTimeout(() => {
+        console.log("try now!");
+        process.exit();
+      }, error.response.data.retry_after * 1000);
     } else if (error.response.status == 400) {
-      return console.log("You've got a bad bit of code somewhere! Unfortunately it won't tell me where :(");
+      console.log("You've got a bad bit of code somewhere! Unfortunately it won't tell me where :(");
+    } else if (error.response.status == 401) {
+      console.log("It says you're unauthorized...");
     } else {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
@@ -66,51 +74,56 @@ function displayError(error) {
     // Something happened in setting up the request that triggered an Error
     console.log('Error', error.message);
   }
-  console.log(error.config);
   process.exit();
 }
 
-const applicationId = config.applicationId;
-if (!applicationId) return console.log("Please put your application ID in config/config.json\nYou can find the ID here:\nhttps://discord.com/developers/applications");
-const commandPath = path.resolve(require.main ? path.dirname(require.main.filename) : process.cwd(), "./registry");
+async function register() {
+  const applicationId = config.applicationId;
+  if (!applicationId) return console.log("Please put your application ID in config/config.json\nYou can find the ID here:\nhttps://discord.com/developers/applications");
+  const commandPath = path.resolve(require.main ? path.dirname(require.main.filename) : process.cwd(), "./registry");
 
-const guildCommandLoads = [];
-for (const command of guildCommandFiles) {
-  const load = require(path.resolve(commandPath, command));
-  guildCommandLoads.push(load);
-}
-axios({
-  method: "put",
-  url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${u.sf.ldsg}/commands`,
-  headers: { Authorization: `Bot ${config.token}` },
-  data: guildCommandLoads
-}).then((response) => {
-  console.log("=====Guild commands registered=====");
-  const cmds = response.data;
-  for (const c of cmds) {
-    const commandType = getCommandType(c.type);
-    console.log(`${c.name} (${commandType}): ${c.id}`);
+  const guildCommandLoads = [];
+  for (const command of guildCommandFiles) {
+    const load = require(path.resolve(commandPath, command));
+    guildCommandLoads.push(load);
   }
-  console.log();
-}).catch(displayError);
+  // @ts-expect-error
+  const guild = await axios({
+    method: "put",
+    url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${u.sf.ldsg}/commands`,
+    headers: { Authorization: `Bot ${config.token}` },
+    data: guildCommandLoads
+  }).catch(displayError);
+  if (guild) {
+    console.log("=====Guild commands registered=====");
+    const cmds = guild.data;
+    for (const c of cmds) {
+      const commandType = getCommandType(c.type);
+      console.log(`${c.name} (${commandType}): ${c.id}`);
+    }
+  }
 
-const globalCommandLoads = [];
-for (const command of globalCommandFiles) {
-  const load = require(path.resolve(commandPath, command));
-  globalCommandLoads.push(load);
-}
-axios({
-  method: "put",
-  url: `https://discord.com/api/v8/applications/${applicationId}/commands`,
-  headers: { Authorization: `Bot ${config.token}` },
-  data: globalCommandLoads
-}).then((response) => {
-  console.log("=====Global commands registered=====");
-  const cmds = response.data;
-  for (const c of cmds) {
-    const commandType = getCommandType(c.type);
-    console.log(`${c.name} (${commandType}): ${c.id}`);
+  const globalCommandLoads = [];
+  for (const command of globalCommandFiles) {
+    const load = require(path.resolve(commandPath, command));
+    globalCommandLoads.push(load);
   }
-  console.log();
+  // @ts-expect-error
+  const global = await axios({
+    method: "put",
+    url: `https://discord.com/api/v8/applications/${applicationId}/commands`,
+    headers: { Authorization: `Bot ${config.token}` },
+    data: globalCommandLoads
+  }).catch(displayError);
+  if (global) {
+    console.log("=====Global commands registered=====");
+    const cmds = global.data;
+    for (const c of cmds) {
+      const commandType = getCommandType(c.type);
+      console.log(`${c.name} (${commandType}): ${c.id}`);
+    }
+  }
   process.exit();
-}).catch(displayError);
+}
+
+register();
