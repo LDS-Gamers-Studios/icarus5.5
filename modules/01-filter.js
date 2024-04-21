@@ -380,7 +380,8 @@ async function processCardAction(interaction) {
         const quote = u.embed({ author: member })
           .addFields({ name: "Channel", value: `#${interaction.client.getTextChannel(infraction.channel)?.name ?? "Unknown Channel"}` })
           .setDescription(embed.data.description ?? null)
-          .setTimestamp(flag.createdAt);
+          .setTimestamp(flag.createdAt)
+          .setFooter({ text: "There may have been an attachment or sticker" });
 
         const response = "## 🚨 Message from the LDSG Mods:\n" + (
           (infraction.value == 0) ?

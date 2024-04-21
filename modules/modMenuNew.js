@@ -4,14 +4,11 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
   Discord = require("discord.js");
+const { nanoid } = require("nanoid");
 
 const menuOptions = require("../data/modMenuOptions.json"),
   menuFlagOptions = require("../data/modMenuFlagOptions.json"),
-  componentWaitOptions = {
-    componentType: 3,
-    time: 5 * 3 * 1000,
-    dispose: true
-  },
+  time = 5 * 60 * 1000,
   noTime = "I fell asleep waiting for your input...";
 
 /**
@@ -73,12 +70,12 @@ async function getReason(int, description, doPoints = false) {
     .setTitle("Reason")
     .setCustomId("modMenuReason")
     .addComponents(
-      // @ts-ignore
+      // @ts-ignore component thingy
       new Discord.ActionRowBuilder()
         .setComponents(components)
     );
   await int.showModal(modal);
-  const modalSubmit = await int.awaitModalSubmit({ time: componentWaitOptions.time, dispose: true }).catch(() => {
+  const modalSubmit = await int.awaitModalSubmit({ time, dispose: true }).catch(() => {
     edit(int, noTime);
     return;
   });
@@ -96,10 +93,11 @@ async function avatar(int, target) {
 }
 /** @type {both} */
 async function flagReason(int, msg, usr) {
+  const id = nanoid();
   const reasons = new u.actionRow()
     .addComponents(
       new u.stringSelectMenu()
-        .setCustomId("flagReason")
+        .setCustomId(id)
         .setMaxValues(3)
         .setMinValues(1)
         .setPlaceholder("Select why you're flagging it")
@@ -112,15 +110,15 @@ async function flagReason(int, msg, usr) {
             .setValue(f.value)
         ))
     );
-  // @ts-ignore
-  const responseMsg = await int.update({ components: [reasons] });
-  const response = await responseMsg.awaitMessageComponent(componentWaitOptions).catch(() => {
+  /** @param {Discord.StringSelectMenuInteraction} i*/
+  const filter = (i) => i.customId == id && i.user.id == int.user.id;
+  // @ts-ignore component thingy
+  const responseMsg = await edit(int, { components: [reasons] });
+  const response = await responseMsg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true, filter }).catch(() => {
     edit(int, noTime);
     return;
   });
-  console.log(response);
-  // @ts-ignore
-  if (response) return flag(response, msg, usr);
+  if (response && response.inCachedGuild()) return flag(response, msg, usr);
   else return edit(int, noTime);
 }
 /** @type {both} */
@@ -171,7 +169,7 @@ async function noteUser(int, usr) {
     .setTitle("Note")
     .setCustomId("noteModal")
     .addComponents(
-      // @ts-ignore
+      // @ts-ignore component thingy
       new Discord.ActionRowBuilder()
         .addComponents(
           new Discord.TextInputBuilder()
@@ -184,7 +182,7 @@ async function noteUser(int, usr) {
         )
     );
   await int.showModal(modal);
-  const modalSubmit = await int.awaitModalSubmit({ time: componentWaitOptions.time, dispose: true }).catch(() => {
+  const modalSubmit = await int.awaitModalSubmit({ time, dispose: true }).catch(() => {
     edit(int, noTime);
   });
   if (modalSubmit) {
@@ -201,7 +199,7 @@ async function renameUser(int, usr) {
     .setTitle("Rename User")
     .setCustomId("modMenuRename")
     .addComponents(
-      // @ts-ignore
+      // @ts-ignore component thingy
       new Discord.ActionRowBuilder()
         .setComponents(
           new Discord.TextInputBuilder()
@@ -214,7 +212,7 @@ async function renameUser(int, usr) {
         )
     );
   await int.showModal(modal);
-  const modalSubmit = await int.awaitModalSubmit({ time: componentWaitOptions.time, dispose: true });
+  const modalSubmit = await int.awaitModalSubmit({ time, dispose: true });
   if (modalSubmit) {
     await modalSubmit.deferUpdate();
     const name = modalSubmit.fields.getTextInputValue("name") ?? "";
@@ -435,11 +433,12 @@ function permComponents(int, filterType = true) {
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
 async function sendModMenu(int) {
   await int.deferReply({ ephemeral: true });
+  const id = nanoid();
   const components = permComponents(int);
   const actionRow = new u.actionRow()
     .setComponents(
       new u.stringSelectMenu()
-        .setCustomId("modMenuSubmit")
+        .setCustomId(id)
         .setMaxValues(1)
         .setMinValues(1)
         .setOptions(components.map(cmp =>
@@ -451,13 +450,15 @@ async function sendModMenu(int) {
             .setValue(cmp.value)
         ))
     );
-  // @ts-ignore
+
+  /** @param {Discord.StringSelectMenuInteraction} i*/
+  const filter = (i) => i.customId == id && i.user.id == int.user.id;
+  // @ts-ignore component thingy
   const msg = await edit(int, { components: [actionRow] });
-  const component = await msg.awaitMessageComponent(componentWaitOptions).catch(() => {
+  const component = await msg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true, filter }).catch(() => {
     edit(int, noTime);
   });
-  // @ts-ignore
-  if (component) handleModMenu(component, int);
+  if (component && component.inCachedGuild()) handleModMenu(component, int);
 }
 const Module = new Augur.Module()
   .addInteraction({
