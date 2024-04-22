@@ -188,6 +188,8 @@ const modCommon = {
         { name: "Reason", value: flagReason, inline: true }
       );
       if (furtherInfo) embed.addFields({ name: "Further Information", value: furtherInfo, inline: true });
+    } else if (flagReason) {
+      embed.addFields({ name: "Reason", value: flagReason });
     }
 
     embed.addFields({ name: `Infraction Summary (${infractionSummary.time} Days)`, value: `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}` });

@@ -97,18 +97,15 @@ async function spamming(client) {
 
 /**
  * Filter some text, warn if appropriate.
- * @param {Discord.Message} msg The message the text is associated with.
  * @param {String} text The text to scan.
  */
-function filter(msg, text) {
+function filter(text) {
   // PROFANITY FILTER
-  if (!msg.member) return;
   const noWhiteSpace = text.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~"'()?|]/g, "").replace(/\s\s+/g, " ");
   const filtered = pf.scan(noWhiteSpace);
   if ((filtered.length > 0) && filtered[0] && (noWhiteSpace.length > 0)) {
-    c.createFlag({ msg, member: msg.member, matches: filtered, flagReason: "Profanity detected" });
-    return true;
-  } else { return false; }
+    return filtered;
+  } else { return []; }
 }
 
 /**
@@ -116,6 +113,10 @@ function filter(msg, text) {
  * @param {Discord.Message} msg Message
  */
 function processMessageLanguage(msg) {
+  let matchedContent = [];
+  const reasons = [];
+  let warned = false;
+  let pingMods = false;
   if (!msg.inGuild() || msg.guild.id != u.sf.ldsg || msg.channel.id == u.sf.channels.modlogsplus) return;
   // catch spam
   if (!msg.author.bot && !msg.webhookId && !c.grownups.has(msg.channel.id)) {
@@ -124,9 +125,14 @@ function processMessageLanguage(msg) {
     active.set(msg.author.id, { id: msg.author.id, messages: messages });
   }
 
-  processDiscordInvites(msg);
-
-  if (c.grownups.has(msg.channel.id) || !msg.member) return;
+  const invites = processDiscordInvites(msg);
+  if (invites) {
+    matchedContent = matchedContent.concat(invites);
+    reasons.push("Automatic Discord invite removal");
+    warned = true;
+  } else if (c.grownups.has(msg.channel.id)) {
+    return;
+  }
 
   /** @param {string} prop @param {{tld: string | undefined, url: string}} l */
   const linkFilter = (prop, l) => new RegExp(banned[prop].join('|'), 'gi').test(linkMap(l));
@@ -145,54 +151,68 @@ function processMessageLanguage(msg) {
   if (matchedLinks.size > 0) {
     const bannedLinks = matchedLinks.filter(l => linkFilter("links", l)).map(linkMap);
     const scamLinks = matchedLinks.filter(l => linkFilter("scam", l)).filter(l => !linkFilter("exception", l)).map(linkMap);
+    // Naughty Links
     if (bannedLinks.length > 0) {
-      // Naughty Links
-      c.createFlag({ msg, member: msg.member, matches: bannedLinks, pingMods: true, flagReason: "Dangerous Link" });
-      return true;
+      matchedContent = matchedContent.concat(bannedLinks);
+      reasons.push("Dangerous Link");
     } else if (scamLinks.length > 0) {
       // Scam Links
       u.clean(msg, 0);
-      msg.reply({ content: "That link is generally believed to be a scam/phishing site. Please be careful!", failIfNotExists: false }).catch(u.noop);
-      c.createFlag({ msg, member: msg.member, matches: scamLinks, flagReason: "Suspected scam links (Auto-Removed)" });
-      return true;
+      if (!warned) msg.reply({ content: "That link is generally believed to be a scam/phishing site. Please be careful!", failIfNotExists: false }).catch(u.noop);
+      warned = true;
+      matchedContent = matchedContent.concat(scamLinks);
+      reasons.push("Suspected scam links (Auto-Removed)");
     } else if (bannedWords.exec(msg.cleanContent) && matchedLinks.find(l => l.url.includes("tenor") || l.url.includes("giphy"))) {
       // Bad gif link
       u.clean(msg, 0);
-      msg.reply({ content: "Looks like that link might have some harsh language. Please be careful!", failIfNotExists: false }).catch(u.noop);
-      c.createFlag({ msg, member: msg.member, matches: matchedLinks.map(l => (l.tld ?? "") + l.url), flagReason: "Gif Link Language (Auto-Removed)" });
-      return true;
-    } else if (!msg.webhookId && !msg.author.bot && !msg.member.roles.cache.has(u.sf.roles.trusted)) {
+      if (!warned) msg.reply({ content: "Looks like that link might have some harsh language. Please be careful!", failIfNotExists: false }).catch(u.noop);
+      warned = true;
+      matchedContent = matchedContent.concat(matchedLinks.map(linkMap));
+      reasons.push("Gif Link Language (Auto-Removed)");
+    } else if (!msg.webhookId && !msg.author.bot && !msg.member?.roles.cache.has(u.sf.roles.trusted)) {
       // General untrusted link flag
-      c.createFlag({ msg, member: msg.member, matches: matchedLinks.map(l => (l.tld ?? "") + l.url), flagReason: "Links prior to being trusted" });
+      matchedContent = matchedContent.concat(matchedLinks.map(linkMap));
+      reasons.push("Links prior to being trusted");
     }
   }
 
   // HARD LANGUAGE FILTER
   if (matchedWords = msg.cleanContent.match(bannedWords)) {
-    c.createFlag({ msg, member: msg.member, matches: matchedWords, pingMods: true, flagReason: "Automute word detected" });
-    c.watch(msg, msg.member, true);
-    return true;
+    matchedContent = matchedContent.concat(matchedWords);
+    reasons.push("Automute word detected");
+    pingMods = true;
+    c.watch(msg, msg.member ?? msg.author.id, true);
   }
 
   // SOFT LANGUAGE FILTER
-  filter(msg, msg.cleanContent);
+  const soft = filter(msg.cleanContent);
+  if (soft.length > 0) {
+    matchedContent = matchedContent.concat(soft);
+    reasons.push("Profanity detected");
+  }
 
   // LINK PREVIEW FILTER
-  if (msg.author.bot) return;
-  for (const embed of msg.embeds) {
-    const preview = [embed.author?.name ?? "", embed.title ?? "", embed.description ?? ""].join("\n").toLowerCase();
-    const previewBad = preview.match(bannedWords) ?? [];
-    if (previewBad.length > 0) {
-      msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
-      c.createFlag({ msg, member: msg.member, matches: previewBad, flagReason: "Link preview language (Auto-Removed)" });
-      u.clean(msg, 0);
-      break;
+  if (!msg.author.bot) {
+    for (const embed of msg.embeds) {
+      const preview = [embed.author?.name ?? "", embed.title ?? "", embed.description ?? ""].join("\n").toLowerCase();
+      const previewBad = preview.match(bannedWords) ?? [];
+      if (previewBad.length > 0) {
+        u.clean(msg, 0);
+        if (!warned) msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
+        warned = true;
+        matchedContent = matchedContent.concat(previewBad);
+        reasons.push("Link preview language (Auto-Removed)");
+      }
+      if (filter(preview)) {
+        if (!warned) msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
+        warned = true;
+        msg.suppressEmbeds().catch(u.noop);
+        break;
+      }
     }
-    if (filter(msg, preview)) {
-      msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
-      msg.suppressEmbeds().catch(u.noop);
-      break;
-    }
+  }
+  if (matchedContent.length > 0) {
+    c.createFlag({ msg, member: msg.member ?? msg.author, matches: matchedContent, flagReason: reasons.join("\n"), pingMods });
   }
 }
 
@@ -221,14 +241,17 @@ function reportInvites(msg, rawInvites, invites) {
       return;
     }
     if (!msg.member) return;
-    c.createFlag({ msg, member: msg.member, matches: external.join("\n"), flagReason: "Automatic Discord invite removal" });
+    const embed = u.embed({ author: msg.author })
+      .setTitle("Invite Info")
+      .setDescription(external.join("\n"))
+      .setColor(0x03a5fc);
+    msg.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
     u.clean(msg, 0);
     msg.channel.send({ embeds: [
       u.embed({
         description: "It is difficult to know what will be in another Discord server at any given time. *If* you feel that this server is appropriate to share, please only do so in direct messages."
       })
-    ] })
-    .then(u.clean);
+    ] }).then(u.clean);
   }
 }
 
@@ -236,18 +259,20 @@ function reportInvites(msg, rawInvites, invites) {
  * Process Discord invites
  * @param {Discord.Message} msg Original message
  */
-async function processDiscordInvites(msg) {
+function processDiscordInvites(msg) {
   const bot = msg.client;
   const inviteRegex = /(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/invite\/)(\w+)/ig;
-  let matched = null;
-  if (matched = msg.cleanContent.match(inviteRegex)) {
+  const matched = msg.cleanContent.match(inviteRegex);
+  if (!matched) return;
+  const code = matched?.map(m => m.replace(/(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/invite\/)/, ""));
+  if (!msg.guild?.invites.cache.hasAll(...code)) {
     const foundInvites = matched.map(inv => bot.fetchInvite(inv.trim()));
-
     Promise.all(foundInvites).then((i) => reportInvites(msg, matched, i)).catch(e => {
       if (e && e.message == "Unknown Invite") {
         reportInvites(msg, matched);
       } else { u.errorHandler(e, msg); }
     });
+    return matched;
   }
 }
 

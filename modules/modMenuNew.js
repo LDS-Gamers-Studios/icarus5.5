@@ -4,7 +4,6 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
   Discord = require("discord.js");
-const { nanoid } = require("nanoid");
 
 const menuOptions = require("../data/modMenuOptions.json"),
   menuFlagOptions = require("../data/modMenuFlagOptions.json"),
@@ -93,7 +92,7 @@ async function avatar(int, target) {
 }
 /** @type {both} */
 async function flagReason(int, msg, usr) {
-  const id = nanoid();
+  const id = u.customId();
   const reasons = new u.actionRow()
     .addComponents(
       new u.stringSelectMenu()
@@ -126,9 +125,14 @@ async function flag(int, msg, usr) {
   if (!usr) return usrErr(int);
   await int.deferUpdate();
   const reason = int.values.map(v => menuFlagOptions.find(o => o.value == v)?.label).join(', ');
+  if (msg) {
+    // Don't let them know it was already flagged, but also don't create a duplicate
+    const existing = await u.db.infraction.getByMsg(msg.id);
+    if (existing) return edit(int, "Your report has been created! Moderators may reach out if they need more details.");
+  }
   const madeFlag = await c.createFlag({ msg: msg ?? undefined, member: usr, pingMods: false, snitch: int.member.toString(), flagReason: reason }, int);
   if (madeFlag) return edit(int, "Your report has been created! Moderators may reach out if they need more details.");
-  else return;
+  else return edit(int, "Sorry, I ran into an error while creating your report. Please let the moderators know about the issue.");
 }
 /** @type {message} */
 async function pin(int, msg) {
@@ -433,7 +437,7 @@ function permComponents(int, filterType = true) {
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
 async function sendModMenu(int) {
   await int.deferReply({ ephemeral: true });
-  const id = nanoid();
+  const id = u.customId();
   const components = permComponents(int);
   const actionRow = new u.actionRow()
     .setComponents(
