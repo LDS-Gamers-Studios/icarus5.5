@@ -1,229 +1,1137 @@
 [
-  ["1 Nephi", "3", "7"],
-  ["1 Nephi", "15", "34"],
-  ["1 Nephi", "19", "23"],
-  ["2 Nephi", "2", "11"],
-  ["2 Nephi", "2", "22-25"],
-  ["2 Nephi", "2", "27"],
-  ["2 Nephi", "9", "28-29"],
-  ["2 Nephi", "25", "23, 26"],
-  ["2 Nephi", "26", "33"],
-  ["2 Nephi", "28", "30"],
-  ["2 Nephi", "28", "7-9"],
-  ["2 Nephi", "31", "13"],
-  ["2 Nephi", "31", "19-20"],
-  ["2 Nephi", "32", "3"],
-  ["2 Nephi", "32", "8-9"],
-  ["Jacob", "2", "18-19"],
-  ["Mosiah", "2", "17"],
-  ["Mosiah", "2", "41"],
-  ["Mosiah", "3", "19"],
-  ["Mosiah", "4", "9"],
-  ["Mosiah", "4", "27"],
-  ["Mosiah", "4", "30"],
-  ["Mosiah", "18", "8-10"],
-  ["Alma", "4", "10"],
-  ["Alma", "5", "14"],
-  ["Alma", "7", "11-13"],
-  ["Alma", "11", "40"],
-  ["Alma", "11", "43"],
-  ["Alma", "22", "18"],
-  ["Alma", "30", "60"],
-  ["Alma", "32", "21"],
-  ["Alma", "34", "9-10"],
-  ["Alma", "34", "32-34"],
-  ["Alma", "36", "18-19"],
-  ["Alma", "37", "6-7"],
-  ["Alma", "37", "35"],
-  ["Alma", "39", "9"],
-  ["Alma", "41", "10"],
-  ["Alma", "46", "12"],
-  ["Helaman", "5", "12"],
-  ["3 Nephi", "11", "10-11"],
-  ["3 Nephi", "11", "14-15"],
-  ["3 Nephi", "11", "29"],
-  ["3 Nephi", "12", "48"],
-  ["3 Nephi", "18", "15, 20-21"],
-  ["3 Nephi", "27", "20"],
-  ["3 Nephi", "27", "27"],
-  ["3 Nephi", "27", "8"],
-  ["Ether", "12", "27"],
-  ["Ether", "12", "41"],
-  ["Ether", "12", "6"],
-  ["Moroni", "7", "16-17"],
-  ["Moroni", "7", "41"],
-  ["Moroni", "7", "45, 47-48"],
-  ["Moroni", "8", "12"],
-  ["Moroni", "10", "4-5"],
-  ["JS History", "1", "5-20"],
-  ["JS History", "1", "69"],
-  ["D&C", "01", "14, 37-38"],
-  ["D&C", "01", "30"],
-  ["D&C", "01", "37-38"],
-  ["D&C", "06", "36"],
-  ["D&C", "08", "2-3"],
-  ["D&C", "09", "7-9"],
-  ["D&C", "10", "5"],
-  ["D&C", "13", "1"],
-  ["D&C", "14", "7"],
-  ["D&C", "18", "10-11"],
-  ["D&C", "18", "10, 15-16"],
-  ["D&C", "19", "16-19"],
-  ["D&C", "19", "23"],
-  ["D&C", "20", "25, 26"],
-  ["D&C", "20", "37"],
-  ["D&C", "21", "4-6"],
-  ["D&C", "25", "12"],
-  ["D&C", "25", "13"],
-  ["D&C", "29", "10-11"],
-  ["D&C", "42", "11"],
-  ["D&C", "46", "33"],
-  ["D&C", "49", "15-17"],
-  ["D&C", "58", "26-29"],
-  ["D&C", "58", "27"],
-  ["D&C", "58", "42-43"],
-  ["D&C", "59", "21"],
-  ["D&C", "59", "9-13"],
-  ["D&C", "64", "23"],
-  ["D&C", "64", "9-11"],
-  ["D&C", "68", "25-27"],
-  ["D&C", "72", "3-4"],
-  ["D&C", "76", "111-112"],
-  ["D&C", "76", "22-24"],
-  ["D&C", "76", "40-41"],
-  ["D&C", "78", "19"],
-  ["D&C", "82", "10"],
-  ["D&C", "82", "3"],
-  ["D&C", "84", "20-22"],
-  ["D&C", "84", "33-39"],
-  ["D&C", "88", "78-79"],
-  ["D&C", "88", "118"],
-  ["D&C", "88", "123, 124"],
-  ["D&C", "89", "18-21"],
-  ["D&C", "89", "2-4"],
-  ["D&C", "93", "24"],
-  ["D&C", "104", "15-17"],
-  ["D&C", "107", "8"],
-  ["D&C", "115", "5-6"],
-  ["D&C", "119", "4"],
-  ["D&C", "121", "34-40"],
-  ["D&C", "121", "36, 41-42"],
-  ["D&C", "128", "15"],
-  ["D&C", "130", "18-19"],
-  ["D&C", "130", "20-21"],
-  ["D&C", "130", "22-23"],
-  ["D&C", "131", "1-4"],
-  ["D&C", "132", "15"],
-  ["D&C", "135", "3"],
-  ["D&C", "137", "7-10"],
-  ["Matthew", "5", "14-16"],
-  ["Matthew", "6", "24"],
-  ["Matthew", "7", "21-23"],
-  ["Matthew", "11", "28-30"],
-  ["Matthew", "16", "15-19"],
-  ["Matthew", "22", "36-39"],
-  ["Matthew", "25", "40"],
-  ["Matthew", "28", "19-20"],
-  ["Mark", "4", "39-40"],
-  ["Luke", "24", "36-39"],
-  ["John", "1", "1-3, 14"],
-  ["John", "3", "4"],
-  ["John", "3", "5"],
-  ["John", "5", "22"],
-  ["John", "5", "28-29"],
-  ["John", "7", "17"],
-  ["John", "8", "31-32"],
-  ["John", "10", "16"],
-  ["John", "14", "15"],
-  ["John", "14", "2"],
-  ["John", "14", "6"],
-  ["John", "15", "16"],
-  ["John", "17", "3"],
-  ["Acts", "2", "36-38"],
-  ["Acts", "3", "19-21"],
-  ["Acts", "7", "55-56"],
-  ["Acts", "20", "29-30"],
-  ["Romans", "1", "16"],
-  ["1 Corinthians", "2", "5, 9-11"],
-  ["1 Corinthians", "6", "19-20"],
-  ["1 Corinthians", "10", "13"],
-  ["1 Corinthians", "11", "11"],
-  ["1 Corinthians", "15", "20-22"],
-  ["1 Corinthians", "15", "29"],
-  ["1 Corinthians", "15", "40-42"],
-  ["Galatians", "15", "22-23"],
-  ["Ephesians", "2", "19-20"],
-  ["Ephesians", "4", "11-14"],
-  ["Philippians", "4", "13"],
-  ["1 Thessalonians", "5", "21-22"],
-  ["2 Thessalonians", "2", "1-3"],
-  ["2 Timothy", "3", "1-7"],
-  ["2 Timothy", "3", "15-17"],
-  ["2 Timothy", "4", "3-4"],
-  ["Hebrews", "5", "4"],
-  ["Hebrews", "12", "9"],
-  ["James", "1", "5-6"],
-  ["James", "1", "22"],
-  ["James", "2", "17-18"],
-  ["James", "5", "14-15"],
-  ["1 Peter", "3", "18-19"],
-  ["1 Peter", "4", "6"],
-  ["1 John", "1", "8"],
-  ["Revelation", "14", "6-7"],
-  ["Revelation", "20", "12-13"],
-  ["Moses", "1", "39"],
-  ["Moses", "7", "18"],
-  ["Abraham", "3", "22-23"],
-  ["Genesis", "1", "26-27"],
-  ["Genesis", "1", "28"],
-  ["Genesis", "2", "24"],
-  ["Genesis", "14", "20"],
-  ["Genesis", "17", "4-7"],
-  ["Genesis", "39", "9"],
-  ["Genesis", "49", "22"],
-  ["Exodus", "19", "5-6"],
-  ["Exodus", "20", "3-17"],
-  ["Exodus", "28", "1"],
-  ["Exodus", "33", "11"],
-  ["Leviticus", "19", "18"],
-  ["Deuteronomy", "4", "2"],
-  ["Deuteronomy", "7", "3-4, 6-7"],
-  ["Deuteronomy", "18", "18-22"],
-  ["Joshua", "1", "8"],
-  ["Joshua", "24", "15"],
-  ["Ruth", "1", "16-17"],
-  ["1 Samuel", "15", "22"],
-  ["1 Samuel", "16", "7"],
-  ["1 Kings", "18", "21"],
-  ["1 Chronicles", "29", "29"],
-  ["Job", "19", "25-26"],
-  ["Psalms", "24", "3-4"],
-  ["Psalms", "119", "105"],
-  ["Psalms", "127", "3"],
-  ["Proverbs", "3", "5-6"],
-  ["Proverbs", "13", "1"],
-  ["Isaiah", "1", "18"],
-  ["Isaiah", "2", "2-3"],
-  ["Isaiah", "5", "20"],
-  ["Isaiah", "8", "19-20"],
-  ["Isaiah", "9", "6"],
-  ["Isaiah", "14", "12-15"],
-  ["Isaiah", "15", "20"],
-  ["Isaiah", "24", "5-6"],
-  ["Isaiah", "29", "13-14"],
-  ["Isaiah", "53", "3-5"],
-  ["Isaiah", "55", "8-9"],
-  ["Isaiah", "58", "6-7"],
-  ["Isaiah", "58", "13-14"],
-  ["Jeremiah", "1", "4-5"],
-  ["Jeremiah", "16", "16-21"],
-  ["Ezekiel", "3", "16-17"],
-  ["Ezekiel", "37", "15-17"],
-  ["Daniel", "2", "28, 44-45"],
-  ["Joel", "2", "28-32"],
-  ["Amos", "3", "7"],
-  ["Amos", "8", "11-12"],
-  ["Amos", "9", "8-9"],
-  ["Malachi", "3", "8-10"],
-  ["Malachi", "4", "5-6"]
+  {
+    "book": "1 Nephi",
+    "chapter": "3",
+    "verses": "7"
+  },
+  {
+    "book": "1 Nephi",
+    "chapter": "15",
+    "verses": "34"
+  },
+  {
+    "book": "1 Nephi",
+    "chapter": "19",
+    "verses": "23"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "2",
+    "verses": "11"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "2",
+    "verses": "22-25"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "2",
+    "verses": "27"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "9",
+    "verses": "28-29"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "25",
+    "verses": "23, 26"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "26",
+    "verses": "33"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "28",
+    "verses": "30"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "28",
+    "verses": "7-9"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "31",
+    "verses": "13"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "31",
+    "verses": "19-20"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "32",
+    "verses": "3"
+  },
+  {
+    "book": "2 Nephi",
+    "chapter": "32",
+    "verses": "8-9"
+  },
+  {
+    "book": "Jacob",
+    "chapter": "2",
+    "verses": "18-19"
+  },
+  {
+    "book": "Mosiah",
+    "chapter": "2",
+    "verses": "17"
+  },
+  {
+    "book": "Mosiah",
+    "chapter": "2",
+    "verses": "41"
+  },
+  {
+    "book": "Mosiah",
+    "chapter": "3",
+    "verses": "19"
+  },
+  {
+    "book": "Mosiah",
+    "chapter": "4",
+    "verses": "9"
+  },
+  {
+    "book": "Mosiah",
+    "chapter": "4",
+    "verses": "27"
+  },
+  {
+    "book": "Mosiah",
+    "chapter": "4",
+    "verses": "30"
+  },
+  {
+    "book": "Mosiah",
+    "chapter": "18",
+    "verses": "8-10"
+  },
+  {
+    "book": "Alma",
+    "chapter": "4",
+    "verses": "10"
+  },
+  {
+    "book": "Alma",
+    "chapter": "5",
+    "verses": "14"
+  },
+  {
+    "book": "Alma",
+    "chapter": "7",
+    "verses": "11-13"
+  },
+  {
+    "book": "Alma",
+    "chapter": "11",
+    "verses": "40"
+  },
+  {
+    "book": "Alma",
+    "chapter": "11",
+    "verses": "43"
+  },
+  {
+    "book": "Alma",
+    "chapter": "22",
+    "verses": "18"
+  },
+  {
+    "book": "Alma",
+    "chapter": "30",
+    "verses": "60"
+  },
+  {
+    "book": "Alma",
+    "chapter": "32",
+    "verses": "21"
+  },
+  {
+    "book": "Alma",
+    "chapter": "34",
+    "verses": "9-10"
+  },
+  {
+    "book": "Alma",
+    "chapter": "34",
+    "verses": "32-34"
+  },
+  {
+    "book": "Alma",
+    "chapter": "36",
+    "verses": "18-19"
+  },
+  {
+    "book": "Alma",
+    "chapter": "37",
+    "verses": "6-7"
+  },
+  {
+    "book": "Alma",
+    "chapter": "37",
+    "verses": "35"
+  },
+  {
+    "book": "Alma",
+    "chapter": "39",
+    "verses": "9"
+  },
+  {
+    "book": "Alma",
+    "chapter": "41",
+    "verses": "10"
+  },
+  {
+    "book": "Alma",
+    "chapter": "46",
+    "verses": "12"
+  },
+  {
+    "book": "Helaman",
+    "chapter": "5",
+    "verses": "12"
+  },
+  {
+    "book": "3 Nephi",
+    "chapter": "11",
+    "verses": "10-11"
+  },
+  {
+    "book": "3 Nephi",
+    "chapter": "11",
+    "verses": "14-15"
+  },
+  {
+    "book": "3 Nephi",
+    "chapter": "11",
+    "verses": "29"
+  },
+  {
+    "book": "3 Nephi",
+    "chapter": "12",
+    "verses": "48"
+  },
+  {
+    "book": "3 Nephi",
+    "chapter": "18",
+    "verses": "15, 20-21"
+  },
+  {
+    "book": "3 Nephi",
+    "chapter": "27",
+    "verses": "20"
+  },
+  {
+    "book": "3 Nephi",
+    "chapter": "27",
+    "verses": "27"
+  },
+  {
+    "book": "3 Nephi",
+    "chapter": "27",
+    "verses": "8"
+  },
+  {
+    "book": "Ether",
+    "chapter": "12",
+    "verses": "27"
+  },
+  {
+    "book": "Ether",
+    "chapter": "12",
+    "verses": "41"
+  },
+  {
+    "book": "Ether",
+    "chapter": "12",
+    "verses": "6"
+  },
+  {
+    "book": "Moroni",
+    "chapter": "7",
+    "verses": "16-17"
+  },
+  {
+    "book": "Moroni",
+    "chapter": "7",
+    "verses": "41"
+  },
+  {
+    "book": "Moroni",
+    "chapter": "7",
+    "verses": "45, 47-48"
+  },
+  {
+    "book": "Moroni",
+    "chapter": "8",
+    "verses": "12"
+  },
+  {
+    "book": "Moroni",
+    "chapter": "10",
+    "verses": "4-5"
+  },
+  {
+    "book": "Joseph Smith - History",
+    "chapter": "1",
+    "verses": "5-20"
+  },
+  {
+    "book": "Joseph Smith - History",
+    "chapter": "1",
+    "verses": "69"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "01",
+    "verses": "14, 37-38"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "01",
+    "verses": "30"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "01",
+    "verses": "37-38"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "06",
+    "verses": "36"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "08",
+    "verses": "2-3"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "09",
+    "verses": "7-9"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "10",
+    "verses": "5"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "13",
+    "verses": "1"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "14",
+    "verses": "7"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "18",
+    "verses": "10-11"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "18",
+    "verses": "10, 15-16"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "19",
+    "verses": "16-19"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "19",
+    "verses": "23"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "20",
+    "verses": "25, 26"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "20",
+    "verses": "37"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "21",
+    "verses": "4-6"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "25",
+    "verses": "12"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "25",
+    "verses": "13"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "29",
+    "verses": "10-11"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "42",
+    "verses": "11"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "46",
+    "verses": "33"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "49",
+    "verses": "15-17"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "58",
+    "verses": "26-29"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "58",
+    "verses": "27"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "58",
+    "verses": "42-43"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "59",
+    "verses": "21"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "59",
+    "verses": "9-13"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "64",
+    "verses": "23"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "64",
+    "verses": "9-11"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "68",
+    "verses": "25-27"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "72",
+    "verses": "3-4"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "76",
+    "verses": "111-112"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "76",
+    "verses": "22-24"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "76",
+    "verses": "40-41"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "78",
+    "verses": "19"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "82",
+    "verses": "10"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "82",
+    "verses": "3"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "84",
+    "verses": "20-22"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "84",
+    "verses": "33-39"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "88",
+    "verses": "78-79"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "88",
+    "verses": "118"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "88",
+    "verses": "123, 124"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "89",
+    "verses": "18-21"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "89",
+    "verses": "2-4"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "93",
+    "verses": "24"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "104",
+    "verses": "15-17"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "107",
+    "verses": "8"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "115",
+    "verses": "5-6"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "119",
+    "verses": "4"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "121",
+    "verses": "34-40"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "121",
+    "verses": "36, 41-42"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "128",
+    "verses": "15"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "130",
+    "verses": "18-19"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "130",
+    "verses": "20-21"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "130",
+    "verses": "22-23"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "131",
+    "verses": "1-4"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "132",
+    "verses": "15"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "135",
+    "verses": "3"
+  },
+  {
+    "book": "Doctrine & Covenants",
+    "chapter": "137",
+    "verses": "7-10"
+  },
+  {
+    "book": "Matthew",
+    "chapter": "5",
+    "verses": "14-16"
+  },
+  {
+    "book": "Matthew",
+    "chapter": "6",
+    "verses": "24"
+  },
+  {
+    "book": "Matthew",
+    "chapter": "7",
+    "verses": "21-23"
+  },
+  {
+    "book": "Matthew",
+    "chapter": "11",
+    "verses": "28-30"
+  },
+  {
+    "book": "Matthew",
+    "chapter": "16",
+    "verses": "15-19"
+  },
+  {
+    "book": "Matthew",
+    "chapter": "22",
+    "verses": "36-39"
+  },
+  {
+    "book": "Matthew",
+    "chapter": "25",
+    "verses": "40"
+  },
+  {
+    "book": "Matthew",
+    "chapter": "28",
+    "verses": "19-20"
+  },
+  {
+    "book": "Mark",
+    "chapter": "4",
+    "verses": "39-40"
+  },
+  {
+    "book": "Luke",
+    "chapter": "24",
+    "verses": "36-39"
+  },
+  {
+    "book": "John",
+    "chapter": "1",
+    "verses": "1-3, 14"
+  },
+  {
+    "book": "John",
+    "chapter": "3",
+    "verses": "4"
+  },
+  {
+    "book": "John",
+    "chapter": "3",
+    "verses": "5"
+  },
+  {
+    "book": "John",
+    "chapter": "5",
+    "verses": "22"
+  },
+  {
+    "book": "John",
+    "chapter": "5",
+    "verses": "28-29"
+  },
+  {
+    "book": "John",
+    "chapter": "7",
+    "verses": "17"
+  },
+  {
+    "book": "John",
+    "chapter": "8",
+    "verses": "31-32"
+  },
+  {
+    "book": "John",
+    "chapter": "10",
+    "verses": "16"
+  },
+  {
+    "book": "John",
+    "chapter": "14",
+    "verses": "15"
+  },
+  {
+    "book": "John",
+    "chapter": "14",
+    "verses": "2"
+  },
+  {
+    "book": "John",
+    "chapter": "14",
+    "verses": "6"
+  },
+  {
+    "book": "John",
+    "chapter": "15",
+    "verses": "16"
+  },
+  {
+    "book": "John",
+    "chapter": "17",
+    "verses": "3"
+  },
+  {
+    "book": "Acts",
+    "chapter": "2",
+    "verses": "36-38"
+  },
+  {
+    "book": "Acts",
+    "chapter": "3",
+    "verses": "19-21"
+  },
+  {
+    "book": "Acts",
+    "chapter": "7",
+    "verses": "55-56"
+  },
+  {
+    "book": "Acts",
+    "chapter": "20",
+    "verses": "29-30"
+  },
+  {
+    "book": "Romans",
+    "chapter": "1",
+    "verses": "16"
+  },
+  {
+    "book": "1 Corinthians",
+    "chapter": "2",
+    "verses": "5, 9-11"
+  },
+  {
+    "book": "1 Corinthians",
+    "chapter": "6",
+    "verses": "19-20"
+  },
+  {
+    "book": "1 Corinthians",
+    "chapter": "10",
+    "verses": "13"
+  },
+  {
+    "book": "1 Corinthians",
+    "chapter": "11",
+    "verses": "11"
+  },
+  {
+    "book": "1 Corinthians",
+    "chapter": "15",
+    "verses": "20-22"
+  },
+  {
+    "book": "1 Corinthians",
+    "chapter": "15",
+    "verses": "29"
+  },
+  {
+    "book": "1 Corinthians",
+    "chapter": "15",
+    "verses": "40-42"
+  },
+  {
+    "book": "Galatians",
+    "chapter": "15",
+    "verses": "22-23"
+  },
+  {
+    "book": "Ephesians",
+    "chapter": "2",
+    "verses": "19-20"
+  },
+  {
+    "book": "Ephesians",
+    "chapter": "4",
+    "verses": "11-14"
+  },
+  {
+    "book": "Philippians",
+    "chapter": "4",
+    "verses": "13"
+  },
+  {
+    "book": "1 Thessalonians",
+    "chapter": "5",
+    "verses": "21-22"
+  },
+  {
+    "book": "2 Thessalonians",
+    "chapter": "2",
+    "verses": "1-3"
+  },
+  {
+    "book": "2 Timothy",
+    "chapter": "3",
+    "verses": "1-7"
+  },
+  {
+    "book": "2 Timothy",
+    "chapter": "3",
+    "verses": "15-17"
+  },
+  {
+    "book": "2 Timothy",
+    "chapter": "4",
+    "verses": "3-4"
+  },
+  {
+    "book": "Hebrews",
+    "chapter": "5",
+    "verses": "4"
+  },
+  {
+    "book": "Hebrews",
+    "chapter": "12",
+    "verses": "9"
+  },
+  {
+    "book": "James",
+    "chapter": "1",
+    "verses": "5-6"
+  },
+  {
+    "book": "James",
+    "chapter": "1",
+    "verses": "22"
+  },
+  {
+    "book": "James",
+    "chapter": "2",
+    "verses": "17-18"
+  },
+  {
+    "book": "James",
+    "chapter": "5",
+    "verses": "14-15"
+  },
+  {
+    "book": "1 Peter",
+    "chapter": "3",
+    "verses": "18-19"
+  },
+  {
+    "book": "1 Peter",
+    "chapter": "4",
+    "verses": "6"
+  },
+  {
+    "book": "1 John",
+    "chapter": "1",
+    "verses": "8"
+  },
+  {
+    "book": "Revelation",
+    "chapter": "14",
+    "verses": "6-7"
+  },
+  {
+    "book": "Revelation",
+    "chapter": "20",
+    "verses": "12-13"
+  },
+  {
+    "book": "Moses",
+    "chapter": "1",
+    "verses": "39"
+  },
+  {
+    "book": "Moses",
+    "chapter": "7",
+    "verses": "18"
+  },
+  {
+    "book": "Abraham",
+    "chapter": "3",
+    "verses": "22-23"
+  },
+  {
+    "book": "Genesis",
+    "chapter": "1",
+    "verses": "26-27"
+  },
+  {
+    "book": "Genesis",
+    "chapter": "1",
+    "verses": "28"
+  },
+  {
+    "book": "Genesis",
+    "chapter": "2",
+    "verses": "24"
+  },
+  {
+    "book": "Genesis",
+    "chapter": "14",
+    "verses": "20"
+  },
+  {
+    "book": "Genesis",
+    "chapter": "17",
+    "verses": "4-7"
+  },
+  {
+    "book": "Genesis",
+    "chapter": "39",
+    "verses": "9"
+  },
+  {
+    "book": "Genesis",
+    "chapter": "49",
+    "verses": "22"
+  },
+  {
+    "book": "Exodus",
+    "chapter": "19",
+    "verses": "5-6"
+  },
+  {
+    "book": "Exodus",
+    "chapter": "20",
+    "verses": "3-17"
+  },
+  {
+    "book": "Exodus",
+    "chapter": "28",
+    "verses": "1"
+  },
+  {
+    "book": "Exodus",
+    "chapter": "33",
+    "verses": "11"
+  },
+  {
+    "book": "Leviticus",
+    "chapter": "19",
+    "verses": "18"
+  },
+  {
+    "book": "Deuteronomy",
+    "chapter": "4",
+    "verses": "2"
+  },
+  {
+    "book": "Deuteronomy",
+    "chapter": "7",
+    "verses": "3-4, 6-7"
+  },
+  {
+    "book": "Deuteronomy",
+    "chapter": "18",
+    "verses": "18-22"
+  },
+  {
+    "book": "Joshua",
+    "chapter": "1",
+    "verses": "8"
+  },
+  {
+    "book": "Joshua",
+    "chapter": "24",
+    "verses": "15"
+  },
+  {
+    "book": "Ruth",
+    "chapter": "1",
+    "verses": "16-17"
+  },
+  {
+    "book": "1 Samuel",
+    "chapter": "15",
+    "verses": "22"
+  },
+  {
+    "book": "1 Samuel",
+    "chapter": "16",
+    "verses": "7"
+  },
+  {
+    "book": "1 Kings",
+    "chapter": "18",
+    "verses": "21"
+  },
+  {
+    "book": "1 Chronicles",
+    "chapter": "29",
+    "verses": "29"
+  },
+  {
+    "book": "Job",
+    "chapter": "19",
+    "verses": "25-26"
+  },
+  {
+    "book": "Psalms",
+    "chapter": "24",
+    "verses": "3-4"
+  },
+  {
+    "book": "Psalms",
+    "chapter": "119",
+    "verses": "105"
+  },
+  {
+    "book": "Psalms",
+    "chapter": "127",
+    "verses": "3"
+  },
+  {
+    "book": "Proverbs",
+    "chapter": "3",
+    "verses": "5-6"
+  },
+  {
+    "book": "Proverbs",
+    "chapter": "13",
+    "verses": "1"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "1",
+    "verses": "18"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "2",
+    "verses": "2-3"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "5",
+    "verses": "20"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "8",
+    "verses": "19-20"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "9",
+    "verses": "6"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "14",
+    "verses": "12-15"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "15",
+    "verses": "20"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "24",
+    "verses": "5-6"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "29",
+    "verses": "13-14"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "53",
+    "verses": "3-5"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "55",
+    "verses": "8-9"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "58",
+    "verses": "6-7"
+  },
+  {
+    "book": "Isaiah",
+    "chapter": "58",
+    "verses": "13-14"
+  },
+  {
+    "book": "Jeremiah",
+    "chapter": "1",
+    "verses": "4-5"
+  },
+  {
+    "book": "Jeremiah",
+    "chapter": "16",
+    "verses": "16-21"
+  },
+  {
+    "book": "Ezekiel",
+    "chapter": "3",
+    "verses": "16-17"
+  },
+  {
+    "book": "Ezekiel",
+    "chapter": "37",
+    "verses": "15-17"
+  },
+  {
+    "book": "Daniel",
+    "chapter": "2",
+    "verses": "28, 44-45"
+  },
+  {
+    "book": "Joel",
+    "chapter": "2",
+    "verses": "28-32"
+  },
+  {
+    "book": "Amos",
+    "chapter": "3",
+    "verses": "7"
+  },
+  {
+    "book": "Amos",
+    "chapter": "8",
+    "verses": "11-12"
+  },
+  {
+    "book": "Amos",
+    "chapter": "9",
+    "verses": "8-9"
+  },
+  {
+    "book": "Malachi",
+    "chapter": "3",
+    "verses": "8-10"
+  },
+  {
+    "book": "Malachi",
+    "chapter": "4",
+    "verses": "5-6"
+  }
 ]
