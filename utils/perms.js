@@ -4,17 +4,31 @@ const { sf } = require("../utils/utils");
 const config = require("../config/config.json");
 const Discord = require("discord.js");
 
+/** @typedef {(m: Discord.GuildMember) => boolean} perm */
 const permFuncs = {
+  /** @type {perm} */
   botOwner: m => config.ownerId === m.id,
+  /** @type {perm} */
   botAdmin: m => config.adminId.includes(m.id) || permFuncs.botOwner(m),
+  /** @type {perm} */
   mgmt: m => m.roles.cache.has(sf.roles.management),
+  /** @type {perm} */
   mgr: m => m.roles.cache.has(sf.roles.manager),
+  /** @type {perm} */
   mod: m => m.roles.cache.has(sf.roles.mod),
+  /** @type {perm} */
+  botTeam: m => m.roles.cache.has(sf.roles.botTeam),
+  /** @type {perm} */
   team: m => m.roles.cache.has(sf.roles.team),
+  /** @type {perm} */
   volunteer: m => m.roles.cache.has(sf.roles.volunteer),
+  /** @type {perm} */
   trustPlus: m => m.roles.cache.has(sf.roles.trustedplus),
+  /** @type {perm} */
   trusted: m => m.roles.cache.has(sf.roles.trusted),
+  /** @type {perm} */
   notMuted: m => !m.roles.cache.has(sf.roles.muted),
+  /** @type {perm} */
   everyone: () => true
 };
 
@@ -30,22 +44,13 @@ const perms = {
     }
     return result;
   },
-  isAdmin: (msg) => config.adminId.includes((msg.author ?? msg.user).id),
-  isOwner: (msg) => (msg.author ?? msg.user).id === config.ownerId,
-  isMod: function(msg) {
-    const roles = msg.member?.roles.cache;
-    return roles?.has(sf.roles.mod) || roles?.has(sf.roles.management);
-  },
-  isMgmt: (member) => member.roles.cache.has(sf.roles.management),
-  isMgr: (msg) => msg.member?.roles.cache.has(sf.roles.manager),
-  isTeam: function(msg) {
-    const roles = msg.member?.roles.cache;
-    return roles?.has(sf.roles.team) || roles?.has(sf.roles.management);
-  },
-  isTrusted: function(msg) {
-    const roles = msg.member?.roles.cache;
-    return roles?.has(sf.roles.trusted) && !roles?.has(sf.roles.untrusted);
-  }
+  isAdmin: permFuncs.botAdmin,
+  isOwner: permFuncs.botOwner,
+  isMod: permFuncs.mod,
+  isMgmt: permFuncs.mgmt,
+  isMgr: permFuncs.mgr,
+  isTeam: permFuncs.team,
+  isTrusted: permFuncs.trusted
 };
 
 module.exports = perms;
