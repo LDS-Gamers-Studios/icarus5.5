@@ -13,10 +13,11 @@ const reason = (action, req = true) => new u.string()
   .setDescription(`Why are they being ${action}?`)
   .setRequired(req);
 
-/** Should I add (true) or remove (false) the X? (Default: Y) */
-const apply = (obj, def = "add") => new u.bool()
-  .setName("apply")
-  .setDescription(`"Should I add (\`true\`) or remove (\`false\`) the ${obj}? (Default: \`(${def}\`)`)
+/** Should I add or remove the X? (Default: Y) */
+const action = (obj) => new u.string()
+  .setName("action")
+  .setDescription(`"Should I add or remove the ${obj}? (Default: Add)`)
+  .setChoices({ name: "Add", value: "true" }, { name: "Remove", value: "false" })
   .setRequired(false);
 
 const ban = new u.sub()
@@ -42,7 +43,19 @@ const filter = new u.sub()
       .setDescription("Which word do you want to modify?")
       .setRequired(true)
   )
-  .addBooleanOption(apply('word', 'add'));
+  .addStringOption(action('word'));
+
+const grownups = new u.sub()
+  .setName("grownups")
+  .setDescription("The grownups are talking here, so I'll ignore the messages sent here for a bit.")
+  .addIntegerOption(
+    new u.int()
+      .setName("time")
+      .setDescription("How long do you want me to leave?")
+      .setRequired(false)
+      .setMinValue(0)
+      .setMaxValue(30)
+  );
 
 const grownups = new u.sub()
   .setName("grownups")
@@ -79,7 +92,7 @@ const mute = new u.sub()
   .setDescription("Mute or unmute a user")
   .addUserOption(user("mute"))
   .addStringOption(reason("muted", false))
-  .addBooleanOption(apply("mute", "apply"));
+  .addStringOption(action("mute"));
 
 const note = new u.sub()
   .setName("note")
@@ -97,7 +110,7 @@ const office = new u.sub()
   .setDescription("Send a user to the office")
   .addUserOption(user("send to the office"))
   .addStringOption(reason("sent there"))
-  .addBooleanOption(apply("user from the office", "add"));
+  .addStringOption(action("user from the office"));
 
 const purge = new u.sub()
   .setName("purge")
@@ -171,7 +184,21 @@ const trust = new u.sub()
       )
       .setRequired(true)
   )
-  .addBooleanOption(apply("role", "add"));
+  .addStringOption(action("role"));
+
+const timeout = new u.sub()
+  .setName("timeout")
+  .setDescription("Prevent someone from chatting without muting them")
+  .addUserOption(user("timeout"))
+  .addIntegerOption(
+    new u.int()
+      .setName("time")
+      .setDescription("How many minutes do you want to time them out for? (0 resets)")
+      .setRequired(false)
+      .setMinValue(0)
+      .setMaxValue(30)
+  )
+  .addStringOption(reason("timed out", false));
 
 const timeout = new u.sub()
   .setName("timeout")
@@ -204,7 +231,7 @@ const watch = new u.sub()
   .setName("watch")
   .setDescription("Add or remove a user from the watchlist")
   .addUserOption(user("put on the watchlist"))
-  .addBooleanOption(apply("user from the watchlist", "add"));
+  .addStringOption(action("user from the watchlist"));
 
 module.exports = new u.cmd()
   .setName("mod")

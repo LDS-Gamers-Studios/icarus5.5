@@ -31,6 +31,15 @@ const retract = new ActionRowBuilder().setComponents([
   new ButtonBuilder().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
 ]);
 
+/** @type {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>} */
+// @ts-ignore
+const retract = new ActionRowBuilder().setComponents([
+  new ButtonBuilder().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
+]);
+
+const messageFromMods = "## 🚨 Message from the LDSG Mods:\n";
+const code = "[Code of Conduct](<http://ldsgamers.com/code-of-conduct>) (<http://ldsgamers.com/code-of-conduct>)";
+
 /**
   * Give the mods a heads up that someone isn't getting their DMs.
   * @param {Discord.GuildMember} member The guild member that's blocked.
@@ -96,7 +105,7 @@ const modCommon = {
 
         // The actual ban part
         const targetRoles = target.roles.cache.clone();
-        await target.send({ embeds: [ u.embed()
+        await target.send({ content: messageFromMods, embeds: [ u.embed()
           .setTitle("User Ban")
           .setDescription(`You have been banned in ${interaction.guild.name} for:\n${reason}`)
         ] }).catch(() => blocked(target));
@@ -211,7 +220,7 @@ const modCommon = {
             member.voice?.disconnect("Auto-mute");
           }
           ldsg?.client.getTextChannel(u.sf.channels.muted)?.send({
-            content: `${member}, you have been auto-muted in ${msg?.guild.name ?? "LDSG"}. Please review our Code of Conduct. A member of the mod team will be available to discuss more details.\n\nhttp://ldsgamers.com/code-of-conduct`,
+            content: `${member}, you have been auto-muted in ${msg?.guild.name ?? "LDS Gamers"}. Please review our Code of Conduct. A member of the mod team will be available to discuss more details.\n\nhttp://ldsgamers.com/code-of-conduct`,
             allowedMentions: { users: [member.id] }
           });
         }
@@ -223,19 +232,19 @@ const modCommon = {
       content: content.join('\n'),
       embeds: [embed],
 
-      components: (bot() ? undefined : modActions),
+      components: ((bot() || !msg) ? undefined : modActions),
       allowedMentions: { roles: [u.sf.roles.mod] }
     });
 
     if (!card) throw new Error("Card creation failed!");
 
-    if (!bot()) {
+    if (!bot() && msg) {
       const infraction = {
         discordId: member.id,
-        channel: msg?.channel.id,
-        message: msg?.id,
+        channel: msg.channel.id,
+        message: msg.id,
         flag: card.id,
-        description: msg?.cleanContent,
+        description: msg.cleanContent,
         mod: client.user.id,
         value: 0
       };
@@ -287,7 +296,7 @@ const modCommon = {
 
   /**
    * They get the boot
-   * @param {Augur.GuildInteraction<"CommandSlash">|Augur.GuildInteraction<"SelectMenuString">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
    * @param {Discord.GuildMember} target
    * @param {string} reason
    */
@@ -307,7 +316,7 @@ const modCommon = {
       } else if (confirm) {
         // The actual kick part
         const targetRoles = target.roles.cache.clone();
-        await target.send({ embeds: [
+        await target.send({ content: messageFromMods, embeds: [
           u.embed()
           .setTitle("User Kick")
           .setDescription(`You have been kicked in ${interaction.guild.name} for:\n${reason}`)
@@ -351,7 +360,7 @@ const modCommon = {
 
   /**
    * Prevent someone from talking
-   * @param {Augur.GuildInteraction<"CommandSlash">|Augur.GuildInteraction<"SelectMenuString">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
    * @param {Discord.GuildMember} target
    * @param {string} [reason]
    */
@@ -360,8 +369,7 @@ const modCommon = {
     const M = apply ? "Mute" : "Unmute";
     let success = 0;
     try {
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to ${m} ${target}!`;
-      else if (!target.manageable) return `I have insufficient permissions to ${m} ${target}!`;
+      if (!target.manageable) return `I have insufficient permissions to ${m} ${target}!`;
 
       // Don't mute if muted or vice versa
       if (target.roles.cache.has(u.sf.roles.muted) == apply) return `${target} is already ${m}d.`;
@@ -390,9 +398,8 @@ const modCommon = {
       if (apply) {
         await interaction.client.getTextChannel(u.sf.channels.muted)?.send(
           `${target}, you have been muted in ${interaction.guild.name}. `
-        + 'Please review our Code of Conduct. '
-        + 'A member of the mod team will be available to discuss more details.\n\n'
-        + 'http://ldsgamers.com/code-of-conduct'
+        + `Please review our ${code}.\n`
+        + 'A member of the mod team will be available to discuss more details.'
         );
       }
 
@@ -409,7 +416,7 @@ const modCommon = {
 
   /**
    * Write down a note on a user
-   * @param {Augur.GuildInteraction<"CommandSlash">|Augur.GuildInteraction<"Modal">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"Modal">} interaction
    * @param {Discord.GuildMember|Discord.User} target
    * @param {string} note
    */
@@ -452,9 +459,8 @@ const modCommon = {
   office: async function(interaction, target, reason, apply = true) {
     let success = false;
     try {
-      const put = apply ? `put ${userBackup(target)} in` : `release ${userBackup(target)} from`;
-      if (!modCommon.compareRoles(interaction.member, target)) return `You have insufficient permissions to ${put} the office!`;
-      else if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
+      const put = apply ? `put ${target} in` : `released ${target} from`;
+      if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
 
       // don't do it if it wont do anything
       if (target.roles.cache.has(u.sf.roles.ducttape) == apply) return `They're ${apply ? "already" : "not"} in the office.`;
@@ -474,11 +480,10 @@ const modCommon = {
 
       if (apply) {
         await interaction.client.getTextChannel(u.sf.channels.office)?.send(
-          `${target}, you have been sent to the office in ${interaction.guild.name}. `
-          + 'This allows you and the mods to have a private space to discuss any issues without restricting access to the rest of the server. '
-          + 'Please review our Code of Conduct. '
-          + 'A member of the mod team will be available to discuss more details.\n\n'
-          + 'http://ldsgamers.com/code-of-conduct'
+          `${target}, you have been sent to the office in ${interaction.guild.name}.\n`
+          + 'This allows you and the mods to have a private space to discuss issues or concerns.\n'
+          + `Please review our ${code}.`
+          + 'A member of the mod team will be available to discuss more details.'
         );
       }
 
@@ -491,7 +496,7 @@ const modCommon = {
 
   /**
    *
-   * @param {Augur.GuildInteraction<"CommandSlash">|Augur.GuildInteraction<"Modal">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"Modal">} interaction
    * @param {Discord.GuildMember} target
    * @param {string} newNick
    */
@@ -499,9 +504,7 @@ const modCommon = {
     let success = false;
     try {
       const oldNick = target.displayName;
-
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to rename ${target}!`;
-      else if (!target.manageable) return `I have insufficient permissions to rename ${target}!`;
+      if (!target.manageable) return `I have insufficient permissions to rename ${target}!`;
 
       await target.setNickname(reset ? null : newNick);
       success = true;
@@ -563,7 +566,7 @@ const modCommon = {
     }
     for (const [, msg] of toDelete) {
       try {
-        await msg.delete();
+        await u.clean(msg, 0);
         deleted++;
       } catch (error) {
         u.errorHandler(error)?.then(m => {notDeleted ? u.clean(m) : u.noop();});
@@ -576,7 +579,7 @@ const modCommon = {
 
   /**
    * Briefly prevent someone from talking
-   * @param {Augur.GuildInteraction<"CommandSlash">|Augur.GuildInteraction<"SelectMenuString">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
    * @param {Discord.GuildMember} target
    * @param {number} time Minutes, default is 10
    * @param {string} [reason]
@@ -588,8 +591,7 @@ const modCommon = {
     const T = apply ? "Timed Out" : "Released from Time Out";
     let success = false;
     try {
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to ${t} ${target}!`;
-      else if (!target.manageable) return `I have insufficient permissions to ${t} ${target}!`;
+      if (!target.manageable) return `I have insufficient permissions to ${t} ${target}!`;
 
       // Don't mute if muted or vice versa
       if (!apply && !target.communicationDisabledUntil) return `${target} is already ${td}.`;
@@ -614,7 +616,7 @@ const modCommon = {
 
   /**
    * Give someone the Trusted Role
-   * @param {Augur.GuildInteraction<"CommandSlash">|Augur.GuildInteraction<"SelectMenuString">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
    * @param {Discord.GuildMember} target
    */
   trust: async function(interaction, target, apply = true) {
@@ -626,20 +628,20 @@ const modCommon = {
         await target.roles.add(u.sf.roles.trusted);
         success = true;
         target.send(
-          `You have been marked as "Trusted" in ${interaction.guild.name} . `
+          "## Congratulations!\n"
+          + `You have been marked as "Trusted" in ${interaction.guild.name} . `
           + "This means you are now permitted to post images and links in chat. "
-          + "Please remember to follow the [Code of Conduct](<http://ldsgamers.com/code-of-conduct>) when doing so.\n"
-          + "<http://ldsgamers.com/code-of-conduct>\n\n"
+          + `Please remember to follow our ${code} when doing so.\n\n`
           + "If you'd like to join one of our in-server Houses, you can visit <http://3houses.live> to get started!"
         ).catch(() => blocked(target));
-        embed.setTitle("User Given Trusted").setDescription(`${interaction.member} trusted ${userBackup(target)}.`);
+        embed.setTitle("User Given Trusted").setDescription(`${interaction.member} trusted ${userBackup(target)}).`);
       } else {
         await target.roles.remove([u.sf.roles.trusted, u.sf.roles.trustedplus]);
         success = true;
-        target.send(`You have been removed from "Trusted" in ${interaction.guild.name}. `
-        + "This means you no longer have the ability to post images. "
-        + "Please remember to follow the [Code of Conduct](<http://ldsgamers.com/code-of-conduct>) when posting images or links.\n"
-        + "<http://ldsgamers.com/code-of-conduct>");
+        target.send(messageFromMods + `You have been removed from "Trusted" in ${interaction.guild.name}.\n`
+          + "This means you no longer have the ability to post images. "
+          + `Please remember to follow our ${code} when posting images or links in the future.\n`
+        ).catch(() => blocked(target));
         embed.setTitle("User Trust Removed").setDescription(`${interaction.member} untrusted ${userBackup(target)}.`);
       }
       await modCommon.watch(interaction, target, !apply);
@@ -653,7 +655,7 @@ const modCommon = {
 
   /**
    * Give someone the Trusted+ Role
-   * @param {Augur.GuildInteraction<"CommandSlash">|Augur.GuildInteraction<"SelectMenuString">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
    * @param {Discord.GuildMember} target
    */
   trustPlus: async function(interaction, target, apply = true) {
@@ -667,20 +669,19 @@ const modCommon = {
         await target.roles.add(u.sf.roles.trustedplus);
         success = true;
         target.send(
-          "Congratulations! "
+          "## Congratulations!\n"
           + "You've been added to the Trusted+ list in LDSG, allowing you to stream to voice channels!\n\n"
-          + "While streaming, please remember the Streaming Guidelines ( https://goo.gl/Pm3mwS ) and LDSG Code of Conduct ( http://ldsgamers.com/code-of-conduct ). "
+          + `While streaming, please remember the Streaming Guidelines ( https://goo.gl/Pm3mwS ) and our ${code}.`
           + "Also, please be aware that LDSG may make changes to the Trusted+ list from time to time at its discretion."
-        ).catch(u.noop);
+        ).catch(() => blocked(target));
         embed.setTitle("User Given Trusted+").setDescription(`${interaction.member} gave ${userBackup(target)} the <@&${u.sf.roles.trustedplus}> role.`);
       } else {
         await target.roles.remove(u.sf.roles.trustedplus);
         success = true;
-        target.send(
+        target.send(messageFromMods +
           `You have been removed from "Trusted+" in ${interaction.guild.name}. `
           + "This means you no longer have the ability to stream video in the server. "
-          + "Please remember to follow the Code of Conduct.\n"
-          + "<http://ldsgamers.com/code-of-conduct>"
+          + `Please remember to follow our ${code}.`
         ).catch(() => modCommon.blocked(target));
 
         embed.setTitle("User Trusted+ Removed")
@@ -703,8 +704,9 @@ const modCommon = {
   watch: async function(interaction, target, apply = true) {
     let success = true;
     try {
-      const watchlist = await u.db.user.getUsers({ watching: true });
+      if (typeof target != 'string' && (target.user.bot)) return `${target} is a bot and shouldn't be watched.`;
       const id = typeof target == "string" ? target : target.id;
+      const watchlist = await u.db.user.getUsers({ watching: true });
       if (apply && (watchlist.find(w => w.discordId == id) || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
       if (!apply && (!watchlist.find(w => w.discordId == id) && !modCommon.watchlist.has(id))) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
 
@@ -714,13 +716,14 @@ const modCommon = {
       success = true;
 
       if (typeof target != 'string') {
-        const watchLog = interaction.client.getTextChannel(u.sf.channels.modlogs);
+        const watchLog = interaction.client.getTextChannel(u.sf.channels.modWatchList);
         const notifDesc = [
-          `**added** to the watchlist by ${interaction.member}. Use </mod watch:${u.sf.commands.slashMod}> \`apply: false\` command to remove them.`,
-          `**removed** from the watchlist by ${interaction.member}. Use </mod watch:${u.sf.commands.slashMod}> \`apply: true\` command to re-add them.`
+          `**added** to the watchlist by ${interaction.member}.\nUse </mod watch:${u.sf.commands.slashMod}> to remove them.`,
+          `**removed** from the watchlist by ${interaction.member}.\nUse </mod watch:${u.sf.commands.slashMod}> to re-add them.`
         ];
         const embed = u.embed({ author: target })
-          .setTitle("User Watch")
+          .setTitle(apply ? "Watching User 👀" : "Un-Watching User 💤")
+          .setColor(apply ? 0x00FF00 : 0xFF8800)
           .setDescription(`${userBackup(target)} has been ${notifDesc[apply ? 0 : 1]}`);
         watchLog?.send({ embeds: [embed] });
       }
@@ -777,10 +780,10 @@ const modCommon = {
   },
   /** @param {string} mod */
   warnMessage: function(mod) {
-    return "We have received one or more complaints regarding content you posted."
-    + "\nWe have reviewed the content in question and have determined, in our sole discretion, that it is against our [Code of Conduct](https://ldsgamers.com/code-of-conduct) (https://ldsgamers.com/code-of-conduct)."
-    + "\nThis content was removed on your behalf. As a reminder, if we believe that you are frequently in breach of our code of conduct or are otherwise acting inconsistently with the letter or spirit of the code, we may limit, suspend or terminate your access to the LDSG Discord server."
-    + `\n\n**${mod}** has issued this warning.`;
+    return "We have received one or more complaints regarding content you posted.\n"
+    + `We have reviewed the content in question and have determined, in our sole discretion, that it is against our ${code}.\n`
+    + "This content was removed on your behalf. As a reminder, if we believe that you are frequently in breach of our Code of Conduct or are otherwise acting inconsistently with the letter or spirit of the code, we may limit, suspend or terminate your access to the LDSG Discord server.\n\n"
+    + `**${mod}** has issued this warning.`;
   },
   /** @type {Set<string>} */
   watchlist: new Set(),

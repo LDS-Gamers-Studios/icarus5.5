@@ -1,0 +1,658 @@
+[
+  {
+    "bookName": "Genesis",
+    "urlAbbrev": "gen",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Exodus",
+    "urlAbbrev": "ex",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Leviticus",
+    "urlAbbrev": "lev",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Numbers",
+    "urlAbbrev": "num",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Deuteronomy",
+    "urlAbbrev": "deut",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Joshua",
+    "urlAbbrev": "josh",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Judges",
+    "urlAbbrev": "judg",
+    "work": "ot",
+    "abbreviations": ["judge"]
+  },
+  {
+    "bookName": "Ruth",
+    "urlAbbrev": "ruth",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "1 Samuel",
+    "urlAbbrev": "1-sam",
+    "work": "ot",
+    "abbreviations": [
+      "1sam",
+      "1 sam",
+      "sam"
+    ]
+  },
+  {
+    "bookName": "2 Samuel",
+    "urlAbbrev": "2-sam",
+    "work": "ot",
+    "abbreviations": [
+      "2sam",
+      "2 sam"
+    ]
+  },
+  {
+    "bookName": "1 Kings",
+    "urlAbbrev": "1-kgs",
+    "work": "ot",
+    "abbreviations": [
+      "1kgs",
+      "1 kgs",
+      "1kings",
+      "1 kings",
+      "kings"
+    ]
+  },
+  {
+    "bookName": "2 Kings",
+    "urlAbbrev": "2-kgs",
+    "work": "ot",
+    "abbreviations": [
+      "2kgs",
+      "2 kgs",
+      "2kings",
+      "2 kings"
+    ]
+  },
+  {
+    "bookName": "1 Chronicles",
+    "urlAbbrev": "1-chr",
+    "work": "ot",
+    "abbreviations": [
+      "1chr",
+      "1 chr",
+      "1chronicles",
+      "chronicles",
+      "1chron",
+      "1 chron",
+      "chron"
+    ]
+  },
+  {
+    "bookName": "2 Chronicles",
+    "urlAbbrev": "2-chr",
+    "work": "ot",
+    "abbreviations": [
+      "2chr",
+      "2 chr",
+      "2chronicles",
+      "2chron",
+      "2 chron"
+    ]
+  },
+  {
+    "bookName": "Ezra",
+    "urlAbbrev": "ezra",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Nehemiah",
+    "urlAbbrev": "neh",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Esther",
+    "urlAbbrev": "esth",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Job",
+    "urlAbbrev": "job",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Psalms",
+    "urlAbbrev": "ps",
+    "work": "ot",
+    "abbreviations": [
+      "psalm"
+    ]
+  },
+  {
+    "bookName": "Proverbs",
+    "urlAbbrev": "prov",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Ecclesiastes",
+    "urlAbbrev": "eccl",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Song of Solomon",
+    "urlAbbrev": "song",
+    "work": "ot",
+    "abbreviations": [
+      "sos"
+    ]
+  },
+  {
+    "bookName": "Isaiah",
+    "urlAbbrev": "isa",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Jeremiah",
+    "urlAbbrev": "jer",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Lamentations",
+    "urlAbbrev": "lam",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Ezekiel",
+    "urlAbbrev": "ezek",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Daniel",
+    "urlAbbrev": "dan",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Hosea",
+    "urlAbbrev": "hosea",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Joel",
+    "urlAbbrev": "joel",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Amos",
+    "urlAbbrev": "amos",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Obadiah",
+    "urlAbbrev": "obad",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Jonah",
+    "urlAbbrev": "jonah",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Micah",
+    "urlAbbrev": "micah",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Nahum",
+    "urlAbbrev": "nahum",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Habakkuk",
+    "urlAbbrev": "hab",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Zephaniah",
+    "urlAbbrev": "zeph",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Haggai",
+    "urlAbbrev": "hag",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Zechariah",
+    "urlAbbrev": "zech",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Malachi",
+    "urlAbbrev": "mal",
+    "work": "ot",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Matthew",
+    "urlAbbrev": "matt",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Mark",
+    "urlAbbrev": "mark",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Luke",
+    "urlAbbrev": "luke",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "John",
+    "urlAbbrev": "john",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Acts",
+    "urlAbbrev": "acts",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Romans",
+    "urlAbbrev": "rom",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "1 Corinthians",
+    "urlAbbrev": "1-cor",
+    "work": "nt",
+    "abbreviations": [
+      "1cor",
+      "1 cor",
+      "cor",
+      "1corinthians"
+    ]
+  },
+  {
+    "bookName": "2 Corinthians",
+    "urlAbbrev": "2-cor",
+    "work": "nt",
+    "abbreviations": [
+      "2cor",
+      "2 cor",
+      "2corinthians"
+    ]
+  },
+  {
+    "bookName": "Galatians",
+    "urlAbbrev": "gal",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Ephesians",
+    "urlAbbrev": "eph",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Philippians",
+    "urlAbbrev": "philip",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Colossians",
+    "urlAbbrev": "col",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "1 Thessalonians",
+    "urlAbbrev": "1-thes",
+    "work": "nt",
+    "abbreviations": [
+      "1thes",
+      "1 thes",
+      "1thessalonians",
+      "thess",
+      "thessalonians"
+    ]
+  },
+  {
+    "bookName": "2 Thessalonians",
+    "urlAbbrev": "2-thes",
+    "work": "nt",
+    "abbreviations": [
+      "2thes",
+      "2 thes",
+      "2thessalonians"
+    ]
+  },
+  {
+    "bookName": "1 Timothy",
+    "urlAbbrev": "1-tim",
+    "work": "nt",
+    "abbreviations": [
+      "1tim",
+      "1 tim",
+      "tim",
+      "timothy",
+      "1timothy"
+    ]
+  },
+  {
+    "bookName": "2 Timothy",
+    "urlAbbrev": "2-tim",
+    "work": "nt",
+    "abbreviations": [
+      "2tim",
+      "2 tim",
+      "2timothy"
+    ]
+  },
+  {
+    "bookName": "Titus",
+    "urlAbbrev": "titus",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Philemon",
+    "urlAbbrev": "philem",
+    "work": "nt",
+    "abbreviations": [
+      "phil"
+    ]
+  },
+  {
+    "bookName": "Hebrews",
+    "urlAbbrev": "heb",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "James",
+    "urlAbbrev": "james",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "1 Peter",
+    "urlAbbrev": "1-pet",
+    "work": "nt",
+    "abbreviations": [
+      "1pet",
+      "1 pet",
+      "1peter",
+      "peter"
+    ]
+  },
+  {
+    "bookName": "2 Peter",
+    "urlAbbrev": "2-pet",
+    "work": "nt",
+    "abbreviations": [
+      "2pet",
+      "2 pet",
+      "2peter"
+    ]
+  },
+  {
+    "bookName": "1 John",
+    "urlAbbrev": "1-jn",
+    "work": "nt",
+    "abbreviations": [
+      "1jn",
+      "1john",
+      "1 jn",
+      "john",
+      "jhn"
+    ]
+  },
+  {
+    "bookName": "2 John",
+    "urlAbbrev": "2-jn",
+    "work": "nt",
+    "abbreviations": [
+      "2jn",
+      "2john",
+      "2 john"
+    ]
+  },
+  {
+    "bookName": "3 John",
+    "urlAbbrev": "3-jn",
+    "work": "nt",
+    "abbreviations": [
+      "3jn",
+      "3john",
+      "3 john"
+    ]
+  },
+  {
+    "bookName": "Jude",
+    "urlAbbrev": "jude",
+    "work": "nt",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Revelation",
+    "urlAbbrev": "rev",
+    "work": "nt",
+    "abbreviations": [
+      "revel"
+    ]
+  },
+  {
+    "bookName": "1 Nephi",
+    "urlAbbrev": "1-ne",
+    "work": "bofm",
+    "abbreviations": [
+      "1ne",
+      "1 ne",
+      "1n",
+      "1 n",
+      "nephi"
+    ]
+  },
+  {
+    "bookName": "2 Nephi",
+    "urlAbbrev": "2-ne",
+    "work": "bofm",
+    "abbreviations": [
+      "2ne",
+      "2 ne",
+      "2 n",
+      "2n"
+    ]
+  },
+  {
+    "bookName": "Jacob",
+    "urlAbbrev": "jacob",
+    "work": "bofm",
+    "abbreviations": [
+      "jac"
+    ]
+  },
+  {
+    "bookName": "Enos",
+    "urlAbbrev": "enos",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Jarom",
+    "urlAbbrev": "jarom",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Omni",
+    "urlAbbrev": "omni",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Words of Mormon",
+    "urlAbbrev": "w-of-m",
+    "work": "bofm",
+    "abbreviations": [
+      "wom",
+      "words"
+    ]
+  },
+  {
+    "bookName": "Mosiah",
+    "urlAbbrev": "mosiah",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Alma",
+    "urlAbbrev": "alma",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Helaman",
+    "urlAbbrev": "hel",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "3 Nephi",
+    "urlAbbrev": "3-ne",
+    "work": "bofm",
+    "abbreviations": [
+      "3ne",
+      "3 ne",
+      "3n",
+      "3 n"
+    ]
+  },
+  {
+    "bookName": "4 Nephi",
+    "urlAbbrev": "4-ne",
+    "work": "bofm",
+    "abbreviations": [
+      "4 ne",
+      "4ne",
+      "4n",
+      "4 n"
+    ]
+  },
+  {
+    "bookName": "Mormon",
+    "urlAbbrev": "morm",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Ether",
+    "urlAbbrev": "ether",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Moroni",
+    "urlAbbrev": "moro",
+    "work": "bofm",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Doctrine & Covenants",
+    "urlAbbrev": "dc",
+    "work": "dc-testament",
+    "abbreviations": [
+      "d&c",
+      "d & c",
+      "doctrine and covenants",
+      "dnc"
+    ]
+  },
+  {
+    "bookName": "Moses",
+    "urlAbbrev": "moses",
+    "work": "pgp",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Abraham",
+    "urlAbbrev": "abr",
+    "work": "pgp",
+    "abbreviations": []
+  },
+  {
+    "bookName": "Joseph Smith - Matthew",
+    "urlAbbrev": "js-m",
+    "work": "pgp",
+    "abbreviations": [
+      "jsm",
+      "joseph smith matthew",
+      "js matthew"
+    ]
+  },
+  {
+    "bookName": "Joseph Smith - History",
+    "urlAbbrev": "js-h",
+    "work": "pgp",
+    "abbreviations": [
+      "jsh",
+      "joseph smith history",
+      "js history"
+    ]
+  },
+  {
+    "bookName": "Articles of Faith",
+    "urlAbbrev": "a-of-f",
+    "work": "pgp",
+    "abbreviations": [
+      "aof",
+      "articles"
+    ]
+  }
+]

@@ -17,8 +17,12 @@ const Module = new Augur.Module()
     try {
       const user = await u.db.user.fetchUser(member.id);
       if (!user || user.roles.includes(u.sf.roles.trusted)) return;
-      const watchLog = member.client.getTextChannel(u.sf.channels.modlogsplus);
-      watchLog?.send(`ℹ️ **${member.displayName}** has been automatically added to the watch list. Use the \`\\mod trust @user(s)\` command to remove them.`);
+      const watchLog = member.client.getTextChannel(u.sf.channels.modWatchList);
+      const embed = u.embed({ author: member })
+        .setColor(0x00FF00)
+        .setTitle("New Member 👀")
+        .setDescription(` ${member} has been automatically added to the watch list.\nUse </mod trust:${u.sf.commands.slashMod}> to remove them.`);
+      watchLog?.send({ embeds: [embed] });
     } catch (e) { u.errorHandler(e, "Watchlist Auto-Add"); }
   }
 })
@@ -29,13 +33,13 @@ const Module = new Augur.Module()
 .addEvent("messageCreate", watch)
 .addEvent("messageUpdate", async (msg, newMsg) => {
   if (newMsg.partial) newMsg = await newMsg.fetch();
-  watch(newMsg);
+  watch(newMsg, true);
 });
 
 /** @param {Discord.Message} msg */
-async function watch(msg) {
+async function watch(msg, edited = false) {
   if (!msg.guild) return;
-  const watchLog = msg.client.getTextChannel(u.sf.channels.modlogsplus);
+  const watchLog = msg.client.getTextChannel(u.sf.channels.modWatchList);
 
   if (
     msg.guild.id == u.sf.ldsg && // only LDSG
@@ -43,19 +47,33 @@ async function watch(msg) {
     (!msg.member?.roles.cache.has(u.sf.roles.trusted) || c.watchlist.has(msg.author.id)) // only untrusted and watched
   ) {
     const files = msg.attachments.map(attachment => attachment.url);
-    watchLog?.send(`**${msg.member?.displayName || msg.author?.username}** in ${msg.channel}:\n>>> ${msg.cleanContent}`);
+    const content = `**${msg.member?.displayName || msg.author?.username}** in ${msg.channel}:\n>>> ${edited ? "[EDITED]: " : ""}${msg.cleanContent}`;
+    // potential idea, but not keeping for now
+    // const button = u.actionRow().addComponents(u.button().setCustomId("watchDiscuss").setEmoji("🔗").setLabel("Discuss").setStyle(Discord.ButtonStyle.Secondary));
+    watchLog?.send({ content, /** components: [button] */ });
     if (files.length > 0) {
       watchLog?.send({ files: files });
     }
   }
 }
 
+// potential idea
+/** @param {Discord.ButtonInteraction<"cached">} int*/
+// async function watchDiscuss(int) {
+//   await int.deferReply({ ephemeral: true });
+//   const msg = await int.message.fetch();
+//   if (!msg) return int.editReply("I wasn't able to find that message.");
+//   if (msg.hasThread) return int.editReply("This message already has a thread attached to it.");
+//   const thread = await msg.startThread({ name: "Post Discussion" }); // maybe post to mod-discussion instead
+//   return int.editReply("I created the thread! You can find it here: " + thread.url);
+// }
+
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
 async function slashModWatch(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const target = interaction.options.getMember("user");
-  const apply = interaction.options.getBoolean("apply") ?? true;
+  const apply = (interaction.options.getString("action") ?? "true") == "true";
   if (!target) return interaction.editReply(noTarget);
 
   const watching = await c.watch(interaction, target, apply);
@@ -82,10 +100,10 @@ async function slashModFilter(interaction) {
   const word = interaction.options.getString("word", true).toLowerCase().trim();
   const mod = interaction.member;
   const modLogs = interaction.client.getTextChannel(u.sf.channels.modlogs);
-  const apply = interaction.options.getBoolean("apply") ?? true;
+  const apply = (interaction.options.getString("action") ?? "true") == "true";
 
   const filtered = pf.scan(word);
-  if (!p.isMgmt(interaction) && !p.isMgr(interaction) && !p.isAdmin(interaction)) {
+  if (!p.calc(interaction.member, ["mgr"])) {
     return interaction.editReply("This command is for Management+ only.");
   }
 
@@ -137,8 +155,8 @@ async function slashModMute(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
     const target = interaction.options.getMember("user");
-    const apply = interaction.options.getBoolean("apply") ?? true;
-    const reason = interaction.options.getString("reason") || apply ? "Violating the Code of Conduct" : "Case Closed";
+    const apply = (interaction.options.getString("action") ?? "true") == "true";
+    const reason = interaction.options.getString("reason") || (apply ? "Violating the Code of Conduct" : "Case Closed");
     if (!target) return interaction.editReply(noTarget);
 
     const mute = await c.mute(interaction, target, reason, apply);
@@ -152,9 +170,8 @@ async function slashModMute(interaction) {
 async function slashModNote(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
-    const target = interaction.options.getMember("user");
+    const target = interaction.options.getMember("user") ?? interaction.options.getUser("user", true);
     const note = interaction.options.getString("note", true);
-    if (!target) return interaction.editReply(noTarget);
 
     const noted = await c.note(interaction, target, note);
     return interaction.editReply(noted);
@@ -169,7 +186,7 @@ async function slashModOffice(interaction) {
     await interaction.deferReply({ ephemeral: true });
     const target = interaction.options.getMember("user");
     const reason = interaction.options.getString("reason") || "No reason provided";
-    const apply = interaction.options.getBoolean("apply") ?? true;
+    const apply = (interaction.options.getString("action") ?? "true") == "true";
     if (!target) return interaction.editReply(noTarget);
 
     const office = await c.office(interaction, target, reason, apply);
@@ -320,7 +337,7 @@ async function slashModTrust(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user");
   const type = interaction.options.getString("type", true);
-  const apply = interaction.options.getBoolean("apply") ?? true;
+  const apply = (interaction.options.getString("action") ?? "true") == "true";
   if (!member) return interaction.editReply(noTarget);
 
   // evaluate and give appropriate trust level
@@ -359,7 +376,7 @@ async function slashModWarn(interaction) {
 async function slashModGrownups(interaction) {
   const time = Math.min(30, interaction.options.getInteger("time") ?? 15);
   if (!interaction.channel) return interaction.reply({ content: "Well that's awkward, I can't access the channel you're in!", ephemeral: true });
-
+  if (interaction.channel.parent?.id != u.sf.channels.staffCategory) return interaction.reply({ content: "This command can only be used in the LDSG-Staff Category!", ephemeral: true });
   interaction.reply(time == 0 ? `*Whistles and wanders back in*` : `*Whistles and wanders off for ${time} minutes...*`);
 
   if (c.grownups.has(interaction.channel.id)) {
@@ -408,5 +425,11 @@ Module.addInteraction({
     } catch (error) { u.errorHandler(error, interaction); }
   }
 });
+// .addInteraction({
+//   id: "watchDiscuss",
+//   type: "Button",
+//   onlyGuild: true,
+//   process: watchDiscuss
+// });
 
 module.exports = Module;

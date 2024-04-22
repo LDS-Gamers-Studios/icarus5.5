@@ -5,7 +5,8 @@
   "main": "icarus.js",
   "scripts": {
     "lint": "eslint . --max-warnings=0",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "register": "node register-commands.js"
   },
   "repository": {
     "type": "git",

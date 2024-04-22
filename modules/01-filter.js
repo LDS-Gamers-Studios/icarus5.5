@@ -71,10 +71,11 @@ async function spamming(client) {
 
   for (const member of offending) {
     const message = member.messages[0];
+    /** @type {Discord.Collection<string, {channel: string, count: number}>} */
     const channels = new u.Collection();
     for (const msg of member.messages) {
       const prev = channels.get(msg.channelId);
-      channels.set(msg.channelId, { channel: msg.channel.toString(), count: (prev ?? 0) + 1 });
+      channels.set(msg.channelId, { channel: msg.channel.toString(), count: (prev?.count ?? 0) + 1 });
     }
 
     const verdictString = [
@@ -117,7 +118,8 @@ function processMessageLanguage(msg) {
   const reasons = [];
   let warned = false;
   let pingMods = false;
-  if (!msg.inGuild() || msg.guild.id != u.sf.ldsg || msg.channel.id == u.sf.channels.modlogsplus) return;
+  if (!msg.inGuild() || msg.guild.id != u.sf.ldsg || msg.channel.id == u.sf.channels.modWatchList) return;
+
   // catch spam
   if (!msg.author.bot && !msg.webhookId && !c.grownups.has(msg.channel.id)) {
     const messages = active.get(msg.author.id)?.messages ?? [];
@@ -192,13 +194,13 @@ function processMessageLanguage(msg) {
   }
 
   // LINK PREVIEW FILTER
-  if (!msg.author.bot) {
+  if (msg.author.id != msg.client.user.id) {
     for (const embed of msg.embeds) {
       const preview = [embed.author?.name ?? "", embed.title ?? "", embed.description ?? ""].join("\n").toLowerCase();
       const previewBad = preview.match(bannedWords) ?? [];
       if (previewBad.length > 0) {
         u.clean(msg, 0);
-        if (!warned) msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
+        if (!warned && !msg.author.bot) msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
         warned = true;
         matchedContent = matchedContent.concat(previewBad);
         reasons.push("Link preview language (Auto-Removed)");
