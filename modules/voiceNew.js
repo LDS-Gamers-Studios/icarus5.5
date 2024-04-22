@@ -9,8 +9,6 @@ const { nanoid } = require('nanoid');
 
 
 /** @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">}|Discord.Interaction<"cached">|false>} voice */
-/** @type {Discord.Collection<string, string>} */
-let owners = new u.Collection();
 
 /**
  * @param {updates} options
@@ -32,8 +30,6 @@ const actionRow = (options) => {
 
   const buttons2 = [
     new Discord.ButtonBuilder().setCustomId("voiceKickUser").setLabel("Kick User").setStyle(styles.Danger),
-    new Discord.ButtonBuilder().setCustomId("voiceBanUser").setLabel("Ban User").setStyle(styles.Danger),
-    new Discord.ButtonBuilder().setCustomId("voiceUnbanUser").setLabel("Unban User").setStyle(styles.Danger),
     new Discord.ButtonBuilder().setCustomId("voiceSetOwner").setLabel("Set New Owner").setStyle(styles.Danger)
   ];
   return [
@@ -70,7 +66,7 @@ function getComponents(user, channel, oldMsg) {
     { name: "Allowed Users", value: allowedUsers.length > 0 ? allowedUsers.join("\n") : locked ? "Nobody" : "Everyone!", inline: true },
     { name: "Can Speak", value: allowedSpeak.length > 0 ? allowedSpeak.join("\n") : streamlocked ? "Nobody" : "Everyone!", inline: true },
     { name: "Banned Users", value: banned.length > 0 ? banned.join("\n") : "Nobody", inline: true },
-  ]).setDescription(`Current Owner: <@${owners.get(channel.id)}>`)
+  ]).setDescription(`Controls for ${channel}`)
   .setTitle("VC Control Panel");
   const components = actionRow({ locked, streamlocked, allowedSpeak, allowedUsers });
   return { embeds: [embed], components, content: null };
@@ -311,53 +307,12 @@ async function kickUser(int, channel) {
   await member.voice.disconnect();
   return newInt;
 }
-/** @type {voice} */
-async function banUser(int, channel) {
-  const user = await getUser(int, "ban from joining the channel");
-  if (user == null) return false;
-
-  const { member, newInt } = user;
-  if (!member) return { msg: noUser, int: newInt };
-  const banned = channel.permissionOverwrites.cache.filter(p => p.deny.has("Connect")).map(p => p.id);
-  if (banned.includes(member.id)) return { msg: `${member} was already banned!`, int: newInt };
-  const newPerms = overwrite(channel, [{ users: [member.id], deny: ["Connect", "SendMessages"] }]);
-  await channel.permissionOverwrites.set(newPerms);
-  await member.voice.disconnect();
-  return newInt;
-}
-/** @type {voice} */
-async function unbanUser(int, channel) {
-  const user = await getUser(int, "unban from joining the channel");
-  if (user == null) return false;
-
-  const { member, newInt } = user;
-  if (!member) return { msg: noUser, int: newInt };
-  if (!channel.permissionOverwrites.cache.get(member.id)?.deny.has("Connect")) return { msg: `${member} wasn't banned in the first place!`, int: newInt };
-  const newPerms = overwrite(channel, [{ users: [member.id], remove: ["Connect", "SendMessages"] }]);
-  await channel.permissionOverwrites.set(newPerms);
-  return newInt;
-}
-/** @type {voice} */
-async function setOwner(int, channel) {
-  const user = await getUser(int, "set as the new owner");
-  if (user == null) return false;
-
-  const { member, newInt } = user;
-  if (!member) return { msg: noUser, int: newInt };
-  const unacceptable = member.id == int.member.id ? "You're already in control!" : member.user.bot ? `A bot can't own this channel!` : member.voice.channelId != channel.id ? "Someone who's not connected can't own the channel!" : null;
-  if (unacceptable) return { msg: unacceptable, int: newInt };
-  if (isStreamLocked(channel)) await channel.permissionOverwrites.set(overwrite(channel, [{ users: [member.id], allow: ["Speak"] }, { users: [int.member.id], remove: ["Speak"] }]));
-  owners.set(channel.id, member.id);
-  channel.send({ content: `${member}, you've been set as the owner of this voice channel!`, allowedMentions: { parse: ["users"] } });
-  return newInt;
-}
 
 const Module = new Augur.Module()
 .addEvent("interactionCreate", async (int) => {
   if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return false;
   const channel = int.member.voice.channel;
-  if (!channel) return int.reply({ content: "You need to be connected to a voice channel to use these buttons!", ephemeral: true });
-  if (owners.get(channel.id) != int.user.id) return int.reply({ content: "You aren't the owner of this voice channel!", ephemeral: true });
+  if (!channel || channel.id != int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true });
   await int.deferUpdate();
   let result;
   switch (int.customId) {
@@ -367,15 +322,12 @@ const Module = new Augur.Module()
   case "voiceStreamAllow": result = await streamAllow(int, channel); break;
   case "voiceStreamDeny": result = await streamDeny(int, channel); break;
 
-  // Only shresult = ow sometimes
+  // Only showed sometimes
   case "voiceLock": result = await lock(int, channel); break;
   case "voiceStreamLock": result = await streamLock(int, channel); break;
 
-  // Second roresult = w
+  // Second row
   case "voiceKickUser": result = await kickUser(int, channel); break;
-  case "voiceBanUser": result = await banUser(int, channel); break;
-  case "voiceUnbanUser": result = await unbanUser(int, channel); break;
-  case "voiceSetOwner": result = await setOwner(int, channel); break;
   default: return;
   }
   if (result == false) return;
@@ -398,7 +350,6 @@ const Module = new Augur.Module()
       return int.editReply("I've added empty voice channels if there weren't before.");
     }
     if (!channel) return int.editReply("You need to be in a voice channel to run these commands!");
-    if (owners.get(channel.id) != int.member.id) return int.editReply("You aren't in charge of this voice channel!");
     let result;
     const user = int.options.getUser("user");
     switch (subcommand) {
@@ -407,7 +358,6 @@ const Module = new Augur.Module()
     case "streamlock": result = await (user ? !isStreamLocked(channel) ? streamLock(int, channel).then(() => streamAllow(int, channel)) : streamAllow(int, channel) : streamLock(int, channel)); break;
     case "stream-unlock": result = await streamUnlock(int, channel); break;
     case "kick": result = await kickUser(int, channel); break;
-    case "ban": result = await ((int.options.getString("action") ?? "true") == "true" ? banUser(int, channel) : unbanUser(int, channel)); break;
     default: return int.editReply("You did something I don't know how to process!");
     }
     if (result == false) return;
@@ -419,13 +369,10 @@ const Module = new Augur.Module()
   if (oldState.guild.id != u.sf.ldsg) return;
   updateChannels(oldState, newState);
   if (oldState.channel || !newState.channel || !newState.member) return;
-  if (owners.get(newState.channel.id)) return;
-  owners.set(newState.channel.id, newState.member.id);
   const components = getComponents(newState.member.user, newState.channel);
   newState.channel.send({ embeds: components.embeds, components: components.components });
 })
-.setInit(async (o) => {
-  if (o) owners = o;
+.setInit(async () => {
   if (!config.google.sheets.config) return console.log("No Sheets ID");
   const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
@@ -440,8 +387,7 @@ const Module = new Augur.Module()
 })
 .addEvent("ready", () => {
   updateChannels();
-})
-.setUnload(() => owners);
+});
 
 let processing = false;
 /** @type {string[]} */
@@ -456,16 +402,9 @@ async function updateChannels(oldState, newState, bypass = false) {
   if (oldState && newState) {
     // delete channel or set new owner
     const channel = oldState.channel;
-    if (channel && channel.parentId == u.sf.channels.communityVoice && channel.id != u.sf.channels.voiceAFK) {
+    if (channel && channel.parentId == u.sf.channels.voiceCategory && channel.id != u.sf.channels.voiceAFK) {
       // delete channel
-      if (oldState.channel.members.size === 0) {
-        owners.delete(channel.id);
-        await channel.delete();
-      } else if (owners.get(channel.id) == oldState.member?.id && oldState.channelId != newState.channelId) {
-        const member = u.rand([...channel.members.values()]);
-        owners.set(channel.id, member.id);
-        channel.send({ content: `${member}, you've been set as the new owner of this voice channel!`, allowedMentions: { parse: ["users"] } });
-      }
+      if (oldState.channel.members.size === 0) await channel.delete();
     } else if (processing) {
       return;
     }
@@ -473,7 +412,7 @@ async function updateChannels(oldState, newState, bypass = false) {
     return;
   }
   processing = true;
-  const communityVoice = Module.client.getCategoryChannel(u.sf.channels.communityVoice);
+  const communityVoice = Module.client.getCategoryChannel(u.sf.channels.voiceCategory);
   if (!communityVoice) return processing = false;
   const channels = communityVoice.children.cache.filter(c => c.id != u.sf.channels.voiceAFK && c.isVoiceBased());
   const open = channels.filter(c => c.members.size == 0);

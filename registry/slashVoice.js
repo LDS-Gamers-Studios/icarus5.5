@@ -42,23 +42,6 @@ const kick = new u.sub()
     .setRequired(true)
   );
 
-const ban = new u.sub()
-  .setName("ban")
-  .setDescription("Ban a user from joining your voice channel")
-  .addUserOption(
-    new u.user()
-    .setName("user")
-    .setDescription("The user in question")
-    .setRequired(true)
-  )
-  .addStringOption(
-    new u.string()
-    .setName("action")
-    .setDescription("Do you want to ban or unban the user?")
-    .setRequired(false)
-    .setChoices({ name: "Ban", value: "true" }, { name: "Unban", value: "false" })
-  );
-
 module.exports = new u.cmd()
   .setName("voice")
   .setDescription("Voice channel options")
@@ -68,6 +51,5 @@ module.exports = new u.cmd()
   .addSubcommand(streamunlock)
   .addSubcommand(refresh)
   .addSubcommand(kick)
-  .addSubcommand(ban)
   .setDMPermission(false)
   .toJSON();
