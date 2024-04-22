@@ -15,6 +15,7 @@ const globalCommandFiles = [
 const guildCommandFiles = [
   "messageMod.js",
   "slashBank.js",
+  "slashBot.js",
   "slashGospel.js",
   "slashRank.js",
   "slashManagement.js",
@@ -23,6 +24,8 @@ const guildCommandFiles = [
   "slashVoice.js",
   "userMod.js"
 ];
+
+if (!config.devMode) guildCommandFiles.push("slashBotHidden-.js"); // secret commands >:)
 /**********************
  * END "CONFIG" BLOCK *
  **********************/
