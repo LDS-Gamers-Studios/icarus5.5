@@ -103,7 +103,7 @@ async function slashModFilter(interaction) {
   const apply = (interaction.options.getString("action") ?? "true") == "true";
 
   const filtered = pf.scan(word);
-  if (!p.isMgmt(interaction) && !p.isMgr(interaction) && !p.isAdmin(interaction)) {
+  if (!p.calc(interaction.member, ["mgr"])) {
     return interaction.editReply("This command is for Management+ only.");
   }
 

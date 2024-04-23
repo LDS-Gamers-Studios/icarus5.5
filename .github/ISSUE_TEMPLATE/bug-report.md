@@ -1,15 +1,16 @@
 ---
 name: Bug Report
-about: Create a report to help us improve
-title: ''
+about: Create a report to help us fix the features you love
+title: "[BUG]"
 labels: bug
 assignees: ''
 
 ---
 
 **Describe the bug**
-A clear and concise description of what the bug is.
+A clear and concise description of what the bug is and at what time it occurred.
 
+**Error Message (If applicable)**
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Go to '...'
@@ -24,4 +25,4 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Additional context**
-Add any other context about the problem here.
+Add any other context about the problem here, including your Discord username.
