@@ -57,18 +57,6 @@ const grownups = new u.sub()
       .setMaxValue(30)
   );
 
-const grownups = new u.sub()
-  .setName("grownups")
-  .setDescription("The grownups are talking here, so I'll ignore the messages sent here for a bit.")
-  .addIntegerOption(
-    new u.int()
-      .setName("time")
-      .setDescription("How long do you want me to leave?")
-      .setRequired(false)
-      .setMinValue(0)
-      .setMaxValue(30)
-  );
-
 const summary = new u.sub()
   .setName("summary")
   .setDescription("Check user details and infractions")
@@ -185,20 +173,6 @@ const trust = new u.sub()
       .setRequired(true)
   )
   .addStringOption(action("role"));
-
-const timeout = new u.sub()
-  .setName("timeout")
-  .setDescription("Prevent someone from chatting without muting them")
-  .addUserOption(user("timeout"))
-  .addIntegerOption(
-    new u.int()
-      .setName("time")
-      .setDescription("How many minutes do you want to time them out for? (0 resets)")
-      .setRequired(false)
-      .setMinValue(0)
-      .setMaxValue(30)
-  )
-  .addStringOption(reason("timed out", false));
 
 const timeout = new u.sub()
   .setName("timeout")
