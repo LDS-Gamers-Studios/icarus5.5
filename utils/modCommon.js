@@ -26,14 +26,8 @@ const modActions = [
 const userBackup = (person) => `${person} (${u.escapeText(person.displayName)})`;
 
 /** @type {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>} */
-// @ts-ignore
-const retract = new ActionRowBuilder().setComponents([
-  new ButtonBuilder().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
-]);
-
-/** @type {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>} */
-// @ts-ignore
-const retract = new ActionRowBuilder().setComponents([
+const retract = new ActionRowBuilder();
+retract.setComponents([
   new ButtonBuilder().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
 ]);
 
@@ -126,17 +120,17 @@ const modCommon = {
         // Log it
         interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
           u.embed({ author: target })
-        .setTitle("User Ban")
-        .setDescription(`**${interaction.member}** banned **${userBackup(target)}** for:\n${reason}`)
-        .setFooter({ text: `Deleted ${days} day(s) of messages` })
-        .setColor(0x0000ff)
+            .setTitle("User Ban")
+            .setDescription(`**${interaction.member}** banned **${userBackup(target)}** for:\n${reason}`)
+            .setFooter({ text: `Deleted ${days} day(s) of messages` })
+            .setColor(0x0000ff)
         ] });
         // Return results
         return {
           embeds: [
             u.embed({ author: target })
-          .setColor(0x00ff00)
-          .setDescription(`${target.toString()} banned for:\n${reason}`)
+              .setColor(0x00ff00)
+              .setDescription(`${target.toString()} banned for:\n${reason}`)
           ],
           components: []
         };
@@ -173,17 +167,18 @@ const modCommon = {
     const embed = u.embed({ color: 0xff0000, author: member });
 
     if (Array.isArray(matches)) matches = matches.join(", ");
-    if (matches) embed.addFields({ name: "Match", value: matches });
+    if (matches) embed.addFields({ name: "Matched", value: matches });
     if (msg) {
       embed.setTimestamp(msg.editedAt ?? msg.createdAt)
         .setDescription((msg.editedAt ? "[Edited]\n" : "") + msg.cleanContent || null)
         .addFields(
           { name: "Channel", value: msg.channel?.toString(), inline: true },
           { name: "Jump to Post", value: `[Original Message](${msg.url})`, inline: true },
-          { name: "User", value: msg.webhookId ? msg.author.username ?? (await msg.fetchWebhook()).name : member.displayName ?? "Unknown User" }
+          { name: "User", value: msg.webhookId ? userBackup(msg.author) ?? (await msg.fetchWebhook()).name : userBackup(msg.author) ?? "Unknown User" }
         );
-
-      if (msg.channel.parentId == u.sf.channels.minecraftcategory && msg.webhookId) return; // I lied actually do stuff
+      if (msg.channel.parentId == u.sf.channels.minecraftcategory && msg.webhookId) {
+        msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({ embeds: [embed] });
+      }
     } else if (interaction) {
       embed.setTimestamp(interaction.createdAt)
         .setDescription("User Reported!")
@@ -220,7 +215,7 @@ const modCommon = {
             member.voice?.disconnect("Auto-mute");
           }
           ldsg?.client.getTextChannel(u.sf.channels.muted)?.send({
-            content: `${member}, you have been auto-muted in ${msg?.guild.name ?? "LDS Gamers"}. Please review our Code of Conduct. A member of the mod team will be available to discuss more details.\n\nhttp://ldsgamers.com/code-of-conduct`,
+            content: `${member}, you have been auto-muted in ${msg?.guild.name ?? "LDS Gamers"}. Please review our ${code}. A member of the mod team will be available to discuss more details.`,
             allowedMentions: { users: [member.id] }
           });
         }
@@ -512,6 +507,10 @@ const modCommon = {
       const comment = `Set nickname to ${u.escapeText(reset ? "default" : newNick)} from ${u.escapeText(oldNick)}.`;
 
       if (!reset) {
+        await target.send(
+          messageFromMods + `We have found that your ${oldNick == target.user.displayName ? "username" : "server nickname"} is in violation of our ${code}.\n`
+          + `We've taken the liberty of setting a new server nickname (**${newNick}**) for you. Please reach out if you have any questions.`
+        ).catch(() => blocked(target));
         await u.db.infraction.save({
           discordId: target.id,
           value: 0,
@@ -682,7 +681,7 @@ const modCommon = {
           `You have been removed from "Trusted+" in ${interaction.guild.name}. `
           + "This means you no longer have the ability to stream video in the server. "
           + `Please remember to follow our ${code}.`
-        ).catch(() => modCommon.blocked(target));
+        ).catch(() => blocked(target));
 
         embed.setTitle("User Trusted+ Removed")
         .setDescription(`${interaction.member} removed the <@&${u.sf.roles.trustedplus}> role from ${userBackup(target)}.`);
@@ -764,9 +763,9 @@ const modCommon = {
       });
       success = true;
 
-      let response = "## 🚨 Message from the LDSG Mods:\n" + modCommon.warnMessage(u.escapeText(interaction.member?.displayName ?? interaction.user.displayName)) + `\n\n**Reason:** ${reason}`;
+      let response = messageFromMods + modCommon.warnMessage(u.escapeText(interaction.member?.displayName ?? interaction.user.displayName)) + `\n\n**Reason:** ${reason}`;
       if (message?.cleanContent) response += `\n\n###Message:\n${message.cleanContent}`;
-      await target.send(response).catch(() => modCommon.blocked(target));
+      await target.send(response).catch(() => blocked(target));
 
       const sum = await u.db.infraction.getSummary(target.id);
       embed.addFields({ name: `Infraction Summary (${sum.time} Days) `, value: `Infractions: ${sum.count}\nPoints: ${sum.points}` });
