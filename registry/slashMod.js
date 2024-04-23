@@ -97,7 +97,7 @@ const office = new u.sub()
   .setName("office")
   .setDescription("Send a user to the office")
   .addUserOption(user("send to the office"))
-  .addStringOption(reason("sent there"))
+  .addStringOption(reason("sent there", false))
   .addStringOption(action("user from the office"));
 
 const purge = new u.sub()

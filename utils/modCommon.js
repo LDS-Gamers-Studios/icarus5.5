@@ -391,11 +391,11 @@ const modCommon = {
       ] });
 
       if (apply) {
-        await interaction.client.getTextChannel(u.sf.channels.muted)?.send(
+        await interaction.client.getTextChannel(u.sf.channels.muted)?.send({ content:
           `${target}, you have been muted in ${interaction.guild.name}. `
         + `Please review our ${code}.\n`
-        + 'A member of the mod team will be available to discuss more details.'
-        );
+        + 'A member of the mod team will be available to discuss more details.',
+        allowedMentions: { parse: ["users"] } });
       }
 
       return `${M}d ${target}.`;
@@ -458,7 +458,7 @@ const modCommon = {
       if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
 
       // don't do it if it wont do anything
-      if (target.roles.cache.has(u.sf.roles.ducttape) == apply) return `They're ${apply ? "already" : "not"} in the office.`;
+      if (target.roles.cache.has(u.sf.roles.ducttape) == apply) return `${target} is ${apply ? "already" : "not"} in the office.`;
 
       // do it
       if (apply) await target.roles.add(u.sf.roles.ducttape);
@@ -474,12 +474,13 @@ const modCommon = {
       ] });
 
       if (apply) {
-        await interaction.client.getTextChannel(u.sf.channels.office)?.send(
+        await interaction.client.getTextChannel(u.sf.channels.office)?.send({ content:
           `${target}, you have been sent to the office in ${interaction.guild.name}.\n`
           + 'This allows you and the mods to have a private space to discuss issues or concerns.\n'
           + `Please review our ${code}.`
-          + 'A member of the mod team will be available to discuss more details.'
-        );
+          + 'A member of the mod team will be available to discuss more details.',
+        allowedMentions: { parse: ['users'] }
+        });
       }
 
       return `${target} has been ${apply ? "sent to" : "released from"} the office!`;
@@ -547,33 +548,29 @@ const modCommon = {
    * @param {boolean} auto
    */
   spamCleanup: async function(searchContent, guild, message, auto = false) {
-    /** @type {Discord.Collection<string, Discord.Message<true>>} */
-    let toDelete = new u.Collection();
-    let deleted = 0;
-    let notDeleted = false;
     const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2) * 1000;
     const contents = u.unique(searchContent);
+    const promises = [];
     for (const [, channel] of guild.channels.cache) {
-      if (channel.isTextBased() && channel.messages.cache.size > 0) {
-        const messages = channel.messages.cache.filter(m =>
-          m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
-          m.createdTimestamp >= (timeDiff - message.createdTimestamp) &&
-          m.author.id == (message.author.id ?? message.id) &&
-          contents.includes(message.content.toLowerCase()));
-        if (messages.size > 0) toDelete = toDelete.concat(messages);
-      }
+      const perms = channel.permissionsFor(message.client.user);
+      if (!channel.isTextBased() || !perms?.has("ManageMessages") || !perms.has("ViewChannel") || !perms.has("Connect")) continue;
+      const fetched = await channel.messages.fetch({ around: message.id, limit: 30 });
+      const messages = fetched.filter(m =>
+        m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
+        m.createdTimestamp >= (message.createdTimestamp - timeDiff) &&
+        m.author.id == message.author.id &&
+        contents.includes(m.content.toLowerCase())
+      );
+      if (messages.size > 0) promises.push(channel.bulkDelete(messages, true));
     }
-    for (const [, msg] of toDelete) {
-      try {
-        await u.clean(msg, 0);
-        deleted++;
-      } catch (error) {
-        u.errorHandler(error)?.then(m => {notDeleted ? u.clean(m) : u.noop();});
-        notDeleted = true;
-      }
+    if (promises.length > 0) {
+      const resolved = await Promise.all(promises);
+      const deleted = resolved.flatMap(a => a.size).reduce((p, c) => p + c, 0);
+      const channels = u.unique(resolved.flatMap(a => a.map(b => b?.channel.toString())));
+      return { deleted, channels };
+    } else {
+      return null;
     }
-
-    return { deleted, notDeleted, toDelete: toDelete.size };
   },
 
   /**
@@ -763,9 +760,12 @@ const modCommon = {
       });
       success = true;
 
-      let response = messageFromMods + modCommon.warnMessage(u.escapeText(interaction.member?.displayName ?? interaction.user.displayName)) + `\n\n**Reason:** ${reason}`;
-      if (message?.cleanContent) response += `\n\n###Message:\n${message.cleanContent}`;
-      await target.send(response).catch(() => blocked(target));
+      if (message) {
+        const response = messageFromMods + modCommon.warnMessage(u.escapeText(interaction.member?.displayName ?? interaction.user.displayName)) + `\n\n**Reason:** ${reason}`;
+        await target.send({ content: response, embeds: [u.msgReplicaEmbed(message)] }).catch(() => blocked(target));
+      } else {
+        await target.send(messageFromMods + `**${interaction.member.displayName}** has issued the following warning regarding your behavior or content you have posted:\n\n>>> ${reason}`);
+      }
 
       const sum = await u.db.infraction.getSummary(target.id);
       embed.addFields({ name: `Infraction Summary (${sum.time} Days) `, value: `Infractions: ${sum.count}\nPoints: ${sum.points}` });

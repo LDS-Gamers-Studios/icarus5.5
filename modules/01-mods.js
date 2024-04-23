@@ -118,6 +118,7 @@ async function slashModFilter(interaction) {
       await interaction.editReply(`"${word}" was already in the language filter.`);
     }
   } else if (pf.remove_word(word)) {
+    Module.client.emit("filterUpdate"); // prevent flagging of embed saying it was removed
     const embed = u.embed({ author: mod })
       .setTitle("Word removed from language filter.")
       .setDescription(`${mod} removed "${word}" from the language filter.`);
@@ -200,42 +201,23 @@ async function slashModOffice(interaction) {
 async function slashModPurge(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const number = interaction.options.getInteger("number", true);
-  let num = number;
   const reason = interaction.options.getString("reason") ?? "No provided reason";
-
   const channel = interaction.channel;
-  if (num > 0 && channel) {
-    await interaction.editReply(`Deleting ${num} messages...`);
+  if (!channel) return interaction.editReply("Well that's awkward, I can't access the channel you're in!");
+  if (number < 1) return interaction.editReply("You need to provide a number greater than 0.");
+  const toDelete = await interaction.channel?.messages.fetch({ limit: Math.min(number, 100) });
 
-    // Use bulkDelete() first
-    while (num > 0) {
-      const deleting = Math.min(num, 50);
-      const deleted = await channel.bulkDelete(deleting, true);
-      num -= deleted.size;
-      if (deleted.size != deleting) break;
-    }
-    // Handle the remainder one by one
-    while (num > 0) {
-      const fetching = Math.min(num, 50);
-      const msgsToDelete = await channel.messages.fetch({ limit: fetching, before: interaction.id }).catch(u.noop);
-      if (!msgsToDelete) break;
-      for (const [, msg] of msgsToDelete) await msg.delete().catch(u.noop);
-      num -= msgsToDelete.size;
-      if (msgsToDelete.size != fetching) break;
-    }
-    // Log it
-    await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
-      u.embed({ author: interaction.member })
-        .setTitle("Channel Purge")
-        .setDescription(`**${interaction.member}** purged ${number - num} messages in ${interaction.channel}`)
-        .addFields({ name: "Reason", value: reason })
-        .setColor(0x00ff00)
-    ] });
+  const deleted = await channel.bulkDelete(toDelete, true);
+  // Log it
+  interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+    u.embed({ author: interaction.member })
+      .setTitle("Channel Purge")
+      .setDescription(`**${interaction.member}** purged ${deleted.size} messages in ${interaction.channel}`)
+      .addFields({ name: "Reason", value: reason })
+      .setColor(0x00ff00)
+  ] });
 
-    return await interaction.followUp({ content: `${number - num} messages deleted.`, ephemeral: true });
-  } else {
-    return interaction.editReply("You need to provide a number greater than 0");
-  }
+  return interaction.editReply(`I deleted ${deleted.size}/${toDelete.size} messages!`);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/

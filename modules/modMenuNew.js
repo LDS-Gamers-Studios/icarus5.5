@@ -43,7 +43,7 @@ function edit(int, payload) {
 }
 
 /** @param {Discord.StringSelectMenuInteraction} int*/
-async function getReason(int, description, doPoints = false) {
+async function getReason(int, description) {
   const components = [
     new Discord.TextInputBuilder()
       .setCustomId("reason")
@@ -53,18 +53,6 @@ async function getReason(int, description, doPoints = false) {
       .setRequired(true)
       .setStyle(Discord.TextInputStyle.Paragraph)
   ];
-  if (doPoints) {
-    components.push(
-      new Discord.TextInputBuilder()
-        .setCustomId("points")
-        .setLabel("How many points is this worth?")
-        .setMinLength(1)
-        .setMaxLength(2)
-        .setPlaceholder("Any number between 0-99")
-        .setRequired(true)
-        .setStyle(Discord.TextInputStyle.Paragraph)
-    );
-  }
   const modal = new u.modal()
     .setTitle("Reason")
     .setCustomId("modMenuReason")
@@ -78,6 +66,7 @@ async function getReason(int, description, doPoints = false) {
     edit(int, noTime);
     return;
   });
+  console.log('done waiting');
   return modalSubmit;
 }
 
@@ -247,12 +236,11 @@ async function watchUser(int, usr, apply = true) {
 /** @type {user} */
 async function warnUser(int, usr) {
   if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
-  const reason = await getReason(int, "What's the warning for?", true);
+  const reason = await getReason(int, "What's the warning for?");
   if (reason) {
     await reason.deferUpdate();
     const r = reason.fields.getTextInputValue("reason");
-    const v = reason.fields.getTextInputValue("points");
-    const warn = await c.warn(int, r, parseInt(v) ?? 1, usr);
+    const warn = await c.warn(int, r, 1, usr);
     return edit(reason, warn);
   } else {
     return int.update(noTime);
@@ -318,12 +306,12 @@ async function warnMessage(int, msg) {
   if (!msg) return msgErr(int);
   const usr = msg.member;
   if (!usr) return usrErr(int);
-  const reason = await getReason(int, "What's the warning for?", true);
+  const reason = await getReason(int, "What's the warning for?");
   if (reason) {
     await reason.deferUpdate();
     const r = reason.fields.getTextInputValue("reason");
-    const v = reason.fields.getTextInputValue("points");
-    const warn = await c.warn(int, r, parseInt(v) ?? 1, usr, msg);
+    const warn = await c.warn(int, r, 1, usr, msg);
+    u.clean(msg, 0);
     return edit(reason, warn);
   } else {
     return int.update(noTime);
@@ -336,45 +324,32 @@ async function purgeChannel(int, msg) {
   if (!channel) return edit(int, "Well that's awkward, I can't access the channel you're in!");
 
   u.clean(msg, 0);
-  let toDelete = await channel.messages.fetch({ after: msg.id });
+  const toDelete = await channel.messages.fetch({ after: msg.id, limit: 100 });
 
-  let total = 1;
-  let b = false;
-  while ((toDelete?.size || 0) > 0 && total < 75 && !b) {
-    const deleted = await channel.bulkDelete(toDelete, true);
-    if (toDelete.size != deleted.size) {
-      const diff = toDelete.difference(deleted);
-      for (const [, message] of diff) {
-        try {
-          await message?.delete().catch(u.noop);
-          total++;
-        } catch (error) {
-          b = true;
-          break;
-        }
-      }
-    }
-    toDelete = await int.channel.messages.fetch({ after: msg.id });
-  }
-  let content = `I deleted ${total} messages!`;
-  if (total >= 74) content += " I could have deleted more, but that gets dangerous. Feel free to run the command again if you really need to.";
-  edit(int, content);
+  const deleted = await channel.bulkDelete(toDelete, true);
+  edit(int, `I deleted ${deleted.size + 1}/${toDelete.size + 1} messages!`);
 }
 /** @type {message} */
 async function spamCleanup(int, msg) {
   if (!msg) return msgErr(int);
-  return edit(int, "I still have to implement this but I'm too lazy right now");
+  await edit(int, "Searching for and cleaning spam...");
+  const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false);
+  if (!cleaned) return edit(int, "I couldn't find any recent messages that matched this one.");
+  // Log it
+  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+    u.embed({ author: int.member })
+      .setTitle("Channel Purge")
+      .setDescription(`**${int.member}** cleaned up ${cleaned.deleted} spam messages in ${cleaned.channels.join(", ")}`)
+      .addFields({ name: "Reason", value: "Spam" })
+      .setColor(0x00ff00)
+  ] });
+
+  edit(int, `I deleted ${cleaned.deleted} messages in the following channel(s):\n${cleaned.channels.join("\n")}`);
 }
 /** @type {message} */
 async function announceMessage(int, msg) {
   if (!msg) return msgErr(int);
-  const embed = u.embed({ author: msg.member })
-    .setTimestamp(msg.createdAt)
-    .setDescription(msg.content);
-  if (msg.attachments.size > 0) {
-    embed.setImage(msg.attachments.first()?.proxyURL ?? null);
-  }
-  await int.client.getTextChannel(u.sf.channels.announcements)?.send({ embeds: [embed] });
+  await int.client.getTextChannel(u.sf.channels.announcements)?.send({ embeds: [u.msgReplicaEmbed(msg), ...msg.embeds] });
   return edit(int, "Message announced!");
 }
 /**
@@ -429,7 +404,7 @@ function permComponents(int, filterType = true) {
   if (!filterType) return components;
   return components.filter(cmp => (
     cmp.context == 'msg' && int.isMessageContextMenuCommand() ||
-    cmp.context == 'usr' && int.isUserContextMenuCommand() ||
+    cmp.context == 'user' && int.isUserContextMenuCommand() ||
     cmp.context == 'any'
   ));
 }

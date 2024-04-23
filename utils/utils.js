@@ -188,6 +188,21 @@ const utils = {
   },
   db: db,
   /**
+   * Create an embed from a message
+   * @param {Discord.Message} msg The message to turn into an embed
+   * @returns {Discord.EmbedBuilder}
+   */
+  msgReplicaEmbed: (msg, title = "Message", channel = false) => {
+    const embed = utils.embed({ author: msg.member ?? msg.author })
+      .setTitle(title)
+      .setDescription(msg.content || null)
+      .setTimestamp(msg.editedAt ?? msg.createdAt);
+    if (channel) embed.addFields({ name: "Channel", value: msg.channel.toString() });
+    if (msg.attachments.size > 0) embed.setImage(msg.attachments.first().url);
+    else if (msg.stickers.size > 0) embed.setImage(msg.stickers.first().url);
+    return embed;
+  },
+  /**
    * Shortcut to nanoid. See docs there for reference.
    */
   customId: nanoid,

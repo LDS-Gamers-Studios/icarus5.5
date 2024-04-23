@@ -85,13 +85,8 @@ async function spamming(client) {
       `Posted the same message too many times (${member.count}/${limit('same', member.id)})`,
     ];
     if (!ldsg) return;
-    const cleaned = await c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
-    const flag = await c.createFlag({ msg: message, member: message.member ?? message.author, snitch: client.user?.toString(), flagReason: verdictString[member.verdict ?? 1] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict == 3 });
-    if (cleaned.notDeleted) {
-      const embed = flag?.embeds[0] ?? { fields: [{ name: "", value: "" }] };
-      embed.fields.push({ name: "Further Information", value: `I couldn't delete some of the messages, but I managed to get ${cleaned.deleted}/${cleaned.toDelete} of all their spammed messages` });
-      await flag?.edit({ embeds: [embed] });
-    }
+    c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
+    c.createFlag({ msg: message, member: message.member ?? message.author, snitch: client.user?.toString(), flagReason: verdictString[member.verdict ?? 1] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict == 3 });
     active.delete(member.id);
   }
 }
@@ -200,13 +195,13 @@ function processMessageLanguage(msg) {
       const previewBad = preview.match(bannedWords) ?? [];
       if (previewBad.length > 0) {
         u.clean(msg, 0);
-        if (!warned && !msg.author.bot) msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
+        if (!warned && !msg.author.bot && !msg.webhookId) msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
         warned = true;
         matchedContent = matchedContent.concat(previewBad);
         reasons.push("Link preview language (Auto-Removed)");
       }
-      if (filter(preview)) {
-        if (!warned) msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
+      if (filter(preview).length > 0) {
+        if (!warned && !msg.author.bot && !msg.webhookId) msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
         warned = true;
         msg.suppressEmbeds().catch(u.noop);
         break;
