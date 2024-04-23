@@ -176,6 +176,13 @@ const Module = new Augur.Module()
   ) {
     active.add(msg.author.id);
   }
+  })
+.setClockwork(() => {
+  try {
+    return setInterval(rankClockwork, 60000, Module.client);
+  } catch (error) {
+    u.errorHandler(error, "Rank outer clockwork");
+  }
 });
 
 module.exports = Module;
