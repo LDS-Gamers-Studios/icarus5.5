@@ -282,7 +282,7 @@ const modCommon = {
       .setColor(0x00ff00)
       .addFields(
         { name: "ID", value: member.id, inline: true },
-        { name: "Activity", value: `Posts: ${userDoc?.posts ?? "Unknown"}`, inline: true },
+        { name: "Activity", value: `Active Minutes: ${userDoc?.posts ?? "Unknown"}`, inline: true },
         { name: "Roles", value: roleString },
         { name: "Joined", value: isMember ? member.joinedAt ? u.time(member.joinedAt, 'R') : "unknown" : "unknown", inline: true },
         { name: "Account Created", value: u.time((isMember ? member.user : member).createdAt, 'R'), inline: true }
