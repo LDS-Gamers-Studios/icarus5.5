@@ -9,7 +9,7 @@ const Infraction = require("../models/Infraction.model");
  * @prop {String} [channel] The channel Id where the infraction took place
  * @prop {String} [message] The message Id where the infraction took place
  * @prop {String} [flag] The mod flag created for the infraction
- * @prop {String} description The description of the infraction
+ * @prop {String} [description] The description of the infraction
  * @prop {Number} value The point value of the infraction
  * @prop {String} mod The mod's Discord Id
  * @prop {String} [handler] Who handled the flag
@@ -22,12 +22,21 @@ module.exports = {
 
   /**
    * Get an infraction by its associated mod flag.
-   * @param {String} flag The mod flag for the infraction
+   * @param {String} flag The mod flag ID for the infraction
    * @returns {Promise<Infraction | undefined>}
    */
   getByFlag: function(flag) {
     if (typeof flag != "string") throw new TypeError(outdated);
     return Infraction.findOne({ flag }).exec().then(i => i?.toObject());
+  },
+  /**
+   * Get an infraction by its associated mod flag.
+   * @param {String} message The flagged message ID
+   * @returns {Promise<Infraction | undefined>}
+   */
+  getByMsg: function(message) {
+    if (typeof message != "string") throw new TypeError(outdated);
+    return Infraction.findOne({ message }).exec().then(i => i?.toObject());
   },
   /**
    * Get a summary of a user's infractions.

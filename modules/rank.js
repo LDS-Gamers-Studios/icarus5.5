@@ -88,13 +88,13 @@ async function rankClockwork(client) {
           if ((user.posts % 25 == 0) && !member.roles.cache.has(u.sf.roles.trusted) && !member.roles.cache.has(u.sf.roles.untrusted)) {
             const modLogs = ldsg.channels.cache.get(u.sf.channels.modlogs);
             modLogs.send({
-              content: `${member} has posted ${user.posts} times in chat without being trusted!`,
+              content: `${member} has had ${user.posts} active minutes in chat without being trusted!`,
               embeds: [
                 u.embed({ author: member })
               .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
               .addFields(
                 { name: "ID", value: member.id, inline: true },
-                { name: "Activity", value: `Posts: ${user.posts}`, inline: true },
+                { name: "Activity", value: `Active Minutes: ${user.posts}`, inline: true },
                 { name: "Roles", value: member.roles.cache.map(r => r.name).join(", ") },
                 { name: "Joined", value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>` },
                 { name: "Account Created", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>` }
