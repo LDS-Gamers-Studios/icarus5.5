@@ -109,11 +109,15 @@ async function flagReason(int, msg, usr) {
   if (response && response.inCachedGuild()) return flag(response, msg, usr);
   else return edit(int, noTime);
 }
-/** @type {both} */
+/**
+ * @type {both}
+ * @param {Discord.GuildMember} usr
+ */
 async function flag(int, msg, usr) {
   if (!usr) return usrErr(int);
   await int.deferUpdate();
   const reason = int.values.map(v => menuFlagOptions.find(o => o.value == v)?.label).join(', ');
+  if (reason.includes("Mod Abuse") && (!usr.roles.cache.has(u.sf.roles.mod) && !usr.roles.cache.has(u.sf.roles.management))) return edit(int, "Only Moderators can be flagged for mod abuse.");
   if (msg) {
     // Don't let them know it was already flagged, but also don't create a duplicate
     const existing = await u.db.infraction.getByMsg(msg.id);
