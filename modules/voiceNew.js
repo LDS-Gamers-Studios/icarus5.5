@@ -30,7 +30,6 @@ const actionRow = (options) => {
 
   const buttons2 = [
     new Discord.ButtonBuilder().setCustomId("voiceKickUser").setLabel("Kick User").setStyle(styles.Danger),
-    new Discord.ButtonBuilder().setCustomId("voiceSetOwner").setLabel("Set New Owner").setStyle(styles.Danger)
   ];
   return [
     // @ts-ignore
@@ -356,7 +355,7 @@ const Module = new Augur.Module()
     case "lock": result = await (user ? !isLocked(channel) ? lock(int, channel).then(() => allowUser(int, channel)) : allowUser(int, channel) : lock(int, channel)); break;
     case "unlock": result = await unlock(int, channel); break;
     case "streamlock": result = await (user ? !isStreamLocked(channel) ? streamLock(int, channel).then(() => streamAllow(int, channel)) : streamAllow(int, channel) : streamLock(int, channel)); break;
-    case "stream-unlock": result = await streamUnlock(int, channel); break;
+    case "streamunlock": result = await streamUnlock(int, channel); break;
     case "kick": result = await kickUser(int, channel); break;
     default: return int.editReply("You did something I don't know how to process!");
     }
