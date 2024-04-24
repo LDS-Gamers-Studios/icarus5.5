@@ -1,30 +1,30 @@
+// @ts-check
 const Augur = require("augurbot-ts"),
   p = require("../utils/perms"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
   Discord = require("discord.js");
 
-const menuOptions = require("../data/modMenuOptions"),
-  menuFlagOptions = require("../data/modMenuFlagOptions");
-
-const isMsg = 1 << 0;
-const isMod = 1 << 1;
-const isMgr = 1 << 2;
-const isTrusted = 1 << 3;
-
-function permCheck(inter) {
-  return (
-    (inter.isMessageContextMenuCommand()) * isMsg |
-    p.isMod(inter) * isMod |
-    (p.isMgr(inter) || p.isMgmt(inter)) * isMgr |
-    p.isTrusted(inter) * isTrusted
-  );
-}
+const menuOptions = require("../data/modMenuOptions.json"),
+  menuFlagOptions = require("../data/modMenuFlagOptions.json");
 
 function getTargetUser(target) {
   return target.member ?? target.author ?? target;
 }
 
+/** @param {Discord.CommandInteraction<"cached">} interaction*/
+function type(interaction) {
+  if (interaction.isUserContextMenuCommand()) return "user";
+  else if (interaction.isMessageContextMenuCommand()) return "message";
+  else return null;
+}
+/**
+ * 
+ * @param {{label: string, value: string, description: string, emoji: string, default: boolean}}
+ * @param {Discord.Collection<number, string[]>} permsMap
+ * @param {number} includeKey
+ * @returns
+ */
 function getMenuItems(rawItems, permsMap, includeKey) {
   const options = permsMap.filter((v, k) => (includeKey & k) == k)
     .reduce((a, v) => a.concat(v), [])
@@ -51,7 +51,7 @@ async function menu(options, interaction, target) {
   if (target instanceof Discord.Message) {
     e.setTitle("Select An Action On This Message");
     e.setDescription(target.content);
-    embeds = embeds.concat(target.embeds);
+    // embeds = embeds.concat(target.embeds);
   } else {
     e.setTitle("Select An Action On This User");
   }
@@ -78,11 +78,27 @@ async function menu(options, interaction, target) {
   return menuSelect;
 }
 
+const perm = {
+  everyone: 0,
+  mod: 1
+};
+
+/**
+ * @typedef {Discord.ContextMenuCommandInteraction} context
+ */
 const processes = {
+  /**
+   * Creates a flag
+   * @param {context} interaction
+   * @param {Discord.GuildMember|Discord.Message} target
+   * @returns
+   */
   flag: async function(interaction, target) {
-    const flagMenuItems = new u.Collection()
-    .set(0, ['badVibes', 'harassment', 'modAbuse']) // , 'nominate'
-    .set(isMsg, ['debate', 'inappropriate', 'offensive', 'promotion', 'scam', 'spam']);
+    /** @type {Discord.Collection<number, string[]>}*/
+    const flagMenuItems = new u.Collection([[perm.everyone, [
+      'badVibes', 'harassment', 'inappropriate', 'offensive',
+      'debate', 'spam', 'scam', 'promotion'
+    ]]]);
 
     const includeKey = (target instanceof Discord.Message) ? 1 : 0;
     const menuItems = getMenuItems(menuFlagOptions, flagMenuItems, includeKey);
@@ -120,7 +136,7 @@ const processes = {
         furtherInfo: extra?.content
       };
       if (target instanceof Discord.Message) flagInfo.msg = target;
-      await c.createFlag(flagInfo);
+      // await c.createFlag(flagInfo);
 
       await menuSelect.editReply("Thank you for sharing your concern. I've put this in front of the mods.");
     }
@@ -311,17 +327,17 @@ const processes = {
    */
 async function modMenu(inter) {
   await inter.deferReply({ ephemeral: true });
-  const includeKey = permCheck(inter);
+  const includeKey = true; // permCheck(inter);
   const target = inter.isMessageContextMenuCommand() ? inter.options.getMessage("message") : inter.options.getMember("user");
 
   const allMenuItems = new u.Collection()
-  .set(0, ['userAvatar']) // 'userInfo',
-  .set(isMsg, ['pinMessage'])
-  .set(isMod + isTrusted, ['flag'])
-  .set(isMod, ['banUser', 'kickUser', 'muteUser', 'noteUser', 'renameUser',
-    'trustUser', 'trustPlusUser', 'unmuteUser' ]) // 'fullinfo', 'summary', 'timeoutUser', 'warnUser', 'watchUser',
-  .set(isMod + isMsg, ['purgeChannel', 'spamCleanup']) // , 'warnMessage'
-  .set(isMgr + isMsg, ['announceMessage']);
+  // .set(0, ['userAvatar']) // 'userInfo',
+  // .set(isMsg, ['pinMessage'])
+  // .set(isMod + isTrusted, ['flag'])
+  // .set(isMod, ['banUser', 'kickUser', 'muteUser', 'noteUser', 'renameUser',
+  //   'trustUser', 'trustPlusUser', 'unmuteUser' ]) // 'fullinfo', 'summary', 'timeoutUser', 'warnUser', 'watchUser',
+  // .set(isMod + isMsg, ['purgeChannel', 'spamCleanup']) // , 'warnMessage'
+  // .set(isMgr + isMsg, ['announceMessage']);
 
   const menuItems = getMenuItems(menuOptions, allMenuItems, includeKey);
   const menuSelect = await menu(menuItems, inter, target);

@@ -105,20 +105,13 @@ const utils = {
    * Shortcut to Discord.Collection. See docs there for reference.
    */
   Collection: Discord.Collection,
-  /** @param {Discord.ActionRowData} data */
-  actionRow: (data) => new Discord.ActionRowBuilder(data),
-  /** @param {Discord.ButtonComponentData} data */
-  button: (data) => new Discord.ButtonBuilder(data),
-  /** @param {Discord.StringSelectMenuComponentData} data */
-  stringSelectMenu: (data) => new Discord.StringSelectMenuBuilder(data),
-  /** @param {Discord.UserSelectMenuComponentData} data */
-  userSelectMenu: (data) => new Discord.UserSelectMenuBuilder(data),
-  /** @param {Discord.RoleSelectMenuComponentData} data */
-  roleSelectMenu: (data) => new Discord.RoleSelectMenuBuilder(data),
+  actionRow: Discord.ActionRowBuilder,
+  button: Discord.ButtonBuilder,
+  stringSelectMenu: Discord.StringSelectMenuBuilder,
+  userSelectMenu: Discord.UserSelectMenuBuilder,
+  roleSelectMenu: Discord.RoleSelectMenuBuilder,
 
-
-  /** @param {Discord.ModalComponentData} data */
-  modal: (data) => new Discord.ModalBuilder(data),
+  modal: Discord.ModalBuilder,
   /** @param {Discord.APITextInputComponent} data */
   textInput: (data) => new Discord.TextInputBuilder(data),
   /**
@@ -194,6 +187,21 @@ const utils = {
     }
   },
   db: db,
+  /**
+   * Create an embed from a message
+   * @param {Discord.Message} msg The message to turn into an embed
+   * @returns {Discord.EmbedBuilder}
+   */
+  msgReplicaEmbed: (msg, title = "Message", channel = false) => {
+    const embed = utils.embed({ author: msg.member ?? msg.author })
+      .setTitle(title)
+      .setDescription(msg.content || null)
+      .setTimestamp(msg.editedAt ?? msg.createdAt);
+    if (channel) embed.addFields({ name: "Channel", value: msg.channel.toString() });
+    if (msg.attachments.size > 0) embed.setImage(msg.attachments.first().url);
+    else if (msg.stickers.size > 0) embed.setImage(msg.stickers.first().url);
+    return embed;
+  },
   /**
    * Shortcut to nanoid. See docs there for reference.
    */
