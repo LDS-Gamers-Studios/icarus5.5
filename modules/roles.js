@@ -11,7 +11,6 @@ async function addRole(int) {
   try {
     const input = int.options.getString("role");
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
-    if (!input) return;
     if (p.isAdmin(int.member)) {
       const member = ldsg?.members.cache.find(usr => usr.id === int.user.id);
       const role = ldsg?.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
@@ -20,9 +19,7 @@ async function addRole(int) {
           if (member?.roles.cache.find(r => r.id == role.id)) return int.reply({ content: `You already have the ${role.name.toLowerCase()} role` });
           await member?.roles.add(role);
           int.reply({ content: `Successfully added the ${role.name} role` });
-        } catch (e) {
-          int.reply({ content: `Failed to add the ${role.name} role` });
-        }
+        } catch (e) { int.reply({ content: `Failed to add the ${role.name} role` }); }
       } else { int.reply({ content: `I couldn't find the ${input} role` }); }
     } else if (roles.has(input.toLowerCase())) {
       const role = ldsg.roles.cache.get(roles.get(input.toLowerCase()));
@@ -35,6 +32,31 @@ async function addRole(int) {
   } catch (error) { u.errorHandler(error, int); }
 }
 
+async function removeRole(int) {
+  try {
+    const input = int.options.getString("role");
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+    if (p.isAdmin(int.member)) {
+      const member = ldsg?.members.cache.find(usr => usr.id === int.user.id);
+      const role = ldsg?.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+      if (role) {
+        try {
+          if (!member?.roles.cache.find(r => r.id == role.id)) return int.reply({ content: `You do not have the ${role.name.toLowerCase()} role` });
+          await member?.roles.remove(role);
+          int.reply({ content: `Successfully removed the ${role.name} role` });
+        } catch (e) { int.reply({ content: `Failed to remove the ${role.name} role` }); }
+      } else { int.reply({ content: `I couldn't find the ${input} role` }); }
+    } else if (roles.has(input.toLowerCase())) {
+      const role = ldsg.roles.cache.get(roles.get(input.toLowerCase()));
+      const member = await ldsg.members.fetch(int.user.id);
+      if (member) await member.roles.remove(role);
+      int.reply({ content: `Successfully removed the ${role.name} role` });
+    } else {
+      int.reply({ content: `you didn't give me a valid role to remove.` });
+    }
+  } catch (error) { u.errorHandler(error, int); }
+}
+
 const Module = new Augur.Module()
   .addInteraction({
     name: "role",
@@ -42,11 +64,11 @@ const Module = new Augur.Module()
     process: async (interaction) => {
       if (interaction.isAutocomplete()) return;
       switch (interaction.options.getSubcommand(true)) {
-      case "add": return addRole(interaction);
+      case "add": return await addRole(interaction);
       case "give": return ;
       case "equip": return ;
       case "inventory": return ;
-      case "remove": return ;
+      case "remove": return await removeRole(interaction);
       case "whohas": return ;
       case "take": return ;
       }
