@@ -164,7 +164,7 @@ const Module = new Augur.Module()
       })
       .addFields(
         { name: "Joined", value: moment(member.joinedAt).fromNow(), inline: true },
-        { name: "Posts", value: (user?.posts || 0) + " Posts", inline: true }
+        { name: "Activity", value: (user?.posts || 0) + " Active Minutes", inline: true }
       );
       member.guild.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
     }
@@ -180,7 +180,7 @@ const Module = new Augur.Module()
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setDescription(newUser.toString())
-        .setFooter({ text: `${user?.posts ?? 0} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
+        .setFooter({ text: `${user?.posts ?? 0} active minutes ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
       if (oldUser.displayName !== newUser.displayName || oldUser.username !== newUser.username) {
         embed.addFields({ name: "**Username Update**", value: `**Old:** ${u.escapeText(`${oldUser?.username} (displaying as ${oldUser?.displayName})`)}\n**New:** ${u.escapeText(`${newUser.username} (displaying as ${newUser.displayName})`)}` });
       }

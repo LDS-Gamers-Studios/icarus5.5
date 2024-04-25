@@ -109,13 +109,13 @@ async function rankClockwork(client) {
           if ((user.posts % 25 == 0) && !member.roles.cache.has(u.sf.roles.trusted) && !trustStatus?.watching) {
             const modLogs = client.getTextChannel(u.sf.channels.modlogs);
             modLogs?.send({
-              content: `${member} has posted ${user.posts} times in chat without being trusted!`,
+              content: `${member} has had ${user.posts} active minutes in chat without being trusted!`,
               embeds: [
                 u.embed({ author: member })
               .setThumbnail(member.user.displayAvatarURL({ extension: "png" }))
               .addFields(
                 { name: "ID", value: member.id, inline: true },
-                { name: "Activity", value: `Posts: ${user.posts}`, inline: true },
+                { name: "Activity", value: `Active Minutes: ${user.posts}`, inline: true },
                 { name: "Roles", value: member.roles.cache.map(r => r.name).join(", ") },
                 { name: "Joined", value: `<t:${Math.floor(member.joinedTimestamp ?? 1 / 1000)}:R>` },
                 { name: "Account Created", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>` }
