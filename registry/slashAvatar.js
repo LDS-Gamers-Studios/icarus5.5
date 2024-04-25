@@ -13,6 +13,7 @@ const filter = new u.string()
   .setChoices(
     { name: "Andy Warhol", value: "andywarhol" },
     { name: "Blur", value: "blur" },
+    { name: "Blurple", value: "blurple" },
     { name: "Colorize", value: "colorme" },
     { name: "Deepfry", value: "deepfry" },
     { name: "Fisheye Lens", value: "fisheye" },
@@ -28,17 +29,11 @@ const filter = new u.string()
     { name: "Pop Art", value: "popart" }
   );
 
-const reshade = new u.string()
-  .setName("reshade")
-  .setDescription("Change the dominant color in the image")
-  .setRequired(false)
-  .setChoices(/** OHGO NEEDS TO FILL THIS IN :) */);
 
 module.exports = new u.cmd()
   .setName("avatar")
   .setDescription("See someone's avatar or apply a filter to it.")
   .addUserOption(user)
   .addStringOption(filter)
-  .addStringOption(reshade)
-  .setDMPermission(false)
+  .setDMPermission(true)
   .toJSON();
