@@ -6,7 +6,7 @@ const { xpScale, devMode } = require("../config/config.json"),
 
 const globalExcludeChannels = [
   u.sf.channels.botspam,
-  u.sf.channels.moderation,
+  u.sf.channels.staffCategory,
   u.sf.channels.muted,
   u.sf.channels.office
 ];

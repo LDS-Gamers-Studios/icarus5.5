@@ -29,26 +29,23 @@ const dangerRoles = [
   u.sf.roles.destinyclansmanager, u.sf.roles.volunteer
 ];
 
-const ductTapeExclude = true;
 let emojis = [];
 const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
   try {
     if (channel.guild?.id == u.sf.ldsg) {
       if (channel.permissionsFor(channel.client.user)?.has(["ViewChannel", "ManageChannels"])) {
+        // muted role
         channel.permissionOverwrites.create(u.sf.roles.muted, mutedPerms, { reason: "New channel permissions update" })
         .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
-
-        // Keep Duct Tape Out
-        if (ductTapeExclude) {
-          channel.permissionOverwrites.create(u.sf.roles.ducttape, mutedPerms, { reason: "New channel permissions update" })
+        // duct tape role
+        channel.permissionOverwrites.create(u.sf.roles.ducttape, mutedPerms, { reason: "New channel permissions update" })
           .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
-        }
       } else {
         u.errorLog.send({ embeds: [
           u.embed({
             title: "Update New Channel Permissions",
-            description: `Insufficient permissions to update channel ${channel.name}. Muted permissions need to be applied manually. Default permissions for Muted ${ductTapeExclude ? "and Duct Tape " : ""}are:\n${JSON.stringify(mutedPerms, null, 2).replace(/[{}"]/g, "")}`
+            description: `Insufficient permissions to update channel ${channel.name}. Muted permissions need to be applied manually. Default permissions for Muted and Duct Tape are:\n${JSON.stringify(mutedPerms, null, 2).replace(/[{}"]/g, "")}`
           })
         ] });
       }
@@ -138,13 +135,13 @@ const Module = new Augur.Module()
       }
       modLogs?.send({ embeds: [embed] });
 
-      const pizza = false,
-        milestone = 5000;
-      if (pizza && (guild.memberCount < milestone)) welcomeString += `\n*${milestone - guild.memberCount} more members until we have a pizza party!*`;
+      const { enabled, count } = config.memberMilestone;
+
+      if (enabled && (guild.memberCount < count)) welcomeString += `\n*${count - guild.memberCount} more members until we have a pizza party!*`;
       if (!member.roles.cache.has(u.sf.roles.muted) && !member.user.bot) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
-      if (guild.memberCount == milestone) {
-        await general?.send(`:tada: :confetti_ball: We're now at ${milestone} members! :confetti_ball: :tada:`);
-        await modLogs?.send(`:tada: :confetti_ball: We're now at ${milestone} members! :confetti_ball: :tada:\n*pinging for effect: ${guild.members.cache.get(u.sf.other.ghost)} ${guild.members.cache.get(config.ownerId)}*`);
+      if (guild.memberCount == count) {
+        await general?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:`);
+        await modLogs?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: ${guild.members.cache.get(u.sf.other.ghost)} ${guild.members.cache.get(config.ownerId)}*`);
       }
     }
   } catch (e) { u.errorHandler(e, "New Member Add"); }
@@ -175,8 +172,8 @@ const Module = new Augur.Module()
     const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
     const newMember = ldsg?.members.cache.get(newUser.id);
     if (oldUser.partial) oldUser = await oldUser.fetch();
-    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || newMember.roles.cache.has(u.sf.roles.untrusted))) {
-      const user = await u.db.user.fetchUser(newMember.id).catch(u.noop);
+    const user = await u.db.user.fetchUser(newUser.id).catch(u.noop);
+    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setDescription(newUser.toString())

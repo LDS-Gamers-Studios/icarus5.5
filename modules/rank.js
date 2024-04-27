@@ -130,7 +130,7 @@ async function rankClockwork(client) {
             const oldLvl = Rank.level(user.totalXP - response.xp);
 
             if (lvl != oldLvl) {
-              let message = `${u.rand(Rank.messages)} ${u.rand(Rank.levelPhrase).replace("%LEVEL%", lvl)}`;
+              let message = `${u.rand(Rank.messages)} ${u.rand(Rank.levelPhrase).replace("%LEVEL%", lvl.toString())}`;
 
               if (rewards.has(lvl)) {
                 const reward = ldsg?.roles.cache.get(rewards.get(lvl)?.role ?? "");
