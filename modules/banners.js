@@ -14,7 +14,7 @@ function setBanner(holiday) { // !! added an optional parameter to set a banner
   const banner = banners.find(b => holiday ? b.file == holiday.toLowerCase() : b.month === month && b.day === day);
   if (!banner) return; // !! end function here if there's not a banner
 
-  const bannerPath = `media/banners/${banner.file}`;
+  const bannerPath = `media/banners/${banner.file}.png`;
 
   const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) return u.errorHandler(new Error("LDSG is unavailable. (Banner Set)"));

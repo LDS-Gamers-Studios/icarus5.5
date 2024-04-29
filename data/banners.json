@@ -1,51 +1,51 @@
 [
   {
-    "file": "4th july.png",
+    "file": "4th july",
     "month": 6,
     "day": 4
   },
   {
-    "file": "christmas.png",
+    "file": "christmas",
     "month": 11,
     "day": 25
   },
   {
-    "file": "christmas2.png",
+    "file": "christmas2",
     "month": 11,
     "day": 24
   },
   {
-    "file": "easter.png",
+    "file": "easter",
     "month": 3,
     "day": 10
   },
   {
-    "file": "halloween.png",
+    "file": "halloween",
     "month": 9,
     "day": 31
   },
   {
-    "file": "labor day.png",
+    "file": "labor day",
     "month": 8,
     "day": 1
   },
   {
-    "file": "newyears.png",
+    "file": "newyears",
     "month": 0,
     "day": 1
   },
   {
-    "file": "thanksgiving.png",
+    "file": "thanksgiving",
     "month": 10,
     "day": 27
   },
   {
-    "file": "valentines.png",
+    "file": "valentines",
     "month": 1,
     "day": 14
   },
   {
-    "file": "stpatricks.png",
+    "file": "stpatricks",
     "month": 2,
     "day": 17
   }
