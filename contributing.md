@@ -1,4 +1,9 @@
-To set up a test intance of Icarus, here's what you'll need to do:
+# Table of Contents
+- [Requirements](#requirements)
+- [Set Up A Test Instance](#setting-up-a-test-instance)
+    - [File Explainations](#file-explanations)
+- [Contributing](#contributing)
+    - [PR Approvals](#pull-request-approvals)
 
 # Requirements
 - This guide assumes you are moderately familiar with Discord bots and the Discord API.
@@ -80,8 +85,13 @@ BobbyTheCatfish knows his way around this pretty well, so reach out to him if yo
 
 ## Pull Request Approvals
 In order for a pull request to be approved, the following requirements have to be met:
-- All changes tested on both your and the approver's instances of icarus and are confirmed working. Approvers should make sure to `npm ci` and restart their code editor so you don't get any caching issues before testing.
-- A quick look through the code by both parties to see if any features should behave differently
+- All changes have been tested on both your and the reviewer's instances of icarus and are confirmed working. Note for reviewers: make sure to `npm ci` and restart your code editor so you don't get any caching issues before testing.
+- A quick look through by both parties of all modified files to see if any features should behave differently
 - All user seen strings need to be LDSG-Worthy
+- All changes to `config.json` (new properties, changed defaults, etc) need to be reflected in `config/config-example.json` with a description if possible
+- All IDs (snowflakes) need to be put in `config/snowflakes.json` (real IDs) and `config/snowflakes-testing.json` (testing IDs).
+- All interactions that need registration must follow the style of the existing files in `/registry`
+- All functions must have valid JSDoc describing the types of parameters, as well as the return type if really needed.
+- All new dependencies should be reflected in `package.json` and `package-lock.json`
 - Minimal @ts-check errors (message the Bot Owner if you're having trouble)
 - No ESLint errors
