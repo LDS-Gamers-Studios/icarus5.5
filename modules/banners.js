@@ -42,5 +42,3 @@ const Module = new Augur.Module()
   });
 // :sniffa:
 module.exports = Module;
-
-
