@@ -1,18 +1,18 @@
 [
   {
     "file": "4th july",
-    "month": 6,
-    "day": 4
+    "month": 5,
+    "day": 30
   },
   {
     "file": "christmas",
     "month": 11,
-    "day": 25
+    "day": 11
   },
   {
     "file": "christmas2",
     "month": 11,
-    "day": 24
+    "day": 18
   },
   {
     "file": "easter",
@@ -22,31 +22,46 @@
   {
     "file": "halloween",
     "month": 9,
-    "day": 31
+    "day": 1
   },
   {
     "file": "labor day",
-    "month": 8,
-    "day": 1
+    "month": 7,
+    "day": 2
   },
   {
     "file": "newyears",
-    "month": 0,
-    "day": 1
+    "month": 11,
+    "day": 29
   },
   {
     "file": "thanksgiving",
     "month": 10,
-    "day": 27
+    "day": 24
   },
   {
     "file": "valentines",
     "month": 1,
-    "day": 14
+    "day": 7
   },
   {
     "file": "stpatricks",
     "month": 2,
-    "day": 17
+    "day": 10
+  },
+  {
+    "file": "mothers",
+    "month": 4,
+    "day": 6
+  },
+  {
+    "file": "fathers",
+    "month": 5,
+    "day": 10
+  },
+  {
+    "file": "bday",
+    "month": 8,
+    "day": 20,
   }
 ]
