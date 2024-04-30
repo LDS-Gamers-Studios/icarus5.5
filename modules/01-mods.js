@@ -33,12 +33,12 @@ const Module = new Augur.Module()
 .addEvent("messageCreate", watch)
 .addEvent("messageUpdate", async (msg, newMsg) => {
   if (newMsg.partial) newMsg = await newMsg.fetch();
-  watch(newMsg, true);
+  watch(newMsg);
 });
 
 /** @param {Discord.Message} msg */
-async function watch(msg, edited = false) {
-  if (!msg.guild) return;
+async function watch(msg) {
+  if (!msg.inGuild()) return;
   const watchLog = msg.client.getTextChannel(u.sf.channels.modWatchList);
 
   if (
@@ -47,10 +47,10 @@ async function watch(msg, edited = false) {
     (!msg.member?.roles.cache.has(u.sf.roles.trusted) || c.watchlist.has(msg.author.id)) // only untrusted and watched
   ) {
     const files = msg.attachments.map(attachment => attachment.url);
-    const content = `**${msg.member?.displayName || msg.author?.username}** in ${msg.channel}:\n>>> ${edited ? "[EDITED]: " : ""}${msg.cleanContent}`;
+    const embed = u.msgReplicaEmbed(msg, `${!msg.member?.roles.cache.has(u.sf.roles.trusted) ? "🆕" : "👀"} Member Message`, true, false);
     // potential idea, but not keeping for now
     // const button = u.actionRow().addComponents(u.button().setCustomId("watchDiscuss").setEmoji("🔗").setLabel("Discuss").setStyle(Discord.ButtonStyle.Secondary));
-    watchLog?.send({ content, /** components: [button] */ });
+    watchLog?.send({ embeds: [embed], /** components: [button] */ });
     if (files.length > 0) {
       watchLog?.send({ files: files });
     }

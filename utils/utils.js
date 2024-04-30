@@ -192,13 +192,14 @@ const utils = {
    * @param {Discord.Message} msg The message to turn into an embed
    * @returns {Discord.EmbedBuilder}
    */
-  msgReplicaEmbed: (msg, title = "Message", channel = false) => {
+  msgReplicaEmbed: (msg, title = "Message", channel = false, files = true) => {
     const embed = utils.embed({ author: msg.member ?? msg.author })
       .setTitle(title)
       .setDescription(msg.content || null)
       .setTimestamp(msg.editedAt ?? msg.createdAt);
+    if (msg.editedAt) embed.setFooter({ text: "[EDITED]" });
     if (channel) embed.addFields({ name: "Channel", value: msg.channel.toString() });
-    if (msg.attachments.size > 0) embed.setImage(msg.attachments.first().url);
+    if (files && msg.attachments.size > 0) embed.setImage(msg.attachments.first().url);
     else if (msg.stickers.size > 0) embed.setImage(msg.stickers.first().url);
     return embed;
   },
