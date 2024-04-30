@@ -198,7 +198,12 @@ const utils = {
       .setDescription(msg.content || null)
       .setTimestamp(msg.editedAt ?? msg.createdAt);
     if (msg.editedAt) embed.setFooter({ text: "[EDITED]" });
-    if (channel) embed.addFields({ name: "Channel", value: msg.channel.toString() });
+    if (channel) {
+      embed.addFields(
+        { name: "Channel", value: msg.channel.toString() },
+        { name: "Jump to Post", value: `[Message](${msg.url})` }
+      );
+    }
     if (files && msg.attachments.size > 0) embed.setImage(msg.attachments.first().url);
     else if (msg.stickers.size > 0) embed.setImage(msg.stickers.first().url);
     return embed;
