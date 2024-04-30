@@ -1,9 +1,19 @@
-const { scale, excludeChannels, excludeRoles, rewards } = require("../config/rankConfig.json");
-const { Collection } = require("discord.js");
+// @ts-check
+const { xpScale, devMode } = require("../config/config.json"),
+  u = require('./utils'),
+  rankConfig = require('../config/rankConfig.json'),
+  rankConfigTesting = require("../config/rankConfig-testing.json");
+
+const globalExcludeChannels = [
+  u.sf.channels.botspam,
+  u.sf.channels.staffCategory,
+  u.sf.channels.muted,
+  u.sf.channels.office
+];
 
 const Rank = {
-  excludeChannels,
-  excludeRoles,
+  excludeChannels: (devMode ? rankConfigTesting : rankConfig).concat(globalExcludeChannels),
+  excludeRoles: u.sf.roles.muted,
   messages: [
     "Your future is looking so bright that I need sunglasses.",
     "Keep being awesome, and I'll keep saying congratulations.",
@@ -37,15 +47,16 @@ const Rank = {
     "LDSG Chat **Level %LEVEL%** belongs to you.",
     "Do something nice with **Level %LEVEL%** in LDSG chat."
   ],
+  /** @param {number | string} xp */
   level: function(xp) {
-    xp = parseInt(xp, 10);
-    return Math.floor((1 + Math.sqrt(1 + (8 * xp) / scale)) / 2);
+    if (typeof xp == 'string') xp = parseInt(xp, 10);
+    return Math.floor((1 + Math.sqrt(1 + (8 * xp) / xpScale)) / 2);
   },
+  /** @param {number | string} level */
   minXp: function(level) {
-    level = parseInt(level, 10);
-    return scale * (Math.pow(2 * level - 1, 2) - 1) / 8;
-  },
-  rewards: new Collection(rewards)
+    if (typeof level == 'string') level = parseInt(level, 10);
+    return xpScale * (Math.pow(2 * level - 1, 2) - 1) / 8;
+  }
 };
 
 module.exports = Rank;

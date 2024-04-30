@@ -194,7 +194,6 @@ const Module = new Augur.Module()
     }
     const testingDeploy = [
       ["../config/config.json", "../config/config-example.json"],
-      ["../config/rankConfig-testing.json", "../config/rankConfig.json"],
       ["../config/snowflakes-testing.json", "../config/snowflakes.json"],
       ["../config/snowflakes-testing-commands.json", "../config/snowflakes-testing-commands-example.json"],
       ["../data/banned.json", "../data/banned-example.json"]

@@ -120,9 +120,8 @@ const models = {
     members = (members instanceof Discord.Collection ? Array.from(members.keys()) : members);
 
     // Get requested user
-
-    const record = await User.findOne({ discordId: member, excludeXP: false }).exec();
-    if (!record) return null;
+    const record = await User.findOne({ discordId: member }).exec();
+    if (!record || record.excludeXP) return null;
 
     const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP } };
     if (members) seasonParams.discordId = { $in: members };
