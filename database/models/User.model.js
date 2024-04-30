@@ -1,3 +1,4 @@
+// @ts-check
 const mongoose = require('mongoose'),
   Schema = mongoose.Schema;
 
@@ -5,6 +6,7 @@ const mongoose = require('mongoose'),
 const UserSchema = new Schema({
   discordId: {
     type: String,
+    unique: true,
     required: true
   },
   roles: {
