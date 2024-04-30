@@ -9,6 +9,7 @@ test.js
 data/banned.json
 site/*
 .DS_Store
+media/banners
 
 # For Visual Studio's temp directory
 .vs/
