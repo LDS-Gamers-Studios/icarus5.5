@@ -18,19 +18,24 @@ const remove = new u.sub()
   .addStringOption(role("remove"));
 
 const assign = new u.sub()
-  .setName("assign")
-  .setDescription("[MOD] Assign someone a role")
+  .setName("give")
+  .setDescription("[STAFF] Give someone a role")
   .addUserOption(
     new u.user()
       .setName("user")
       .setDescription("The user to receive the role")
       .setRequired(true)
   )
-  .addStringOption(role("assign"));
+  .addStringOption(role("give"));
 
 const inventory = new u.sub()
   .setName("inventory")
   .setDescription("View all your color roles");
+
+const who = new u.sub()
+  .setName("whohas")
+  .setDescription("See who has a role")
+  .addStringOption(role());
 
 const equip = new u.sub()
   .setName("equip")
@@ -45,6 +50,7 @@ module.exports = new u.cmd()
   .addSubcommand(remove)
   .addSubcommand(assign)
   .addSubcommand(inventory)
+  .addSubcommand(who)
   .addSubcommand(equip)
   .setDMPermission(false)
   .toJSON();
