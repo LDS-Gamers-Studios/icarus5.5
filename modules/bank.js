@@ -407,7 +407,7 @@ async function slashBankAward(interaction) {
 }
 
 Module.addInteraction({ name: "bank",
-  // guild: u.sf.ldsg
+  guildId: u.sf.ldsg,
   onlyGuild: true,
   id: u.sf.commands.slashBank,
   process: async (interaction) => {

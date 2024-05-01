@@ -193,9 +193,9 @@ const Module = new Augur.Module()
 .addEvent("guildMemberUpdate", async (oldMember, newMember) => {
   try {
     const ldsg = newMember.client.guilds.cache.get(u.sf.ldsg);
+    if (oldMember.guild.id != u.sf.ldsg) return;
     if (oldMember.partial) oldMember = await oldMember.fetch();
     if (newMember.partial) newMember = await newMember.fetch();
-    if (oldMember.guild.id != u.sf.ldsg) return;
     if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || newMember.roles.cache.has(u.sf.roles.untrusted))) {
       const user = await u.db.user.fetchUser(newMember.id, true).catch(u.noop);
       const embed = u.embed({ author: oldMember })

@@ -5,6 +5,7 @@ const u = require("../utils/utils"),
   Augur = require("augurbot-ts"),
   banners = require('../data/banners.json');
 
+/** @param {string} [holiday] */
 function setBanner(holiday) {
   const date = new Date();
   const month = date.getMonth();
