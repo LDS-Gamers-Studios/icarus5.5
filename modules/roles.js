@@ -86,7 +86,7 @@ async function give(int) {
         try {
           await recipient.roles.add(u.sf.roles.adulting);
           int.reply({ content: `Successfully gave the ${role.name} role`, ephemeral: true });
-          const embed = u.embed({ author: recipient });
+          const embed = u.embed({ author: recipient, color: 0x5865f2 });
           embed.setTitle("User Added to Adulting")
             .setDescription(`${int.member} added the <@&${u.sf.roles.adulting}> role to ${recipient}.`);
           int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
@@ -96,7 +96,7 @@ async function give(int) {
         try {
           await recipient.roles.add(u.sf.roles.lady);
           int.reply({ content: `Successfully gave the ${role.name} role`, ephemeral: true });
-          const embed = u.embed({ author: recipient });
+          const embed = u.embed({ author: recipient, color: 0x5865f2 });
           embed.setTitle("User Added to LDSG Ladies")
             .setDescription(`${int.member} added the <@&${u.sf.roles.lady}> role to ${recipient}.`);
           int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
@@ -115,6 +115,49 @@ async function give(int) {
   } catch (error) { u.errorHandler(error, int); }
 }
 
+async function take(int) {
+  try {
+    const input = int.options.getString("role");
+    if (!p.calc(int.member, ["team", "mod", "mgr"])) return int.reply({ content: "*Nice try!* This command is for Team+ only", ephemeral: true });
+    if (!p.calc(int.member, ["mod", "mgr"]) && input.toLowerCase() == "adulting") return int.reply({ content: "This command is for Mod+ only", ephemeral: true });
+    const recipient = int.options.getMember("user");
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+    const role = ldsg.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+    if (role) {
+      switch (role.name.toLowerCase()) {
+      case "adulting":
+        try {
+          await recipient.roles.remove(u.sf.roles.adulting);
+          int.reply({ content: `Successfully removed the ${role.name} role`, ephemeral: true });
+          const embed = u.embed({ author: recipient, color: 0x5865f2 });
+          embed.setTitle("User Removed from Adulting")
+            .setDescription(`${int.member} removed the <@&${u.sf.roles.adulting}> role from ${recipient}.`);
+          int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+        } catch (e) { int.reply({ content: `Failed to take the ${role.name} role`, ephemeral: true }); }
+        break;
+      case "ldsg lady":
+        try {
+          await recipient.roles.remove(u.sf.roles.lady);
+          int.reply({ content: `Successfully removed the ${role.name} role`, ephemeral: true });
+          const embed = u.embed({ author: recipient, color: 0x5865f2 });
+          embed.setTitle("User Removed from LDSG Ladies")
+            .setDescription(`${int.member} removed the <@&${u.sf.roles.lady}> role from ${recipient}.`);
+          int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+        } catch (e) { int.reply({ content: `Failed to take the ${role.name} role`, ephemeral: true }); }
+        break;
+      case "bookworm":
+        try {
+          await recipient.roles.remove(u.sf.roles.bookworm);
+          int.reply({ content: `Successfully removed the ${role.name} role`, ephemeral: true });
+        } catch (e) { int.reply({ content: `Failed to remove the ${role.name} role`, ephemeral: true }); }
+        break;
+      }
+    } else {
+      int.reply({ content:"You need to give me a valid role to take!", ephermeral: true });
+    }
+  } catch (error) { u.errorHandler(error, int); }
+}
+
 const Module = new Augur.Module()
   .addInteraction({
     name: "role",
@@ -128,7 +171,7 @@ const Module = new Augur.Module()
       case "inventory": return ;
       case "remove": return await removeRole(interaction);
       case "whohas": return whoHas(interaction);
-      case "take": return ;
+      case "take": return take(interaction);
       }
     }
   })

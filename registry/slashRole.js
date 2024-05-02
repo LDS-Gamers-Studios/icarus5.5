@@ -17,7 +17,7 @@ const remove = new u.sub()
   .setDescription("Remove an opt-in role")
   .addStringOption(role("remove"));
 
-const assign = new u.sub()
+const give = new u.sub()
   .setName("give")
   .setDescription("[STAFF] Give someone a role")
   .addUserOption(
@@ -27,6 +27,17 @@ const assign = new u.sub()
       .setRequired(true)
   )
   .addStringOption(role("give"));
+
+const take = new u.sub()
+.setName("take")
+.setDescription("[STAFF] Take a role from someone")
+.addUserOption(
+  new u.user()
+    .setName("user")
+    .setDescription("The user to take the role from")
+    .setRequired(true)
+)
+.addStringOption(role("take"));
 
 const inventory = new u.sub()
   .setName("inventory")
@@ -48,7 +59,8 @@ module.exports = new u.cmd()
   .setDescription("Add and remove self-assignable roles")
   .addSubcommand(add)
   .addSubcommand(remove)
-  .addSubcommand(assign)
+  .addSubcommand(give)
+  .addSubcommand(take)
   .addSubcommand(inventory)
   .addSubcommand(who)
   .addSubcommand(equip)
