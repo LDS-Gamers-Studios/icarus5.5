@@ -4,7 +4,6 @@ const Discord = require("discord.js");
 const moment = require('moment');
 const Parser = require("rss-parser");
 const u = require("../utils/utils");
-const config = require("../config/config.json");
 const books = require("../data/gospel/books.json");
 /**
  * @typedef Book
@@ -233,11 +232,20 @@ const Module = new Augur.Module()
   name: "gospel",
   id: u.sf.commands.slashGospel,
   process: async (interaction) => {
-    if (interaction.isAutocomplete()) return;
     switch (interaction.options.getSubcommand(true)) {
     case "verse": return slashGospelVerse(interaction);
     case "comefollowme": return slashGospelComeFollowMe(interaction);
     case "news": return slashGospelNews(interaction);
+    }
+  },
+  autocomplete: (int) => {
+    const option = int.options.getFocused(true);
+    // Supply book names
+    if (option.name == 'book') {
+      const values = abbreviationTable
+        .filter((b, k) => option.value ? k.toLowerCase().startsWith(option.value.toLowerCase()) : true)
+        .map(b => b.bookName).slice(0, 24);
+      return int.respond(u.unique(values).map(v => ({ name: v, value: v })));
     }
   }
 })
@@ -249,20 +257,8 @@ const Module = new Augur.Module()
     return await slashGospelVerse(msg, { book: match[1], chapter: match[2], verses: match[3] });
   }
 })
-.addEvent("interactionCreate", int => {
-  if (!int.isAutocomplete() || int.commandId != u.sf.commands.slashGospel) return;
-  const option = int.options.getFocused(true);
-  // Supply book names
-  if (option.name == 'book') {
-    const values = abbreviationTable
-      .filter((b, k) => option.value ? k.toLowerCase().startsWith(option.value.toLowerCase()) : true)
-      .map(b => b.bookName).slice(0, 24);
-    return int.respond(u.unique(values).map(v => ({ name: v, value: v })));
-  // Supply possible chapters
-  }
-})
 .addCommand({ name: "debugcfm",
-  permissions: () => config.devMode,
+  permissions: (msg) => u.perms.isAdmin(msg.member),
   process: (msg) => {
     const fakeDay = new Date("Dec 31 2023");
     let i = 0;

@@ -33,6 +33,17 @@ const cakeday = new u.sub()
       .setMaxValue(31)
   );
 
+const banner = new u.sub()
+  .setName("banner")
+  .setDescription("Set a server banner")
+  .addStringOption(
+    new u.string()
+      .setName("file")
+      .setDescription("The banner to set")
+      .setRequired(true)
+      .setAutocomplete(true)
+  );
+
 const birthday = new u.sub()
   .setName("birthday")
   .setDescription("Run birthday for a specific Date")
@@ -52,5 +63,6 @@ module.exports = new u.cmd()
   .setDMPermission(false)
   .setDefaultMemberPermissions(0)
   .addSubcommand(cakeday)
+  .addSubcommand(banner)
   .addSubcommand(birthday)
   .toJSON();

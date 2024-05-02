@@ -4,7 +4,6 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   config = require("../config/config.json"),
-  p = require("../utils/perms"),
   u = require("../utils/utils");
 
 /**
@@ -149,14 +148,13 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashBot,
   onlyGuild: true,
   hidden: true,
-  permissions: (int) => p.calc(int.member, ["botTeam"]),
+  permissions: (int) => u.perms.calc(int.member, ["botTeam"]),
   process: async (int) => {
-    if (int.isAutocomplete()) return;
-    if (!p.calc(int.member, ["botTeam"])) return; // don't even bother replying
+    if (!u.perms.calc(int.member, ["botTeam"])) return; // don't even bother replying
     const subcommand = int.options.getSubcommand(true);
     const forThePing = await int.deferReply({ ephemeral: true });
-    if (["gotobed", "reload"].includes(subcommand) && !p.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
-    if (["pull", "pulse"].includes(subcommand) && !p.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
+    if (["gotobed", "reload"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
+    if (["pull", "pulse"].includes(subcommand) && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
     case "gotobed": return goToBed(int);
     case "ping": return ping(int, forThePing);
@@ -165,6 +163,13 @@ const Module = new Augur.Module()
     case "reload": return reload(int);
     case "getid": return getId(int);
     }
+  },
+  autocomplete: (int) => {
+    const fs = require('fs');
+    const path = require("path");
+    const option = int.options.getFocused();
+    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js") && file.startsWith(option));
+    int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
   }
 })
 .addCommand({ name: "mcweb",
@@ -175,14 +180,7 @@ const Module = new Augur.Module()
     webhook.send(suffix);
   }
 })
-.addEvent("interactionCreate", (int) => {
-  if (!int.isAutocomplete() || int.commandId != u.sf.commands.slashBot || !int.inCachedGuild() || !p.isAdmin(int.member)) return;
-  const fs = require('fs');
-  const path = require("path");
-  const option = int.options.getFocused();
-  const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js") && file.startsWith(option));
-  int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
-})
+
 // When the bot is fully online, fetch all the ldsg members, since it will only autofetch for small servers and we want them all.
 .addEvent("ready", () => {
   Module.client.guilds.cache.get(u.sf.ldsg)?.members.fetch();

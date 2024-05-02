@@ -1,6 +1,5 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
-  p = require("../utils/perms"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
   Discord = require("discord.js");
@@ -403,8 +402,8 @@ async function handleModMenu(submitted, oldInt) {
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
 function permComponents(int, filterType = true) {
   let components = menuOptions.everyone;
-  if (p.calc(int.member, ['mod'])) components = components.concat(menuOptions.mod);
-  if (p.calc(int.member, ['mgmt'])) components = components.concat(menuOptions.mgmt);
+  if (u.perms.calc(int.member, ['mod'])) components = components.concat(menuOptions.mod);
+  if (u.perms.calc(int.member, ['mgmt'])) components = components.concat(menuOptions.mgmt);
   if (!filterType) return components;
   return components.filter(cmp => (
     cmp.context == 'msg' && int.isMessageContextMenuCommand() ||

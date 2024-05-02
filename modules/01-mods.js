@@ -2,7 +2,6 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   u = require("../utils/utils"),
-  p = require("../utils/perms"),
   profanityFilter = require("profanity-matcher"),
   c = require("../utils/modCommon");
 
@@ -103,7 +102,7 @@ async function slashModFilter(interaction) {
   const apply = (interaction.options.getString("action") ?? "true") == "true";
 
   const filtered = pf.scan(word);
-  if (!p.calc(interaction.member, ["mgr"])) {
+  if (!u.perms.calc(interaction.member, ["mgr"])) {
     return interaction.editReply("This command is for Management+ only.");
   }
 
@@ -380,7 +379,7 @@ Module.addInteraction({
   guildId: u.sf.ldsg,
   id: u.sf.commands.slashMod,
   onlyGuild: true,
-  permissions: (int) => p.calc(int.member, ["mod"]),
+  permissions: (int) => u.perms.calc(int.member, ["mod"]),
   process: (interaction) => {
     try {
       const subcommand = interaction.options.getSubcommand(true);
