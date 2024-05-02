@@ -5,7 +5,6 @@ const Augur = require("augurbot-ts"),
   config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
   u = require("../utils/utils"),
-  p = require("../utils/perms"),
   c = require("../utils/modCommon");
 
 
@@ -336,7 +335,7 @@ async function processCardAction(interaction) {
       md?.send({ embeds: [embed] }).catch(u.noop);
     } else if (interaction.customId == "modCardRetract") {
       // Only the person who acted on the card (or someone in management) can retract an action
-      if (infraction.handler != mod.id && !p.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", ephemeral: true });
+      if (infraction.handler != mod.id && !u.perms.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", ephemeral: true });
       await interaction.deferUpdate();
       const verbal = embed.data.fields?.find(f => f.value.includes("verbal"));
       const revertedMsg = "The offending message can't be restored" + (infraction.value > 9 ? " and the Muted role may have to be removed and the user unwatched." : ".");
@@ -445,7 +444,7 @@ const Module = new Augur.Module()
 })
 .addEvent("interactionCreate", (int) => {
   if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
-  if (!p.calc(int.member, ["mod"])) {
+  if (!u.perms.calc(int.member, ["mod"])) {
     int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
     return;
   }

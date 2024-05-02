@@ -1,8 +1,12 @@
 // @ts-check
+const config = require("../config/config.json"),
+  Discord = require("discord.js"),
+  snowflakes = require("../config/snowflakes.json"),
+  tsf = require("../config/snowflakes-testing.json"),
+  csf = require("../config/snowflakes-testing-commands.json");
 
-const { sf } = require("../utils/utils");
-const config = require("../config/config.json");
-const Discord = require("discord.js");
+// circular dependancy, had to duplicate code :(
+const sf = config.devMode ? Object.assign(tsf, csf) : snowflakes;
 
 /** @typedef {(m: Discord.GuildMember) => boolean} perm */
 const permFuncs = {
@@ -33,9 +37,10 @@ const permFuncs = {
 };
 
 const perms = {
-  /** @param {Discord.GuildMember} member @param {(keyof permFuncs)[]} permArr*/
+  /** @param {Discord.GuildMember | null | undefined} member @param {(keyof permFuncs)[]} permArr*/
   calc: (member, permArr) => {
     let result = false;
+    if (!member) return false;
     const arr = [...new Set(permArr.concat(["botAdmin", "mgmt"]))];
     for (const perm of arr) {
       const p = permFuncs[perm];
@@ -44,13 +49,21 @@ const perms = {
     }
     return result;
   },
-  isAdmin: permFuncs.botAdmin,
-  isOwner: permFuncs.botOwner,
-  isMod: permFuncs.mod,
-  isMgmt: permFuncs.mgmt,
-  isMgr: permFuncs.mgr,
-  isTeam: permFuncs.team,
-  isTrusted: permFuncs.trusted
+  /** @typedef {(m: Discord.GuildMember | null | undefined) => boolean | null | undefined} mem*/
+  /** @type {mem} */
+  isAdmin: (m) => m && permFuncs.botAdmin(m),
+  /** @type {mem} */
+  isOwner: (m) => m && permFuncs.botOwner(m),
+  /** @type {mem} */
+  isMod: (m) => m && permFuncs.mod(m),
+  /** @type {mem} */
+  isMgmt: (m) => m && permFuncs.mgmt(m),
+  /** @type {mem} */
+  isMgr: (m) => m && permFuncs.mgr(m),
+  /** @type {mem} */
+  isTeam: (m) => m && permFuncs.team(m),
+  /** @type {mem} */
+  isTrusted: (m) => m && permFuncs.trusted(m)
 };
 
 module.exports = perms;

@@ -1,12 +1,10 @@
 const Discord = require("discord.js"),
   { escapeMarkdown, ComponentType } = require('discord.js'),
   sf = require("../config/snowflakes.json"),
-  // TESTING SNOWFLAKES NEED TO BE DOUBLE CHECKED
-  // not sure if all are updated
-  // 2/18/24
   tsf = require("../config/snowflakes-testing.json"),
   csf = require("../config/snowflakes-testing-commands.json"),
   db = require("../database/dbControllers.js"),
+  p = require('./perms.js'),
   config = require("../config/config.json");
 
 const errorLog = new Discord.WebhookClient(config.error);
@@ -338,6 +336,8 @@ const utils = {
     }
     return null;
   },
+  /** Shortcut to utils/perms.js */
+  perms: p,
   /**
    * Choose a random element from an array
    * @template K
