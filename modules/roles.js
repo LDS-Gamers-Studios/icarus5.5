@@ -6,6 +6,7 @@ const config = require("../config/config.json");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 
 const roles = new Map();
+let eRoles = new u.Collection;
 
 async function addRole(int) {
   try {
@@ -122,7 +123,7 @@ async function take(int) {
     if (!p.calc(int.member, ["mod", "mgr"]) && input.toLowerCase() == "adulting") return int.reply({ content: "This command is for Mod+ only", ephemeral: true });
     const recipient = int.options.getMember("user");
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
-    const role = ldsg.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+    const role = ldsg?.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
     if (role) {
       switch (role.name.toLowerCase()) {
       case "adulting":
@@ -158,6 +159,42 @@ async function take(int) {
   } catch (error) { u.errorHandler(error, int); }
 }
 
+function getInventory(member) {
+  return eRoles.filter(r => member.roles.cache.find(ro => ro.id == r.baseRole || r.inherited?.includes(ro.id)));
+}
+
+async function inventory(int) {
+  try {
+    const member = int.member;
+    const inv = getInventory(member).map(color => int.guild.roles.cache.get(color.id)).sort((a, b) => b.comparePositionTo(a));
+    const embed = u.embed().setAuthor({ name: member.displayName, iconURL: member.displayAvatarURL({ size: 32 }) })
+      .setTitle("Equippable Color Inventory")
+      .setDescription(`Equip a color role with \`/role equip Role Name\`\ne.g. \`/role equip novice\`\n\n${inv.join("\n")}`);
+    if (inv.length == 0) int.reply({ content: "You don't have any colors in your inventory!", ephemeral: true });
+    else int.reply({ embeds: [embed], ephemeral: !(int.channel.id == int.client.getTextChannel(u.sf.channels.botspam).id) });
+  } catch (e) { u.errorHandler(e, int); }
+}
+
+async function equip(int) {
+  try {
+    const allColors = eRoles.filter(r => r.id).map(r => r.id);
+    const available = getInventory(int.member);
+    const input = int.options.getString("color-role");
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+    const real = ldsg?.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+    const role = ldsg?.roles.cache.find(r => r.id == eRoles.find(a => a.baseRole == real?.id || a.id == real?.id)?.id);
+    if (!role) {
+      return int.reply({ content: "Sorry, that's not a color role on this server. Check `/role inventory` to see what you can equip.", ephemeral: true });
+    } else if (!available.has(role.id)) {
+      return int.reply({ content: "Sorry, you don't have that color in your inventory. Check `/role inventory` to see what you can equip.", ephemeral: true });
+    } else {
+      await int.member.roles.remove(allColors);
+      await int.member.roles.add(role.id);
+      int.reply({ content: "Color applied!", ephemeral: true });
+    }
+  } catch (e) { u.errorHandler(e, int); }
+}
+
 const Module = new Augur.Module()
   .addInteraction({
     name: "role",
@@ -167,8 +204,8 @@ const Module = new Augur.Module()
       switch (interaction.options.getSubcommand(true)) {
       case "add": return await addRole(interaction);
       case "give": return give(interaction);
-      case "equip": return ;
-      case "inventory": return ;
+      case "equip": return equip(interaction);
+      case "inventory": return inventory(interaction);
       case "remove": return await removeRole(interaction);
       case "whohas": return whoHas(interaction);
       case "take": return take(interaction);
@@ -186,7 +223,10 @@ const Module = new Augur.Module()
       for (const row of rows) {
         roles.set(row["Role Tag"].toLowerCase(), row["RoleID"]);
       }
-    } catch (error) { u.errorHandler(error, "Roles init"); }
+      // @ts-ignore
+      const channels = await doc.sheetsByTitle["Roles"].getRows();
+      eRoles = new u.Collection(channels.map(r => [r['Color Role ID'], { id: r['Color Role ID'], baseRole: r['Base Role ID'], local: r['Local ID'], inherited: r['Lower Roles']?.split(" ") }])).filter(r => r.id != "");
+    } catch (e) { u.errorHandler(e, "Load Color & Equip Roles"); }
   });
 
 module.exports = Module;
