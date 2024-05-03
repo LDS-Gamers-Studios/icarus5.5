@@ -196,8 +196,8 @@ const Module = new Augur.Module()
     if (oldMember.guild.id != u.sf.ldsg) return;
     if (oldMember.partial) oldMember = await oldMember.fetch();
     if (newMember.partial) newMember = await newMember.fetch();
-    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || newMember.roles.cache.has(u.sf.roles.untrusted))) {
-      const user = await u.db.user.fetchUser(newMember.id, true).catch(u.noop);
+    const user = await u.db.user.fetchUser(newMember.id, true).catch(u.noop);
+    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
       const embed = u.embed({ author: oldMember })
         .setTitle("User Update")
         .setDescription(newMember.toString())

@@ -4,8 +4,7 @@ const Augur = require("augurbot-ts"),
   axios = require('axios'),
   u = require("../utils/utils"),
   config = require('../config/config.json'),
-  { GoogleSpreadsheet } = require('google-spreadsheet'),
-  perms = require('../utils/perms');
+  { GoogleSpreadsheet } = require('google-spreadsheet');
 
 
 /**
@@ -112,7 +111,7 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashTournament,
   onlyGuild: true,
   // Only /tournament list is publicly available
-  permissions: (int) => int.options.getSubcommand() == 'list' ? true : perms.calc(int.member, ["team"]),
+  permissions: (int) => int.options.getSubcommand() == 'list' ? true : u.perms.calc(int.member, ["team"]),
   process: async (int) => {
     switch (int.options.getSubcommand()) {
     case "list": return bracket(int);

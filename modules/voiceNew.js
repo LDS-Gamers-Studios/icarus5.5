@@ -2,7 +2,6 @@
 const Augur = require('augurbot-ts'),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
-  perm = require("../utils/perms"),
   u = require('../utils/utils');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { nanoid } = require('nanoid');
@@ -338,7 +337,7 @@ const Module = new Augur.Module()
 .addInteraction({ name: "slashVoice",
   id: u.sf.commands.slashVoice,
   onlyGuild: true,
-  permissions: (int) => perm.calc(int.member, ["notMuted"]),
+  permissions: (int) => u.perms.calc(int.member, ["notMuted"]),
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
     const channel = int.member.voice.channel;

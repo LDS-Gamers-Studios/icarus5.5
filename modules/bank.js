@@ -2,7 +2,6 @@
 
 const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
-  p = require("../utils/perms"),
   u = require("../utils/utils"),
   config = require("../config/config.json");
 
@@ -352,7 +351,7 @@ async function slashBankAward(interaction) {
     let value = interaction.options.getInteger("amount", true);
     if (!recipient) return interaction.reply({ content: "You can't just award *nobody*!", ephemeral: true });
 
-    if (!p.calc(giver, ["team", "volunteer", "mgr"])) {
+    if (!u.perms.calc(giver, ["team", "volunteer", "mgr"])) {
       return interaction.reply({ content: `*Nice try!* This command is for Volunteers and Team+ only!`, ephemeral: true });
     } else if (recipient.id == giver.id) {
       return interaction.reply({ content: `You can't award ***yourself*** ${ember}, silly.`, ephemeral: true });
