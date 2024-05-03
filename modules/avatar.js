@@ -51,7 +51,7 @@ async function jimpRead(url) {
  * @returns {Promise<any>}
  */
 async function sendImg(int, img, name, format = "png") {
-  const image = u.attachment().setFile(img).setName(`image.${format}`);
+  const image = new u.Attachment(img, { name: `image.${format}` });
   const embed = u.embed().setTitle(name).setImage(`attachment://image.${format}`);
   return int.editReply({ embeds: [embed], files: [image] });
 }

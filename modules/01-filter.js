@@ -451,7 +451,7 @@ const Module = new Augur.Module()
   if (['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract'] // mod card actions minus the modCard part
     .includes(int.customId.replace("modCard", "").toLowerCase())) return processCardAction(int);
 })
-// @ts-ignore
+// @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
 .addEvent("ready", () => {
   setInterval(() => {

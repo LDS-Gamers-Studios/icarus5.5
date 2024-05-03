@@ -1,7 +1,6 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
-  moment = require("moment"),
   { GoogleSpreadsheet } = require("google-spreadsheet"),
   config = require('../config/config.json');
 
@@ -160,7 +159,7 @@ const Module = new Augur.Module()
         color: 0x5865f2,
       })
       .addFields(
-        { name: "Joined", value: moment(member.joinedAt).fromNow(), inline: true },
+        { name: "Joined", value: u.moment(member.joinedAt).fromNow(), inline: true },
         { name: "Activity", value: (user?.posts || 0) + " Active Minutes", inline: true }
       );
       member.guild.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
@@ -177,7 +176,7 @@ const Module = new Augur.Module()
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setDescription(newUser.toString())
-        .setFooter({ text: `${user?.posts ?? 0} active minutes ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
+        .setFooter({ text: `${user?.posts ?? 0} active minutes ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
       if (oldUser.displayName !== newUser.displayName || oldUser.username !== newUser.username) {
         embed.addFields({ name: "**Username Update**", value: `**Old:** ${u.escapeText(`${oldUser?.username} (displaying as ${oldUser?.displayName})`)}\n**New:** ${u.escapeText(`${newUser.username} (displaying as ${newUser.displayName})`)}` });
       }
@@ -201,7 +200,7 @@ const Module = new Augur.Module()
       const embed = u.embed({ author: oldMember })
         .setTitle("User Update")
         .setDescription(newMember.toString())
-        .setFooter({ text: `${user?.posts ?? 0} Posts in ${moment(newMember?.joinedTimestamp).fromNow(true)}` });
+        .setFooter({ text: `${user?.posts ?? 0} Posts in ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
       if (oldMember.nickname !== newMember.nickname) {
         embed.addFields({ name: "**Nickname Update**", value: `**Old:** ${u.escapeText(oldMember?.nickname ?? "")}\n**New:** ${u.escapeText(newMember.nickname ?? "")}` });
       }
@@ -221,7 +220,7 @@ const Module = new Augur.Module()
     await doc.useServiceAccountAuth(config.google.creds);
     await doc.loadInfo();
     /** @type {Sponsor[]} */
-    // @ts-ignore
+    // @ts-ignore sheets stuff
     const channels = await doc.sheetsByTitle["Sponsor Channels"].getRows();
     emojis = Array.from(channels.map(x => [x.Sponsor, x.Emoji]))
       .concat([

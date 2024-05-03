@@ -1,8 +1,7 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
-  Discord = require("discord.js"),
-  { ActionRowBuilder, ButtonBuilder } = require('discord.js');
-const { ButtonStyle } = require("discord.js");
+  u = require('../utils/utils'),
+  Discord = require("discord.js");
 
 const dict = {
   "ᔑ": "a",
@@ -61,40 +60,36 @@ async function handleMessage(msg) {
     return;
   }
 
-  const row = new ActionRowBuilder()
+  const row = u.MessageActionRow()
   .addComponents(
-    new ButtonBuilder()
+    new u.Button()
       .setCustomId('sgaTranslate')
       .setLabel('Translate')
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(Discord.ButtonStyle.Primary),
   );
 
   return await msg.reply({
-    // @ts-ignore
     components: [row]
   });
 }
 
-/** @param {Discord.Interaction} inter */
+/** @param {Discord.ButtonInteraction} inter */
 async function handleButton(inter) {
-  if (!inter.isButton() || inter.customId !== "sgaTranslate") return;
-
-  let message;
-
   try {
-    message = await inter.message.fetchReference();
+    const message = await inter.message.fetchReference();
+    const translated = translate(message.content);
+    return inter.reply({ content: translated, ephemeral: true });
   } catch (e) {
-    await inter.reply({ content: "It appears the message was deleted.", ephemeral: true });
-    await inter.message.delete();
-    return;
+    return inter.reply({ content: "It appears the message was deleted.", ephemeral: true });
   }
-
-  const translated = translate(message.content);
-  return await inter.reply({ content: translated, ephemeral: true });
 }
 
 const Module = new Augur.Module()
   .addEvent("messageCreate", handleMessage)
-  .addEvent("interactionCreate", handleButton);
+  .addInteraction({
+    id: "sgaTranslate",
+    type: "Button",
+    process: handleButton
+  });
 
 module.exports = Module;

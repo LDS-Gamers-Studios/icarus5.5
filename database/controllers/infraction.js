@@ -1,5 +1,5 @@
 // @ts-check
-const moment = require("moment");
+const { moment } = require('../../utils/utils');
 
 const Infraction = require("../models/Infraction.model");
 

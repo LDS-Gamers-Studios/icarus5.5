@@ -1,10 +1,10 @@
 // @ts-check
-const Augur = require("augurbot-ts");
-const Discord = require("discord.js");
-const moment = require('moment');
-const Parser = require("rss-parser");
-const u = require("../utils/utils");
-const books = require("../data/gospel/books.json");
+const Augur = require("augurbot-ts"),
+  Discord = require("discord.js"),
+  Parser = require("rss-parser"),
+  u = require("../utils/utils"),
+  books = require("../data/gospel/books.json");
+
 /**
  * @typedef Book
  * @prop {string} bookName
@@ -172,21 +172,21 @@ function parseVerseRange(verses) {
 /** @param {Date} inputDate */
 function calculateDate(inputDate, debug = false) {
   inputDate.setHours(10); // weird moment stuff
-  const date = moment(inputDate);
+  const date = u.moment(inputDate);
   // Set the day to Monday. If the day is Sunday (0), set it to subtract a week
   const monday = date;
   monday.day(monday.day() == 0 ? -6 : 1);
   // Account for the end of the year;
   if (monday.month() == 11 && monday.date() > 25) monday.day(-6);
-  const str = `${moment(monday).format("MMMM Do YYYY")}`;
-  const week = moment(monday).format("ww");
+  const str = `${u.moment(monday).format("MMMM Do YYYY")}`;
+  const week = u.moment(monday).format("ww");
 
   const manual = manuals.get(date.year());
   if (manual) {
     // If a feature gets added to select a date, look at the old code on icarus5.
     // The link is different and 2020 has a gap for conference
     const link = `https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-home-and-church-${manual}/${week.padStart(2, "0")}`;
-    if (debug) return `${moment(date).format("MM/DD (ddd)")}: Week ${week.padStart(2, "0")}`;
+    if (debug) return `${u.moment(date).format("MM/DD (ddd)")}: Week ${week.padStart(2, "0")}`;
     return { link, str };
   } else {
     return null;
@@ -217,7 +217,7 @@ async function slashGospelNews(interaction) {
     .setURL(newsItem.link || "Url")
     .setDescription((newsItem.content || "Description").replace(/<[\s\S]+?>/g, "")) // Remove all HTML tags from the description
     .setTimestamp(new Date(newsItem.pubDate || 1));
-  const image = u.attachment().setFile('./media/ldsnewsroom.png').setName(`image.png`);
+  const image = new u.Attachment('./media/ldsnewsroom.png', { name: "image.png" });
   interaction.editReply({ embeds: [embed], files: [image] });
 }
 

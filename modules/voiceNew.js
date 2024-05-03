@@ -4,37 +4,32 @@ const Augur = require('augurbot-ts'),
   config = require('../config/config.json'),
   u = require('../utils/utils');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
-const { nanoid } = require('nanoid');
-
 
 /** @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">}|Discord.Interaction<"cached">|false>} voice */
 
 /**
  * @param {updates} options
- * @return {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>[]}
  */
 const actionRow = (options) => {
   const styles = Discord.ButtonStyle;
   const buttons1 = [
-    options.locked ? new Discord.ButtonBuilder().setCustomId("voiceUnlock").setLabel("Unlock").setEmoji("🔓").setStyle(styles.Secondary) :
-      new Discord.ButtonBuilder().setCustomId("voiceLock").setLabel("Lock").setEmoji("🔒").setStyle(styles.Secondary),
+    options.locked ? new u.Button().setCustomId("voiceUnlock").setLabel("Unlock").setEmoji("🔓").setStyle(styles.Secondary) :
+      new u.Button().setCustomId("voiceLock").setLabel("Lock").setEmoji("🔒").setStyle(styles.Secondary),
 
-    options.streamlocked ? new Discord.ButtonBuilder().setCustomId("voiceStreamUnlock").setLabel("Stream Unlock").setEmoji("🔓").setStyle(styles.Secondary) :
-      new Discord.ButtonBuilder().setCustomId("voiceStreamLock").setLabel("Stream Lock").setEmoji("🔇").setStyle(styles.Secondary),
+    options.streamlocked ? new u.Button().setCustomId("voiceStreamUnlock").setLabel("Stream Unlock").setEmoji("🔓").setStyle(styles.Secondary) :
+      new u.Button().setCustomId("voiceStreamLock").setLabel("Stream Lock").setEmoji("🔇").setStyle(styles.Secondary),
 
-    new Discord.ButtonBuilder().setCustomId("voiceAllowUser").setLabel("Allow User").setEmoji("😎").setDisabled(!options.locked).setStyle(styles.Primary),
-    new Discord.ButtonBuilder().setCustomId("voiceStreamAllow").setLabel("Allow to Speak").setEmoji("🗣️").setDisabled(!options.streamlocked).setStyle(styles.Primary),
-    new Discord.ButtonBuilder().setCustomId("voiceStreamDeny").setLabel("Deny to Speak").setEmoji("🤐").setDisabled(!options.streamlocked).setStyle(styles.Danger),
+    new u.Button().setCustomId("voiceAllowUser").setLabel("Allow User").setEmoji("😎").setDisabled(!options.locked).setStyle(styles.Primary),
+    new u.Button().setCustomId("voiceStreamAllow").setLabel("Allow to Speak").setEmoji("🗣️").setDisabled(!options.streamlocked).setStyle(styles.Primary),
+    new u.Button().setCustomId("voiceStreamDeny").setLabel("Deny to Speak").setEmoji("🤐").setDisabled(!options.streamlocked).setStyle(styles.Danger),
   ];
 
   const buttons2 = [
-    new Discord.ButtonBuilder().setCustomId("voiceKickUser").setLabel("Kick User").setStyle(styles.Danger),
+    new u.Button().setCustomId("voiceKickUser").setLabel("Kick User").setStyle(styles.Danger),
   ];
   return [
-    // @ts-ignore
-    new Discord.ActionRowBuilder().addComponents(buttons1.filter(c => c !== undefined)),
-    // @ts-ignore
-    new Discord.ActionRowBuilder().addComponents(buttons2),
+    u.MessageActionRow().addComponents(buttons1),
+    u.MessageActionRow().addComponents(buttons2),
   ];
 };
 
@@ -148,14 +143,13 @@ function overwrite(channel, perms) {
  */
 async function selectUsers(int, action) {
   const components = int.message.components;
-  const id = nanoid(10);
-  const menu = new Discord.UserSelectMenuBuilder()
-  .setCustomId(id)
-  .setMinValues(1)
-  .setMaxValues(1)
-  .setPlaceholder(`The user to ${action}`);
-  const select = new Discord.ActionRowBuilder().addComponents([menu]);
-  // @ts-ignore
+  const id = u.customId(10);
+  const menu = new u.SelectMenu.User()
+    .setCustomId(id)
+    .setMinValues(1)
+    .setMaxValues(1)
+    .setPlaceholder(`The user to ${action}`);
+  const select = u.MessageActionRow().addComponents([menu]);
   const m = await int.editReply({ components: [...components, select] });
 
   const received = await m.awaitMessageComponent({ componentType: Discord.ComponentType.UserSelect, filter: (i) => i.customId == id, time: 5 * 60 * 1000 }).catch(() => {
@@ -376,7 +370,7 @@ const Module = new Augur.Module()
   try {
     await doc.useServiceAccountAuth(config.google.creds);
     await doc.loadInfo();
-    // @ts-ignore
+    // @ts-ignore sheets stuff
     const channels = await doc.sheetsByTitle["Voice Channel Names"].getRows();
     channelNames = channels.map(x => x["Name"]);
   } catch (e) {

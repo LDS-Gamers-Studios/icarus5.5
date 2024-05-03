@@ -1,6 +1,6 @@
 // @ts-check
 const Discord = require("discord.js"),
-  moment = require("moment");
+  { moment } = require("../../utils/utils");
 
 const User = require("../models/User.model");
 

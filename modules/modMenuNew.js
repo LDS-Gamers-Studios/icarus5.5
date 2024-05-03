@@ -41,10 +41,13 @@ function edit(int, payload) {
   return int.editReply(payload);
 }
 
-/** @param {Discord.StringSelectMenuInteraction} int*/
+/**
+ * @param {Discord.StringSelectMenuInteraction} int
+ * @param {string} description
+*/
 async function getReason(int, description) {
   const components = [
-    new Discord.TextInputBuilder()
+    new u.TextInput()
       .setCustomId("reason")
       .setLabel(description)
       .setMinLength(1)
@@ -56,8 +59,7 @@ async function getReason(int, description) {
     .setTitle("Reason")
     .setCustomId("modMenuReason")
     .addComponents(
-      // @ts-ignore component thingy
-      new Discord.ActionRowBuilder()
+      u.ModalActionRow()
         .setComponents(components)
     );
   await int.showModal(modal);
@@ -75,21 +77,21 @@ async function avatar(int, target) {
   const embed = u.embed()
     .setImage(`attachment://avatar.png`)
     .setTitle(`${target.displayName}'s Avatar`);
-  const image = u.attachment().setFile(target.displayAvatarURL({ extension: 'png' })).setName(`avatar.png`);
+  const image = new u.Attachment(target.displayAvatarURL({ extension: 'png' }), { name: 'avatar.png' });
   return edit(int, { embeds: [embed], files: [image] });
 }
 /** @type {both} */
 async function flagReason(int, msg, usr) {
   const id = u.customId();
-  const reasons = new u.actionRow()
+  const reasons = u.MessageActionRow()
     .addComponents(
-      new u.stringSelectMenu()
+      new u.SelectMenu.String()
         .setCustomId(id)
         .setMaxValues(3)
         .setMinValues(1)
         .setPlaceholder("Select why you're flagging it")
         .setOptions(menuFlagOptions.map(f =>
-          new Discord.StringSelectMenuOptionBuilder()
+          new u.SelectMenu.StringOption()
             .setDefault(false)
             .setDescription(f.description)
             .setEmoji(f.emoji)
@@ -99,7 +101,7 @@ async function flagReason(int, msg, usr) {
     );
   /** @param {Discord.StringSelectMenuInteraction} i*/
   const filter = (i) => i.customId == id && i.user.id == int.user.id;
-  // @ts-ignore component thingy
+
   const responseMsg = await edit(int, { components: [reasons] });
   const response = await responseMsg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true, filter }).catch(() => {
     edit(int, noTime);
@@ -165,10 +167,9 @@ async function noteUser(int, usr) {
     .setTitle("Note")
     .setCustomId("noteModal")
     .addComponents(
-      // @ts-ignore component thingy
-      new Discord.ActionRowBuilder()
+      u.ModalActionRow()
         .addComponents(
-          new Discord.TextInputBuilder()
+          new u.TextInput()
             .setCustomId("note")
             .setLabel("The note to record")
             .setMinLength(1)
@@ -195,10 +196,9 @@ async function renameUser(int, usr) {
     .setTitle("Rename User")
     .setCustomId("modMenuRename")
     .addComponents(
-      // @ts-ignore component thingy
-      new Discord.ActionRowBuilder()
+      u.ModalActionRow()
         .setComponents(
-          new Discord.TextInputBuilder()
+          new u.TextInput()
             .setCustomId("name")
             .setLabel("Name (reset if left blank)")
             .setMaxLength(20)
@@ -417,14 +417,14 @@ async function sendModMenu(int) {
   await int.deferReply({ ephemeral: true });
   const id = u.customId();
   const components = permComponents(int);
-  const actionRow = new u.actionRow()
+  const actionRow = u.MessageActionRow()
     .setComponents(
-      new u.stringSelectMenu()
+      new u.SelectMenu.String()
         .setCustomId(id)
         .setMaxValues(1)
         .setMinValues(1)
         .setOptions(components.map(cmp =>
-          new Discord.StringSelectMenuOptionBuilder()
+          new u.SelectMenu.StringOption()
             .setDefault(false)
             .setDescription(cmp.description)
             .setEmoji(cmp.emoji)
@@ -435,7 +435,6 @@ async function sendModMenu(int) {
 
   /** @param {Discord.StringSelectMenuInteraction} i*/
   const filter = (i) => i.customId == id && i.user.id == int.user.id;
-  // @ts-ignore component thingy
   const msg = await edit(int, { components: [actionRow] });
   const component = await msg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true, filter }).catch(() => {
     edit(int, noTime);

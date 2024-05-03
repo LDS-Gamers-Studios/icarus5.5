@@ -9,20 +9,17 @@
     "challonge": ""
   },
   "applicationId": "You can find it here: https://discord.com/developers/applications",
-  "color": [
-    248,
-    154,
-    34
-  ],
+  "color": "0xf89a22",
   "xpScale": 200,
   "db": {
     "model": "database/dbControllers.js",
-    "db": "localhost:27017/<database> by default",
+    "note": "(Delete this property) Connection string format: (mongodb(+srv?) or localhost:27017)://<username>:<password>@<connection>",
+    "db": "localhost:27017/icarus or mongodb(+srv?)://<connection>/icarus",
     "settings": {
       "useNewUrlParser": true,
       "useUnifiedTopology": true,
-      "user": "",
-      "pass": ""
+      "user": "<username>",
+      "pass": "<pass>"
     }
   },
   "devMode": true,
@@ -52,9 +49,9 @@
     "voiceStateUpdate"
   ],
   "google": {
-    "api": "You can fill out all this info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
+    "api": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
     "creds": {
-      "type": "",
+      "type": "Create a project, give it access to google sheets, and create a service account credential. Download the JSON and that should fit in this object",
       "project_id": "",
       "private_key_id": "",
       "private_key": "",
@@ -73,10 +70,10 @@
   },
   "prefix": "! (change this to something unique)",
   "spamThreshold":  {
-    "channels": [10, 1],
-    "messages": [10, 1],
-    "same": [1, 1],
-    "time": 10,
+    "channels": [10, 8],
+    "messages": [10, 8],
+    "same": [5, 5],
+    "time": 7,
     "cleanupLimit": 90
   },
   "token": "Put your bot token here (https://discord.com/developers/applications)",

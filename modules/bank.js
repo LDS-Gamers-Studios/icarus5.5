@@ -38,7 +38,7 @@ async function getGameList() {
     await doc.useServiceAccountAuth(config.google.creds);
     await doc.loadInfo();
     /** @type {Game[]} */
-    // @ts-ignore
+    // @ts-ignore sheets stuff
     let games = await doc.sheetsByIndex[0].getRows();
     games = games.filter(g => !g.Recipient).filter(filterUnique);
     return games;

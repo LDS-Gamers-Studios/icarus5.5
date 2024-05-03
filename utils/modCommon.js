@@ -3,32 +3,27 @@ const { ButtonStyle } = require("discord.js"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
   config = require('../config/config.json'),
-  { ActionRowBuilder, ButtonBuilder } = require("discord.js"),
   Augur = require('augurbot-ts');
 
-/** @type {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>[]} */
+
 const modActions = [
-  // @ts-ignore
-  new ActionRowBuilder().setComponents([
-    new ButtonBuilder().setCustomId("modCardClear").setEmoji("✅").setLabel("Clear").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("modCardVerbal").setEmoji("🗣").setLabel("Talk it out").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("modCardMinor").setEmoji("⚠").setLabel("Minor").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("modCardMajor").setEmoji("⛔").setLabel("Major").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("modCardMute").setEmoji("🔇").setLabel("Mute").setStyle(ButtonStyle.Danger)
+  u.MessageActionRow().setComponents([
+    new u.Button().setCustomId("modCardClear").setEmoji("✅").setLabel("Clear").setStyle(ButtonStyle.Success),
+    new u.Button().setCustomId("modCardVerbal").setEmoji("🗣").setLabel("Talk it out").setStyle(ButtonStyle.Primary),
+    new u.Button().setCustomId("modCardMinor").setEmoji("⚠").setLabel("Minor").setStyle(ButtonStyle.Danger),
+    new u.Button().setCustomId("modCardMajor").setEmoji("⛔").setLabel("Major").setStyle(ButtonStyle.Danger),
+    new u.Button().setCustomId("modCardMute").setEmoji("🔇").setLabel("Mute").setStyle(ButtonStyle.Danger)
   ]),
-  // @ts-ignore
-  new ActionRowBuilder().setComponents([
-    new ButtonBuilder().setCustomId("modCardInfo").setEmoji("👤").setLabel("User Info").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle(ButtonStyle.Secondary)
+  u.MessageActionRow().setComponents([
+    new u.Button().setCustomId("modCardInfo").setEmoji("👤").setLabel("User Info").setStyle(ButtonStyle.Secondary),
+    new u.Button().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle(ButtonStyle.Secondary)
   ])
 ];
 /** @param {Discord.GuildMember|Discord.User} person */
 const userBackup = (person) => `${person} (${u.escapeText(person.displayName)})`;
 
-/** @type {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>} */
-const retract = new ActionRowBuilder();
-retract.setComponents([
-  new ButtonBuilder().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
+const retract = u.MessageActionRow().setComponents([
+  new u.Button().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
 ]);
 
 const messageFromMods = "## 🚨 Message from the LDSG Mods:\n";
