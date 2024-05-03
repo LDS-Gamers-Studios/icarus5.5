@@ -175,8 +175,8 @@ const Module = new Augur.Module()
 .addCommand({ name: "mcweb",
   permissions: () => config.devMode,
   process: (msg, suffix) => {
-    if (!config.mcTestingWebhook) return msg.reply("Make sure to set a webhook for mcTestingWebhook! You need it to run this command.");
-    const webhook = new Discord.WebhookClient({ url: config.mcTestingWebhook });
+    if (!config.webhooks.mcTesting) return msg.reply("Make sure to set a webhook for mcTestingWebhook! You need it to run this command.");
+    const webhook = new Discord.WebhookClient({ url: config.webhooks.mcTesting });
     webhook.send(suffix);
   }
 })

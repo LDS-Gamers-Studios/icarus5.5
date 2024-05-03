@@ -2,6 +2,7 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   u = require("../utils/utils"),
+  config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
   c = require("../utils/modCommon");
 
@@ -38,21 +39,23 @@ const Module = new Augur.Module()
 /** @param {Discord.Message} msg */
 async function watch(msg) {
   if (!msg.inGuild()) return;
-  const watchLog = msg.client.getTextChannel(u.sf.channels.modWatchList);
 
   if (
     msg.guild.id == u.sf.ldsg && // only LDSG
     !msg.system && !msg.webhookId && !msg.author.bot && // no bots
     (!msg.member?.roles.cache.has(u.sf.roles.trusted) || c.watchlist.has(msg.author.id)) // only untrusted and watched
   ) {
-    const files = msg.attachments.map(attachment => attachment.url);
-    const embed = u.msgReplicaEmbed(msg, `${!msg.member?.roles.cache.has(u.sf.roles.trusted) ? "🆕" : "👀"} Member Message`, true, false);
-    // potential idea, but not keeping for now
-    // const button = u.actionRow().addComponents(u.button().setCustomId("watchDiscuss").setEmoji("🔗").setLabel("Discuss").setStyle(Discord.ButtonStyle.Secondary));
-    watchLog?.send({ embeds: [embed], /** components: [button] */ });
-    if (files.length > 0) {
-      watchLog?.send({ files: files });
-    }
+    const files = msg.attachments.map(attachment => attachment.url)
+      .concat(msg.stickers.map(s => s.url));
+    const webhook = new Discord.WebhookClient({ url: config.webhooks.watchlist });
+    const decorator = !msg.member?.roles.cache.has(u.sf.roles.trusted) ? "🚪" : "👀";
+    webhook.send({
+      content: `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`,
+      files,
+      username: `${decorator} - ${msg.member?.displayName ?? msg.author.displayName}`,
+      avatarURL: msg.member?.displayAvatarURL() ?? msg.author.displayAvatarURL(),
+      allowedMentions: { parse: [] }
+    });
   }
 }
 

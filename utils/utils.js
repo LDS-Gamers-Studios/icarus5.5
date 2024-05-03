@@ -7,7 +7,7 @@ const Discord = require("discord.js"),
   p = require('./perms.js'),
   config = require("../config/config.json");
 
-const errorLog = new Discord.WebhookClient(config.error);
+const errorLog = new Discord.WebhookClient({ url: config.webhooks.error });
 const { nanoid } = require("nanoid");
 
 /**

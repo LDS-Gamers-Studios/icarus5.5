@@ -27,10 +27,11 @@
   },
   "devMode": true,
   "silentMode": false,
-  "error": {
-    "url": "Webhook url for errors"
+  "webhooks": {
+    "error": "Webhook url for errors",
+    "watchlist": "Webhook url for #watch-list",
+    "mcTesting": "Webhook url for testing interactions with Minecraft chat"
   },
-  "mcTestingWebhook": "Webhook url for testing interactions with Minecraft chat",
   "events": [
     "channelCreate",
     "channelUpdate",
