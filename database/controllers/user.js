@@ -35,26 +35,24 @@ const models = {
      */
   addXp: async function(users) {
     const xp = Math.floor(Math.random() * 11) + 15;
-    if (users.length == 0) {
-      return { users: [], xp: 0 };
-    } else {
-      // Update XP for ranked users
-      await User.updateMany(
-        { discordId: { $in: users }, excludeXP: false },
-        { $inc: { currentXP: xp, totalXP: xp } },
-        { new: true, upsert: true }
-      ).exec();
-      // Update post count for all users
-      await User.updateMany(
-        { discordId: { $in: users } },
-        { $inc: { posts: 1 } },
-        { new: true, upsert: true }
-      ).exec();
-      const userDocs = await User.find(
-        { discordId: { $in: users } }, null, { upsert: true }
-      ).exec();
-      return { users: userDocs.map(d => d.toObject()), xp };
-    }
+    const included = (await User.find({ discordId: { $in: users }, excludeXP: false })).map(u => u.discordId);
+    await User.bulkWrite(
+      users.map(u => {
+        const x = included.includes(u) ? xp : 0;
+        return {
+          updateOne: {
+            filter: { discordId: u },
+            update: { $inc: { currentXP: x, totalXP: x, posts: 1 } },
+            upsert: true,
+            new: true
+          }
+        };
+      })
+    );
+    const userDocs = await User.find(
+      { discordId: { $in: users } }, null, { upsert: true }
+    ).exec();
+    return { users: userDocs.map(d => d.toObject()), xp };
   },
   /**
    * Fetch a user record from the database.
@@ -215,3 +213,4 @@ const models = {
 };
 
 module.exports = models;
+

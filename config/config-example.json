@@ -20,6 +20,7 @@
     "db": "localhost:27017/<database> by default",
     "settings": {
       "useNewUrlParser": true,
+      "useUnifiedTopology": true,
       "user": "",
       "pass": ""
     }
