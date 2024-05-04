@@ -2,9 +2,9 @@
 const u = require("./regUtils");
 
 const role = (action = "add") => new u.string()
-  .setName(action == 'equip' ? "color-role" : "role")
+  .setName(action == 'equip' ? "color" : "role")
   .setDescription(`The role to ${action}`)
-  .setRequired(true)
+  .setRequired(action == 'equip' ? false : true)
   .setAutocomplete(true);
 
 const add = new u.sub()
@@ -26,7 +26,13 @@ const give = new u.sub()
       .setDescription("The user to receive the role")
       .setRequired(true)
   )
-  .addStringOption(role("give"));
+  .addStringOption(
+    new u.string()
+    .setName("role")
+    .setDescription("The role to give")
+    .setRequired(true)
+    .setAutocomplete(true)
+  );
 
 const take = new u.sub()
 .setName("take")
@@ -37,7 +43,13 @@ const take = new u.sub()
     .setDescription("The user to take the role from")
     .setRequired(true)
 )
-.addStringOption(role("take"));
+.addStringOption(
+  new u.string()
+  .setName("role")
+  .setDescription("The role to take")
+  .setRequired(true)
+  .setAutocomplete(true)
+);
 
 const inventory = new u.sub()
   .setName("inventory")
@@ -50,7 +62,7 @@ const who = new u.sub()
 
 const equip = new u.sub()
   .setName("equip")
-  .setDescription("Equip a color role")
+  .setDescription("Equip a color role (leave blank to remove)")
   .addStringOption(role("equip"));
 
 

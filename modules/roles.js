@@ -5,7 +5,7 @@ const p = require("../utils/perms");
 const config = require("../config/config.json");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 
-const roles = new Map();
+const roles = new u.Collection;
 let eRoles = new u.Collection;
 
 async function addRole(int) {
@@ -179,7 +179,11 @@ async function equip(int) {
   try {
     const allColors = eRoles.filter(r => r.id).map(r => r.id);
     const available = getInventory(int.member);
-    const input = int.options.getString("color-role");
+    const input = int.options.getString("color");
+    if (!input) {
+      await int.member.roles.remove(allColors);
+      return int.reply({ content: "Color removed!", ephemeral: true });
+    }
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     const real = ldsg?.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
     const role = ldsg?.roles.cache.find(r => r.id == eRoles.find(a => a.baseRole == real?.id || a.id == real?.id)?.id);
@@ -198,6 +202,8 @@ async function equip(int) {
 const Module = new Augur.Module()
   .addInteraction({
     name: "role",
+    guildId: u.sf.ldsg,
+    onlyGuild: true,
     id: u.sf.commands.slashRole,
     process: async (interaction) => {
       if (interaction.isAutocomplete()) return;
@@ -210,10 +216,29 @@ const Module = new Augur.Module()
       case "whohas": return whoHas(interaction);
       case "take": return take(interaction);
       }
+    },
+    autocomplete: (interaction) => {
+      const option = interaction.options.getFocused(true);
+      if (option.name == 'role') {
+        if (interaction.options.getSubcommand(true) == "whohas") {
+          const all = Module.client.guilds.cache.get(u.sf.ldsg).roles.cache.filter((n) => n?.name.toLowerCase().startsWith(option.value?.toLowerCase())).map((n) => n.name).slice(0, 24);
+          return interaction.respond(u.unique(all).map(v => ({ name: v, value: v })));
+        } else if (interaction.options.getSubcommand(true) == "give" || interaction.options.getSubcommand(true) == "take") {
+          if (!p.calc(interaction.member, ["team", "mod", "mgr"])) return;
+          const values = ["Adulting", "Bookworm", "LDSG Lady"].filter(n => n?.toLowerCase().startsWith(option.value?.toLowerCase())).slice(0, 24);
+          return interaction.respond(values.map(v => ({ name: v, value: v })));
+        }
+        const values = roles.filter((i, n) => n?.toLowerCase().startsWith(option.value?.toLowerCase())).map((i, n) => n).slice(0, 24);
+        return interaction.respond(u.unique(values).map(v => ({ name: v, value: v })));
+      } else if (option.name == 'color') {
+        const available = Module.client.guilds.cache.get(u.sf.ldsg).roles.cache.filter(r => getInventory(interaction.member).find(a => a.id == r.id)).filter((n) => n?.name.toLowerCase().startsWith(option.value?.toLowerCase())).map((n) => n.name).slice(0, 24);
+        return interaction.respond(u.unique(available).map(v => ({ name: v, value: v })));
+      }
     }
   })
-  .setInit(async () => {
+  .addEvent("ready", async () => {
     try {
+      const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
       const doc = new GoogleSpreadsheet(config.google.sheets.config);
       await doc.useServiceAccountAuth(config.google.creds);
       await doc.loadInfo();
@@ -221,7 +246,7 @@ const Module = new Augur.Module()
       const rows = await doc.sheetsByTitle["Opt-In Roles"].getRows();
       roles.clear();
       for (const row of rows) {
-        roles.set(row["Role Tag"].toLowerCase(), row["RoleID"]);
+        roles.set(ldsg?.roles.cache.find(r => r.id == row["RoleID"])?.name, row["RoleID"]);
       }
       // @ts-ignore
       const channels = await doc.sheetsByTitle["Roles"].getRows();
