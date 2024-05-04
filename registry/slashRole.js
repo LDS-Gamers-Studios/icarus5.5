@@ -58,7 +58,12 @@ const inventory = new u.sub()
 const who = new u.sub()
   .setName("whohas")
   .setDescription("See who has a role")
-  .addStringOption(role());
+  .addRoleOption(
+    new u.role()
+    .setName("role")
+    .setDescription("The role to check")
+    .setRequired(true)
+  );
 
 const equip = new u.sub()
   .setName("equip")
