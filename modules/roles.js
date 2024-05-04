@@ -4,17 +4,22 @@ const u = require("../utils/utils");
 const p = require("../utils/perms");
 const config = require("../config/config.json");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
+const Discord = require("discord.js");
 
 const roles = new u.Collection;
 let eRoles = new u.Collection;
 
+/**
+ * @param {Augur.GuildInteraction<"CommandSlash">} int
+ * @param {Boolean} give
+*/
 async function roleFunc(int, give = true) {
   try {
     const input = int.options.getString("role");
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     if (p.isAdmin(int.member)) {
       const member = ldsg?.members.cache.find(usr => usr.id === int.user.id);
-      const role = ldsg?.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+      const role = ldsg?.roles.cache.find(r => r.name.toLowerCase() == input?.toLowerCase());
       if (role) {
         if (give) {
           try {
@@ -29,8 +34,8 @@ async function roleFunc(int, give = true) {
           return int.reply({ content: `Successfully removed the ${role.name} role`, ephemeral: true });
         } catch (e) { return int.reply({ content: `Failed to remove the ${role.name} role`, ephemeral: true }); }
       } else { return int.reply({ content: `I couldn't find the ${input} role`, ephemeral: true }); }
-    } else if (roles.has(input.toLowerCase())) {
-      const role = ldsg.roles.cache.get(roles.get(input.toLowerCase()));
+    } else if (roles.has(input?.toLowerCase())) {
+      const role = ldsg.roles.cache.get(roles.get(input?.toLowerCase()));
       const member = await ldsg.members.fetch(int.user.id);
       if (give) {
         if (member) await member.roles.add(role);
@@ -44,35 +49,40 @@ async function roleFunc(int, give = true) {
   } catch (error) { u.errorHandler(error, int); }
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function whoHas(int) {
   try {
     const input = int.options.getString("role");
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
-    const role = ldsg.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+    const role = ldsg.roles.cache.find(r => r.name.toLowerCase() == input?.toLowerCase());
     if (role) {
-      if (role && role.members.size > 0) int.reply({ content: `Members with the ${role.name} role:\n\`\`\`\n${role.members.map(m => m.displayName).sort().join("\n")}\n\`\`\``, split: { prepend: "```\n", append: "\n```" }, ephemeral: !(int.channel.id == int.client.getTextChannel(u.sf.channels.general).id) });
+      if (role && role.members.size > 0) int.reply({ content: `Members with the ${role.name} role:\n\`\`\`\n${role.members.map(m => m.displayName).sort().join("\n")}\n\`\`\``, ephemeral: !(int.channel?.id == int.client.getTextChannel(u.sf.channels.general)?.id) });
       else int.reply("I couldn't find any members with that role. :shrug:");
     } else {
-      int.reply("You need to give me a valid role to find!")
-        .then(u.clean(int));
+      int.reply("You need to give me a valid role to find!");
+      u.clean(int);
     }
   } catch (error) { u.errorHandler(error, int); }
 }
 
+/**
+ * @param {Augur.GuildInteraction<"CommandSlash">} int
+ * @param {Boolean} give
+*/
 async function staffFunc(int, give = true) {
   try {
     const input = int.options.getString("role");
     if (!p.calc(int.member, ["team", "mod", "mgr"])) return int.reply({ content: "*Nice try!* This command is for Team+ only", ephemeral: true });
-    if (!p.calc(int.member, ["mod", "mgr"]) && input.toLowerCase() == "adulting") return int.reply({ content: "This command is for Mod+ only", ephemeral: true });
+    if (!p.calc(int.member, ["mod", "mgr"]) && input?.toLowerCase() == "adulting") return int.reply({ content: "This command is for Mod+ only", ephemeral: true });
     const recipient = int.options.getMember("user");
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
-    const role = ldsg.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+    const role = ldsg.roles.cache.find(r => r.name.toLowerCase() == input?.toLowerCase());
     if (role) {
       switch (role.name.toLowerCase()) {
       case "adulting":
         if (give) {
           try {
-            await recipient.roles.add(u.sf.roles.adulting);
+            await recipient?.roles.add(u.sf.roles.adulting);
             int.reply({ content: `Successfully gave the ${role.name} role`, ephemeral: true });
             const embed = u.embed({ author: recipient, color: 0x5865f2 });
             embed.setTitle("User Added to Adulting")
@@ -81,7 +91,7 @@ async function staffFunc(int, give = true) {
           } catch (e) { return int.reply({ content: `Failed to give the ${role.name} role`, ephemeral: true }); }
         }
         try {
-          await recipient.roles.remove(u.sf.roles.adulting);
+          await recipient?.roles.remove(u.sf.roles.adulting);
           int.reply({ content: `Successfully removed the ${role.name} role`, ephemeral: true });
           const embed = u.embed({ author: recipient, color: 0x5865f2 });
           embed.setTitle("User Removed from Adulting")
@@ -91,7 +101,7 @@ async function staffFunc(int, give = true) {
       case "ldsg lady":
         if (give) {
           try {
-            await recipient.roles.add(u.sf.roles.lady);
+            await recipient?.roles.add(u.sf.roles.lady);
             int.reply({ content: `Successfully gave the ${role.name} role`, ephemeral: true });
             const embed = u.embed({ author: recipient, color: 0x5865f2 });
             embed.setTitle("User Added to LDSG Ladies")
@@ -100,7 +110,7 @@ async function staffFunc(int, give = true) {
           } catch (e) { return int.reply({ content: `Failed to give the ${role.name} role`, ephemeral: true }); }
         }
         try {
-          await recipient.roles.remove(u.sf.roles.lady);
+          await recipient?.roles.remove(u.sf.roles.lady);
           int.reply({ content: `Successfully removed the ${role.name} role`, ephemeral: true });
           const embed = u.embed({ author: recipient, color: 0x5865f2 });
           embed.setTitle("User Removed from LDSG Ladies")
@@ -110,25 +120,26 @@ async function staffFunc(int, give = true) {
       case "bookworm":
         if (give) {
           try {
-            await recipient.roles.add(u.sf.roles.bookworm);
+            await recipient?.roles.add(u.sf.roles.bookworm);
             return int.reply({ content: `Successfully gave the ${role.name} role`, ephemeral: true });
           } catch (e) { return int.reply({ content: `Failed to give the ${role.name} role`, ephemeral: true }); }
         }
         try {
-          await recipient.roles.remove(u.sf.roles.bookworm);
+          await recipient?.roles.remove(u.sf.roles.bookworm);
           return int.reply({ content: `Successfully removed the ${role.name} role`, ephemeral: true });
         } catch (e) { return int.reply({ content: `Failed to remove the ${role.name} role`, ephemeral: true }); }
       }
     } else {
-      int.reply({ content:"You need to give me a valid role!", ephermeral: true });
+      int.reply({ content:"You need to give me a valid role!", ephemeral: true });
     }
   } catch (error) { u.errorHandler(error, int); }
 }
-
+/** @param {Discord.GuildMember} member */
 function getInventory(member) {
   return eRoles.filter(r => member.roles.cache.find(ro => ro.id == r.baseRole || r.inherited?.includes(ro.id)));
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function inventory(int) {
   try {
     const member = int.member;
@@ -137,10 +148,11 @@ async function inventory(int) {
       .setTitle("Equippable Color Inventory")
       .setDescription(`Equip a color role with \`/role equip Role Name\`\ne.g. \`/role equip novice\`\n\n${inv.join("\n")}`);
     if (inv.length == 0) int.reply({ content: "You don't have any colors in your inventory!", ephemeral: true });
-    else int.reply({ embeds: [embed], ephemeral: !(int.channel.id == int.client.getTextChannel(u.sf.channels.botspam).id) });
+    else int.reply({ embeds: [embed], ephemeral: !(int.channel?.id == int.client.getTextChannel(u.sf.channels.botspam)?.id) });
   } catch (e) { u.errorHandler(e, int); }
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function equip(int) {
   try {
     const allColors = eRoles.filter(r => r.id).map(r => r.id);
