@@ -43,7 +43,6 @@ async function roleFunc(int, give = true) {
 async function whoHas(int) {
   try {
     const role = int.options.getRole("role", true);
-    // const role = int.guild.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
     if (role.members.size > 0) int.reply({ content: `Members with the ${role} role: ${role.members.size}\n\`\`\`\n${role.members.map(m => m.displayName).sort().join("\n")}\n\`\`\``, ephemeral: int.channel?.id == u.sf.channels.general });
     else int.reply({ content: "I couldn't find any members with that role. :shrug:", ephemeral: true });
   } catch (error) { u.errorHandler(error, int); }
