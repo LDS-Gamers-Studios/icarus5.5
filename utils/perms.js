@@ -2,11 +2,10 @@
 const config = require("../config/config.json"),
   Discord = require("discord.js"),
   snowflakes = require("../config/snowflakes.json"),
-  tsf = require("../config/snowflakes-testing.json"),
-  csf = require("../config/snowflakes-testing-commands.json");
+  tsf = require("../config/snowflakes-testing.json");
 
 // circular dependancy, had to duplicate code :(
-const sf = config.devMode ? Object.assign(tsf, csf) : snowflakes;
+const sf = config.devMode ? tsf : snowflakes;
 
 /** @typedef {(m: Discord.GuildMember) => boolean} perm */
 const permFuncs = {
@@ -20,6 +19,8 @@ const permFuncs = {
   mgr: m => m.roles.cache.has(sf.roles.manager),
   /** @type {perm} */
   mod: m => m.roles.cache.has(sf.roles.mod),
+  /** @type {perm} */
+  mcMod: m => m.roles.cache.has(sf.roles.minecraftmod),
   /** @type {perm} */
   botTeam: m => m.roles.cache.has(sf.roles.botTeam),
   /** @type {perm} */

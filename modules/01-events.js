@@ -1,6 +1,8 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
+  Discord = require('discord.js'),
   u = require("../utils/utils"),
+  c = require("../utils/modCommon"),
   { GoogleSpreadsheet } = require("google-spreadsheet"),
   config = require('../config/config.json');
 
@@ -28,6 +30,46 @@ const dangerRoles = [
   u.sf.roles.destinyclansmanager, u.sf.roles.volunteer
 ];
 
+/**
+ * Log user updates
+ * @param {Discord.GuildMember | Discord.PartialGuildMember | Discord.User | Discord.PartialUser} oldUser
+ * @param {Discord.GuildMember | Discord.User} newUser
+ */
+async function update(oldUser, newUser) {
+  try {
+    const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
+    const newMember = ldsg?.members.cache.get(newUser.id);
+    if (oldUser.partial) oldUser = await oldUser.fetch();
+    const user = await u.db.user.fetchUser(newUser.id).catch(u.noop);
+    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
+      const embed = u.embed({ author: oldUser })
+        .setTitle("User Update")
+        .setDescription(newUser.toString())
+        .setFooter({ text: `${user?.posts ?? 0} active minutes ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
+
+      const usernames = [
+        oldUser instanceof Discord.User ? oldUser.username : oldUser.displayName,
+        newUser instanceof Discord.User ? newUser.username : newUser.displayName
+      ];
+      if (oldUser.displayName !== newUser.displayName || usernames[0] !== usernames[1]) {
+        /** @param {string} a @param {string} b */
+        const same = (a, b) => u.escapeText(a == b ? a : `${a} (${b})`);
+
+        embed.addFields(
+          { name: "Old Username", value: same(usernames[0], oldUser.displayName) },
+          { name: "New Username", value: same(usernames[1], newUser.displayName) }
+        );
+      }
+      if (oldUser.avatar !== newUser.avatar) {
+        embed.addFields({ name: "Avatar Update", value: "See Below" }).setImage(newUser.displayAvatarURL({ extension: "png" }));
+      } else {
+        embed.setThumbnail(newUser.displayAvatarURL());
+      }
+      ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed] });
+    }
+  } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.displayName)} (${newUser.id})`); }
+}
+
 let emojis = [];
 const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
@@ -44,7 +86,8 @@ const Module = new Augur.Module()
         u.errorLog.send({ embeds: [
           u.embed({
             title: "Update New Channel Permissions",
-            description: `Insufficient permissions to update channel ${channel.name}. Muted permissions need to be applied manually. Default permissions for Muted and Duct Tape are:\n${JSON.stringify(mutedPerms, null, 2).replace(/[{}"]/g, "")}`
+            description: `Insufficient permissions to update channel ${channel.name}. Muted permissions need to be applied manually. Default denied permissions for Muted and Duct Tape are:\n${Object.keys(mutedPerms).join('\n')}`,
+            color: c.colors.info
           })
         ] });
       }
@@ -62,7 +105,7 @@ const Module = new Augur.Module()
         u.embed({
           author: user,
           title: `${user.username} has been banned`,
-          color: 0x0000ff,
+          color: c.colors.info,
           description: user.toString()
         })
       ]
@@ -79,11 +122,13 @@ const Module = new Augur.Module()
       const welcomeChannel = guild.client.getTextChannel(u.sf.channels.welcome);
       const modLogs = guild.client.getTextChannel(u.sf.channels.modlogs);
 
-      const embed = u.embed()
-      .setColor(0x7289da)
-      .setDescription("Account Created:\n" + member.user.createdAt.toLocaleDateString())
-      .setTimestamp()
-      .setThumbnail(member.user.displayAvatarURL({ extension: "png" }));
+      const embed = u.embed({ author: member })
+        .setColor(c.colors.info)
+        .addFields(
+          { name: "User", value: member.toString(), inline: true },
+          { name: "Account Created", value: member.user.createdAt.toLocaleDateString(), inline: true }
+        )
+        .setThumbnail(member.user.displayAvatarURL({ extension: "png" }));
 
       let welcomeString;
 
@@ -101,7 +146,6 @@ const Module = new Augur.Module()
         if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
 
         embed.setTitle(member.displayName + " has rejoined the server.")
-          .setDescription(member.toString())
           .addFields({ name: "Roles", value: roleString });
         welcomeString = `Welcome back, ${member}! Glad to see you again.`;
 
@@ -140,7 +184,7 @@ const Module = new Augur.Module()
       if (!member.roles.cache.has(u.sf.roles.muted) && !member.user.bot) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
       if (guild.memberCount == count) {
         await general?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:`);
-        await modLogs?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: ${guild.members.cache.get(u.sf.other.ghost)} ${guild.members.cache.get(config.ownerId)}*`);
+        await modLogs?.send({ content: `:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: ${guild.members.cache.get(u.sf.other.ghost)} ${guild.members.cache.get(config.ownerId)}*`, allowedMentions: { parse: ['roles', 'users'] } });
       }
     }
   } catch (e) { u.errorHandler(e, "New Member Add"); }
@@ -155,10 +199,10 @@ const Module = new Augur.Module()
       const embed = u.embed({
         author: member,
         title: `${member.displayName} has left the server`,
-        description: member.toString(),
-        color: 0x5865f2,
+        color: c.colors.info,
       })
       .addFields(
+        { name: "User", value: member.toString() },
         { name: "Joined", value: u.moment(member.joinedAt).fromNow(), inline: true },
         { name: "Activity", value: (user?.posts || 0) + " Active Minutes", inline: true }
       );
@@ -166,53 +210,8 @@ const Module = new Augur.Module()
     }
   } catch (error) { u.errorHandler(error, `Member Leave: ${u.escapeText(member.displayName)} (${member.id})`); }
 })
-.addEvent("userUpdate", async (oldUser, newUser) => {
-  try {
-    const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
-    const newMember = ldsg?.members.cache.get(newUser.id);
-    if (oldUser.partial) oldUser = await oldUser.fetch();
-    const user = await u.db.user.fetchUser(newUser.id).catch(u.noop);
-    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
-      const embed = u.embed({ author: oldUser })
-        .setTitle("User Update")
-        .setDescription(newUser.toString())
-        .setFooter({ text: `${user?.posts ?? 0} active minutes ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
-      if (oldUser.displayName !== newUser.displayName || oldUser.username !== newUser.username) {
-        embed.addFields({ name: "**Username Update**", value: `**Old:** ${u.escapeText(`${oldUser?.username} (displaying as ${oldUser?.displayName})`)}\n**New:** ${u.escapeText(`${newUser.username} (displaying as ${newUser.displayName})`)}` });
-      }
-      if (oldUser.avatar !== newUser.avatar) {
-        embed.addFields({ name: "**Avatar Update**", value: "See Below" }).setImage(newUser.displayAvatarURL({ extension: "png" }));
-      } else {
-        embed.setThumbnail(newUser.displayAvatarURL());
-      }
-      ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser}: ${newUser.id}`, embeds: [embed] });
-    }
-  } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.username)} (${newUser.id})`); }
-})
-.addEvent("guildMemberUpdate", async (oldMember, newMember) => {
-  try {
-    const ldsg = newMember.client.guilds.cache.get(u.sf.ldsg);
-    if (oldMember.guild.id != u.sf.ldsg) return;
-    if (oldMember.partial) oldMember = await oldMember.fetch();
-    if (newMember.partial) newMember = await newMember.fetch();
-    const user = await u.db.user.fetchUser(newMember.id, true).catch(u.noop);
-    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
-      const embed = u.embed({ author: oldMember })
-        .setTitle("User Update")
-        .setDescription(newMember.toString())
-        .setFooter({ text: `${user?.posts ?? 0} Posts in ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
-      if (oldMember.nickname !== newMember.nickname) {
-        embed.addFields({ name: "**Nickname Update**", value: `**Old:** ${u.escapeText(oldMember?.nickname ?? "")}\n**New:** ${u.escapeText(newMember.nickname ?? "")}` });
-      }
-      if (oldMember.avatar !== newMember.avatar) {
-        embed.addFields({ name: "**Server Avatar Update**", value: "See Below" }).setImage(newMember.displayAvatarURL({ extension: "png" }));
-      } else {
-        embed.setThumbnail(newMember.displayAvatarURL());
-      }
-      if ((embed.data.fields?.length || 0) > 0) ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newMember}: ${newMember.id}`, embeds: [embed] });
-    }
-  } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newMember?.user.username)} (${newMember.id})`); }
-})
+.addEvent("guildMemberUpdate", update)
+.addEvent("userUpdate", update)
 .setInit(async () => {
   if (!config.google.sheets.config) return console.log("No Sheets ID");
   const doc = new GoogleSpreadsheet(config.google.sheets.config);

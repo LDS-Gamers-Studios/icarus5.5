@@ -1,6 +1,6 @@
 // @ts-check
 const Discord = require("discord.js"),
-  { moment } = require("../../utils/utils");
+  moment = require("moment");
 
 const User = require("../models/User.model");
 
@@ -108,7 +108,6 @@ const models = {
   },
   /**
      * Get a user's rank
-     * @function getRank
      * @param {string} [member] The member whose ranking you want to view.
      * @param {Discord.Collection|Array} [members] Collection or Array of snowflakes to include in the leaderboard
      * @returns {Promise<(UserRecord & {rank: {season: number, lifetime: number}}) | null>}
@@ -141,7 +140,6 @@ const models = {
   },
   /**
    * Create a new user record
-   * @function newUser
    * @param {string} discordId The guild member record to create
    * @returns {Promise<UserRecord>}
    */
@@ -172,7 +170,6 @@ const models = {
   },
   /**
    * Update a member's roles in the database
-   * @function updateRoles
    * @param {Discord.GuildMember} [member] The member to update
    * @param {string[]} [roles]
    * @param {string} [backupId]
@@ -193,7 +190,7 @@ const models = {
   updateTenure: function(member) {
     return User.findOneAndUpdate(
       { discordId: member.id },
-      { $inc: { priorTenure: (moment().diff(moment(member.joinedAt), "days") || 0) } },
+      { $inc: { priorTenure: (moment().utcOffset(-7).diff(moment(member.joinedAt).utcOffset(-7), "days") || 0) } },
       { new: true, upsert: true }
     ).exec().then(m => m.toObject());
   },

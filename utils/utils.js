@@ -3,7 +3,7 @@ const Discord = require("discord.js"),
   { escapeMarkdown, ComponentType } = require('discord.js'),
   sf = require("../config/snowflakes.json"),
   tsf = require("../config/snowflakes-testing.json"),
-  csf = require("../config/snowflakes-testing-commands.json"),
+  csf = require("../config/snowflakes-commands.json"),
   db = require("../database/dbControllers.js"),
   p = require('./perms.js'),
   moment = require('moment'),
@@ -326,7 +326,7 @@ const utils = {
   /**
    * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
    */
-  sf: config.devMode ? Object.assign(tsf, csf) : sf,
+  sf: Object.assign(config.devMode ? tsf : sf, csf),
 
   /**
    * Returns a promise that will fulfill after the given amount of time.

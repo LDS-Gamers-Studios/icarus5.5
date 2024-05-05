@@ -156,12 +156,12 @@ const Module = new Augur.Module()
     if (["gotobed", "reload"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
     if (["pull", "pulse"].includes(subcommand) && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
-    case "gotobed": return goToBed(int);
-    case "ping": return ping(int, forThePing);
-    case "pull": return pull(int);
-    case "pulse": return pulse(int);
-    case "reload": return reload(int);
-    case "getid": return getId(int);
+      case "gotobed": return goToBed(int);
+      case "ping": return ping(int, forThePing);
+      case "pull": return pull(int);
+      case "pulse": return pulse(int);
+      case "reload": return reload(int);
+      case "getid": return getId(int);
     }
   },
   autocomplete: (int) => {
@@ -193,7 +193,7 @@ const Module = new Augur.Module()
     const testingDeploy = [
       ["../config/config.json", "../config/config-example.json"],
       ["../config/snowflakes-testing.json", "../config/snowflakes.json"],
-      ["../config/snowflakes-testing-commands.json", "../config/snowflakes-testing-commands-example.json"],
+      ["../config/snowflakes-commands.json", "../config/snowflakes-commands-example.json"],
       ["../data/banned.json", "../data/banned-example.json"]
     ];
     for (const filename of testingDeploy) {

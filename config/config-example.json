@@ -5,15 +5,15 @@
   "ownerId": "put your id here",
   "api": {
     "snipcart": "",
-    "steam": "",
-    "challonge": ""
+    "steam": "https://steamcommunity.com/dev/apikey",
+    "challonge": "https://api.challonge.com/v1"
   },
   "applicationId": "You can find it here: https://discord.com/developers/applications",
   "color": "0xf89a22",
   "xpScale": 200,
   "db": {
     "model": "database/dbControllers.js",
-    "note": "(Delete this property) Connection string format: (mongodb(+srv?) or localhost:27017)://<username>:<password>@<connection>",
+    "note": "(Don't change this value, it's a note.) Connection string format: (mongodb(+srv?) or localhost:27017)://<username>:<password>@<connection>",
     "db": "localhost:27017/icarus or mongodb(+srv?)://<connection>/icarus",
     "settings": {
       "useNewUrlParser": true,
