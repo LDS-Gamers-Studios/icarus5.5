@@ -15,6 +15,12 @@ const permFuncs = {
   /** @type {perm} */
   botAdmin: m => config.adminId.includes(m.id) || permFuncs.botOwner(m),
   /** @type {perm} */
+  destinyAdmin: m => m.roles.cache.has(sf.roles.destinyclansadmin),
+  /** @type {perm} */
+  destinyManager: m => m.roles.cache.has(sf.roles.destinyclansmanager),
+  /** @type {perm} */
+  destinyValiantAdmin: m => m.roles.cache.has(sf.roles.destinyvaliantadmin),
+  /** @type {perm} */
   mgmt: m => m.roles.cache.has(sf.roles.management),
   /** @type {perm} */
   mgr: m => m.roles.cache.has(sf.roles.manager),
@@ -52,6 +58,8 @@ const perms = {
   /** @typedef {(m: Discord.GuildMember | null | undefined) => boolean | null | undefined} mem*/
   /** @type {mem} */
   isAdmin: (m) => m && permFuncs.botAdmin(m),
+  /** @type {mem} */
+  isDestinyAdmin: (m) => m && permFuncs.destinyAdmin(m),
   /** @type {mem} */
   isOwner: (m) => m && permFuncs.botOwner(m),
   /** @type {mem} */
