@@ -61,6 +61,10 @@ const perms = {
   /** @type {mem} */
   isDestinyAdmin: (m) => m && permFuncs.destinyAdmin(m),
   /** @type {mem} */
+  isDestinyManager: (m) => m && permFuncs.destinyManager(m),
+  /** @type {mem} */
+  isDestinyValiantAdmin: (m) => m && permFuncs.destinyValiantAdmin(m),
+  /** @type {mem} */
   isOwner: (m) => m && permFuncs.botOwner(m),
   /** @type {mem} */
   isMod: (m) => m && permFuncs.mod(m),
