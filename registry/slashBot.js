@@ -15,7 +15,7 @@ const pull = new u.sub()
 
 const pulse = new u.sub()
   .setName("pulse")
-  .setDescription("[OWNER] Get current information about the bot's current health and uptime.");
+  .setDescription("Get current information about the bot's current health and uptime.");
 
 const reload = new u.sub()
   .setName("reload")

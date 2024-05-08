@@ -67,7 +67,6 @@ async function getReason(int, description) {
     edit(int, noTime);
     return;
   });
-  console.log('done waiting');
   return modalSubmit;
 }
 
@@ -82,11 +81,10 @@ async function avatar(int, target) {
 }
 /** @type {both} */
 async function flagReason(int, msg, usr) {
-  const id = u.customId();
   const reasons = u.MessageActionRow()
     .addComponents(
       new u.SelectMenu.String()
-        .setCustomId(id)
+        .setCustomId("flagReason")
         .setMaxValues(3)
         .setMinValues(1)
         .setPlaceholder("Select why you're flagging it")
@@ -99,11 +97,9 @@ async function flagReason(int, msg, usr) {
             .setValue(f.value)
         ))
     );
-  /** @param {Discord.StringSelectMenuInteraction} i*/
-  const filter = (i) => i.customId == id && i.user.id == int.user.id;
 
   const responseMsg = await edit(int, { components: [reasons] });
-  const response = await responseMsg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true, filter }).catch(() => {
+  const response = await responseMsg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true }).catch(() => {
     edit(int, noTime);
     return;
   });
@@ -118,7 +114,7 @@ async function flag(int, msg, usr) {
   if (!usr) return usrErr(int);
   await int.deferUpdate();
   const reason = int.values.map(v => menuFlagOptions.find(o => o.value == v)?.label).join(', ');
-  if (reason.includes("Mod Abuse") && (!usr.roles.cache.has(u.sf.roles.mod) && !usr.roles.cache.has(u.sf.roles.management))) return edit(int, "Only Moderators can be flagged for mod abuse.");
+  if (reason.includes("Mod Abuse") && !u.perms.calc(usr, ["mod", "mcMod", "mgr"])) return edit(int, "Only Moderators can be flagged for mod abuse.");
   if (msg) {
     // Don't let them know it was already flagged, but also don't create a duplicate
     const existing = await u.db.infraction.getByMsg(msg.id);
@@ -131,8 +127,8 @@ async function flag(int, msg, usr) {
 /** @type {message} */
 async function pin(int, msg) {
   if (!msg) return msgErr(int);
-  if (!msg.pinnable) return edit(int, "I can't pin that message! I might not have permissions.");
   if (msg.pinned) return edit(int, "That message is already pinned!");
+  if (!msg.pinnable) return edit(int, "I can't pin that message! I might not have permissions.");
   if (msg.channel.permissionsFor(int.member).has("ManageMessages")) {
     // pin the message if they're able to do that
     const messages = await msg.channel.messages.fetchPinned().catch(u.noop);
@@ -145,8 +141,7 @@ async function pin(int, msg) {
       .setDescription(msg.cleanContent)
       .addFields(
         { name: "Pin Requested By", value: int.member.toString() },
-        { name: "Channel", value: msg.channel.toString() },
-        { name: "Jump to Post", value: `[Original Message](${msg.url})` }
+        { name: "Post", value: msg.url }
       );
     if (msg.attachments.size > 0) embed.setImage(msg.attachments.first()?.url ?? null);
     int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
@@ -342,9 +337,13 @@ async function spamCleanup(int, msg) {
   int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
     u.embed({ author: int.member })
       .setTitle("Channel Purge")
-      .setDescription(`**${int.member}** cleaned up ${cleaned.deleted} spam messages in ${cleaned.channels.join(", ")}`)
-      .addFields({ name: "Reason", value: "Spam" })
-      .setColor(0x00ff00)
+      .addFields(
+        { name: "Mod", value: int.member.toString() },
+        { name: "Channel(s)", value: cleaned.channels.join(', ') },
+        { name: "Message Count", value: cleaned.deleted.toString() },
+        { name: "Reason", value: "Spam" }
+      )
+      .setColor(c.colors.info)
   ] });
 
   edit(int, `I deleted ${cleaned.deleted} messages in the following channel(s):\n${cleaned.channels.join("\n")}`);
@@ -369,42 +368,41 @@ async function handleModMenu(submitted, oldInt) {
   console.log(submitted.values[0]);
   // These commands require additional input and can't be defered
   switch (submitted.values[0]) {
-  case "noteUser": return noteUser(submitted, user);
-  case "renameUser": return renameUser(submitted, user);
-  case "warnUser": return warnUser(submitted, user);
-  case "muteUser": return muteUser(submitted, user, true);
-  case "timeoutUser": return timeoutUser(submitted, user);
-  case "kickUser": return kickUser(submitted, user);
-  case "banUser": return banUser(submitted, user);
-  case "warnMessage": return warnMessage(submitted, message);
+    case "noteUser": return noteUser(submitted, user);
+    case "renameUser": return renameUser(submitted, user);
+    case "warnUser": return warnUser(submitted, user);
+    case "muteUser": return muteUser(submitted, user, true);
+    case "timeoutUser": return timeoutUser(submitted, user);
+    case "kickUser": return kickUser(submitted, user);
+    case "banUser": return banUser(submitted, user);
+    case "warnMessage": return warnMessage(submitted, message);
   }
   // These ones don't require additional inputs,
   await submitted.deferUpdate();
   switch (submitted.values[0]) {
-  case "purgeChannel": return purgeChannel(submitted, message);
-  case "spamCleanup": return spamCleanup(submitted, message);
-  case "announceMessage": return announceMessage(submitted, message);
-  case "userAvatar": return avatar(submitted, user);
-  case "flag": return flagReason(submitted, message, user);
-  case "pinMessage": return pin(submitted, message);
-  case "userSummary": return userSummary(submitted, user);
-  case "trustUser": return trustUser(submitted, user, true);
-  case "untrustUser": return trustUser(submitted, user, false);
-  case "trustPlusUser": return trustPlusUser(submitted, user, true);
-  case "untrustPlusUser": return trustPlusUser(submitted, user, false);
-  case "watchUser": return watchUser(submitted, user, true);
-  case "unwatchUser": return watchUser(submitted, user, false);
-  case "unmuteUser": return muteUser(submitted, user, false);
-  default: return edit(submitted, "I'm not sure what command you used, but it's not any of the ones I know...");
+    case "purgeChannel": return purgeChannel(submitted, message);
+    case "spamCleanup": return spamCleanup(submitted, message);
+    case "announceMessage": return announceMessage(submitted, message);
+    case "userAvatar": return avatar(submitted, user);
+    case "flag": return flagReason(submitted, message, user);
+    case "pinMessage": return pin(submitted, message);
+    case "userSummary": return userSummary(submitted, user);
+    case "trustUser": return trustUser(submitted, user, true);
+    case "untrustUser": return trustUser(submitted, user, false);
+    case "trustPlusUser": return trustPlusUser(submitted, user, true);
+    case "untrustPlusUser": return trustPlusUser(submitted, user, false);
+    case "watchUser": return watchUser(submitted, user, true);
+    case "unwatchUser": return watchUser(submitted, user, false);
+    case "unmuteUser": return muteUser(submitted, user, false);
+    default: return edit(submitted, "I'm not sure what command you used, but it's not any of the ones I know...");
   }
 }
 
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
-function permComponents(int, filterType = true) {
+function permComponents(int) {
   let components = menuOptions.everyone;
-  if (u.perms.calc(int.member, ['mod'])) components = components.concat(menuOptions.mod);
+  if (u.perms.calc(int.member, ['mod', 'mgr'])) components = components.concat(menuOptions.mod);
   if (u.perms.calc(int.member, ['mgmt'])) components = components.concat(menuOptions.mgmt);
-  if (!filterType) return components;
   return components.filter(cmp => (
     cmp.context == 'msg' && int.isMessageContextMenuCommand() ||
     cmp.context == 'user' && int.isUserContextMenuCommand() ||

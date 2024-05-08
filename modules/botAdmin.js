@@ -148,13 +148,13 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashBot,
   onlyGuild: true,
   hidden: true,
-  permissions: (int) => u.perms.calc(int.member, ["botTeam"]),
+  permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin"]),
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam"])) return; // don't even bother replying
     const subcommand = int.options.getSubcommand(true);
     const forThePing = await int.deferReply({ ephemeral: true });
     if (["gotobed", "reload"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
-    if (["pull", "pulse"].includes(subcommand) && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
+    if (subcommand == "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
       case "gotobed": return goToBed(int);
       case "ping": return ping(int, forThePing);
@@ -173,6 +173,7 @@ const Module = new Augur.Module()
   }
 })
 .addCommand({ name: "mcweb",
+  hidden: true,
   permissions: () => config.devMode,
   process: (msg, suffix) => {
     if (!config.webhooks.mcTesting) return msg.reply("Make sure to set a webhook for mcTestingWebhook! You need it to run this command.");
@@ -199,7 +200,6 @@ const Module = new Augur.Module()
     for (const filename of testingDeploy) {
       const prod = require(filename[1]);
       const repo = require(filename[0]);
-      // console.log(`Checking ${filename}`);
       const [m1, m2] = fieldMismatches(prod, repo);
       if (m1.length > 0 && !config.silentMode) {
         u.errorLog.send({ embeds: [

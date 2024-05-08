@@ -76,11 +76,11 @@ async function handleMessage(msg) {
 /** @param {Discord.ButtonInteraction} inter */
 async function handleButton(inter) {
   try {
-    const message = await inter.message.fetchReference();
-    const translated = translate(message.content);
+    const content = inter.message.content;
+    const translated = translate(content);
     return inter.reply({ content: translated, ephemeral: true });
   } catch (e) {
-    return inter.reply({ content: "It appears the message was deleted.", ephemeral: true });
+    return inter.reply({ content: "I couldn't find that message! Sorry.", ephemeral: true });
   }
 }
 

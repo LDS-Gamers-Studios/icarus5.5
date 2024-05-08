@@ -30,22 +30,14 @@ if (!config.devMode) guildCommandFiles.push("slashBotHidden-.js"); // secret com
  * END "CONFIG" BLOCK *
  **********************/
 
+/** @param {number} typeId */
 function getCommandType(typeId) {
-  let commandType;
   switch (typeId) {
-  case 1:
-    commandType = "Slash";
-    break;
-  case 2:
-    commandType = "User";
-    break;
-  case 3:
-    commandType = "Message";
-    break;
-  default:
-    commandType = typeId;
+    case 1: return "Slash";
+    case 2: return "User";
+    case 3: return "Message";
+    default: return typeId;
   }
-  return commandType;
 }
 
 /** @param {axios.AxiosError} error */

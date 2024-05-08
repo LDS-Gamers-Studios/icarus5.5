@@ -85,6 +85,7 @@ const modCommon = {
   blocked,
   compareRoles,
   nameGen,
+  logEmbed,
   modActions,
   revert: retract,
   colors: embedColors,
@@ -104,7 +105,7 @@ const modCommon = {
       const confirm = await u.confirmInteraction(interaction, `Ban ${target} for:\n${reason}?`, `Confirm Ban on ${u.escapeText(target.displayName)}`);
       if (!confirm) {
         return {
-          embeds: [u.embed({ author: interaction.member }).setColor(0x0000ff).setDescription(`Ban ${confirm === false ? "cancelled" : "timed out"}`)],
+          embeds: [u.embed({ author: interaction.member }).setColor(embedColors.handled).setDescription(`Ban ${confirm === false ? "cancelled" : "timed out"}`)],
           components: []
         };
       } else if (confirm) {
@@ -300,7 +301,7 @@ const modCommon = {
     return u.embed({ author: member })
       .setTitle("Infraction Summary")
       .setDescription(text)
-      .setColor(0x00ff00)
+      .setColor(embedColors.info)
       .addFields(
         { name: "ID", value: member.id, inline: true },
         { name: "Activity", value: `Active Minutes: ${userDoc?.posts ?? "Unknown"}`, inline: true },

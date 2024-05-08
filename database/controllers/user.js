@@ -50,7 +50,7 @@ const models = {
       })
     );
     const userDocs = await User.find(
-      { discordId: { $in: users } }, null, { upsert: true }
+      { discordId: { $in: users } }, null, { upsert: false }
     ).exec();
     return { users: userDocs.map(d => d.toObject()), xp };
   },

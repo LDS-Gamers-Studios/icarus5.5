@@ -48,13 +48,15 @@ async function bracket(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function champs(int) {
-  if (!config.google.sheets.config) return console.log("No Sheets ID");
   await int.deferReply({ ephemeral: true });
-  const tName = int.options.getString('tourney-name');
+  if (!config.google.sheets.config) {
+    int.editReply("Looks like the bot isn't set up right to handle this. Please contact my developers.");
+    return console.log("No Sheets ID");
+  }
+  const tName = int.options.getString('tournament');
   const user = (str) => int.options.getMember(str);
-  const users = [user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(Boolean);
-  console.log(users);
-  const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).toDateString();
+  const users = [user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr != null);
+  const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
   const doc = new GoogleSpreadsheet(config.google.sheets.config);
   await doc.useServiceAccountAuth(config.google.creds);
   await doc.loadInfo();
@@ -65,7 +67,7 @@ async function champs(int) {
   }
   const s = users.length > 1 ? 's' : '';
   Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send(`## Congratulations to our new tournament champion${s}!\n${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
-  int.editReply("Champions registered!");
+  int.editReply("Champions recorded and announced!");
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -73,10 +75,11 @@ async function participant(int) {
   const role = int.guild.roles.cache.get(u.sf.roles.tournamentparticipant);
   await int.deferReply({ ephemeral: true });
   if (!role) return u.errorHandler(new Error("No Tourney Champion Role"), int);
-  const clean = int.options.getBoolean('remove-all');
+  const reset = int.options.getBoolean('reset');
   const remove = int.options.getBoolean('remove');
   const user = int.options.getMember('user');
-  if (clean) {
+  if (!user) return int.editReply("I couldn't find that user! They might have left the server.");
+  if (reset) {
     let succeeded = 0;
     let i = 0;
     const members = role.members;
@@ -90,16 +93,16 @@ async function participant(int) {
     }
     return int.editReply(`Removed ${succeeded}/${members.size} people from the ${role} role`);
   } else if (remove) {
-    if (user?.roles.cache.has(role.id)) {
+    if (user.roles.cache.has(role.id)) {
       let content = `I removed the ${role} role from ${user}`;
       await user.roles.remove(role.id).catch(() => content = `I couldn't remove the ${role} role from ${user}`);
       return int.editReply(content);
     } else {
       return int.editReply(`${user} doesn't have the ${role} role`);
     }
-  } else if (!user?.roles.cache.has(role.id)) {
+  } else if (!user.roles.cache.has(role.id)) {
     let content = `I added the ${role} role to ${user}`;
-    await user?.roles.add(role.id).catch(() => content = `I couldn't add the ${role} role to ${user}`);
+    await user.roles.add(role.id).catch(() => content = `I couldn't add the ${role} role to ${user}`);
     return int.editReply({ content });
   } else {
     return int.editReply(`${user} already has the ${role} role`);
@@ -111,12 +114,12 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashTournament,
   onlyGuild: true,
   // Only /tournament list is publicly available
-  permissions: (int) => int.options.getSubcommand() == 'list' ? true : u.perms.calc(int.member, ["team"]),
+  permissions: (int) => int.options.getSubcommand() == 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
   process: async (int) => {
     switch (int.options.getSubcommand()) {
-    case "list": return bracket(int);
-    case "champion": return champs(int);
-    case "participant": return participant(int);
+      case "list": return bracket(int);
+      case "champion": return champs(int);
+      case "participant": return participant(int);
     }
   }
 });

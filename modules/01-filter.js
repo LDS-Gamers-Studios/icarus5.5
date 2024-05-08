@@ -358,7 +358,7 @@ async function processCardAction(interaction) {
       infraction.value = -1;
       infraction.handler = mod.id;
       await u.db.infraction.update(infraction);
-      embed.setColor(0x00FF00)
+      embed.setColor(c.colors.success)
         .addFields({ name: "Resolved", value: `${mod.toString()} cleared the flag.` });
       embed.data.fields = embed.data.fields?.filter(f => !f.name.startsWith("Reverted"));
       await interaction.editReply({ embeds: [embed], components: [c.revert] });
@@ -368,7 +368,7 @@ async function processCardAction(interaction) {
       await interaction.deferUpdate();
       const verbal = embed.data.fields?.find(f => f.value.includes("verbal"));
       const revertedMsg = "The offending message can't be restored" + (infraction.value > 9 ? " and the Muted role may have to be removed and the user unwatched." : ".");
-      embed.setColor(0xFF0000)
+      embed.setColor(c.colors.action)
       .setFields(embed.data.fields?.filter(f => !f.name.startsWith("Resolved") && !f.name.startsWith("Reverted")) ?? [])
       .addFields({ name: "Reverted", value: `${interaction.member} reverted the previous decision. ${infraction.value > 0 ? revertedMsg : ""}` });
 
@@ -385,14 +385,14 @@ async function processCardAction(interaction) {
       await u.db.infraction.update(infraction);
     } else {
       await interaction.deferUpdate();
-      embed.setColor(0x0000FF);
+      embed.setColor(c.colors.handled);
       infraction.handler = mod.id;
       const member = interaction.guild.members.cache.get(infraction.discordId);
 
       switch (interaction.customId) {
         case "modCardVerbal":
           infraction.value = 0;
-          embed.setColor(0x00FFFF).addFields({ name: "Resolved", value: `${mod.toString()} issued a verbal warning.` });
+          embed.addFields({ name: "Resolved", value: `${mod.toString()} issued a verbal warning.` });
           break;
         case "modCardMinor":
           infraction.value = 1;

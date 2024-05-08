@@ -66,7 +66,7 @@ function getHouseInfo(member) {
 async function slashBankGive(interaction) {
   try {
     const giver = interaction.member;
-    const recipient = interaction.options.getMember("recipient");
+    const recipient = interaction.options.getMember("user");
     const currency = interaction.options.getString("currency", true);
     const { coin, MAX } = (currency == "gb" ? { coin: gb, MAX: limit.gb } : { coin: ember, MAX: limit.ember });
 
@@ -219,7 +219,7 @@ async function slashBankGameRedeem(interaction) {
     if (!games) throw new Error("Get Game List Error");
     const game = games.find(g => (g.Code == interaction.options.getString("code", true).toUpperCase()));
     if (!game) {
-      return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}>to see available games.`);
+      return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);
     }
 
     const systems = {
@@ -334,7 +334,7 @@ async function slashBankDiscount(interaction) {
 async function slashBankAward(interaction) {
   try {
     const giver = interaction.member;
-    const recipient = interaction.options.getMember("recipient");
+    const recipient = interaction.options.getMember("user");
     const reason = interaction.options.getString("reason") || "Astounding feats of courage, wisdom, and heart";
     let value = interaction.options.getInteger("amount", true);
     if (!recipient) return interaction.reply({ content: "You can't just award *nobody*!", ephemeral: true });

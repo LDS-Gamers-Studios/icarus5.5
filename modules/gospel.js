@@ -83,7 +83,7 @@ function getScriptureMastery(book, chapter) {
 async function slashGospelVerse(interaction, parsed) {
   let book, chapter, verses;
   if (parsed) {
-    if (interaction instanceof Discord.ChatInputCommandInteraction) return;
+    if (interaction instanceof Discord.ChatInputCommandInteraction) return; // Interaction and parsed are mutually exclusive
     ({ book, chapter, verses } = parsed);
   } else {
     if (interaction instanceof Discord.Message) return;
@@ -233,28 +233,28 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashGospel,
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
-    case "verse": return slashGospelVerse(interaction);
-    case "comefollowme": return slashGospelComeFollowMe(interaction);
-    case "news": return slashGospelNews(interaction);
+      case "comefollowme": return slashGospelComeFollowMe(interaction);
+      case "news": return slashGospelNews(interaction);
+      case "verse": return slashGospelVerse(interaction);
     }
   },
   autocomplete: (int) => {
     const option = int.options.getFocused(true);
     // Supply book names
     if (option.name == 'book') {
-      const values = abbreviationTable
-        .filter((b, k) => option.value ? k.toLowerCase().startsWith(option.value.toLowerCase()) : true)
+      const values = u.autocompleteSort(option.value, abbreviationTable)
         .map(b => b.bookName).slice(0, 24);
+
       return int.respond(u.unique(values).map(v => ({ name: v, value: v })));
     }
   }
 })
-.addEvent("messageCreate", async msg => {
+.addEvent("messageCreate", msg => {
   if (!msg.inGuild()) return;
   if (msg.channel.parent?.id === u.sf.channels.gospelCategory && !u.parse(msg) && !msg.author.bot) {
     const match = searchExp.exec(msg.cleanContent);
     if (!match) return;
-    return await slashGospelVerse(msg, { book: match[1], chapter: match[2], verses: match[3] });
+    return slashGospelVerse(msg, { book: match[1], chapter: match[2], verses: match[3] });
   }
 })
 .addCommand({ name: "debugcfm",

@@ -109,7 +109,7 @@ async function slashModSummary(interaction) {
 async function slashModKick(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const target = interaction.options.getMember("user");
-  const reason = interaction.options.getString("reason") || "Violating the Code of Conduct";
+  const reason = interaction.options.getString("reason", true);
   if (!target) return interaction.editReply(noTarget);
 
   const kick = await c.kick(interaction, target, reason);
@@ -166,7 +166,7 @@ async function slashModOffice(interaction) {
 async function slashModPurge(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const number = interaction.options.getInteger("number", true);
-  const reason = interaction.options.getString("reason") ?? "No provided reason";
+  const reason = interaction.options.getString("reason", true);
   const channel = interaction.channel;
   if (!channel) return interaction.editReply("Well that's awkward, I can't access the channel you're in!");
   if (number < 1) return interaction.editReply("You need to provide a number greater than 0.");
@@ -198,7 +198,7 @@ async function slashModRename(interaction) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
-async function slashModShowWatchlist(interaction) {
+async function slashModWatchlist(interaction) {
   await interaction.deferReply({ ephemeral: true });
   c.watchlist = new Set((await u.db.user.getUsers({ watching: true })).map(usr => usr.discordId));
 
@@ -383,7 +383,7 @@ const Module = new Augur.Module()
         case "purge": return slashModPurge(interaction);
         case "rename": return slashModRename(interaction);
         case "slowmode": return slashModSlowmode(interaction);
-        case "watchlist": return slashModShowWatchlist(interaction);
+        case "watchlist": return slashModWatchlist(interaction);
         case "summary": return slashModSummary(interaction);
         case "trust": return slashModTrust(interaction);
         case "timeout": return slashModTimeout(interaction);

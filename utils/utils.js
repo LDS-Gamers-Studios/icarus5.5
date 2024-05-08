@@ -259,6 +259,26 @@ const utils = {
   },
   errorLog,
   /**
+   * Filter the terms keys by filterTerm and sort by startsWith and then includes
+   * @template T
+   * @param {string} filterTerm
+   * @param {Discord.Collection<string, T>} terms
+   * @return {Discord.Collection<string, T>}
+   */
+  autocompleteSort: (filterTerm, terms) => {
+    filterTerm = filterTerm.toLowerCase();
+    return terms
+      .filter((v, k) => k.toLowerCase().includes(filterTerm))
+      .sort((v1, v2, k1, k2) => {
+        const aStarts = k1.toLowerCase().startsWith(filterTerm);
+        const bStarts = k2.toLowerCase().startsWith(filterTerm);
+        if (aStarts && bStarts) return k1.localeCompare(k2);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return k1.localeCompare(k2);
+      });
+  },
+  /**
    * Shortcut to moment with the correct UTC offset (MST)
    * @param {moment.MomentInput} [input]
    * @param {boolean} [strict]

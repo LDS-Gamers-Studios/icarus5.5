@@ -28,9 +28,9 @@ async function slashRankLeaderboard(interaction) {
       member: interaction.member.id,
       season: !lifetime
     });
-    const records = leaderboard.map(l => `${l.rank}: ${members.get(l.discordId)} (${(lifetime ? l.totalXP : l.currentXP ?? 0).toLocaleString()} XP)`);
+    const records = leaderboard.map(l => `${l.rank}: ${members.get(l.discordId)} (${(lifetime ? l.totalXP : l.currentXP ?? 0).toString()} XP)`);
     const embed = u.embed()
-      .setTitle("LDSG Season Chat Leaderboard")
+      .setTitle(`LDSG ${lifetime ? "Lifeteime" : "Season"} Chat Leaderboard`)
       .setThumbnail(interaction.guild.iconURL({ extension: "png" }))
       .setURL("https://my.ldsgamers.com/leaderboard")
       .setDescription(`${lifetime ? "Lifetime" : "Current season"} chat rankings:\n`
@@ -53,9 +53,7 @@ async function slashRankTrack(interaction) {
       return interaction.editReply(`You are currently ${status?.excludeXP ? "not " : ""}tracking XP!`);
     }
     await u.db.user.trackXP(interaction.user.id, track ?? false);
-    await interaction.editReply({
-      content: `Ok! I'll ${track ? "start" : "stop"} tracking your XP!`
-    });
+    await interaction.editReply(`Ok! I'll ${track ? "start" : "stop"} tracking your XP!`);
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
@@ -63,14 +61,14 @@ async function slashRankTrack(interaction) {
 async function slashRankView(interaction) {
   try {
     // View member rankings
-    await interaction.deferReply();
+    await interaction.deferReply({ ephemeral: interaction.channelId != u.sf.channels.botspam });
     const members = interaction.guild.members.cache;
     const member = interaction.options.getMember("user") ?? interaction.member;
     const record = await u.db.user.getRank(member.id, members);
 
     if (record) {
       const level = Rank.level(record.totalXP);
-      const nextLevel = Rank.minXp(level + 1).toLocaleString();
+      const nextLevel = Rank.minXp(level + 1).toString();
 
       const embed = u.embed({ author: member })
       .setTitle("LDSG Season Chat Ranking")
@@ -78,8 +76,8 @@ async function slashRankView(interaction) {
       .setFooter({ text: "https://my.ldsgamers.com/leaderboard" })
       .addFields(
         { name: "Rank", value: `Season: ${record.rank.season} / ${members.size}\nLifetime: ${record.rank.lifetime} / ${members.size}`, inline: true },
-        { name: "Level", value: `Current Level: ${level.toLocaleString()}\nNext Level: ${nextLevel} XP`, inline: true },
-        { name: "Exp.", value: `Season: ${record.currentXP.toLocaleString()} XP\nLifetime: ${record.totalXP.toLocaleString()} XP`, inline: true }
+        { name: "Level", value: `Current Level: ${level.toString()}\nNext Level: ${nextLevel} XP`, inline: true },
+        { name: "Exp.", value: `Season: ${record.currentXP.toString()} XP\nLifetime: ${record.totalXP.toString()} XP`, inline: true }
       );
 
       await interaction.editReply({ embeds: [embed] });
@@ -112,14 +110,14 @@ async function rankClockwork(client) {
               content: `${member} has had ${user.posts} active minutes in chat without being trusted!`,
               embeds: [
                 u.embed({ author: member })
-              .setThumbnail(member.user.displayAvatarURL({ extension: "png" }))
-              .addFields(
-                { name: "ID", value: member.id, inline: true },
-                { name: "Activity", value: `Active Minutes: ${user.posts}`, inline: true },
-                { name: "Roles", value: member.roles.cache.map(r => r.name).join(", ") },
-                { name: "Joined", value: `<t:${Math.floor(member.joinedTimestamp ?? 1 / 1000)}:R>` },
-                { name: "Account Created", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>` }
-              )
+                  .setThumbnail(member.user.displayAvatarURL({ extension: "png" }))
+                  .addFields(
+                    { name: "ID", value: member.id, inline: true },
+                    { name: "Activity", value: `Active Minutes: ${user.posts}`, inline: true },
+                    { name: "Roles", value: member.roles.cache.map(r => r.name).join(", ") },
+                    { name: "Joined", value: u.time(new Date(Math.floor(member.joinedTimestamp ?? 1 / 1000)), "R") },
+                    { name: "Account Created", value: u.time(new Date(Math.floor(member.user.createdTimestamp / 1000)), 'R') }
+                  )
               ]
             });
           }
@@ -161,9 +159,9 @@ const Module = new Augur.Module()
     try {
       const subcommand = interaction.options.getSubcommand(true);
       switch (subcommand) {
-      case "view": return slashRankView(interaction);
-      case "leaderboard": return slashRankLeaderboard(interaction);
-      case "track": return slashRankTrack(interaction);
+        case "view": return slashRankView(interaction);
+        case "leaderboard": return slashRankLeaderboard(interaction);
+        case "track": return slashRankTrack(interaction);
       }
     } catch (error) {
       u.errorHandler(error, interaction);
@@ -183,7 +181,7 @@ const Module = new Augur.Module()
     /** @type {any[]} */
     // @ts-ignore cuz google sheets be dumb
     const roles = await doc.sheetsByTitle["Roles"].getRows();
-    const a = roles.filter(r => r["Local ID"]?.startsWith("R")).map(r => {
+    const a = roles.filter(r => r["Type"] == "Rank").map(r => {
       return {
         role: r["Base Role ID"],
         level: parseInt(r["Level"])
@@ -195,20 +193,18 @@ const Module = new Augur.Module()
 })
 .setUnload(() => active)
 .addEvent("messageCreate", (msg) => {
-  if (!msg.inGuild()) return;
   if (
-    msg.guild.id == u.sf.ldsg &&
-    !active.has(msg.author.id) &&
-    !(Rank.excludeChannels.includes(msg.channel.id) || Rank.excludeChannels.includes(msg.channel.parentId ?? "")) &&
-    !msg.member?.roles.cache.hasAny(Rank.excludeRoles) &&
-    !msg.webhookId &&
-    !u.parse(msg) &&
-    !msg.author.bot
+    msg.inGuild() && msg.guild.id == u.sf.ldsg && // only in LDSG
+    !active.has(msg.author.id) && // only if they're not already talking
+    !(Rank.excludeChannels.includes(msg.channel.id) || Rank.excludeChannels.includes(msg.channel.parentId ?? "")) && // only if not in an excluded channel/category
+    !msg.member?.roles.cache.hasAny(Rank.excludeRoles) && // only if they don't have an exclude role
+    !msg.webhookId && !msg.author.bot && // only if its an actual user
+    !u.parse(msg) // only if its not a command
   ) {
     active.add(msg.author.id);
   }
 })
-// @ts-ignore i quit getting this to work, it works but the typing on augur's end is nasty
+// @ts-ignore it works
 .setClockwork(() => {
   try {
     return setInterval(rankClockwork, 60000, Module.client);
