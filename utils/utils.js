@@ -346,7 +346,7 @@ const utils = {
   /**
    * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
    */
-  sf: Object.assign(config.devMode ? tsf : sf, csf),
+  sf: { ...(config.devMode ? tsf : sf), ...csf },
 
   /**
    * Returns a promise that will fulfill after the given amount of time.
