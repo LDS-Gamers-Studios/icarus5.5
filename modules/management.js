@@ -63,6 +63,36 @@ async function setBanner(holiday) {
   return "I set the banner!";
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function role(int) {
+  try {
+    await int.deferReply({ ephemeral: true });
+    const input = int.options.getString("role", true);
+    const member = int.options.getMember("user");
+    const reason = int.options.getString("reason") ? "\nReason: ".concat(int.options.getString("reason") ?? "") : "";
+    const ro = int.guild.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+    if (ro) {
+      if (![u.sf.roles.logistics, u.sf.roles.publicaffairs, u.sf.roles.operations, u.sf.roles.manager, u.sf.roles.mod].includes(ro.id)) return int.editReply(`Sorry, ${ro} is not a valid promotion role`);
+      if (member?.roles.cache.has(ro.id)) return int.editReply(`${member.user.username} already has the ${ro} role`);
+      if ([u.sf.roles.manager, u.sf.roles.mod].includes(ro.id)) {
+        member?.roles.add([u.sf.roles.publicaffairs, ro.id, u.sf.roles.team, u.sf.roles.thenextchapter]);
+        const embed = u.embed({ author: member, color: 0x00ffff });
+        embed.setTitle(`User added to ${ro}`)
+            .setDescription(`${int.member} added ${member} to ${ro}${reason}`);
+        int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+        return int.editReply(`Successfully promoted ${member} to ${ro}`);
+      } else {
+        member?.roles.add([u.sf.roles.team, u.sf.roles.thenextchapter, ro.id]);
+        const embed = u.embed({ author: member, color: 0x00ffff });
+        embed.setTitle(`User added to ${ro}`)
+          .setDescription(`${int.member} added ${member} to ${ro}${reason}`);
+        int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed] });
+        return int.editReply(`Successfully promoted ${member} to ${ro}`);
+      }
+    } else { return int.editReply(`I couldn't find that role`); }
+  } catch (error) { u.errorHandler(error, int); }
+}
+
 const Module = new Augur.Module()
 .addInteraction({
   name: "management",
@@ -79,13 +109,18 @@ const Module = new Augur.Module()
       int.editReply("Setting banner...");
       const response = await setBanner(int.options.getString("file", true));
       if (response) int.editReply(response);
-    }
+    } break;
+    case "team": return role(int);
     }
   },
   autocomplete: (int) => {
-    const option = int.options.getFocused();
+    const option = int.options.getFocused(true);
+    if (option.name == 'position') {
+      const values = ["Discord Manager", "Discord Moderator", "Logistics Team", "Public Affairs Team", "Ops Team"];
+      return int.respond(values.map(v => ({ name: v, value: v })));
+    }
     const files = fs.readdirSync(path.resolve(__dirname + "/../media/banners"))
-      .filter(file => file.endsWith(".png") && file.startsWith(option))
+      .filter(file => file.endsWith(".png") && file.startsWith(option.name))
       .map(f => f.substring(0, f.length - 4));
     int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
   }

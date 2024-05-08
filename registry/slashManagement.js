@@ -57,6 +57,28 @@ const birthday = new u.sub()
       .setMaxValue(31)
   );
 
+const team = new u.sub()
+  .setName("promote")
+  .setDescription("Promote a member to team")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("The user to promote")
+      .setRequired(true)
+  )
+  .addStringOption(
+    new u.string()
+    .setName("position")
+    .setDescription("The position to promote the user to")
+    .setRequired(true)
+    .setAutocomplete(true)
+  )
+  .addStringOption(
+    new u.string()
+    .setName("reason")
+    .setDescription("The reason to be sent with the welcome message to the team chat")
+  );
+
 module.exports = new u.cmd()
   .setName("management")
   .setDescription("Management Commands")
@@ -65,4 +87,5 @@ module.exports = new u.cmd()
   .addSubcommand(cakeday)
   .addSubcommand(banner)
   .addSubcommand(birthday)
+  .addSubcommand(team)
   .toJSON();
