@@ -42,9 +42,25 @@ async function roleFunc(int, give = true) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function whoHas(int) {
   try {
+    await int.deferReply({ ephemeral: int.channel?.id == u.sf.channels.general });
     const role = int.options.getRole("role", true);
-    if (role.members.size > 0) int.reply({ content: `Members with the ${role} role: ${role.members.size}\n\`\`\`\n${role.members.map(m => m.displayName).sort().join("\n")}\n\`\`\``, ephemeral: int.channel?.id == u.sf.channels.general });
-    else int.reply({ content: "I couldn't find any members with that role. :shrug:", ephemeral: true });
+    const members = role.members.sort();
+    if (members.size < 0) return await int.editReply("I couldn't find any members with that role. :shrug:");
+    const chunks = [];
+    let activeChunk = "";
+    for (const member of members.values()) {
+      const name = member.user?.displayName;
+      if (activeChunk.length + name.length + 2 > 1900) {
+        chunks.push(activeChunk);
+        activeChunk = "";
+      }
+      activeChunk += `${name}\n`;
+    }
+    chunks.push(activeChunk);
+    for (const chunk of chunks) {
+      if (chunk == chunks[0]) await int.editReply(`Members with the ${role} role: ${role.members.size}\n\`\`\`\n${chunk}\n\`\`\``);
+      else await int.followUp(`continued: \`\`\`${chunk}\`\`\``);
+    }
   } catch (error) { u.errorHandler(error, int); }
 }
 
