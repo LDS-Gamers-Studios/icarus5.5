@@ -1,17 +1,16 @@
 {
   "commands": {
     "messageBookmark": "",
-    "messageMod": "",
+    "messageModeration": "",
     "slashAvatar": "",
     "slashBank": "",
     "slashBot": "",
-    "slashBotHidden": "",
     "slashGospel": "",
     "slashManagement": "",
     "slashMod": "",
     "slashRank": "",
     "slashTournament": "",
     "slashVoice": "",
-    "userMod": ""
+    "userModeration": ""
   }
 }
