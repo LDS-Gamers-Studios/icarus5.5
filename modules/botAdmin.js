@@ -183,7 +183,7 @@ const Module = new Augur.Module()
 
 // When the bot is fully online, fetch all the ldsg members, since it will only autofetch for small servers and we want them all.
 .addEvent("ready", () => {
-  Module.client.guilds.cache.get(u.sf.ldsg)?.members.fetch();
+  Module.client.guilds.cache.get(u.sf.ldsg)?.members.fetch({ withPresences: true });
 })
 .setInit(async (reloaded) => {
   try {

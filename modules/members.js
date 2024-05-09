@@ -18,7 +18,7 @@ function newUserEmbed(member) {
       { name: "Account Created", value: member.user.createdAt.toUTCString() },
       { name: "Roles", value: roleString }
     ])
-    .setThumbnail(member.user.displayAvatarURL({ size: 32, dynamic: true }));
+    .setThumbnail(member.displayAvatarURL({ dynamic: true }));
 
   return embed;
 }
@@ -73,12 +73,13 @@ async function makeProfileCard(member) {
  */
 async function slashUserInfo(interaction, user) {
   // I get it's kinda badly named - it's a Member not a User - but this matches the command nomenclature.
-  if (user) {
-    await interaction.reply({ embed: newUserEmbed(user), disableEveryone: true })
-  } else {
-    await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" })
-  }
-
+  try {
+    if (user) {
+      await interaction.reply({ embeds: [newUserEmbed(user).toJSON()], disableEveryone: true })
+    } else {
+      await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" })
+    }
+  } catch (error) { u.errorHandler(error, interaction); }
 }
 
 /** Returns the profile card of the mentioned user. Or the current user.
@@ -88,12 +89,14 @@ async function slashUserInfo(interaction, user) {
  */
 async function slashUserProfile(interaction, user) {
   // Same user/member issues as before.
-  if (user) {
-    let card = await makeProfileCard(user)
-    await interaction.reply({ files: [card] })
-  } else {
-    await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" })
-  }
+  try {
+    if (user) {
+      let card = await makeProfileCard(user)
+      await interaction.reply({ files: [card] })
+    } else {
+      await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" })
+    }
+  } catch (error) { u.errorHandler(error, interaction); }
 }
 
 /** Responds with the number of guild members, and how many are online.
@@ -101,9 +104,11 @@ async function slashUserProfile(interaction, user) {
  * @param {Augur.GuildInteraction<"CommandSlash">} interaction
  */
 async function slashLdsgMembers(interaction) {
-  let online = i.guild.members.cache.filter((member) => member.presence.status != "offline")
-  let response = `📈 **Members:**\n${i.guild.memberCount} Members\n${online.length} Online`
-  await i.reply({ content: response });
+  try {
+    let online = interaction.guild.members.cache.filter((member) => member?.presence?.status != "offline" && member.presence?.status != undefined)
+    let response = `📈 **Members:**\n${interaction.guild.memberCount} Members\n${online.size} Online`
+    await interaction.reply({ content: response });
+  } catch (error) { u.errorHandler(error, interaction); }
 }
 
 /** The LDSG Member Spotlight!
@@ -113,7 +118,9 @@ async function slashLdsgMembers(interaction) {
  * @param {Augur.GuildInteraction<"CommandSlash">} interaction 
  */
 async function slashLdsgSpotlight(interaction) {
-  await interaction.reply({ content: "[Take a look!](https://www.ldsgamers.com/community#member-spotlight)"})
+  try {
+    await interaction.reply({ content: "[Take a look!](https://www.ldsgamers.com/community#member-spotlight)" })
+  } catch (error) { u.errorHandler(error, interaction); }
 }
 
 const Module = new Augur.Module()
@@ -123,7 +130,7 @@ const Module = new Augur.Module()
     id: u.sf.commands.slashUser,
     process: async (interaction) => {
       let subcommand = interaction.options.getSubcommand(true);
-      let user = interaction.options.getMember() ?? interaction.member
+      let user = interaction.options.getMember("user") ?? interaction.member
       switch (subcommand) {
         case "info": await slashUserInfo(interaction, user); break;
         case "profile": await slashUserProfile(interaction, user); break;
@@ -141,3 +148,5 @@ const Module = new Augur.Module()
       }
     }
   })
+
+module.exports = Module;
