@@ -187,8 +187,8 @@ const modCommon = {
       embed.setTimestamp(msg.editedAt ?? msg.createdAt)
         .setDescription((msg.editedAt ? "[Edited]\n" : "") + msg.cleanContent || null)
         .addFields(
-          { name: "Channel", value: msg.channel?.toString(), inline: true },
-          { name: "Jump to Post", value: `[Original Message](${msg.url})`, inline: true },
+          { name: "Channel", value: msg.channel.name, inline: true },
+          { name: "Jump to Post", value: msg.url, inline: true },
           { name: "User", value: msg.webhookId ? userBackup(msg.author) ?? (await msg.fetchWebhook()).name : userBackup(msg.author) ?? "Unknown User" }
         );
       if (msg.channel.parentId == u.sf.channels.minecraftcategory) {
@@ -292,10 +292,10 @@ const modCommon = {
     }
 
     let text = response.join("\n");
-    text = text.length > 4090 ? text.substring(0, 4086) + "..." : text;
+    text = text.length > 4090 ? text.substring(0, 4090) + "..." : text;
 
     const userDoc = await u.db.user.fetchUser(member.id);
-    let roleString = isMember ? member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ") : "[Unknown]";
+    let roleString = isMember ? member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role).join(", ") : "[Unknown]";
     if (roleString.length > 1024) roleString = roleString.slice(0, 1020) + "...";
 
     return u.embed({ author: member })
@@ -407,7 +407,7 @@ const modCommon = {
 
       await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
         logEmbed(interaction, target)
-          .setTitle(`Member ${M}`)
+          .setTitle(`${apply ? "🔇" : "🔊"} Member ${M}`)
           .addFields({ name: "Reason", value: reason ?? "[Not Provided]" })
           .setColor(embedColors.info)
       ] });
@@ -451,7 +451,7 @@ const modCommon = {
 
       await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
         logEmbed(interaction, target)
-          .setTitle("Note Created")
+          .setTitle("🗒️ Note Created")
           .setColor(embedColors.info)
           .addFields(
             { name: "Note", value: note },
@@ -617,7 +617,7 @@ const modCommon = {
       success = true; // role changed
 
       const embed = logEmbed(interaction, target)
-        .setTitle(`User ${T}`)
+        .setTitle(`${apply ? "⛔" : "✅"} User ${T}`)
         .addFields(
           { name: "Reason", value: reason ?? "[Not Provided]" },
           { name: "Time", value: `${time} minutes` }
@@ -655,7 +655,7 @@ const modCommon = {
           + `Please remember to follow our ${code} when doing so.\n\n`
           + "If you'd like to join one of our in-server Houses, you can visit <http://3houses.live> to get started!"
         ).catch(() => blocked(target));
-        embed.setTitle("User Given Trusted");
+        embed.setTitle("🤝 User Given Trusted");
       } else {
         await target.roles.remove([u.sf.roles.trusted, u.sf.roles.trustedplus]);
         success = true;
@@ -663,7 +663,7 @@ const modCommon = {
           + "This means you no longer have the ability to post images. "
           + `Please remember to follow our ${code} when posting images or links in the future.\n`
         ).catch(() => blocked(target));
-        embed.setTitle("User Trust Removed");
+        embed.setTitle("💢 User Trust Removed");
       }
       await modCommon.watch(interaction, target, !apply);
       interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
@@ -695,7 +695,7 @@ const modCommon = {
           + `While streaming, please remember the Streaming Guidelines ( https://goo.gl/Pm3mwS ) and our ${code}.`
           + "Also, please be aware that LDSG may make changes to the Trusted+ list from time to time at its discretion."
         ).catch(() => blocked(target));
-        embed.setTitle("User Given Trusted+");
+        embed.setTitle("🎥 User Given Trusted+");
       } else {
         await target.roles.remove(u.sf.roles.trustedplus);
         success = true;
@@ -705,7 +705,7 @@ const modCommon = {
           + `Please remember to follow our ${code}.`
         ).catch(() => blocked(target));
 
-        embed.setTitle("User Trusted+ Removed");
+        embed.setTitle("📤 User Trusted+ Removed");
       }
       interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
       return `${target} has been ${apply ? "added to" : "removed from"} the Trusted+ role!`;
@@ -726,9 +726,9 @@ const modCommon = {
     try {
       if (typeof target != 'string' && (target.user.bot)) return `${target} is a bot and shouldn't be watched.`;
       const id = typeof target == "string" ? target : target.id;
-      const watchlist = await u.db.user.getUsers({ watching: true });
-      if (apply && (watchlist.find(w => w.discordId == id) || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
-      if (!apply && (!watchlist.find(w => w.discordId == id) && !modCommon.watchlist.has(id))) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
+      const watchStatus = await u.db.user.fetchUser(id);
+      if (apply && (watchStatus?.watching || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
+      if (!apply && watchStatus && !watchStatus.watching && !modCommon.watchlist.has(id)) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
 
       await u.db.user.updateWatch(id, apply);
       if (apply) modCommon.watchlist.add(id);

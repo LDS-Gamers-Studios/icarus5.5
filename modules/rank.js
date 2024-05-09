@@ -22,13 +22,13 @@ async function slashRankLeaderboard(interaction) {
   try {
     await interaction.deferReply();
     const lifetime = interaction.options.getBoolean("lifetime") ?? false;
-    const members = interaction.guild.members.cache;
+    const memberIds = interaction.guild.members.cache;
     const leaderboard = await u.db.user.getLeaderboard({
-      members,
+      memberIds,
       member: interaction.member.id,
       season: !lifetime
     });
-    const records = leaderboard.map(l => `${l.rank}: ${members.get(l.discordId)} (${(lifetime ? l.totalXP : l.currentXP ?? 0).toString()} XP)`);
+    const records = leaderboard.map(l => `${l.rank}: ${memberIds.get(l.discordId)} (${(lifetime ? l.totalXP : l.currentXP ?? 0)} XP)`);
     const embed = u.embed()
       .setTitle(`LDSG ${lifetime ? "Lifeteime" : "Season"} Chat Leaderboard`)
       .setThumbnail(interaction.guild.iconURL({ extension: "png" }))
@@ -49,10 +49,10 @@ async function slashRankTrack(interaction) {
     await interaction.deferReply({ ephemeral: true });
     const track = interaction.options.getBoolean("choice");
     if (track == null) {
-      const status = await u.db.user.fetchUser(interaction.user.id, true);
+      const status = await u.db.user.fetchUser(interaction.user.id);
       return interaction.editReply(`You are currently ${status?.excludeXP ? "not " : ""}tracking XP!`);
     }
-    await u.db.user.trackXP(interaction.user.id, track ?? false);
+    await u.db.user.trackXP(interaction.user.id, track);
     await interaction.editReply(`Ok! I'll ${track ? "start" : "stop"} tracking your XP!`);
   } catch (error) { u.errorHandler(error, interaction); }
 }
@@ -68,7 +68,7 @@ async function slashRankView(interaction) {
 
     if (record) {
       const level = Rank.level(record.totalXP);
-      const nextLevel = Rank.minXp(level + 1).toString();
+      const nextLevel = Rank.minXp(level + 1);
 
       const embed = u.embed({ author: member })
       .setTitle("LDSG Season Chat Ranking")
@@ -76,8 +76,8 @@ async function slashRankView(interaction) {
       .setFooter({ text: "https://my.ldsgamers.com/leaderboard" })
       .addFields(
         { name: "Rank", value: `Season: ${record.rank.season} / ${members.size}\nLifetime: ${record.rank.lifetime} / ${members.size}`, inline: true },
-        { name: "Level", value: `Current Level: ${level.toString()}\nNext Level: ${nextLevel} XP`, inline: true },
-        { name: "Exp.", value: `Season: ${record.currentXP.toString()} XP\nLifetime: ${record.totalXP.toString()} XP`, inline: true }
+        { name: "Level", value: `Current Level: ${level}\nNext Level: ${nextLevel} XP`, inline: true },
+        { name: "Exp.", value: `Season: ${record.currentXP} XP\nLifetime: ${record.totalXP} XP`, inline: true }
       );
 
       await interaction.editReply({ embeds: [embed] });
@@ -114,9 +114,9 @@ async function rankClockwork(client) {
                   .addFields(
                     { name: "ID", value: member.id, inline: true },
                     { name: "Activity", value: `Active Minutes: ${user.posts}`, inline: true },
-                    { name: "Roles", value: member.roles.cache.map(r => r.name).join(", ") },
-                    { name: "Joined", value: u.time(new Date(Math.floor(member.joinedTimestamp ?? 1 / 1000)), "R") },
-                    { name: "Account Created", value: u.time(new Date(Math.floor(member.user.createdTimestamp / 1000)), 'R') }
+                    { name: "Roles", value: member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(r => r).join(", ") },
+                    { name: "Joined", value: u.time(new Date(Math.floor(member.joinedTimestamp ?? 1)), "R") },
+                    { name: "Account Created", value: u.time(new Date(Math.floor(member.user.createdTimestamp)), 'R') }
                   )
               ]
             });

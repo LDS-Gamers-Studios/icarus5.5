@@ -117,7 +117,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
       } catch (e) { u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`); continue; }
     }
     if (unknownYears.size > 0) {
-      const content = `## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with a valid local ID?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`;
+      const content = `## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`;
       Module.client.getTextChannel(u.sf.channels.management)?.send(content + "\nI've also notified the bot team, please work with them on fixing this issue.");
       Module.client.getTextChannel(u.sf.channels.bottesting)?.send(content);
     }
@@ -161,7 +161,7 @@ const Module = new Augur.Module()
     // @ts-ignore cuz google sheets be dumb
     const roles = await doc.sheetsByTitle["Roles"].getRows();
 
-    const a = roles.filter(r => r["Local ID"]?.startsWith("YR")).map(r => {
+    const a = roles.filter(r => r["Type"] == "Year").map(r => {
       return {
         year: parseInt(r["Level"]),
         role: r["Base Role ID"],

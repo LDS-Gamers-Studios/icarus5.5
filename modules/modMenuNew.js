@@ -17,7 +17,7 @@ const menuOptions = require("../data/modMenuOptions.json"),
 
 function usrErr(int) {
   const content = "I couldn't find the user! They may have left the server.";
-  return int.replied ? edit(int, content) : int.update({ content, ephemeral: true });
+  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [], ephemeral: true });
 }
 
 function msgErr(int) {
@@ -129,7 +129,7 @@ async function pin(int, msg) {
   if (!msg) return msgErr(int);
   if (msg.pinned) return edit(int, "That message is already pinned!");
   if (!msg.pinnable) return edit(int, "I can't pin that message! I might not have permissions.");
-  if (msg.channel.permissionsFor(int.member).has("ManageMessages")) {
+  if (u.perms.calc(int.member, ["team", "mod", "mgr"])) {
     // pin the message if they're able to do that
     const messages = await msg.channel.messages.fetchPinned().catch(u.noop);
     if ((messages?.size ?? 0) > 49) return edit(int, "I can't pin that message as this channel has reached it's pin limit of 50.");
@@ -185,7 +185,6 @@ async function noteUser(int, usr) {
 }
 /** @type {user} */
 async function renameUser(int, usr) {
-  console.log('running?');
   if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
   const modal = new u.modal()
     .setTitle("Rename User")
@@ -325,6 +324,17 @@ async function purgeChannel(int, msg) {
   const toDelete = await channel.messages.fetch({ after: msg.id, limit: 100 });
 
   const deleted = await channel.bulkDelete(toDelete, true);
+
+  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+    u.embed({ author: int.member })
+      .setTitle("Channel Purge")
+      .addFields(
+        { name: "Mod", value: int.member.toString() },
+        { name: "Channel", value: int.channel.toString() },
+        { name: "Message Count", value: (deleted.size + 1).toString() }
+      )
+      .setColor(c.colors.info)
+  ] });
   edit(int, `I deleted ${deleted.size + 1}/${toDelete.size + 1} messages!`);
 }
 /** @type {message} */
@@ -365,7 +375,6 @@ async function handleModMenu(submitted, oldInt) {
   const message = oldInt.isMessageContextMenuCommand() ? oldInt.targetMessage : null;
   const user = oldInt.isUserContextMenuCommand() ? oldInt.targetMember ?? oldInt.targetUser : message?.member ?? null;
   if (!user && !message) return u.errorHandler(null, "No user or message on modMenu");
-  console.log(submitted.values[0]);
   // These commands require additional input and can't be defered
   switch (submitted.values[0]) {
     case "noteUser": return noteUser(submitted, user);
@@ -402,7 +411,7 @@ async function handleModMenu(submitted, oldInt) {
 function permComponents(int) {
   let components = menuOptions.everyone;
   if (u.perms.calc(int.member, ['mod', 'mgr'])) components = components.concat(menuOptions.mod);
-  if (u.perms.calc(int.member, ['mgmt'])) components = components.concat(menuOptions.mgmt);
+  if (u.perms.calc(int.member, ['mgr', 'mgmt'])) components = components.concat(menuOptions.mgmt);
   return components.filter(cmp => (
     cmp.context == 'msg' && int.isMessageContextMenuCommand() ||
     cmp.context == 'user' && int.isUserContextMenuCommand() ||

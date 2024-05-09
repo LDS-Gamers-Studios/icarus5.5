@@ -9,7 +9,7 @@ const Augur = require("augurbot-ts"),
 
 
 const bannedWords = new RegExp(banned.words.join("|"), "i"),
-  hasLink = /(>?(>?http[s]?|ftp):\/\/)?([\w.-]+\.)?([\w.-]+\.[^/\n ]+)(\/[^ \n]+)?/gi;
+  hasLink = /(>?(>?http[s]?|ftp):\/\/)([\w.-]+\.)?([\w.-]+\.[^/\n ]+)(\/[^ \n]+)?/gi;
 
 let pf = new profanityFilter();
 
@@ -108,7 +108,7 @@ function filter(text) {
  * Process discord message language
  * @param {Discord.Message} msg Message
  */
-function processMessageLanguage(msg) {
+async function processMessageLanguage(msg) {
   let matchedContent = [];
   const reasons = [];
   let warned = false;
@@ -122,10 +122,10 @@ function processMessageLanguage(msg) {
     active.set(msg.author.id, { id: msg.author.id, messages: messages });
   }
 
-  const invites = processDiscordInvites(msg);
+  const invites = await processDiscordInvites(msg);
   if (invites) {
-    matchedContent = matchedContent.concat(invites);
-    reasons.push("Automatic Discord invite removal");
+    matchedContent = matchedContent.concat(invites.invites);
+    reasons.push("Automatic Discord Invite Removal");
     warned = true;
   } else if (c.grownups.has(msg.channel.id)) {
     return;
@@ -158,7 +158,7 @@ function processMessageLanguage(msg) {
       if (!warned) msg.reply({ content: "That link is generally believed to be a scam/phishing site. Please be careful!", failIfNotExists: false }).catch(u.noop);
       warned = true;
       matchedContent = matchedContent.concat(scamLinks);
-      reasons.push("Suspected scam links (Auto-Removed)");
+      reasons.push("Suspected Scam Links (Auto-Removed)");
     } else if (bannedWords.exec(msg.cleanContent) && matchedLinks.find(l => l.url.includes("tenor") || l.url.includes("giphy"))) {
       // Bad gif link
       u.clean(msg, 0);
@@ -176,7 +176,7 @@ function processMessageLanguage(msg) {
   // HARD LANGUAGE FILTER
   if (matchedWords = msg.cleanContent.match(bannedWords)) {
     matchedContent = matchedContent.concat(matchedWords);
-    reasons.push("Automute word detected");
+    reasons.push("Automute Word Detected");
     pingMods = true;
     c.watch(msg, msg.member ?? msg.author.id, true);
   }
@@ -185,7 +185,7 @@ function processMessageLanguage(msg) {
   const soft = filter(msg.cleanContent);
   if (soft.length > 0) {
     matchedContent = matchedContent.concat(soft);
-    reasons.push("Profanity detected");
+    reasons.push("Profanity Detected");
   }
 
   // LINK PREVIEW FILTER
@@ -198,7 +198,7 @@ function processMessageLanguage(msg) {
         if (!warned && !msg.author.bot && !msg.webhookId) msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
         warned = true;
         matchedContent = matchedContent.concat(previewBad);
-        reasons.push("Link preview language (Auto-Removed)");
+        reasons.push("Link Preview Language (Auto-Removed)");
       }
       if (filter(preview).length > 0) {
         if (!warned && !msg.author.bot && !msg.webhookId) msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
@@ -209,12 +209,14 @@ function processMessageLanguage(msg) {
     }
   }
   if (matchedContent.length > 0) {
-    c.createFlag({ msg, member: msg.member ?? msg.author, matches: matchedContent, flagReason: reasons.join("\n"), pingMods });
+    msg.content = msg.cleanContent.replace(new RegExp(matchedContent.join("|"), "gi"), (str) => `**${str}**`).replace(/https?(:\/\/)/g, "");
+    await c.createFlag({ msg, member: msg.member ?? msg.author, matches: matchedContent, flagReason: reasons.join("\n"), pingMods });
+    if (invites) msg.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [invites.embed] });
   }
 }
 
 /**
- * Report on the posted invite
+ * Filters invites for the server, deletes the message and notifies the user, and returns an embed with content about the invite
  * @param {(Discord.Invite|Discord.Widget)[]} [invites]
  * @param {string[]} rawInvites
  * @param {Discord.Message} msg
@@ -228,51 +230,50 @@ function reportInvites(msg, rawInvites, invites) {
   } else {
     external = rawInvites.filter(i => !i.endsWith("ldsg")).map(() => "Guild: Unknown, Channel: Unknown");
   }
-  if (external.length > 0) {
-    if (msg.webhookId || msg.author.bot) {
-      for (const invite of rawInvites) msg.content = msg.content.replace(invite, "[Discord Invite]");
-      u.clean(msg, 0);
-      const embed = u.embed({ author: msg.author }).setDescription(msg.content);
-      msg.channel.send({ embeds: [embed, ...msg.embeds], files: Array.from(msg.attachments.values()) });
-      return;
-    }
-    if (!msg.member) return;
-    const embed = u.embed({ author: msg.author })
-      .setTitle("Invite Info")
-      .setDescription(external.join("\n"))
-      .setColor(c.colors.info);
-    msg.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+  if (external.length == 0) return null;
+  if (msg.webhookId || msg.author.bot) {
+    for (const invite of rawInvites) msg.content = msg.content.replace(invite, "[Discord Invite]");
     u.clean(msg, 0);
-    msg.channel.send({ embeds: [
-      u.embed({
-        description: "It is difficult to know what will be in another Discord server at any given time. *If* you feel that this server is appropriate to share, please only do so in direct messages."
-      })
-    ] }).then(u.clean);
+    const embed = u.embed({ author: msg.author }).setDescription(msg.content);
+    msg.channel.send({ embeds: [embed, ...msg.embeds], files: Array.from(msg.attachments.values()) });
+    return null;
   }
+  if (!msg.member) return null;
+  const embed = u.embed({ author: msg.author })
+    .setTitle("⏫ Invite Info")
+    .setDescription(external.join("\n"))
+    .setColor(c.colors.info);
+  u.clean(msg, 0);
+  msg.channel.send({ embeds: [
+    u.embed({
+      description: "It is difficult to know what will be in another Discord server at any given time. " +
+      "*If* you feel that this server is appropriate to share, please only do so in direct messages."
+    })
+  ] }).then(u.clean);
+  return { embed, invites: rawInvites };
 }
 
 /**
  * Process Discord invites
  * @param {Discord.Message} msg Original message
  */
-function processDiscordInvites(msg) {
-  if (!msg.inGuild()) return;
+async function processDiscordInvites(msg) {
+  if (!msg.inGuild()) return null;
   const bot = msg.client;
   const inviteRegex = /(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)(\w+)/ig;
   const matched = msg.cleanContent.match(inviteRegex);
-  if (!matched) return;
+  if (!matched) return null;
   const code = matched.map(m => m.replace(/(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)/, ""));
   const filtered = code.filter(co => co != msg.guild.id);
-  if (!msg.guild?.invites.cache.hasAll(...filtered)) {
-    const foundInvites = code.map(inv => isNaN(parseInt(inv)) ? bot.fetchInvite(inv.trim()) : bot.fetchGuildWidget(inv));
-    Promise.all(foundInvites).then((i) =>
-      reportInvites(msg, matched, i)
-    ).catch(e => {
-      if (e && ["Unknown Invite", "Unknown Guild"].includes(e.message)) {
-        reportInvites(msg, matched);
-      } else { u.errorHandler(e, msg); }
-    });
-    return matched;
+  if (filtered.length == 0) return null;
+  const foundInvites = filtered.map(inv => isNaN(parseInt(inv)) ? bot.fetchInvite(inv.trim()) : bot.fetchGuildWidget(inv));
+  try {
+    const resolved = await Promise.all(foundInvites);
+    return reportInvites(msg, matched, resolved);
+  } catch (error) {
+    if (error && ["Unknown Invite", "Unknown Guild"].includes(error.message)) return reportInvites(msg, matched);
+    u.errorHandler(error, msg);
+    return null;
   }
 }
 
@@ -294,10 +295,6 @@ async function processCardAction(interaction) {
     const mod = interaction.member,
       embed = u.embed(flag.embeds[0]),
       infraction = await u.db.infraction.getByFlag(flag.id);
-    if (!infraction && !(flag.channel.id == u.sf.channels.minecraftmods && interaction.customId == 'modCardCensor')) {
-      interaction.reply({ content: "I couldn't find that flag!", ephemeral: true });
-      return processing.delete(flag.id);
-    }
 
     if (interaction.customId == "modCardCensor") {
       // Censor the flag with a description of the content
@@ -315,17 +312,25 @@ async function processCardAction(interaction) {
       const submitted = await interaction.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
         return null;
       });
-      if (!submitted) return interaction.editReply("I fell asleep waiting for your input...");
+      if (!submitted) {
+        interaction.editReply("I fell asleep waiting for your input...");
+        return processing.delete(flag.id);
+      }
       await submitted.deferUpdate();
       embed.data.fields = embed.data.fields?.filter(f => !f.name.startsWith("Matched"));
       embed.setDescription(submitted.fields.getTextInputValue("text"));
       submitted.editReply({ embeds: [embed], components: [] });
+      return processing.delete(flag.id);
     }
-    if (!infraction) return;
+    if (!infraction) {
+      interaction.reply({ content: "I couldn't find that flag!", ephemeral: true });
+      return processing.delete(flag.id);
+    }
+
     if (interaction.customId == "modCardInfo") {
-      await interaction.deferReply({ ephemeral: true });
       // Don't count this as processing
       processing.delete(flag.id);
+      await interaction.deferReply({ ephemeral: true });
       const member = await interaction.guild.members.fetch(infraction.discordId);
       let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
       if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
@@ -344,6 +349,7 @@ async function processCardAction(interaction) {
 
       embed.setFooter({ text: `Linked by ${u.escapeText(mod.displayName)}` });
       md?.send({ embeds: [embed] }).catch(u.noop);
+      return processing.delete(flag.id);
     }
 
     // The buttons after this actually need mod filtering
@@ -473,7 +479,7 @@ const Module = new Augur.Module()
 })
 .addEvent("interactionCreate", (int) => {
   if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
-  if (!u.perms.calc(int.member, ["mod", "mcMod"])) {
+  if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
     int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
     return;
   }

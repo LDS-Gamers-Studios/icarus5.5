@@ -40,7 +40,7 @@ async function update(oldUser, newUser) {
     const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
     const newMember = ldsg?.members.cache.get(newUser.id);
     if (oldUser.partial) oldUser = await oldUser.fetch();
-    const user = await u.db.user.fetchUser(newUser.id).catch(u.noop);
+    const user = await u.db.user.fetchUser(newUser.id);
     if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
@@ -65,7 +65,7 @@ async function update(oldUser, newUser) {
       } else {
         embed.setThumbnail(newUser.displayAvatarURL());
       }
-      ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed] });
+      if ((embed.data.fields?.length || 0) > 0) ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed] });
     }
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.displayName)} (${newUser.id})`); }
 }
@@ -83,10 +83,10 @@ const Module = new Augur.Module()
         channel.permissionOverwrites.create(u.sf.roles.ducttape, mutedPerms, { reason: "New channel permissions update" })
           .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
       } else {
-        u.errorLog.send({ embeds: [
+        channel.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [
           u.embed({
             title: "Update New Channel Permissions",
-            description: `Insufficient permissions to update channel ${channel.name}. Muted permissions need to be applied manually. Default denied permissions for Muted and Duct Tape are:\n${Object.keys(mutedPerms).join('\n')}`,
+            description: `Insufficient permissions to update channel ${channel} (#${channel.name}). Muted permissions need to be applied manually. Default denied permissions for Muted and Duct Tape are:\n\`\`\`${Object.keys(mutedPerms).join('\n')}\`\`\``,
             color: c.colors.info
           })
         ] });
@@ -134,9 +134,9 @@ const Module = new Augur.Module()
 
       if (user) { // Member is returning
         const toAdd = user.roles.filter(role => (
-          guild.roles.cache.has(role) &&
-          !guild.roles.cache.get(role)?.managed &&
-          !dangerRoles.includes(role)
+          guild.roles.cache.has(role) && // role still exists
+          !guild.roles.cache.get(role)?.managed && // role can be applied
+          !dangerRoles.includes(role) // not a dangerous role (ie team+)
         ));
         const oldDanger = user.roles.filter(role => guild.roles.cache.has(role) && dangerRoles.includes(role))
           .map(r => guild.roles.cache.get(r));
@@ -184,7 +184,7 @@ const Module = new Augur.Module()
       if (!member.roles.cache.has(u.sf.roles.muted) && !member.user.bot) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
       if (guild.memberCount == count) {
         await general?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:`);
-        await modLogs?.send({ content: `:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: ${guild.members.cache.get(u.sf.other.ghost)} ${guild.members.cache.get(config.ownerId)}*`, allowedMentions: { parse: ['roles', 'users'] } });
+        await modLogs?.send({ content: `:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: <@${u.sf.other.ghost}> <@${config.ownerId}> <@&${u.sf.roles.management}*`, allowedMentions: { parse: ['roles', 'users'] } });
       }
     }
   } catch (e) { u.errorHandler(e, "New Member Add"); }

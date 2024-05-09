@@ -55,7 +55,7 @@ async function champs(int) {
   }
   const tName = int.options.getString('tournament');
   const user = (str) => int.options.getMember(str);
-  const users = [user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr != null);
+  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr != null));
   const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
   const doc = new GoogleSpreadsheet(config.google.sheets.config);
   await doc.useServiceAccountAuth(config.google.creds);

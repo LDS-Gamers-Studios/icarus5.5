@@ -15,7 +15,7 @@ const Module = new Augur.Module(),
 const chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const nanoid = customAlphabet(chars, 8);
 
-let steamGameList;
+let steamGameList = [];
 
 /**
  * @typedef Game
@@ -175,7 +175,7 @@ async function slashBankGameList(interaction) {
 
     let gameList = games.sort((a, b) => a.Title.localeCompare(b.Title));
     // Filter Rated M, unless the member has the Rated M Role
-    if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.Rating.toUpperCase() != "M");
+    if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.Rating.toUpperCase() != "M" && !g.Recipient);
 
     const embed = u.embed()
       .setTitle("Games Available to Redeem")
@@ -188,7 +188,7 @@ async function slashBankGameList(interaction) {
         steamApp = steamGameList.find(g => g.name.toLowerCase() == game.Title.toLowerCase());
       }
       const content = `${steamApp ? "[" : ""}**${game.Title}** (${game.System})${steamApp ? `](https://store.steampowered.com/app/${steamApp.appid})` : ""}`
-        + ` Rated ${game.Rating ?? ""} - ${gb}${game.Cost}\n\n`;
+        + ` Rated ${game.Rating ?? ""} - ${gb}${game.Cost} | Code: **${game.Code}**\n\n`;
       if ((e.data.description?.length || 0) + content.length > 2000) {
         embeds.push(e);
         e = embed;
@@ -217,7 +217,7 @@ async function slashBankGameRedeem(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
     if (!games) throw new Error("Get Game List Error");
-    const game = games.find(g => (g.Code == interaction.options.getString("code", true).toUpperCase()));
+    const game = games.find(g => (g.Code == interaction.options.getString("code", true).toUpperCase()) && !g.Recipient);
     if (!game) {
       return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);
     }
@@ -249,7 +249,7 @@ async function slashBankGameRedeem(interaction) {
       .addFields(
         { name: "Cost", value: gb + game.Cost, inline: true },
         { name: "Balance", value: `${gb}${balance.gb - parseInt(game.Cost)}`, inline: true },
-        { name: "Game Key", value: game.Key ?? "Uknown" }
+        { name: "Game Key", value: game.Key ?? "Unknown" }
       );
 
     if (systems[game.System?.toLowerCase()]) {
@@ -385,12 +385,10 @@ async function slashBankAward(interaction) {
     embed = u.embed({ author: recipient })
       .setColor(house.color)
       .addFields(
-        { name: "Recipient", value: recipient.toString(), inline: true },
-        { name: "Giver", value: interaction.member.toString(), inline: true },
         { name: "House", value: house.name },
         { name: "Reason", value: reason }
       )
-      .setDescription(`**${giver}** ${str(recipient.displayName)}`);
+      .setDescription(`**${giver}** ${str(recipient.toString())}`);
     interaction.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
   } catch (e) { u.errorHandler(e, interaction); }
 }

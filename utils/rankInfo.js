@@ -1,8 +1,10 @@
 // @ts-check
-const { xpScale, devMode } = require("../config/config.json"),
+const { devMode } = require("../config/config.json"),
   u = require('./utils'),
   rankExclude = require('../config/rankExclude.json'),
   rankExcludeTesting = require("../config/rankExclude-testing.json");
+
+const xpScale = 200;
 
 const globalExcludeChannels = [
   u.sf.channels.botspam,

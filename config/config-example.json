@@ -4,13 +4,12 @@
   ],
   "ownerId": "put your id here",
   "api": {
-    "snipcart": "",
+    "snipcart": "we don't have a way to test the API right now",
     "steam": "https://steamcommunity.com/dev/apikey",
     "challonge": "https://api.challonge.com/v1"
   },
-  "applicationId": "You can find it here: https://discord.com/developers/applications",
+  "applicationId": "https://discord.com/developers/applications",
   "color": "0xf89a22",
-  "xpScale": 200,
   "db": {
     "model": "database/dbControllers.js",
     "note": "(Don't change this value, it's a note.) Connection string format: (mongodb(+srv?) or localhost:27017)://<username>:<password>@<connection>",

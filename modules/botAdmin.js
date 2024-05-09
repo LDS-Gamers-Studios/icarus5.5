@@ -150,7 +150,7 @@ const Module = new Augur.Module()
   hidden: true,
   permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin"]),
   process: async (int) => {
-    if (!u.perms.calc(int.member, ["botTeam"])) return; // don't even bother replying
+    if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // don't even bother replying
     const subcommand = int.options.getSubcommand(true);
     const forThePing = await int.deferReply({ ephemeral: true });
     if (["gotobed", "reload"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
@@ -168,7 +168,7 @@ const Module = new Augur.Module()
     const fs = require('fs');
     const path = require("path");
     const option = int.options.getFocused();
-    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js") && file.startsWith(option));
+    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js") && file.includes(option));
     int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
   }
 })
@@ -184,7 +184,7 @@ const Module = new Augur.Module()
 
 // When the bot is fully online, fetch all the ldsg members, since it will only autofetch for small servers and we want them all.
 .addEvent("ready", () => {
-  Module.client.guilds.cache.get(u.sf.ldsg)?.members.fetch();
+  Module.client.guilds.cache.get(u.sf.ldsg)?.members.fetch({ withPresences: true });
 })
 .setInit(async (reloaded) => {
   try {

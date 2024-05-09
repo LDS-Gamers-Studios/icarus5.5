@@ -27,7 +27,7 @@ async function watch(msg) {
     webhook.send({
       content: `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`,
       files,
-      username: `${decorator} - ${msg.member?.displayName ?? msg.author.displayName}`,
+      username: `${decorator} - ${msg.member?.displayName ?? msg.author.displayName}`.substring(0, 31),
       avatarURL: msg.member?.displayAvatarURL() ?? msg.author.displayAvatarURL(),
       allowedMentions: { parse: [] }
     });
@@ -69,7 +69,7 @@ async function slashModFilter(interaction) {
 
   const filtered = pf.scan(word);
   if (!u.perms.calc(interaction.member, ["mgr"])) {
-    return interaction.editReply("This command is for Management+ only.");
+    return interaction.editReply("This command is for Managers+ only.");
   }
 
   if (apply) {
@@ -369,7 +369,7 @@ const Module = new Augur.Module()
   guildId: u.sf.ldsg,
   id: u.sf.commands.slashMod,
   onlyGuild: true,
-  permissions: (int) => u.perms.calc(int.member, ["mod"]),
+  permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
   process: (interaction) => {
     try {
       const subcommand = interaction.options.getSubcommand(true);

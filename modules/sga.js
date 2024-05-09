@@ -76,8 +76,8 @@ async function handleMessage(msg) {
 /** @param {Discord.ButtonInteraction} inter */
 async function handleButton(inter) {
   try {
-    const content = inter.message.content;
-    const translated = translate(content);
+    const msg = await inter.message.fetchReference();
+    const translated = translate(msg.content);
     return inter.reply({ content: translated, ephemeral: true });
   } catch (e) {
     return inter.reply({ content: "I couldn't find that message! Sorry.", ephemeral: true });

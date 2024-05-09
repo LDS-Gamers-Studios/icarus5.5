@@ -83,7 +83,7 @@
       "label": "Unwatch User",
       "value": "unwatchUser",
       "description": "Remove this user from the watchlist",
-      "emoji": "👨‍🦯",
+      "emoji": "💤",
       "context": "any"
     },
     {
@@ -145,7 +145,7 @@
     {
       "label": "Spam Cleanup",
       "value": "spamCleanup",
-      "description": "Delete all of their recent messages with this content",
+      "description": "Delete this user's recent messages with this content",
       "emoji": "🧹",
       "context": "msg"
     }
