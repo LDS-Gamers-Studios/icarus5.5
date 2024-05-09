@@ -656,7 +656,7 @@ const modCommon = {
    * @param {Discord.GuildMember} recipient
    * @returns {Promise<string>}
    */
-  staffRole: async function(int, recipient, give = true) {
+  assignRole: async function(int, recipient, give = true) {
     /** @param {Discord.GuildMember} member @param {string} id*/
     const hasRole = (member, id) => member?.roles.cache.has(id);
     try {
@@ -664,7 +664,7 @@ const modCommon = {
       const past = give ? "gave" : "took";
       const input = int.options.getString("role", true);
       if (!u.perms.calc(int.member, ["team", "mod", "mgr"])) return "*Nice try!* This command is for Team+ only";
-      if (!u.perms.calc(int.member, ["mod", "mgr"]) && input.toLowerCase() == "adulting") return "This command is for Mod+ only";
+      if (!u.perms.calc(int.member, ["mod", "mgr"]) && ["adulting", "lady"].includes(input.toLowerCase())) return "This command is for Mod+ only";
       if (!recipient) return `I couldn't find that user!`;
       const role = int.guild.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
       if (role) {
@@ -672,16 +672,16 @@ const modCommon = {
           return `This command is not for the ${role} role`;
         }
         try {
-          if (hasRole(recipient, role.id) && give) return `User already has the ${role} role`;
-          if (!hasRole(recipient, role.id) && !give) return `User already does not have the ${role} role`;
+          if (hasRole(recipient, role.id) == give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${role} role`;
           give ? await recipient?.roles.add(role.id) : await recipient?.roles.remove(role.id);
-          if (role.id == u.sf.roles.bookworm) return `Successfully ${past} the ${role} role ${give ? "to" : "from"} ${recipient}`;
-          const embed = u.embed({ author: recipient, color: 0x00ffff });
-          embed.setTitle(`User ${give ? "added to" : "removed from"} ${role.name}`)
+          const returnStr = `Successfully ${past} the ${role} role ${give ? "to" : "from"} ${recipient}`;
+          if (role.id == u.sf.roles.bookworm) return returnStr;
+          const embed = u.embed({ author: recipient, color: 0x00ffff })
+            .setTitle(`User ${give ? "added to" : "removed from"} ${role.name}`)
             .setDescription(`${int.member} ${past} the ${role} role ${give ? "to" : "from"} ${recipient}.`);
           int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
-          return `Successfully ${past} the ${role} role ${give ? "to" : "from"} ${recipient}`;
-        } catch (e) { return `Failed to ${pres} the ${role} role`; }
+          return returnStr;
+        } catch (e) { return `Failed to ${pres} ${recipient} the ${role} role`; }
       }
     } catch (error) { u.errorHandler(error, int); }
     return "I could not find that role!";
