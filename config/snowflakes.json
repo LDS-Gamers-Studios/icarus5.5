@@ -57,6 +57,8 @@
     "destinyclansmanager": "803315372613697536",
     "ducttape": "771516264618262607",
     "emberguardian": "801333875329728522",
+    "founder": "",
+    "gameskeeper": "",
     "headofhouse": "734797110389506108",
     "housebb": "282364647041007616",
     "housefb": "282364721045438464",
@@ -65,6 +67,7 @@
     "live": "281135201407467520",
     "management": "96360253850935296",
     "manager": "205826273639923722",
+    "minecraftmod": "",
     "mod": "503066022912196608",
     "muted": "210909249218281474",
     "rated_m": "281708645161631745",
@@ -73,6 +76,38 @@
     "tournamentparticipant": "309889475633348608",
     "trusted": "210912511514509312",
     "trustedplus": "698291753308127265",
-    "volunteer": "940429662335684638"
+    "volunteer": "940429662335684638",
+    "experience": {
+      "ancient": "",
+      "legendary": "",
+      "hero": "",
+      "veteran": "",
+      "novice": ""
+    },
+    "membership": {
+      "year1": "",
+      "year2": "",
+      "year3": "",
+      "year4": "",
+      "year5": "",
+      "year6": "",
+      "year7": "",
+      "year8": "",
+      "year9": "",
+      "year10": ""      
+    },
+    "platform": {
+      "pc": "",
+      "xbox": "",
+      "playstation": "",
+      "nintendo": ""
+    },
+    "sponsors": {
+      "pro": "",
+      "onyx": "",
+      "elite": "",
+      "twitch": "",
+      "donator": ""
+    }
   }
 }
