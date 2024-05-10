@@ -21,6 +21,7 @@ const badges = new Map()
   // Do Heads of Household want their own badges?
 
   // Sponsor roles
+  .set(u.sf.roles.sponsors.legendary, { title: "Legendary Sponsor", image: "sponsor_legendary.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.legendary) })
   .set(u.sf.roles.sponsors.pro, { title: "Pro Sponsor", image: "sponsor_pro.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.pro) })
   .set(u.sf.roles.sponsors.onyx, { title: "Onyx Sponsor", image: "sponsor_onyx.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.onyx) })
   .set(u.sf.roles.sponsors.elite, { title: "Elite Sponsor", image: "sponsor_elite.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.elite) })
@@ -52,8 +53,12 @@ const badges = new Map()
   .set(u.sf.roles.platform.playstation, { title: "Playstation Gamer", image: "platform_ps.png", desc: "You game on the Playstation. So it DOES have games!" })
   .set(u.sf.roles.platform.nintendo, { title: "Nintendo Gamer", image: "platform_nin.png", desc: "You game on the Nintendo. You spend hours of your life stomping... koopas." })
 
+/**
+ * @param {string} roleId
+ */
 function sponsorRolesOverrides(roleId) {
   const sponsors = [
+    u.sf.roles.sponsors.legendary,
     u.sf.roles.sponsors.pro,
     u.sf.roles.sponsors.onyx,
     u.sf.roles.sponsors.elite,
@@ -64,6 +69,9 @@ function sponsorRolesOverrides(roleId) {
   return sponsors.slice(index + 1);
 }
 
+/**
+ * @param {string} roleId
+ */
 function experienceRolesOverrides(roleId) {
   const experience = [
     u.sf.roles.experience.ancient,
@@ -76,6 +84,9 @@ function experienceRolesOverrides(roleId) {
   return experience.slice(index + 1);
 }
 
+/**
+ * @param {string} roleId
+ */
 function membershipRolesOverrides(roleId) {
   const membership = [
     u.sf.roles.membership.year10,
