@@ -1,6 +1,6 @@
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
-  Discord = require("discord.js")
+  Discord = require("discord.js");
 
 /** Creates the user embed - an embed that gives the user create/join times, roles, and avatar.
  * @param {Discord.GuildMember} member
@@ -32,28 +32,27 @@ async function makeProfileCard(member) {
   const badgeData = require("../utils/badges"),
     RankInfo = require("../utils/RankInfo"),
     Jimp = require("jimp");
-  const badgePath = "./site/public/images/badges/";
+  const badgePath = "./media/badges/";
   const font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
-  const card = await Jimp.read("./storage/background.jpg");
+  const card = await Jimp.read("./media/background.jpg");
 
-  const target = msg.mentions.members.first() || msg.member;
+  const members = member.guild.members.cache;
+  const rank = await u.db.user.getRank(member.id, members);
+  const badges = badgeData(member.roles.cache);
 
-  const rank = await Module.db.user.findXPRank(target);
-  const badges = badgeData(target.roles.cache);
-
-  const avatar = await Jimp.read(target.user.displayAvatarURL({ size: 64, format: "png" }));
+  const avatar = await Jimp.read(member.displayAvatarURL({ size: 64, extension: "png" }));
 
   card.blit(avatar, 8, 8)
-    .print(font, 80, 8, target.displayName.replace(/[^\x00-\x7F]/g, ""), 212)
-    .print(font, 80, 28, "Joined: " + target.joinedAt.toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }), 212);
+    .print(font, 80, 8, member.displayName.replace(/[^\x00-\x7F]/g, ""), 212)
+    .print(font, 80, 28, "Joined: " + member.joinedAt.toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }), 212);
 
-  let rankOffset = (rank.excludeXP ? 80 : 168);
-  if (!rank.excludeXP) {
+  let rankOffset = (!rank ? 80 : 168);
+  if (rank) {
     let level = RankInfo.level(rank.totalXP);
     card.print(font, 8, 80, `Current Level: ${level} (${rank.totalXP.toLocaleString()} XP)`, 284)
       .print(font, 8, 100, `Next Level: ${RankInfo.minXp(level + 1).toLocaleString()} XP`, 284)
-      .print(font, 8, 128, `Season Rank: ${rank.currentRank}/${msg.guild.memberCount}`, 138)
-      .print(font, 154, 128, `Lifetime Rank: ${rank.lifeRank}/${msg.guild.memberCount}`, 138);
+      .print(font, 8, 128, `Season Rank: ${rank.rank.season}/${member.guild.memberCount}`, 138)
+      .print(font, 154, 128, `Lifetime Rank: ${rank.rank.lifetime}/${member.guild.memberCount}`, 138);
   }
 
   for (let i = 0; i < badges.length; i++) {
