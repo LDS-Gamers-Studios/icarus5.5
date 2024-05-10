@@ -29,7 +29,7 @@ const badges = new Map()
 
   // Experience roles
   .set(u.sf.roles.experience.ancient, { title: "Ancient Member", image: "chat_ancient.png", desc: "Attained the rank of Ancient in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.ancient) })
-  .set(u.sf.roles.experience.legendary, { title: "Legendary Member", image: "chat_legend.png", desc: "Attained the rank of Legend in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.legendary) })
+  .set(u.sf.roles.experience.legend, { title: "Legendary Member", image: "chat_legend.png", desc: "Attained the rank of Legend in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.legend) })
   .set(u.sf.roles.experience.hero, { title: "Hero Member", image: "chat_hero.png", desc: "Attained the rank of Hero in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.hero) })
   .set(u.sf.roles.experience.veteran, { title: "Veteran Member", image: "chat_veteran.png", desc: "Attained the rank of Veteran in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.veteran) })
   .set(u.sf.roles.experience.novice, { title: "Novice Member", image: "chat_novice.png", desc: "Attained the rank of Novice in the LDSG Discord Server for participation in conversations." })
@@ -67,7 +67,7 @@ function sponsorRolesOverrides(roleId) {
 function experienceRolesOverrides(roleId) {
   const experience = [
     u.sf.roles.experience.ancient,
-    u.sf.roles.experience.legendary,
+    u.sf.roles.experience.legend,
     u.sf.roles.experience.hero,
     u.sf.roles.experience.veteran,
     u.sf.roles.experience.novice
