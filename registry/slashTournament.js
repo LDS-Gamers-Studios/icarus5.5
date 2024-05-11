@@ -21,7 +21,7 @@ const champion = new u.sub()
   .setDescription("[TEAM] Declare an LDSG Champion!")
   .addStringOption(
     new u.string()
-      .setName("tourney-name")
+      .setName("tournament")
       .setDescription("The name of the tournament")
       .setRequired(true)
   )
@@ -44,7 +44,7 @@ const participant = new u.sub()
     )
     .addBooleanOption(
       new u.bool()
-        .setName("remove-all")
+        .setName("reset")
         .setDescription("[DANGER] Removes the tournament role from all users")
         .setRequired(false)
     );

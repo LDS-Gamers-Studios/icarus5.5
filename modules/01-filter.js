@@ -9,7 +9,7 @@ const Augur = require("augurbot-ts"),
 
 
 const bannedWords = new RegExp(banned.words.join("|"), "i"),
-  hasLink = /(>?(>?http[s]?|ftp):\/\/)?([\w.-]+\.)?([\w.-]+\.[^/\n ]+)(\/[^ \n]+)?/gi;
+  hasLink = /(>?(>?http[s]?|ftp):\/\/)([\w.-]+\.)?([\w.-]+\.[^/\n ]+)(\/[^ \n]+)?/gi;
 
 let pf = new profanityFilter();
 
@@ -36,7 +36,9 @@ async function spamming(client) {
 
   // get resources
   const ldsg = client.guilds.cache.get(u.sf.ldsg);
-  const trusted = ldsg?.roles.cache.get(u.sf.roles.trusted)?.members;
+  if (!ldsg) return;
+
+  const trusted = ldsg.roles.cache.get(u.sf.roles.trusted)?.members;
 
   // Get the limit for the type of verdict
   /** @param {string} type @param {string} id */
@@ -83,8 +85,7 @@ async function spamming(client) {
       `Posted too many messages (${member.count}/${limit('messages', member.id)}) too fast\nChannels:\n${channels.map(ch => `${ch.channel} (${ch.count})`).join('\n')}`,
       `Posted the same message too many times (${member.count}/${limit('same', member.id)})`,
     ];
-    if (!ldsg) return;
-    c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
+    if (member.verdict == 3) c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
     c.createFlag({ msg: message, member: message.member ?? message.author, snitch: client.user?.toString(), flagReason: verdictString[member.verdict ?? 1] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict == 3 });
     active.delete(member.id);
   }
@@ -107,7 +108,7 @@ function filter(text) {
  * Process discord message language
  * @param {Discord.Message} msg Message
  */
-function processMessageLanguage(msg) {
+async function processMessageLanguage(msg) {
   let matchedContent = [];
   const reasons = [];
   let warned = false;
@@ -121,10 +122,10 @@ function processMessageLanguage(msg) {
     active.set(msg.author.id, { id: msg.author.id, messages: messages });
   }
 
-  const invites = processDiscordInvites(msg);
+  const invites = await processDiscordInvites(msg);
   if (invites) {
-    matchedContent = matchedContent.concat(invites);
-    reasons.push("Automatic Discord invite removal");
+    matchedContent = matchedContent.concat(invites.invites);
+    reasons.push("Automatic Discord Invite Removal");
     warned = true;
   } else if (c.grownups.has(msg.channel.id)) {
     return;
@@ -157,7 +158,7 @@ function processMessageLanguage(msg) {
       if (!warned) msg.reply({ content: "That link is generally believed to be a scam/phishing site. Please be careful!", failIfNotExists: false }).catch(u.noop);
       warned = true;
       matchedContent = matchedContent.concat(scamLinks);
-      reasons.push("Suspected scam links (Auto-Removed)");
+      reasons.push("Suspected Scam Links (Auto-Removed)");
     } else if (bannedWords.exec(msg.cleanContent) && matchedLinks.find(l => l.url.includes("tenor") || l.url.includes("giphy"))) {
       // Bad gif link
       u.clean(msg, 0);
@@ -175,7 +176,7 @@ function processMessageLanguage(msg) {
   // HARD LANGUAGE FILTER
   if (matchedWords = msg.cleanContent.match(bannedWords)) {
     matchedContent = matchedContent.concat(matchedWords);
-    reasons.push("Automute word detected");
+    reasons.push("Automute Word Detected");
     pingMods = true;
     c.watch(msg, msg.member ?? msg.author.id, true);
   }
@@ -184,7 +185,7 @@ function processMessageLanguage(msg) {
   const soft = filter(msg.cleanContent);
   if (soft.length > 0) {
     matchedContent = matchedContent.concat(soft);
-    reasons.push("Profanity detected");
+    reasons.push("Profanity Detected");
   }
 
   // LINK PREVIEW FILTER
@@ -197,7 +198,7 @@ function processMessageLanguage(msg) {
         if (!warned && !msg.author.bot && !msg.webhookId) msg.reply({ content: "It looks like that link might have some harsh language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
         warned = true;
         matchedContent = matchedContent.concat(previewBad);
-        reasons.push("Link preview language (Auto-Removed)");
+        reasons.push("Link Preview Language (Auto-Removed)");
       }
       if (filter(preview).length > 0) {
         if (!warned && !msg.author.bot && !msg.webhookId) msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
@@ -208,13 +209,15 @@ function processMessageLanguage(msg) {
     }
   }
   if (matchedContent.length > 0) {
-    c.createFlag({ msg, member: msg.member ?? msg.author, matches: matchedContent, flagReason: reasons.join("\n"), pingMods });
+    msg.content = msg.cleanContent.replace(new RegExp(matchedContent.join("|"), "gi"), (str) => `**${str}**`).replace(/https?(:\/\/)/g, "");
+    await c.createFlag({ msg, member: msg.member ?? msg.author, matches: matchedContent, flagReason: reasons.join("\n"), pingMods });
+    if (invites) msg.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [invites.embed] });
   }
 }
 
 /**
- * Report on the posted invite
- * @param {Discord.Invite[]} [invites]
+ * Filters invites for the server, deletes the message and notifies the user, and returns an embed with content about the invite
+ * @param {(Discord.Invite|Discord.Widget)[]} [invites]
  * @param {string[]} rawInvites
  * @param {Discord.Message} msg
  */
@@ -222,60 +225,60 @@ function reportInvites(msg, rawInvites, invites) {
   /** @type {string[]} */
   let external = [];
   if (invites && (invites.length > 0)) {
-    external = invites.filter(i => i.guild?.id != u.sf.ldsg).map(i => {
-      return `Guild: ${i.guild?.name ?? "Unknown"}, Channel: ${i.channel?.name ?? "Unknown"}`;
-    });
+    external = invites.filter(i => (i instanceof Discord.Widget ? i.id : i.guild?.id) != u.sf.ldsg)
+      .map(i => i instanceof Discord.Widget ? `Guild: ${i.name}` : `Guild: ${i.guild?.name ?? "Unknown"}, Channel: ${i.channel?.name ?? "Unkonwn"}`);
   } else {
     external = rawInvites.filter(i => !i.endsWith("ldsg")).map(() => "Guild: Unknown, Channel: Unknown");
   }
-  if (external.length > 0) {
-    if (msg.webhookId || msg.author.bot) {
-      for (const invite of rawInvites) msg.content = msg.content.replace(invite, "[Discord Invite]");
-      u.clean(msg, 0);
-      const embed = u.embed({ author: msg.author }).setDescription(msg.content);
-      msg.channel.send({ embeds: [embed, ...msg.embeds], files: Array.from(msg.attachments.values()) });
-      return;
-    }
-    if (!msg.member) return;
-    const embed = u.embed({ author: msg.author })
-      .setTitle("Invite Info")
-      .setDescription(external.join("\n"))
-      .setColor(0x03a5fc);
-    msg.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+  if (external.length == 0) return null;
+  if (msg.webhookId || msg.author.bot) {
+    for (const invite of rawInvites) msg.content = msg.content.replace(invite, "[Discord Invite]");
     u.clean(msg, 0);
-    msg.channel.send({ embeds: [
-      u.embed({
-        description: "It is difficult to know what will be in another Discord server at any given time. *If* you feel that this server is appropriate to share, please only do so in direct messages."
-      })
-    ] }).then(u.clean);
+    const embed = u.embed({ author: msg.author }).setDescription(msg.content);
+    msg.channel.send({ embeds: [embed, ...msg.embeds], files: Array.from(msg.attachments.values()) });
+    return null;
   }
+  if (!msg.member) return null;
+  const embed = u.embed({ author: msg.author })
+    .setTitle("⏫ Invite Info")
+    .setDescription(external.join("\n"))
+    .setColor(c.colors.info);
+  u.clean(msg, 0);
+  msg.channel.send({ embeds: [
+    u.embed({
+      description: "It is difficult to know what will be in another Discord server at any given time. " +
+      "*If* you feel that this server is appropriate to share, please only do so in direct messages."
+    })
+  ] }).then(u.clean);
+  return { embed, invites: rawInvites };
 }
 
 /**
  * Process Discord invites
  * @param {Discord.Message} msg Original message
  */
-function processDiscordInvites(msg) {
+async function processDiscordInvites(msg) {
+  if (!msg.inGuild()) return null;
   const bot = msg.client;
-  const inviteRegex = /(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/invite\/)(\w+)/ig;
+  const inviteRegex = /(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)(\w+)/ig;
   const matched = msg.cleanContent.match(inviteRegex);
-  if (!matched) return;
-  const code = matched?.map(m => m.replace(/(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/invite\/)/, ""));
-  if (!msg.guild?.invites.cache.hasAll(...code)) {
-    const foundInvites = matched.map(inv => bot.fetchInvite(inv.trim()));
-    Promise.all(foundInvites).then((i) => reportInvites(msg, matched, i)).catch(e => {
-      if (e && e.message == "Unknown Invite") {
-        reportInvites(msg, matched);
-      } else { u.errorHandler(e, msg); }
-    });
-    return matched;
+  if (!matched) return null;
+  const code = matched.map(m => m.replace(/(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)/, ""));
+  const filtered = code.filter(co => co != msg.guild.id);
+  if (filtered.length == 0) return null;
+  const foundInvites = filtered.map(inv => isNaN(parseInt(inv)) ? bot.fetchInvite(inv.trim()) : bot.fetchGuildWidget(inv));
+  try {
+    const resolved = await Promise.all(foundInvites);
+    return reportInvites(msg, matched, resolved);
+  } catch (error) {
+    if (error && ["Unknown Invite", "Unknown Guild"].includes(error.message)) return reportInvites(msg, matched);
+    u.errorHandler(error, msg);
+    return null;
   }
 }
 
 /**
  * Process the warning card
- * @async
- * @function processCardAction
  * @param {Discord.ButtonInteraction<"cached">} interaction The interaction of a mod selecting the button.
  */
 async function processCardAction(interaction) {
@@ -292,19 +295,42 @@ async function processCardAction(interaction) {
     const mod = interaction.member,
       embed = u.embed(flag.embeds[0]),
       infraction = await u.db.infraction.getByFlag(flag.id);
+
+    if (interaction.customId == "modCardCensor") {
+      // Censor the flag with a description of the content
+      const modal = new u.Modal().addComponents(
+        u.ModalActionRow().addComponents([
+          new u.TextInput()
+            .setCustomId("text")
+            .setLabel("Replacement Text")
+            .setStyle(Discord.TextInputStyle.Short)
+            .setRequired(true)
+            .setPlaceholder("A description of the content")
+        ])
+      ).setCustomId("modalCensor").setTitle("Censor Mod Card");
+      await interaction.showModal(modal);
+      const submitted = await interaction.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
+        return null;
+      });
+      if (!submitted) {
+        interaction.editReply("I fell asleep waiting for your input...");
+        return processing.delete(flag.id);
+      }
+      await submitted.deferUpdate();
+      embed.data.fields = embed.data.fields?.filter(f => !f.name.startsWith("Matched"));
+      embed.setDescription(submitted.fields.getTextInputValue("text"));
+      submitted.editReply({ embeds: [embed], components: [] });
+      return processing.delete(flag.id);
+    }
     if (!infraction) {
       interaction.reply({ content: "I couldn't find that flag!", ephemeral: true });
       return processing.delete(flag.id);
     }
-    if (mod.id == infraction.discordId) {
-      await interaction.reply({ content: "You can't handle your own flag!", ephemeral: true });
-      return processing.delete(flag.id);
-    }
 
     if (interaction.customId == "modCardInfo") {
-      await interaction.deferReply({ ephemeral: true });
       // Don't count this as processing
       processing.delete(flag.id);
+      await interaction.deferReply({ ephemeral: true });
       const member = await interaction.guild.members.fetch(infraction.discordId);
       let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
       if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
@@ -316,16 +342,6 @@ async function processCardAction(interaction) {
 
       interaction.editReply({ embeds: [e] });
       return;
-    } else if (interaction.customId == "modCardClear") {
-      // IGNORE FLAG
-      await interaction.deferUpdate();
-      infraction.value = -1;
-      infraction.handler = mod.id;
-      await u.db.infraction.update(infraction);
-      embed.setColor(0x00FF00)
-        .addFields({ name: "Resolved", value: `${mod.toString()} cleared the flag.` });
-      embed.data.fields = embed.data.fields?.filter(f => !f.name.startsWith("Reverted"));
-      await interaction.editReply({ embeds: [embed], components: [c.revert] });
     } else if (interaction.customId == "modCardLink") {
       // LINK TO #MODDISCUSSION
       const md = interaction.client.getTextChannel(u.sf.channels.moddiscussion);
@@ -333,13 +349,32 @@ async function processCardAction(interaction) {
 
       embed.setFooter({ text: `Linked by ${u.escapeText(mod.displayName)}` });
       md?.send({ embeds: [embed] }).catch(u.noop);
+      return processing.delete(flag.id);
+    }
+
+    // The buttons after this actually need mod filtering
+    if (infraction && mod.id == infraction.discordId) {
+      await interaction.reply({ content: "You can't handle your own flag!", ephemeral: true });
+      return processing.delete(flag.id);
+    }
+
+    if (interaction.customId == "modCardClear") {
+      // IGNORE FLAG
+      await interaction.deferUpdate();
+      infraction.value = -1;
+      infraction.handler = mod.id;
+      await u.db.infraction.update(infraction);
+      embed.setColor(c.colors.success)
+        .addFields({ name: "Resolved", value: `${mod.toString()} cleared the flag.` });
+      embed.data.fields = embed.data.fields?.filter(f => !f.name.startsWith("Reverted"));
+      await interaction.editReply({ embeds: [embed], components: [c.revert] });
     } else if (interaction.customId == "modCardRetract") {
       // Only the person who acted on the card (or someone in management) can retract an action
       if (infraction.handler != mod.id && !u.perms.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", ephemeral: true });
       await interaction.deferUpdate();
       const verbal = embed.data.fields?.find(f => f.value.includes("verbal"));
       const revertedMsg = "The offending message can't be restored" + (infraction.value > 9 ? " and the Muted role may have to be removed and the user unwatched." : ".");
-      embed.setColor(0xFF0000)
+      embed.setColor(c.colors.action)
       .setFields(embed.data.fields?.filter(f => !f.name.startsWith("Resolved") && !f.name.startsWith("Reverted")) ?? [])
       .addFields({ name: "Reverted", value: `${interaction.member} reverted the previous decision. ${infraction.value > 0 ? revertedMsg : ""}` });
 
@@ -356,43 +391,43 @@ async function processCardAction(interaction) {
       await u.db.infraction.update(infraction);
     } else {
       await interaction.deferUpdate();
-      embed.setColor(0x0000FF);
+      embed.setColor(c.colors.handled);
       infraction.handler = mod.id;
       const member = interaction.guild.members.cache.get(infraction.discordId);
 
       switch (interaction.customId) {
-      case "modCardVerbal":
-        infraction.value = 0;
-        embed.setColor(0x00FFFF).addFields({ name: "Resolved", value: `${mod.toString()} issued a verbal warning.` });
-        break;
-      case "modCardMinor":
-        infraction.value = 1;
-        embed.addFields({ name: "Resolved", value: `${mod.toString()} issued a 1 point warning.` });
-        break;
-      case "modCardMajor":
-        infraction.value = 5;
-        embed.addFields({ name: "Resolved", value: `${mod.toString()} issued a 5 point warning.` });
-        break;
-      case "modCardMute":
-        infraction.value = 10;
-        if (member && !member.roles.cache.has(u.sf.roles.muted)) {
-          // Only mute if they weren't already muted.
-          try {
-            await member.roles.add(u.sf.roles.muted);
-            if (member.voice.channel) await member.voice.disconnect("User mute").catch(u.noop);
-            interaction.client.getTextChannel(u.sf.channels.muted)?.send({
-              content: `${member}, you have been muted in ${member.guild.name}. Please review our Code of Conduct. A member of the mod team will be available to discuss more details.\n\nhttp://ldsgamers.com/code-of-conduct`,
-              allowedMentions: { users: [member.id] }
-            }).catch(u.noop);
-          } catch (error) { u.errorHandler(error, "Mute user via card"); }
-        } else if (!member) {
-          // Apply muted roles in post
-          const roles = (await u.db.user.fetchUser(infraction.discordId))?.roles.concat(u.sf.roles.muted) ?? [];
-          await u.db.user.updateRoles(undefined, roles, infraction.discordId);
-          await c.watch(interaction, member ?? infraction.discordId, true);
-        }
-        embed.addFields({ name: "Resolved", value: `${mod} muted the member.` });
-        break;
+        case "modCardVerbal":
+          infraction.value = 0;
+          embed.addFields({ name: "Resolved", value: `${mod.toString()} issued a verbal warning.` });
+          break;
+        case "modCardMinor":
+          infraction.value = 1;
+          embed.addFields({ name: "Resolved", value: `${mod.toString()} issued a 1 point warning.` });
+          break;
+        case "modCardMajor":
+          infraction.value = 5;
+          embed.addFields({ name: "Resolved", value: `${mod.toString()} issued a 5 point warning.` });
+          break;
+        case "modCardMute":
+          infraction.value = 10;
+          if (member && !member.roles.cache.has(u.sf.roles.muted)) {
+            // Only mute if they weren't already muted.
+            try {
+              await member.roles.add(u.sf.roles.muted);
+              if (member.voice.channel) await member.voice.disconnect("User mute").catch(u.noop);
+              interaction.client.getTextChannel(u.sf.channels.muted)?.send({
+                content: `${member}, you have been muted in ${member.guild.name}. Please review our Code of Conduct. A member of the mod team will be available to discuss more details.\n\nhttp://ldsgamers.com/code-of-conduct`,
+                allowedMentions: { users: [member.id] }
+              }).catch(u.noop);
+            } catch (error) { u.errorHandler(error, "Mute user via card"); }
+          } else if (!member) {
+            // Apply muted roles in post
+            const roles = (await u.db.user.fetchUser(infraction.discordId))?.roles.concat(u.sf.roles.muted) ?? [];
+            await u.db.user.updateRoles(undefined, roles, infraction.discordId);
+            await c.watch(interaction, member ?? infraction.discordId, true);
+          }
+          embed.addFields({ name: "Resolved", value: `${mod} muted the member.` });
+          break;
       }
       await u.db.infraction.update(infraction);
       const infractionSummary = await u.db.infraction.getSummary(infraction.discordId);
@@ -444,14 +479,14 @@ const Module = new Augur.Module()
 })
 .addEvent("interactionCreate", (int) => {
   if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
-  if (!u.perms.calc(int.member, ["mod"])) {
+  if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
     int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
     return;
   }
-  if (['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract'] // mod card actions minus the modCard part
+  if (['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
     .includes(int.customId.replace("modCard", "").toLowerCase())) return processCardAction(int);
 })
-// @ts-ignore
+// @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
 .addEvent("ready", () => {
   setInterval(() => {

@@ -73,19 +73,19 @@ const Module = new Augur.Module()
     const subcommand = int.options.getSubcommand(true);
     await int.deferReply({ ephemeral: true });
     switch (subcommand) {
-    case "cakeday": return runCakeday(int);
-    case "birthday": return runBirthday(int);
-    case "banner": {
-      int.editReply("Setting banner...");
-      const response = await setBanner(int.options.getString("file", true));
-      if (response) int.editReply(response);
-    }
+      case "cakeday": return runCakeday(int);
+      case "birthday": return runBirthday(int);
+      case "banner": {
+        int.editReply("Setting banner...");
+        const response = await setBanner(int.options.getString("file", true));
+        if (response) int.editReply(response);
+      }
     }
   },
   autocomplete: (int) => {
     const option = int.options.getFocused();
     const files = fs.readdirSync(path.resolve(__dirname + "/../media/banners"))
-      .filter(file => file.endsWith(".png") && file.startsWith(option))
+      .filter(file => file.endsWith(".png") && file.includes(option))
       .map(f => f.substring(0, f.length - 4));
     int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
   }

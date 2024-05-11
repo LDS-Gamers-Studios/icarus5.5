@@ -4,32 +4,31 @@
   ],
   "ownerId": "put your id here",
   "api": {
-    "snipcart": "",
-    "steam": "",
-    "challonge": ""
+    "snipcart": "we don't have a way to test the API right now",
+    "steam": "https://steamcommunity.com/dev/apikey",
+    "challonge": "https://api.challonge.com/v1"
   },
-  "applicationId": "You can find it here: https://discord.com/developers/applications",
-  "color": [
-    248,
-    154,
-    34
-  ],
-  "xpScale": 200,
+  "applicationId": "https://discord.com/developers/applications",
+  "color": "0xf89a22",
   "db": {
     "model": "database/dbControllers.js",
-    "db": "localhost:27017/<database> by default",
+    "note": "(Don't change this value, it's a note.) Connection string format: (mongodb(+srv?) or localhost:27017)://<username>:<password>@<connection>",
+    "db": "localhost:27017/icarus or mongodb(+srv?)://<connection>/icarus",
     "settings": {
       "useNewUrlParser": true,
-      "user": "",
-      "pass": ""
+      "useUnifiedTopology": true,
+      "user": "<username>",
+      "pass": "<pass>"
     }
   },
   "devMode": true,
   "silentMode": false,
-  "error": {
-    "url": "Webhook url for errors"
+  "ownerOverride": true,
+  "webhooks": {
+    "error": "Webhook url for errors",
+    "watchlist": "Webhook url for #watch-list",
+    "mcTesting": "Webhook url for testing interactions with Minecraft chat"
   },
-  "mcTestingWebhook": "Webhook url for testing interactions with Minecraft chat",
   "events": [
     "channelCreate",
     "channelUpdate",
@@ -50,9 +49,9 @@
     "voiceStateUpdate"
   ],
   "google": {
-    "api": "You can fill out all this info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
+    "api": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
     "creds": {
-      "type": "",
+      "type": "Create a project, give it access to google sheets, and create a service account credential. Download the JSON and that should fit in this object",
       "project_id": "",
       "private_key_id": "",
       "private_key": "",
@@ -71,10 +70,10 @@
   },
   "prefix": "! (change this to something unique)",
   "spamThreshold":  {
-    "channels": [10, 1],
-    "messages": [10, 1],
-    "same": [1, 1],
-    "time": 10,
+    "channels": [10, 8],
+    "messages": [10, 8],
+    "same": [5, 5],
+    "time": 7,
     "cleanupLimit": 90
   },
   "token": "Put your bot token here (https://discord.com/developers/applications)",
