@@ -5,6 +5,9 @@
 const u = require("../utils/utils"),
 Discord = require("discord.js");
 
+/**
+ * A mapping of role IDs to badge objects that can be used to place badges on the profile card.
+ */
 const badges = new Map()
   // Staff roles
   .set(u.sf.roles.founder, { title: "LDSG Founder", image: "team_founder.png", desc: "Lord of the Beans", overrides: [u.sf.roles.management, u.sf.roles.team, u.sf.roles.gameskeeper, u.sf.roles.mod] })
@@ -53,8 +56,9 @@ const badges = new Map()
   .set(u.sf.roles.platform.playstation, { title: "Playstation Gamer", image: "platform_ps.png", desc: "You game on the Playstation. So it DOES have games!" })
   .set(u.sf.roles.platform.nintendo, { title: "Nintendo Gamer", image: "platform_nin.png", desc: "You game on the Nintendo. You spend hours of your life stomping... koopas." })
 
-/**
- * @param {string} roleId
+/**Gets the roles that are lower rank than the provided ID for sponsors.
+ * @param {string} roleId The role ID to search by.
+ * @returns {Array<string>} An array of roles that can be skipped.
  */
 function sponsorRolesOverrides(roleId) {
   const sponsors = [
@@ -69,8 +73,9 @@ function sponsorRolesOverrides(roleId) {
   return sponsors.slice(index + 1);
 }
 
-/**
- * @param {string} roleId
+/**Gets the roles that are lower rank than the provided ID for chat experience.
+ * @param {string} roleId The role ID to search by.
+ * @returns {Array<string>} An array of roles that can be skipped.
  */
 function experienceRolesOverrides(roleId) {
   const experience = [
@@ -84,8 +89,9 @@ function experienceRolesOverrides(roleId) {
   return experience.slice(index + 1);
 }
 
-/**
- * @param {string} roleId
+/**Gets the roles that are lower rank than the provided ID for membership time.
+ * @param {string} roleId The role ID to search by.
+ * @returns {Array<string>} An array of roles that can be skipped.
  */
 function membershipRolesOverrides(roleId) {
   const membership = [
@@ -105,10 +111,11 @@ function membershipRolesOverrides(roleId) {
 
 }
 
-/**
+/**Based on the list of roles inserted, return the list of badge objects that the member
+ * should have on their profile card.
  * 
- * @param {Discord.Collection<string, Discord.Role>} roles 
- * @returns {Array<{title: string, image: string, desc: string, overrides: Array<String>?}>}
+ * @param {Discord.Collection<string, Discord.Role>} roles The roles that the member has.
+ * @returns {Array<{title: string, image: string, desc: string, overrides: Array<String>?}>} Badge objects used by the makeProfileCard function.
  */
 function getBadges(roles) {
   let overrides = [];
