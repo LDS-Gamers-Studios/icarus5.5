@@ -3,11 +3,11 @@ const u = require("./regUtils");
 
 const members = new u.sub()
   .setName("members")
-  .setDescription("Get the member count of LDSG.")
+  .setDescription("Get the member count of LDSG.");
 
 const spotlight = new u.sub()
   .setName("spotlight")
-  .setDescription("Learn about one special LDSG member.")
+  .setDescription("Learn about one special LDSG member.");
 
 module.exports = new u.cmd()
   .setName("ldsg")
@@ -15,4 +15,4 @@ module.exports = new u.cmd()
   .setDMPermission(false)
   .addSubcommand(members)
   .addSubcommand(spotlight)
-  .toJSON()
+  .toJSON();
