@@ -1,9 +1,9 @@
-//@ts-check
+// @ts-check
 
 // Gets the badges that belong to the user based on a list of roles.
 
 const u = require("../utils/utils"),
-Discord = require("discord.js");
+  Discord = require("discord.js");
 
 /**
  * A mapping of role IDs to badge objects that can be used to place badges on the profile card.
@@ -54,9 +54,9 @@ const badges = new Map()
   .set(u.sf.roles.platform.pc, { title: "PC Gamer", image: "platform_pc.png", desc: "You are a PC Gamer. The Master Race. Half Life 3 Confirmed." })
   .set(u.sf.roles.platform.xbox, { title: "Xbox Gamer", image: "platform_xb.png", desc: "You are an Xbox Gamer. It's not a mini fridge, despite its looks." })
   .set(u.sf.roles.platform.playstation, { title: "Playstation Gamer", image: "platform_ps.png", desc: "You game on the Playstation. So it DOES have games!" })
-  .set(u.sf.roles.platform.nintendo, { title: "Nintendo Gamer", image: "platform_nin.png", desc: "You game on the Nintendo. You spend hours of your life stomping... koopas." })
+  .set(u.sf.roles.platform.nintendo, { title: "Nintendo Gamer", image: "platform_nin.png", desc: "You game on the Nintendo. You spend hours of your life stomping... koopas." });
 
-/**Gets the roles that are lower rank than the provided ID for sponsors.
+/** Gets the roles that are lower rank than the provided ID for sponsors.
  * @param {string} roleId The role ID to search by.
  * @returns {Array<string>} An array of roles that can be skipped.
  */
@@ -69,11 +69,11 @@ function sponsorRolesOverrides(roleId) {
     u.sf.roles.sponsors.twitch,
     u.sf.roles.sponsors.donator
   ];
-  let index = sponsors.indexOf(roleId);
+  const index = sponsors.indexOf(roleId);
   return sponsors.slice(index + 1);
 }
 
-/**Gets the roles that are lower rank than the provided ID for chat experience.
+/** Gets the roles that are lower rank than the provided ID for chat experience.
  * @param {string} roleId The role ID to search by.
  * @returns {Array<string>} An array of roles that can be skipped.
  */
@@ -85,11 +85,11 @@ function experienceRolesOverrides(roleId) {
     u.sf.roles.experience.veteran,
     u.sf.roles.experience.novice
   ];
-  let index = experience.indexOf(roleId);
+  const index = experience.indexOf(roleId);
   return experience.slice(index + 1);
 }
 
-/**Gets the roles that are lower rank than the provided ID for membership time.
+/** Gets the roles that are lower rank than the provided ID for membership time.
  * @param {string} roleId The role ID to search by.
  * @returns {Array<string>} An array of roles that can be skipped.
  */
@@ -106,31 +106,31 @@ function membershipRolesOverrides(roleId) {
     u.sf.roles.membership.year2,
     u.sf.roles.membership.year1
   ];
-  let index = membership.indexOf(roleId);
+  const index = membership.indexOf(roleId);
   return membership.slice(index + 1);
 
 }
 
-/**Based on the list of roles inserted, return the list of badge objects that the member
+/** Based on the list of roles inserted, return the list of badge objects that the member
  * should have on their profile card.
- * 
+ *
  * @param {Discord.Collection<string, Discord.Role>} roles The roles that the member has.
  * @returns {Array<{title: string, image: string, desc: string, overrides: Array<String>?}>} Badge objects used by the makeProfileCard function.
  */
 function getBadges(roles) {
-  let overrides = [];
-  let userBadges = [];
-  let sortedRoles = Array.from(roles.values())
+  const overrides = [];
+  const userBadges = [];
+  Array.from(roles.values())
     .sort((a, b) => b.position - a.position)
     .forEach((role => {
       // If the role isn't overridden, there's a badge for it, and the user doesn't already have 10 badges,
       // then add it to the badges list.
       if (!overrides.includes(role.id) && badges.has(role.id) && (userBadges.length < 10)) {
         userBadges.push(badges.get(role.id));
-        if (badges.get(role.id).overrides) { badges.get(role.id).overrides.forEach(override => overrides.push(override)) }
+        if (badges.get(role.id).overrides) { badges.get(role.id).overrides.forEach(override => overrides.push(override)); }
       }
-    }))
+    }));
   return userBadges;
 }
 
-module.exports = getBadges
+module.exports = getBadges;

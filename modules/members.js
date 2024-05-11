@@ -1,4 +1,4 @@
-//@ts-check
+// @ts-check
 
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
@@ -11,12 +11,12 @@ const Augur = require("augurbot-ts"),
 function newUserEmbed(member) {
   // member is type Discord.GuildMember
   let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
-  if (roleString.length > 1024) { roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + "..." }
-  let embed = u.embed()
+  if (roleString.length > 1024) { roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + "..."; }
+  const embed = u.embed()
     .setTitle(u.escapeText(member.displayName))
     .addFields([
       { name: "ID", value: member.id },
-      { name: "Joined", value: (member.joinedAt ? u.time(member.joinedAt, 'F') : "???")},
+      { name: "Joined", value: (member.joinedAt ? u.time(member.joinedAt, 'F') : "???") },
       { name: "Account Created", value: u.time(member.user.createdAt, 'F') },
       { name: "Roles", value: roleString }
     ])
@@ -26,7 +26,7 @@ function newUserEmbed(member) {
 }
 
 /** Creates a profile card - a PNG that contains some user information in a fun format!
- * 
+ *
  * @param {Discord.GuildMember} member The member to create the profile card for.
  * @returns {Promise<Buffer>} File-like object to attach to your response.
  */
@@ -45,12 +45,13 @@ async function makeProfileCard(member) {
   const avatar = await Jimp.read(member.displayAvatarURL({ size: 64, extension: "png" }));
 
   card.blit(avatar, 8, 8)
+    // eslint-disable-next-line no-control-regex
     .print(font, 80, 8, member.displayName.replace(/[^\x00-\x7F]/g, ""), 212)
     .print(font, 80, 28, "Joined: " + (member.joinedAt ? member.joinedAt.toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }) : "???"), 212);
 
-  let rankOffset = (!rank ? 80 : 168);
+  const rankOffset = (!rank ? 80 : 168);
   if (rank) {
-    let level = RankInfo.level(rank.totalXP);
+    const level = RankInfo.level(rank.totalXP);
     card.print(font, 8, 80, `Current Level: ${level} (${rank.totalXP.toLocaleString()} XP)`, 284)
       .print(font, 8, 100, `Next Level: ${RankInfo.minXp(level + 1).toLocaleString()} XP`, 284)
       .print(font, 8, 128, `Season Rank: ${rank.rank.season}/${member.guild.memberCount}`, 138)
@@ -58,14 +59,14 @@ async function makeProfileCard(member) {
   }
 
   for (let i = 0; i < badges.length; i++) {
-    let badge = await Jimp.read(badgePath + badges[i].image);
+    const badge = await Jimp.read(badgePath + badges[i].image);
     // card.blit(badge.resize(48, 48), 10 + (58 * (i % 5)), rankOffset + (58 * Math.floor(i / 5)));
     card.blit(badge.resize(61, 61), 10 + (73 * (i % 4)), rankOffset + (73 * Math.floor(i / 4)));
   }
 
   card.crop(0, 0, 300, Math.min(rankOffset + 73 * Math.ceil((badges.length) / 4), 533));
 
-  return await card.getBufferAsync(Jimp.MIME_PNG)
+  return await card.getBufferAsync(Jimp.MIME_PNG);
 }
 
 /** Returns user information.
@@ -76,15 +77,15 @@ async function slashUserInfo(interaction, user) {
   // I get it's kinda badly named - it's a Member not a User - but this matches the command nomenclature.
   try {
     if (user) {
-      await interaction.reply({ embeds: [newUserEmbed(user).toJSON()] })
+      await interaction.reply({ embeds: [newUserEmbed(user).toJSON()] });
     } else {
-      await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" })
+      await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" });
     }
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
 /** Returns the profile card of the mentioned user. Or the current user.
- * 
+ *
  * @param {Discord.ChatInputCommandInteraction} interaction The interaction that the user submits.
  * @param {Discord.GuildMember} user The user to get the profile card for.
  */
@@ -92,37 +93,37 @@ async function slashUserProfile(interaction, user) {
   // Same user/member issues as before.
   try {
     if (user) {
-      let card = await makeProfileCard(user)
-      await interaction.reply({ files: [card] })
+      const card = await makeProfileCard(user);
+      await interaction.reply({ files: [card] });
     } else {
-      await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" })
+      await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" });
     }
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
 /** Responds with the number of guild members, and how many are online.
- * 
+ *
  * @param {Discord.ChatInputCommandInteraction} interaction The interaction that the user submits.
  */
 async function slashLdsgMembers(interaction) {
   try {
     // @ts-ignore - this function can only be run in a guild.
-    let online = interaction.guild.members.cache.filter((member) => member?.presence?.status != "offline" && member.presence?.status != undefined)
+    const online = interaction.guild.members.cache.filter((member) => member?.presence?.status != "offline" && member.presence?.status != undefined);
     // @ts-ignore - this function can only be run in a guild.
-    let response = `📈 **Members:**\n${interaction.guild.memberCount} Members\n${online.size} Online`
+    const response = `📈 **Members:**\n${interaction.guild.memberCount} Members\n${online.size} Online`;
     await interaction.reply({ content: response });
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
 /** The LDSG Member Spotlight!
- *  
+ *
  * It's in a reduced functionality mode since it's complicated to migrate, and it's currently not in use.
- * 
+ *
  * @param {Discord.ChatInputCommandInteraction} interaction The interaction that the user submits.
  */
 async function slashLdsgSpotlight(interaction) {
   try {
-    await interaction.reply({ content: "[Take a look!](https://www.ldsgamers.com/community#member-spotlight)" })
+    await interaction.reply({ content: "[Take a look!](https://www.ldsgamers.com/community#member-spotlight)" });
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
@@ -132,14 +133,14 @@ const Module = new Augur.Module()
     name: "user",
     id: u.sf.commands.slashUser,
     process: async (interaction) => {
-      let subcommand = interaction.options.getSubcommand(true);
-      let user = interaction.options.getMember("user") ?? interaction.member
+      const subcommand = interaction.options.getSubcommand(true);
+      const user = interaction.options.getMember("user") ?? interaction.member;
       switch (subcommand) {
-        // @ts-ignore - LDSG will be cached and this function can only be run in a guild.
-        case "info": await slashUserInfo(interaction, user); break;
-        // @ts-ignore - LDSG will be cached and this function can only be run in a guild.
-        case "profile": await slashUserProfile(interaction, user); break;
-        // Side note, if you know partials well, can you make a type guard so TS is happy?
+      // @ts-ignore - LDSG will be cached and this function can only be run in a guild.
+      case "info": await slashUserInfo(interaction, user); break;
+      // @ts-ignore - LDSG will be cached and this function can only be run in a guild.
+      case "profile": await slashUserProfile(interaction, user); break;
+      // Side note, if you know partials well, can you make a type guard so TS is happy?
       }
     }
   })
@@ -147,12 +148,12 @@ const Module = new Augur.Module()
     name: "ldsg",
     id: u.sf.commands.slashLdsg,
     process: async (interaction) => {
-      let subcommand = interaction.options.getSubcommand(true)
+      const subcommand = interaction.options.getSubcommand(true);
       switch (subcommand) {
-        case "members": await slashLdsgMembers(interaction); break;
-        case "spotlight": await slashLdsgSpotlight(interaction); break;
+      case "members": await slashLdsgMembers(interaction); break;
+      case "spotlight": await slashLdsgSpotlight(interaction); break;
       }
     }
-  })
+  });
 
 module.exports = Module;

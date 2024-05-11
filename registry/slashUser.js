@@ -19,7 +19,7 @@ const profile = new u.sub()
     .setName("user")
     .setDescription("The user to get information for. (Defaults to yourself)")
     .setRequired(false)
-); 
+);
 
 module.exports = new u.cmd()
   .setName("user")
