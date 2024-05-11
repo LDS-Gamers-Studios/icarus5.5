@@ -2,21 +2,11 @@
 const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
-  mo = require("moment"),
   u = require("../utils/utils");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 
-
-/**
- * Get time in MST
- * @param {mo.MomentInput} [inp]
- * @param {boolean} [strict]
- */
-const moment = (inp, strict) => mo(inp, strict).utcOffset(-7);
-
-
 function celebrate() {
-  if (moment().hours() == 15) {
+  if (u.moment().hours() == 15) {
     testBirthdays().catch(error => u.errorHandler(error, "Test Birthdays"));
     testCakeDays().catch(error => u.errorHandler(error, "Test Cake Days"));
   }
@@ -26,8 +16,8 @@ function celebrate() {
 let tenureCache = new u.Collection();
 
 /**
- * @param {mo.Moment} date
- * @param {mo.Moment} today
+ * @param {import("moment").Moment} date
+ * @param {import("moment").Moment} today
  * @param {boolean} checkYear
 */
 function checkDate(date, today, checkYear) {
@@ -46,7 +36,7 @@ async function testBirthdays(testMember, testDate) {
     const guild = Module.client.guilds.cache.get(u.sf.ldsg);
     if (!guild) return;
 
-    const now = moment(testDate ? new Date(testDate) : undefined);
+    const now = u.moment(testDate ? new Date(testDate) : undefined);
 
     // Birthday Blast
     const birthdayLangs = require("../data/birthday.json");
@@ -62,7 +52,7 @@ async function testBirthdays(testMember, testDate) {
     const celebrating = [];
     for (const birthday of birthdays) {
       try {
-        const date = moment(new Date(birthday.ign).valueOf() + 10 * 60 * 60 * 1000);
+        const date = u.moment(new Date(birthday.ign).valueOf() + 10 * 60 * 60 * 1000);
         if (checkDate(date, now, false)) {
           const member = guild.members.cache.get(birthday.discordId);
           celebrating.push(member);
@@ -94,7 +84,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
 
   try {
     const guild = Module.client.guilds.cache.get(u.sf.ldsg);
-    const now = moment(testDate);
+    const now = u.moment(testDate);
     if (!guild) return u.errorHandler(new Error("LDSG is unavailable???"));
 
     const members = testMember ?? await guild.members.fetch();
@@ -108,7 +98,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
     for (const [memberId, member] of members.filter(m => m.roles.cache.has(u.sf.roles.trusted))) {
       try {
         const offset = offsets.find(o => o.discordId == memberId);
-        const join = moment(testJoinDate ?? member.joinedAt ?? 0).subtract(offset?.priorTenure || 0, "days");
+        const join = u.moment(testJoinDate ?? member.joinedAt ?? 0).subtract(offset?.priorTenure || 0, "days");
         if (checkDate(join, now, true)) {
           const years = now.year() - join.year();
           // yell at management if not
@@ -127,7 +117,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
       } catch (e) { u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`); continue; }
     }
     if (unknownYears.size > 0) {
-      const content = `## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with a valid local id?\nThe following members need the role given manually. ${unapplied.join(", ")}`;
+      const content = `## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`;
       Module.client.getTextChannel(u.sf.channels.management)?.send(content + "\nI've also notified the bot team, please work with them on fixing this issue.");
       Module.client.getTextChannel(u.sf.channels.bottesting)?.send(content);
     }
@@ -171,7 +161,7 @@ const Module = new Augur.Module()
     // @ts-ignore cuz google sheets be dumb
     const roles = await doc.sheetsByTitle["Roles"].getRows();
 
-    const a = roles.filter(r => r["Local ID"]?.startsWith("YR")).map(r => {
+    const a = roles.filter(r => r["Type"] == "Year").map(r => {
       return {
         year: parseInt(r["Level"]),
         role: r["Base Role ID"],

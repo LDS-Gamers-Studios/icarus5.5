@@ -16,7 +16,7 @@ const reason = (action, req = true) => new u.string()
 /** Should I add or remove the X? (Default: Y) */
 const action = (obj) => new u.string()
   .setName("action")
-  .setDescription(`"Should I add or remove the ${obj}? (Default: Add)`)
+  .setDescription(`Should I add or remove the ${obj}? (Default: Add)`)
   .setChoices({ name: "Add", value: "true" }, { name: "Remove", value: "false" })
   .setRequired(false);
 
@@ -109,7 +109,7 @@ const purge = new u.sub()
       .setDescription("How many messages should I delete?")
       .setRequired(true)
       .setMinValue(1)
-      .setMaxValue(100)
+      .setMaxValue(50)
   )
   .addStringOption(reason("purged"));
 
@@ -140,14 +140,14 @@ const slowmode = new u.sub()
   .addIntegerOption(
     new u.int()
       .setName("duration")
-      .setDescription("How many minutes will it last? (Default: `10`)")
+      .setDescription("How many minutes will it last? (Default: 10)")
       .setMinValue(0)
       .setRequired(false)
   )
   .addIntegerOption(
     new u.int()
       .setName("delay")
-      .setDescription("How many seconds between messages? (Default: `15`)")
+      .setDescription("How many seconds between messages? (Default: 15)")
       .setMinValue(0)
       .setRequired(false)
   )
@@ -176,7 +176,7 @@ const trust = new u.sub()
 
 const timeout = new u.sub()
   .setName("timeout")
-  .setDescription("Prevent someone from chatting without muting them")
+  .setDescription("Prevent someone from chatting without removing view access")
   .addUserOption(user("timeout"))
   .addIntegerOption(
     new u.int()
@@ -196,7 +196,7 @@ const warn = new u.sub()
   .addIntegerOption(
     new u.int()
       .setName("value")
-      .setDescription("What value is their warning? (Default: `1`)")
+      .setDescription("What value is their warning? (Default: 1)")
       .setRequired(false)
       .setMinValue(1)
   );
