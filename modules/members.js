@@ -1,10 +1,12 @@
+//@ts-check
+
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   Discord = require("discord.js");
 
 /** Creates the user embed - an embed that gives the user create/join times, roles, and avatar.
  * @param {Discord.GuildMember} member
- * @type {Discord.EmbedBuilder} 
+ * @returns {Discord.EmbedBuilder} 
  */
 function newUserEmbed(member) {
   // member is type Discord.GuildMember
@@ -14,11 +16,11 @@ function newUserEmbed(member) {
     .setTitle(u.escapeText(member.displayName))
     .addFields([
       { name: "ID", value: member.id },
-      { name: "Joined", value: member.joinedAt.toUTCString() },
-      { name: "Account Created", value: member.user.createdAt.toUTCString() },
+      { name: "Joined", value: (member.joinedAt ? u.time(member.joinedAt, 'F') : "???")},
+      { name: "Account Created", value: u.time(member.user.createdAt, 'F') },
       { name: "Roles", value: roleString }
     ])
-    .setThumbnail(member.displayAvatarURL({ dynamic: true }));
+    .setThumbnail(member.displayAvatarURL({ forceStatic: false }));
 
   return embed;
 }
@@ -44,7 +46,7 @@ async function makeProfileCard(member) {
 
   card.blit(avatar, 8, 8)
     .print(font, 80, 8, member.displayName.replace(/[^\x00-\x7F]/g, ""), 212)
-    .print(font, 80, 28, "Joined: " + member.joinedAt.toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }), 212);
+    .print(font, 80, 28, "Joined: " + (member.joinedAt ? member.joinedAt.toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }) : "???"), 212);
 
   let rankOffset = (!rank ? 80 : 168);
   if (rank) {
@@ -67,14 +69,14 @@ async function makeProfileCard(member) {
 }
 
 /** Returns user information.
- * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+ * @param {Discord.ChatInputCommandInteraction} interaction
  * @param {Discord.GuildMember} user
  */
 async function slashUserInfo(interaction, user) {
   // I get it's kinda badly named - it's a Member not a User - but this matches the command nomenclature.
   try {
     if (user) {
-      await interaction.reply({ embeds: [newUserEmbed(user).toJSON()], disableEveryone: true })
+      await interaction.reply({ embeds: [newUserEmbed(user).toJSON()] })
     } else {
       await interaction.reply({ content: "I couldn't find that user. (Not sure how, sorry.)" })
     }
@@ -83,7 +85,7 @@ async function slashUserInfo(interaction, user) {
 
 /** Returns the profile card of the mentioned user. Or the current user.
  * 
- * @param {Augur.GuildInteraction<"CommandSlash">} interaction 
+ * @param {Discord.ChatInputCommandInteraction} interaction 
  * @param {Discord.GuildMember} user 
  */
 async function slashUserProfile(interaction, user) {
@@ -100,11 +102,13 @@ async function slashUserProfile(interaction, user) {
 
 /** Responds with the number of guild members, and how many are online.
  * 
- * @param {Augur.GuildInteraction<"CommandSlash">} interaction
+ * @param {Discord.ChatInputCommandInteraction} interaction
  */
 async function slashLdsgMembers(interaction) {
   try {
+    // @ts-ignore - this function can only be run in a guild.
     let online = interaction.guild.members.cache.filter((member) => member?.presence?.status != "offline" && member.presence?.status != undefined)
+    // @ts-ignore - this function can only be run in a guild.
     let response = `📈 **Members:**\n${interaction.guild.memberCount} Members\n${online.size} Online`
     await interaction.reply({ content: response });
   } catch (error) { u.errorHandler(error, interaction); }
@@ -114,7 +118,7 @@ async function slashLdsgMembers(interaction) {
  *  
  * It's in a reduced functionality mode since it's complicated to migrate, and it's not guaranteed that it will be used.
  * 
- * @param {Augur.GuildInteraction<"CommandSlash">} interaction 
+ * @param {Discord.ChatInputCommandInteraction} interaction 
  */
 async function slashLdsgSpotlight(interaction) {
   try {
@@ -131,7 +135,9 @@ const Module = new Augur.Module()
       let subcommand = interaction.options.getSubcommand(true);
       let user = interaction.options.getMember("user") ?? interaction.member
       switch (subcommand) {
+        // @ts-ignore - LDSG will be cached and this function can only be run in a guild.
         case "info": await slashUserInfo(interaction, user); break;
+        // @ts-ignore - LDSG will be cached and this function can only be run in a guild.
         case "profile": await slashUserProfile(interaction, user); break;
       }
     }

@@ -107,7 +107,7 @@ function membershipRolesOverrides(roleId) {
 
 /**
  * 
- * @param {Array<Discord.Role>} roles 
+ * @param {Discord.Collection<string, Discord.Role>} roles 
  * @returns {Array<{title: string, image: string, desc: string, overrides: Array<String>?}>}
  */
 function getBadges(roles) {
