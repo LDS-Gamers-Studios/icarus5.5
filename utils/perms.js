@@ -14,7 +14,7 @@ const permFuncs = {
   /** @type {perm} */
   botAdmin: m => config.adminId.includes(m.id) || permFuncs.botOwner(m),
   /** @type {perm} */
-  mgmt: m => m.roles.cache.has(sf.roles.management) || permFuncs.botOwner(m),
+  mgmt: m => m.roles.cache.has(sf.roles.management) || (config.ownerOverride && permFuncs.botOwner(m)),
   /** @type {perm} */
   mgr: m => m.roles.cache.has(sf.roles.manager),
   /** @type {perm} */

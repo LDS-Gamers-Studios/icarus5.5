@@ -136,6 +136,7 @@ async function pin(int, msg) {
     await msg.pin().catch((e) => u.errorHandler(e, int));
     return edit(int, "Message pinned!");
   } else {
+    if (msg.author.id == int.user.id) return edit(int, "You can't request your own message to be pinned!");
     const embed = u.embed({ author: int.member })
       .setTimestamp()
       .setDescription(msg.cleanContent)
@@ -242,6 +243,16 @@ async function warnUser(int, usr) {
   } else {
     return int.update(noTime);
   }
+}
+/** @type {message} */
+async function modDiscussion(int, msg) {
+  if (!msg) return edit(int, "I couldn't find that message!");
+  const md = int.client.getTextChannel(u.sf.channels.moddiscussion);
+  const embed = u.msgReplicaEmbed(msg, "", true)
+    .setFooter({ text: `Linked by ${u.escapeText(int.member.displayName)}` })
+    .setColor(c.colors.action);
+  md?.send({ embeds: [embed] }).catch(u.noop);
+  return edit(int, `I forwarded the message to ${md}!`);
 }
 /** @type {user} */
 async function muteUser(int, usr, apply = true) {
@@ -361,7 +372,7 @@ async function spamCleanup(int, msg) {
 /** @type {message} */
 async function announceMessage(int, msg) {
   if (!msg) return msgErr(int);
-  await int.client.getTextChannel(u.sf.channels.announcements)?.send({ embeds: [u.msgReplicaEmbed(msg), ...msg.embeds] });
+  await int.client.getTextChannel(u.sf.channels.announcements)?.send({ embeds: [u.msgReplicaEmbed(msg, ""), ...msg.embeds] });
   return edit(int, "Message announced!");
 }
 /**
@@ -389,6 +400,7 @@ async function handleModMenu(submitted, oldInt) {
   // These ones don't require additional inputs,
   await submitted.deferUpdate();
   switch (submitted.values[0]) {
+    case "modDiscussion": return modDiscussion(submitted, message);
     case "purgeChannel": return purgeChannel(submitted, message);
     case "spamCleanup": return spamCleanup(submitted, message);
     case "announceMessage": return announceMessage(submitted, message);

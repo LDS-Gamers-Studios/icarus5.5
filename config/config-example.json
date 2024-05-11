@@ -23,6 +23,7 @@
   },
   "devMode": true,
   "silentMode": false,
+  "ownerOverride": true,
   "webhooks": {
     "error": "Webhook url for errors",
     "watchlist": "Webhook url for #watch-list",

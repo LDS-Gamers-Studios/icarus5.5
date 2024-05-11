@@ -150,7 +150,7 @@ const Module = new Augur.Module()
   hidden: true,
   permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin"]),
   process: async (int) => {
-    if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // don't even bother replying
+    if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
     const subcommand = int.options.getSubcommand(true);
     const forThePing = await int.deferReply({ ephemeral: true });
     if (["gotobed", "reload"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");

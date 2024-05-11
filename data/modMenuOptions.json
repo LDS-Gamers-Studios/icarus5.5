@@ -24,6 +24,13 @@
   ],
   "mod" : [
     {
+      "label": "Crospost to Mod Discussion",
+      "value": "modDiscussion",
+      "description": "Discuss this message in the Mod Discussion channel",
+      "emoji": "📨",
+      "context": "msg"
+    },
+    {
       "label": "Get User Summary",
       "value": "userSummary",
       "description": "Get info on a user and all their infractions",
