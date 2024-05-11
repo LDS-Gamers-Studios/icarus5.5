@@ -5,8 +5,8 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js");
 
 /** Creates the user embed - an embed that gives the user create/join times, roles, and avatar.
- * @param {Discord.GuildMember} member
- * @returns {Discord.EmbedBuilder} 
+ * @param {Discord.GuildMember} member The member to create the embed for.
+ * @returns {Discord.EmbedBuilder} An embed that represents the member.
  */
 function newUserEmbed(member) {
   // member is type Discord.GuildMember
@@ -27,8 +27,8 @@ function newUserEmbed(member) {
 
 /** Creates a profile card - a PNG that contains some user information in a fun format!
  * 
- * @param {Discord.GuildMember} member 
- * @returns {Promise<Buffer>}
+ * @param {Discord.GuildMember} member The member to create the profile card for.
+ * @returns {Promise<Buffer>} File-like object to attach to your response.
  */
 async function makeProfileCard(member) {
   const badgeData = require("../utils/badges"),
@@ -69,8 +69,8 @@ async function makeProfileCard(member) {
 }
 
 /** Returns user information.
- * @param {Discord.ChatInputCommandInteraction} interaction
- * @param {Discord.GuildMember} user
+ * @param {Discord.ChatInputCommandInteraction} interaction The interaction that the user submits.
+ * @param {Discord.GuildMember} user The user to get information for.
  */
 async function slashUserInfo(interaction, user) {
   // I get it's kinda badly named - it's a Member not a User - but this matches the command nomenclature.
@@ -85,8 +85,8 @@ async function slashUserInfo(interaction, user) {
 
 /** Returns the profile card of the mentioned user. Or the current user.
  * 
- * @param {Discord.ChatInputCommandInteraction} interaction 
- * @param {Discord.GuildMember} user 
+ * @param {Discord.ChatInputCommandInteraction} interaction The interaction that the user submits.
+ * @param {Discord.GuildMember} user The user to get the profile card for.
  */
 async function slashUserProfile(interaction, user) {
   // Same user/member issues as before.
@@ -102,7 +102,7 @@ async function slashUserProfile(interaction, user) {
 
 /** Responds with the number of guild members, and how many are online.
  * 
- * @param {Discord.ChatInputCommandInteraction} interaction
+ * @param {Discord.ChatInputCommandInteraction} interaction The interaction that the user submits.
  */
 async function slashLdsgMembers(interaction) {
   try {
@@ -116,9 +116,9 @@ async function slashLdsgMembers(interaction) {
 
 /** The LDSG Member Spotlight!
  *  
- * It's in a reduced functionality mode since it's complicated to migrate, and it's not guaranteed that it will be used.
+ * It's in a reduced functionality mode since it's complicated to migrate, and it's currently not in use.
  * 
- * @param {Discord.ChatInputCommandInteraction} interaction 
+ * @param {Discord.ChatInputCommandInteraction} interaction The interaction that the user submits.
  */
 async function slashLdsgSpotlight(interaction) {
   try {
@@ -139,6 +139,7 @@ const Module = new Augur.Module()
         case "info": await slashUserInfo(interaction, user); break;
         // @ts-ignore - LDSG will be cached and this function can only be run in a guild.
         case "profile": await slashUserProfile(interaction, user); break;
+        // Side note, if you know partials well, can you make a type guard so TS is happy?
       }
     }
   })
