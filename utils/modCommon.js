@@ -252,13 +252,13 @@ const modCommon = {
    * Get a summary embed
    * @param {Discord.GuildMember|Discord.User} member
    * @param {number} [time]
-   * @param {Discord.Guild} [guild]
+   * @param {Discord.Guild | null} [guild]
    */
-  getSummaryEmbed: async function(member, time, guild) {
+  getSummaryEmbed: async function(member, time, guild, getInfractions = true) {
     const isMember = member instanceof Discord.GuildMember;
     const data = await u.db.infraction.getSummary(member.id, time);
     const response = [`**${member}** has had **${data.count}** infraction(s) in the last **${data.time}** day(s), totaling **${data.points}** points.`];
-    if ((data.count > 0) && (data.detail.length > 0)) {
+    if (getInfractions && (data.count > 0) && (data.detail.length > 0)) {
       data.detail = data.detail.reverse(); // Newest to oldest is what we want
       for (const record of data.detail) {
         const g = isMember ? member.guild : guild;
@@ -273,20 +273,21 @@ const modCommon = {
     text = text.length > 4090 ? text.substring(0, 4086) + "..." : text;
 
     const userDoc = await u.db.user.fetchUser(member.id);
-    let roleString = isMember ? member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ") : "[Unknown]";
+    let roleString = isMember ? member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role).join(", ") : "[Unknown]";
     if (roleString.length > 1024) roleString = roleString.slice(0, 1020) + "...";
 
-    return u.embed({ author: member })
+    const embed = u.embed({ author: member })
       .setTitle("Infraction Summary")
-      .setDescription(text)
+      .setDescription(getInfractions ? text : null)
       .setColor(0x00ff00)
       .addFields(
         { name: "ID", value: member.id, inline: true },
-        { name: "Activity", value: `Active Minutes: ${userDoc?.posts ?? "Unknown"}`, inline: true },
-        { name: "Roles", value: roleString },
         { name: "Joined", value: isMember ? member.joinedAt ? u.time(member.joinedAt, 'R') : "unknown" : "unknown", inline: true },
-        { name: "Account Created", value: u.time((isMember ? member.user : member).createdAt, 'R'), inline: true }
+        { name: "Account Created", value: u.time((isMember ? member.user : member).createdAt, 'R'), inline: true },
+        { name: "Roles", value: roleString },
       );
+    if (getInfractions) embed.addFields({ name: "Activity", value: `Active Minutes: ${userDoc?.posts ?? "Unknown"}`, inline: true });
+    return embed;
   },
 
   /**
