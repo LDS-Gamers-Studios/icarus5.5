@@ -25,7 +25,7 @@ const Module = new Augur.Module()
     process: async (interaction) => {
       const subcommand = interaction.options.getSubcommand(true);
       switch (subcommand) {
-      case "members": return slashLdsgMembers(interaction);
+        case "members": return slashLdsgMembers(interaction);
       }
     }
   });
