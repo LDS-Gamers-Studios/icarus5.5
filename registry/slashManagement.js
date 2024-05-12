@@ -20,18 +20,24 @@ const month = new u.string()
 )
 .setRequired(true);
 
+const day = new u.int()
+.setName("day")
+.setDescription("The day to run it for")
+.setRequired(true)
+.setMinValue(1)
+.setMaxValue(31);
+
 const cakeday = new u.sub()
   .setName("cakeday")
   .setDescription("Run cakeday (tenure) for a specific Date")
   .addStringOption(month)
-  .addIntegerOption(
-    new u.int()
-      .setName("day")
-      .setDescription("The day to run it for")
-      .setRequired(true)
-      .setMinValue(1)
-      .setMaxValue(31)
-  );
+  .addIntegerOption(day);
+
+const birthday = new u.sub()
+  .setName("birthday")
+  .setDescription("Run birthday for a specific Date")
+  .addStringOption(month)
+  .addIntegerOption(day);
 
 const banner = new u.sub()
   .setName("banner")
@@ -44,18 +50,6 @@ const banner = new u.sub()
       .setAutocomplete(true)
   );
 
-const birthday = new u.sub()
-  .setName("birthday")
-  .setDescription("Run birthday for a specific Date")
-  .addStringOption(month)
-  .addIntegerOption(
-    new u.int()
-      .setName("day")
-      .setDescription("The day to run it for")
-      .setRequired(true)
-      .setMinValue(1)
-      .setMaxValue(31)
-  );
 
 module.exports = new u.cmd()
   .setName("management")

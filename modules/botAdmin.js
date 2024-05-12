@@ -148,35 +148,36 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashBot,
   onlyGuild: true,
   hidden: true,
-  permissions: (int) => u.perms.calc(int.member, ["botTeam"]),
+  permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin"]),
   process: async (int) => {
-    if (!u.perms.calc(int.member, ["botTeam"])) return; // don't even bother replying
+    if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
     const subcommand = int.options.getSubcommand(true);
     const forThePing = await int.deferReply({ ephemeral: true });
     if (["gotobed", "reload"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
-    if (["pull", "pulse"].includes(subcommand) && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
+    if (subcommand == "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
-    case "gotobed": return goToBed(int);
-    case "ping": return ping(int, forThePing);
-    case "pull": return pull(int);
-    case "pulse": return pulse(int);
-    case "reload": return reload(int);
-    case "getid": return getId(int);
+      case "gotobed": return goToBed(int);
+      case "ping": return ping(int, forThePing);
+      case "pull": return pull(int);
+      case "pulse": return pulse(int);
+      case "reload": return reload(int);
+      case "getid": return getId(int);
     }
   },
   autocomplete: (int) => {
     const fs = require('fs');
     const path = require("path");
     const option = int.options.getFocused();
-    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js") && file.startsWith(option));
+    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js") && file.includes(option));
     int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
   }
 })
 .addCommand({ name: "mcweb",
+  hidden: true,
   permissions: () => config.devMode,
   process: (msg, suffix) => {
-    if (!config.mcTestingWebhook) return msg.reply("Make sure to set a webhook for mcTestingWebhook! You need it to run this command.");
-    const webhook = new Discord.WebhookClient({ url: config.mcTestingWebhook });
+    if (!config.webhooks.mcTesting) return msg.reply("Make sure to set a webhook for mcTestingWebhook! You need it to run this command.");
+    const webhook = new Discord.WebhookClient({ url: config.webhooks.mcTesting });
     webhook.send(suffix);
   }
 })
@@ -193,13 +194,12 @@ const Module = new Augur.Module()
     const testingDeploy = [
       ["../config/config.json", "../config/config-example.json"],
       ["../config/snowflakes-testing.json", "../config/snowflakes.json"],
-      ["../config/snowflakes-testing-commands.json", "../config/snowflakes-testing-commands-example.json"],
+      ["../config/snowflakes-commands.json", "../config/snowflakes-commands-example.json"],
       ["../data/banned.json", "../data/banned-example.json"]
     ];
     for (const filename of testingDeploy) {
       const prod = require(filename[1]);
       const repo = require(filename[0]);
-      // console.log(`Checking ${filename}`);
       const [m1, m2] = fieldMismatches(prod, repo);
       if (m1.length > 0 && !config.silentMode) {
         u.errorLog.send({ embeds: [

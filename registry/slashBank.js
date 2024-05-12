@@ -61,11 +61,11 @@ const game = new u.subGroup()
 
 const discount = new u.sub()
   .setName("discount")
-  .setDescription("Use GhostBucks to create a discount code for the LDSG store. 1GB = 1¢")
+  .setDescription("Use GhostBucks to create a discount code for the LDSG store. 100GB = $1.00 USD")
   .addIntegerOption(
     new u.int()
       .setName("amount")
-      .setDescription("How many GB would you like to use? Limit 1,000GB ($10)")
+      .setDescription("How many GB would you like to use? Limit 1,000GB ($10 USD)")
       .setMinValue(1)
       .setMaxValue(1000)
       .setRequired(true)

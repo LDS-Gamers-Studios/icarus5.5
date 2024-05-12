@@ -2,12 +2,12 @@
   {
     "label": "General Concern",
     "value": "badVibes",
-    "description": "This person makes me feel uncomfortable",
+    "description": "This makes me feel uncomfortable",
     "emoji": "😳",
     "default": false
   },
   {
-    "label": "Political or religious debate",
+    "label": "Political or Religious Debate",
     "value": "debate",
     "description": "This is (or might cause) a debate",
     "emoji": "🙊",
