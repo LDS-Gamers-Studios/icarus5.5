@@ -300,7 +300,6 @@ const modCommon = {
 
     const embed = u.embed({ author: member })
       .setTitle("Infraction Summary")
-      .setDescription(text)
       .setColor(embedColors.info)
       .addFields(
         { name: "ID", value: member.id, inline: true },
@@ -308,7 +307,11 @@ const modCommon = {
         { name: "Account Created", value: u.time((isMember ? member.user : member).createdAt, 'R'), inline: true },
         { name: "Roles", value: roleString },
       );
-    if (getInfractions) embed.addFields({ name: "Activity", value: `Active Minutes: ${userDoc?.posts ?? "Unknown"}`, inline: true });
+    if (getInfractions) {
+      embed
+        .setDescription(text)
+        .addFields({ name: "Activity", value: `Active Minutes: ${userDoc?.posts ?? "Unknown"}`, inline: true });
+    }
     return embed;
   },
 

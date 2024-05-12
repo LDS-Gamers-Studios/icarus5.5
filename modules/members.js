@@ -3,7 +3,8 @@
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  Discord = require("discord.js");
+  Discord = require("discord.js"),
+  config = require("../config/config.json");
 
 /**
  * Creates a profile card - a PNG that contains some user information in a fun format!
@@ -60,7 +61,12 @@ async function makeProfileCard(member) {
  * @param {Discord.GuildMember} user The user to get information for.
  */
 async function slashUserInfo(interaction, user) {
-  return interaction.reply({ embeds: [await c.getSummaryEmbed(user, 0, interaction.guild, false)], ephemeral: interaction.channelId != u.sf.channels.botspam });
+  const embed = await c.getSummaryEmbed(user, 0, interaction.guild, false);
+  embed
+  // un-mod-ifying it
+    .setTitle(null)
+    .setColor(parseInt(config.color));
+  return interaction.reply({ embeds: [embed], ephemeral: interaction.channelId != u.sf.channels.botspam });
 }
 
 /**
