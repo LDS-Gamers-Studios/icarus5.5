@@ -22,7 +22,7 @@ async function makeProfileCard(member) {
 
     const members = member.guild.members.cache;
     const rank = await u.db.user.getRank(member.id, members);
-    const badges = badgeData(member.roles.cache);
+    const badges = await badgeData(member.roles.cache);
 
     const avatar = await Jimp.read(member.displayAvatarURL({ size: 64, extension: "png" }));
 
@@ -69,9 +69,10 @@ async function slashUserInfo(interaction, user) {
  * @param {Discord.GuildMember} user The user to get the profile card for.
  */
 async function slashUserProfile(interaction, user) {
+  await interaction.deferReply({ ephemeral: interaction.channelId != u.sf.channels.botspam });
   const card = await makeProfileCard(user);
   if (!card) return; // error handled
-  return interaction.reply({ files: [card], ephemeral: interaction.channelId != u.sf.channels.botspam });
+  return interaction.editReply({ files: [card] });
 }
 
 const Module = new Augur.Module()
