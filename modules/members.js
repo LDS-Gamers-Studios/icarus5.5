@@ -84,8 +84,8 @@ const Module = new Augur.Module()
       const subcommand = interaction.options.getSubcommand(true);
       const user = interaction.options.getMember("user") ?? interaction.member;
       switch (subcommand) {
-      case "info": await slashUserInfo(interaction, user); break;
-      case "profile": await slashUserProfile(interaction, user); break;
+        case "info": await slashUserInfo(interaction, user); break;
+        case "profile": await slashUserProfile(interaction, user); break;
       }
     }
   });
