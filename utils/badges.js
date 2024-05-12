@@ -3,121 +3,76 @@
 // Gets the badges that belong to the user based on a list of roles.
 
 const u = require("../utils/utils"),
-  Discord = require("discord.js");
+  Discord = require("discord.js"),
+  config = require("../config/config.json"),
+  gs = require("google-spreadsheet"),
+  fs = require("fs");
 
 /**
- * A mapping of role IDs to badge objects that can be used to place badges on the profile card.
+ * Gets all badge data from the Google Sheet.
+ * @returns {Promise<Map>}
  */
-const badges = new Map()
-  // Staff roles
-  .set(u.sf.roles.founder, { title: "LDSG Founder", image: "team_founder.png", desc: "Lord of the Beans", overrides: [u.sf.roles.management, u.sf.roles.team, u.sf.roles.gameskeeper, u.sf.roles.mod] })
-  .set(u.sf.roles.management, { title: "LDSG Management", image: "team_management.png", desc: "Helps things run smoothly by directing the overall vision of the community.", overrides: [u.sf.roles.team, u.sf.roles.gameskeeper, u.sf.roles.mod] })
-  .set(u.sf.roles.team, { title: "LDSG Team", image: "team_team.png", desc: "Helps things move smoothly in an area of expertise.", overrides: [u.sf.roles.gameskeeper, u.sf.roles.mod] })
-  .set(u.sf.roles.mod, { title: "Discord Moderator", image: "team_moderator.png", desc: "Keeper of the peace, wielder of the hammer." })
-  .set(u.sf.roles.gameskeeper, { title: "LDSG Gameskeeper", image: "team_gameskeeper.png", desc: "Helps run a guild, club, clan, tribe, or something for LDSG." })
-  .set(u.sf.roles.minecraftmod, { title: "LDSG Minecraft Mod", image: "team_minecraft.png", desc: "A moderator on the LDSG Minecraft Servers" })
+async function getBadgeData() {
+  if (!config.google.sheets.config) {
+    console.log("No Sheets ID");
+    return new Map();
+  }
+  const doc = new gs.GoogleSpreadsheet(config.google.sheets.config);
+  try {
+    await doc.useServiceAccountAuth(config.google.creds);
+    await doc.loadInfo();
+    // @ts-ignore sheets stuff
+    const roles = await doc.sheetsByTitle["Roles"].getRows();
 
-  // Lion house roles (now with 100% fewer lions!)
-  .set(u.sf.roles.housebb, { title: "House Brightbeam", image: "bb-badge.png", desc: "House Brightbeam - Bastion of the Light" })
-  .set(u.sf.roles.housefb, { title: "House Freshbeast", image: "fb-badge.png", desc: "House Freshbeast - Thunder from the Mountains" })
-  .set(u.sf.roles.housesc, { title: "House Starcamp", image: "sc-badge.png", desc: "House Starcamp - In Pursuit of the Stars" })
-  // Do Heads of Household want their own badges?
+    const badgeMap = new Map();
 
-  // Sponsor roles
-  .set(u.sf.roles.sponsors.legendary, { title: "Legendary Sponsor", image: "sponsor_legendary.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.legendary) })
-  .set(u.sf.roles.sponsors.pro, { title: "Pro Sponsor", image: "sponsor_pro.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.pro) })
-  .set(u.sf.roles.sponsors.onyx, { title: "Onyx Sponsor", image: "sponsor_onyx.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.onyx) })
-  .set(u.sf.roles.sponsors.elite, { title: "Elite Sponsor", image: "sponsor_elite.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.elite) })
-  .set(u.sf.roles.sponsors.twitch, { title: "Twitch Subscriber", image: "sponsor_twitch.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you.", overrides: sponsorRolesOverrides(u.sf.roles.sponsors.twitch) })
-  .set(u.sf.roles.sponsors.donator, { title: "Donator", image: "sponsor_donator.png", desc: "Your generous donation lets us know you care about the community. You have our sincerest thanks, you awesome person, you." })
+    for (const role of roles) {
+      // Only add to the map if they have a role ID...
+      if (!role["Base Role ID"] || role["Base Role ID"] == '') continue;
+      // ...and if they have a badge listed...
+      if (!role["Badge"] || role["Badge"] == "") continue;
+      // ...and if the badge path is valid.
+      if (!fs.existsSync(`./media/badges/${role["Badge"]}.png`)) continue;
 
-  // Experience roles
-  .set(u.sf.roles.experience.ancient, { title: "Ancient Member", image: "chat_ancient.png", desc: "Attained the rank of Ancient in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.ancient) })
-  .set(u.sf.roles.experience.legend, { title: "Legendary Member", image: "chat_legend.png", desc: "Attained the rank of Legend in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.legend) })
-  .set(u.sf.roles.experience.hero, { title: "Hero Member", image: "chat_hero.png", desc: "Attained the rank of Hero in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.hero) })
-  .set(u.sf.roles.experience.veteran, { title: "Veteran Member", image: "chat_veteran.png", desc: "Attained the rank of Veteran in the LDSG Discord Server for participation in conversations.", overrides: experienceRolesOverrides(u.sf.roles.experience.veteran) })
-  .set(u.sf.roles.experience.novice, { title: "Novice Member", image: "chat_novice.png", desc: "Attained the rank of Novice in the LDSG Discord Server for participation in conversations." })
+      badgeMap.set(role["Base Role ID"], {
+        title: role["Role Reference"],
+        image: `${role["Badge"]}.png`,
+        // if there are lower roles, split them, and then remove the one at the end that's just an empty string.
+        overrides: (role["Lower Roles"] ? role["Lower Roles"].split(" ").filter((x) => x) : null)
+      });
 
-  // Membership roles
-  .set(u.sf.roles.membership.year1, { title: "Member - 1 Years", image: "anniversary-1.png", desc: "A member of the LDS Gamers Discord Community for 1 Year!" })
-  .set(u.sf.roles.membership.year2, { title: "Member - 2 Years", image: "anniversary-2.png", desc: "A member of the LDS Gamers Discord Community for 2 Years!", overrides: membershipRolesOverrides(u.sf.roles.membership.year2) })
-  .set(u.sf.roles.membership.year3, { title: "Member - 3 Years", image: "anniversary-3.png", desc: "A member of the LDS Gamers Discord Community for 3 Years!", overrides: membershipRolesOverrides(u.sf.roles.membership.year3) })
-  .set(u.sf.roles.membership.year4, { title: "Member - 4 Years", image: "anniversary-4.png", desc: "A member of the LDS Gamers Discord Community for 4 Years!", overrides: membershipRolesOverrides(u.sf.roles.membership.year4) })
-  .set(u.sf.roles.membership.year5, { title: "Member - 5 Years", image: "anniversary-5.png", desc: "A member of the LDS Gamers Discord Community for 5 Years! Wow!", overrides: membershipRolesOverrides(u.sf.roles.membership.year5) })
-  .set(u.sf.roles.membership.year6, { title: "Member - 6 Years", image: "anniversary-6.png", desc: "A member of the LDS Gamers Discord Community for 6 Years! Wow!", overrides: membershipRolesOverrides(u.sf.roles.membership.year6) })
-  .set(u.sf.roles.membership.year7, { title: "Member - 7 Years", image: "anniversary-7.png", desc: "A member of the LDS Gamers Discord Community for 7 Years! Wow!", overrides: membershipRolesOverrides(u.sf.roles.membership.year7) })
-  .set(u.sf.roles.membership.year8, { title: "Member - 8 Years", image: "anniversary-8.png", desc: "A member of the LDS Gamers Discord Community for 8 Years! Wow!", overrides: membershipRolesOverrides(u.sf.roles.membership.year8) })
-  .set(u.sf.roles.membership.year9, { title: "Member - 9 Years", image: "anniversary-9.png", desc: "A member of the LDS Gamers Discord Community for 9 Years! Wow!", overrides: membershipRolesOverrides(u.sf.roles.membership.year9) })
-  .set(u.sf.roles.membership.year10, { title: "Member - 10 Years", image: "anniversary-10.png", desc: "A member of the LDS Gamers Discord Community for 10+ Years! Thanks for sticking around!", overrides: membershipRolesOverrides(u.sf.roles.membership.year10) })
+    }
+    // @ts-ignore once again
+    const optInRoles = await doc.sheetsByTitle["Opt-In Roles"].getRows();
+    for (const role of optInRoles) {
+      if (!role["RoleID"]) continue;
+      if (!role["Badge"]) continue;
+      if (!fs.existsSync(`./media/badges/${role["Badge"]}.png`)) continue;
 
-  // Platform roles
-  .set(u.sf.roles.platform.pc, { title: "PC Gamer", image: "platform_pc.png", desc: "You are a PC Gamer. The Master Race. Half Life 3 Confirmed." })
-  .set(u.sf.roles.platform.xbox, { title: "Xbox Gamer", image: "platform_xb.png", desc: "You are an Xbox Gamer. It's not a mini fridge, despite its looks." })
-  .set(u.sf.roles.platform.playstation, { title: "Playstation Gamer", image: "platform_ps.png", desc: "You game on the Playstation. So it DOES have games!" })
-  .set(u.sf.roles.platform.nintendo, { title: "Nintendo Gamer", image: "platform_nin.png", desc: "You game on the Nintendo. You spend hours of your life stomping... koopas." });
+      badgeMap.set(role["RoleID"], {
+        title: role["Role Tag"],
+        image: `${role["Badge"]}.png`,
+        overrides: null
+      });
 
-/** Gets the roles that are lower rank than the provided ID for sponsors.
- * @param {string} roleId The role ID to search by.
- * @returns {Array<string>} An array of roles that can be skipped.
- */
-function sponsorRolesOverrides(roleId) {
-  const sponsors = [
-    u.sf.roles.sponsors.legendary,
-    u.sf.roles.sponsors.pro,
-    u.sf.roles.sponsors.onyx,
-    u.sf.roles.sponsors.elite,
-    u.sf.roles.sponsors.twitch,
-    u.sf.roles.sponsors.donator
-  ];
-  const index = sponsors.indexOf(roleId);
-  return sponsors.slice(index + 1);
-}
+    }
 
-/** Gets the roles that are lower rank than the provided ID for chat experience.
- * @param {string} roleId The role ID to search by.
- * @returns {Array<string>} An array of roles that can be skipped.
- */
-function experienceRolesOverrides(roleId) {
-  const experience = [
-    u.sf.roles.experience.ancient,
-    u.sf.roles.experience.legend,
-    u.sf.roles.experience.hero,
-    u.sf.roles.experience.veteran,
-    u.sf.roles.experience.novice
-  ];
-  const index = experience.indexOf(roleId);
-  return experience.slice(index + 1);
-}
+    return badgeMap;
 
-/** Gets the roles that are lower rank than the provided ID for membership time.
- * @param {string} roleId The role ID to search by.
- * @returns {Array<string>} An array of roles that can be skipped.
- */
-function membershipRolesOverrides(roleId) {
-  const membership = [
-    u.sf.roles.membership.year10,
-    u.sf.roles.membership.year9,
-    u.sf.roles.membership.year8,
-    u.sf.roles.membership.year7,
-    u.sf.roles.membership.year6,
-    u.sf.roles.membership.year5,
-    u.sf.roles.membership.year4,
-    u.sf.roles.membership.year3,
-    u.sf.roles.membership.year2,
-    u.sf.roles.membership.year1
-  ];
-  const index = membership.indexOf(roleId);
-  return membership.slice(index + 1);
-
+  } catch (e) {
+    u.errorHandler(e, "Badges Load");
+    return new Map();
+  }
 }
 
 /** Based on the list of roles inserted, return the list of badge objects that the member
  * should have on their profile card.
  *
  * @param {Discord.Collection<string, Discord.Role>} roles The roles that the member has.
- * @returns {Array<{title: string, image: string, desc: string, overrides: Array<String>?}>} Badge objects used by the makeProfileCard function.
+ * @returns {Promise<Array<{title: string, image: string, overrides: string[]?}>>} Badge objects used by the makeProfileCard function.
  */
-function getBadges(roles) {
+async function getBadges(roles) {
+  const badges = await getBadgeData();
   const overrides = [];
   const userBadges = [];
   Array.from(roles.values())
