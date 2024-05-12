@@ -2,8 +2,13 @@
 
 const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
+  fs = require('fs'),
+  axios = require('axios'),
   u = require("../utils/utils");
 
+/**
+ * @type {Discord.Collection<string, {tag: string, response?: string, attachment?: string, _id: import("mongoose").Types.ObjectId}>}
+ */
 let tags = new u.Collection();
 
 /**
@@ -11,65 +16,85 @@ let tags = new u.Collection();
  */
 const findTag = (tag) => tag ? tags.find(t => t.tag.toLowerCase() == tag.toLowerCase()) ?? null : null;
 
+/**
+ * @param {Discord.Attachment} attachment
+ * @param {{_id: import("mongoose").Types.ObjectId}} cmd
+*/
+async function saveAttachment(attachment, cmd) {
+  // @ts-ignore axios hates correct types
+  const response = await axios({
+    method: "get",
+    url: attachment.url,
+    responseType: "stream",
+  });
+  response.data.pipe(fs.createWriteStream(process.cwd() + "/media/tags/" + cmd._id.toString()));
+}
+
 /** @param {Discord.Message} msg */
 function runTag(msg) {
   const cmd = u.parse(msg);
-  const randomChannels = msg.guild ? msg.guild.channels.cache.filter(c => c.isTextBased() && !c.isThread() && !c.permissionOverwrites?.cache.get(msg.guild?.id ?? "")?.deny?.has("ViewChannel")).map(c => c.toString()) : ["Here"];
   const tag = findTag(cmd?.command);
-  const files = [];
+
+  if (!tag) return;
+  let response = tag.response;
   let target = msg.mentions?.members?.first() || msg.mentions?.users?.first();
-  if (tag) {
-    let response = tag.response;
-    if (response) {
-      const regex = /<@random ?\[(.*?)\]>/gm;
-      if (regex.test(response)) {
-        const replace = (/** @type {string} */ str) => u.rand(str.replace(regex, '$1').split('|'));
-        response = response.replace(regex, replace);
-      }
-      response = response.replace(/<@author>/ig, msg.author.toString())
-        .replace(/<@authorname>/ig, msg.member?.displayName || msg.author.username)
-        .replace(/<@channel>/ig, msg.channel.toString())
-        .replace(/<@randomchannel>/, u.rand(randomChannels) ?? msg.channel.toString());
-      if ((/(<@target>)|(<@targetname>)/ig).test(response)) {
-        if (!msg.guild) target ??= msg.client.user;
-        if (!target) return msg.reply("You need to `@mention` a user with that command!").then(u.clean);
-        response = response.replace(/<@target>/ig, target.toString())
-          .replace(/<@targetname>/ig, target.displayName);
-      }
+
+  if (response) {
+    const randomChannels = msg.inGuild() ? msg.guild.channels.cache.filter(c =>
+      c.isTextBased() && !c.isThread() &&
+      !c.permissionOverwrites?.cache.get(msg.guild.id)?.deny?.has("ViewChannel")
+    ).map(c => c.toString()) : ["Here"];
+
+    const regex = /<@random ?\[(.*?)\]>/gm;
+    if (regex.test(response)) {
+      const replace = (/** @type {string} */ str) => u.rand(str.replace(regex, '$1').split('|'));
+      response = response.replace(regex, replace);
     }
-    if (tag.attachment) {
-      files.push(u.attachment.setFile(tag.attachment));
+    response = response
+      .replace(/<@author>/ig, msg.author.toString())
+      .replace(/<@authorname>/ig, msg.member?.displayName || msg.author.username)
+      .replace(/<@channel>/ig, msg.channel.toString())
+      .replace(/<@randomchannel>/, u.rand(randomChannels) ?? msg.channel.toString());
+    if ((/(<@target>)|(<@targetname>)/ig).test(response)) {
+      if (!msg.guild) target ??= msg.client.user;
+      if (!target) return msg.reply("You need to `@mention` a user with that command!").then(u.clean);
+      response = response.replace(/<@target>/ig, target.toString())
+        .replace(/<@targetname>/ig, target.displayName);
     }
-    const users = target ? [target.id] : [];
-    users.push(msg.author.id);
-    msg.channel.send({ content: response ?? undefined, files, allowedMentions: { users } });
   }
+  msg.channel.send({
+    content: response ?? undefined,
+    files: tag.attachment ? [new u.Attachment(`./media/tags/${tag._id}`).setName(tag.attachment)] : [],
+    allowedMentions: { users: target ? [target.id, msg.author.id] : [msg.author.id] }
+  });
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagCreate(int) {
   // Get and validate input
   const name = int.options.getString('name', true).toLowerCase().replace("\n", " ");
-  const response = int.options.getString('response');
+  const content = int.options.getString('content');
   const attachment = int.options.getAttachment('attachment');
   if (findTag(name)) return int.editReply(`Looks like that tag already exists. Try </tag modify:${u.sf.commands.slashTag}> or </tag delete:${u.sf.commands.slashTag}> instead.`);
-  if (!response && !attachment) return int.editReply("I need either a response or a file.");
+  if (!content && !attachment) return int.editReply("I either need content or a file.");
   // Create the tag
   const command = await u.db.tags.manageTag({
     tag: name,
-    response: response ?? undefined,
-    attachment: attachment?.url ?? undefined
+    response: content ?? undefined,
+    attachment: attachment?.name
   });
   if (!command) return int.editReply("I wasn't able to save that. Please try again later or with a different name.");
+  if (attachment) saveAttachment(attachment, command);
+
   tags.set(command.tag, command);
   const embed = u.embed({ author: int.member })
     .setTitle("Tag created")
-    .setDescription(`${int.member} added the tag "${name}`);
+    .setDescription(`${int.member} added the tag \`${name}\``);
   if (command.response) embed.addFields({ name: "Response", value: command.response });
   try {
     // report the tag creation
     int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
-    int.editReply({ content: "Tag created!", embeds: [embed.setDescription(null)] });
+    int.editReply({ content: "Tag created!", embeds: [embed.setDescription(`Try it out with \`!${name}\``)], files: attachment ? [attachment] : [] });
   } catch (error) {
     int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag creation preview was too long to send." })] });
     int.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
@@ -80,22 +105,27 @@ async function slashTagCreate(int) {
 async function slashTagModify(int) {
   // get and validate inputs
   const name = int.options.getString('name', true).toLowerCase().replace("\n", "");
-  const response = int.options.getString('response');
+  const content = int.options.getString('content');
   const attachment = int.options.getAttachment('attachment');
   const currentTag = findTag(name);
   if (!currentTag) return int.editReply(`Looks like that tag doesn't exist.`);
-  if (!response && !attachment) return int.editReply(`I need a response, a file, or both. If you want to delete the tag, use </tag delete:<${u.sf.commands.slashTag}>.`);
+  if (!content && !attachment) return int.editReply(`I need a response, a file, or both. If you want to delete the tag, use </tag delete:<${u.sf.commands.slashTag}>.`);
+
   // modify the tag
   const command = await u.db.tags.manageTag({
     tag: name,
-    response: response ?? undefined,
-    attachment: attachment?.name ?? undefined
+    response: content ?? undefined,
+    attachment: attachment?.name
   });
+
   if (!command) return int.editReply("I wasn't able to update that. Please try again later or contact a dev to see what went wrong.");
+  if (attachment) saveAttachment(attachment, command);
+
   tags.set(command.tag, command);
   const embed = u.embed({ author: int.member })
     .setTitle("Tag modified")
     .setDescription(`${int.member} modified the tag "${name}`);
+
   // log the modification
   try {
     if (command.response != currentTag.response) {
@@ -124,10 +154,14 @@ async function slashTagDelete(int) {
     .setDescription(`${int.member} removed the tag \`${name}\``);
   try {
     if (command.response) embed.addFields({ name: "Response", value: command.response });
-    if (command.attachment) embed.addFields({ name: "Attachment", value: "[Deleted]" });
+    if (command.attachment) {
+      embed.addFields({ name: "Attachment", value: "[Deleted]" });
+      fs.rmSync(process.cwd() + `/media/tags/${command._id.toString()}`);
+    }
     int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed] });
-    int.editReply({ embeds: [embed.setDescription("")] });
+    int.editReply({ embeds: [embed.setDescription(null)] });
   } catch (err) {
+    console.log(err);
     int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag deletion preview was too long to send" })] });
     int.editReply(`I deleted the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
