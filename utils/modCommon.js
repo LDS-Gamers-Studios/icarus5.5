@@ -3,47 +3,58 @@ const { ButtonStyle } = require("discord.js"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
   config = require('../config/config.json'),
-  { ActionRowBuilder, ButtonBuilder } = require("discord.js"),
   Augur = require('augurbot-ts');
 
-/** @type {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>[]} */
+const embedColors = {
+  action: 0xff0000,
+  handled: 0x0000ff,
+  info: 0x00ffff,
+  success: 0x00ff00
+};
+
 const modActions = [
-  // @ts-ignore
-  new ActionRowBuilder().setComponents([
-    new ButtonBuilder().setCustomId("modCardClear").setEmoji("✅").setLabel("Clear").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("modCardVerbal").setEmoji("🗣").setLabel("Talk it out").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("modCardMinor").setEmoji("⚠").setLabel("Minor").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("modCardMajor").setEmoji("⛔").setLabel("Major").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("modCardMute").setEmoji("🔇").setLabel("Mute").setStyle(ButtonStyle.Danger)
+  u.MessageActionRow().setComponents([
+    new u.Button().setCustomId("modCardClear").setEmoji("✅").setLabel("Clear").setStyle(ButtonStyle.Success),
+    new u.Button().setCustomId("modCardVerbal").setEmoji("🗣").setLabel("Talk it out").setStyle(ButtonStyle.Primary),
+    new u.Button().setCustomId("modCardMinor").setEmoji("⚠").setLabel("Minor").setStyle(ButtonStyle.Danger),
+    new u.Button().setCustomId("modCardMajor").setEmoji("⛔").setLabel("Major").setStyle(ButtonStyle.Danger),
+    new u.Button().setCustomId("modCardMute").setEmoji("🔇").setLabel("Mute").setStyle(ButtonStyle.Danger)
   ]),
-  // @ts-ignore
-  new ActionRowBuilder().setComponents([
-    new ButtonBuilder().setCustomId("modCardInfo").setEmoji("👤").setLabel("User Info").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle(ButtonStyle.Secondary)
+  u.MessageActionRow().setComponents([
+    new u.Button().setCustomId("modCardInfo").setEmoji("👤").setLabel("User Info").setStyle(ButtonStyle.Secondary),
+    new u.Button().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle(ButtonStyle.Secondary)
   ])
 ];
 /** @param {Discord.GuildMember|Discord.User} person */
 const userBackup = (person) => `${person} (${u.escapeText(person.displayName)})`;
 
-/** @type {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>} */
-const retract = new ActionRowBuilder();
-retract.setComponents([
-  new ButtonBuilder().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
+const retract = u.MessageActionRow().setComponents([
+  new u.Button().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
 ]);
 
 const messageFromMods = "## 🚨 Message from the LDSG Mods:\n";
-const code = "[Code of Conduct](<http://ldsgamers.com/code-of-conduct>) (<http://ldsgamers.com/code-of-conduct>)";
+const code = "[Code of Conduct](http://ldsgamers.com/code-of-conduct)";
+
+/**
+ * @param {Augur.GuildInteraction<"Any">|Discord.Message} int The interaction (gets the mod from this)
+ * @param {Discord.GuildMember | Discord.User} tg The target of the command
+ */
+const logEmbed = (int, tg) => u.embed({ author: tg })
+.addFields(
+  { name: "User", value: userBackup(tg) },
+  { name: "Mod", value: userBackup(int.member ?? (int instanceof Discord.Message ? int.author : int.user)) }
+);
 
 /**
   * Give the mods a heads up that someone isn't getting their DMs.
-  * @param {Discord.GuildMember} member The guild member that's blocked.
+  * @param {Discord.GuildMember | Discord.User} user The guild member that's blocked.
   */
-function blocked(member) {
-  return member.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+function blocked(user) {
+  return user.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
     u.embed({
-      author: member,
-      color: 0x00ffff,
-      title: `${member.displayName} has me blocked. *sadface*`
+      author: user,
+      color: embedColors.info,
+      title: `${userBackup(user)} has me blocked. *sadface*`
     })
   ] });
 }
@@ -74,8 +85,10 @@ const modCommon = {
   blocked,
   compareRoles,
   nameGen,
+  logEmbed,
   modActions,
   revert: retract,
+  colors: embedColors,
   /**
    * BAN HAMMER!!!
    * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
@@ -92,7 +105,7 @@ const modCommon = {
       const confirm = await u.confirmInteraction(interaction, `Ban ${target} for:\n${reason}?`, `Confirm Ban on ${u.escapeText(target.displayName)}`);
       if (!confirm) {
         return {
-          embeds: [u.embed({ author: interaction.member }).setColor(0x0000ff).setDescription(`Ban ${confirm === false ? "cancelled" : "timed out"}`)],
+          embeds: [u.embed({ author: interaction.member }).setColor(embedColors.handled).setDescription(`Ban ${confirm === false ? "cancelled" : "timed out"}`)],
           components: []
         };
       } else if (confirm) {
@@ -101,7 +114,9 @@ const modCommon = {
         const targetRoles = target.roles.cache.clone();
         await target.send({ content: messageFromMods, embeds: [ u.embed()
           .setTitle("User Ban")
-          .setDescription(`You have been banned in ${interaction.guild.name} for:\n${reason}`)
+          .setDescription(`You have been banned from ${interaction.guild.name}`)
+          .addFields({ name: "Details", value: reason })
+          .setFooter({ text: `${interaction.member} has issued this ban.` })
         ] }).catch(() => blocked(target));
         await target.ban({ deleteMessageSeconds: days * 24 * 60 * 60, reason });
         success = true;
@@ -119,18 +134,18 @@ const modCommon = {
 
         // Log it
         interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
-          u.embed({ author: target })
-            .setTitle("User Ban")
-            .setDescription(`**${interaction.member}** banned **${userBackup(target)}** for:\n${reason}`)
+          logEmbed(interaction, target)
+            .setTitle(`${interaction.client.emojis.cache.get(u.sf.emoji.banhammer) ?? ""} User Ban`)
+            .addFields({ name: "Reason", value: reason })
+            .setColor(embedColors.info)
             .setFooter({ text: `Deleted ${days} day(s) of messages` })
-            .setColor(0x0000ff)
         ] });
         // Return results
         return {
           embeds: [
             u.embed({ author: target })
-              .setColor(0x00ff00)
-              .setDescription(`${target.toString()} banned for:\n${reason}`)
+              .setColor(embedColors.success)
+              .setDescription(`${target} banned for:\n${reason}`)
           ],
           components: []
         };
@@ -164,7 +179,7 @@ const modCommon = {
     if (msg && !msg.inGuild()) return null;
 
     const infractionSummary = await u.db.infraction.getSummary(member.id);
-    const embed = u.embed({ color: 0xff0000, author: member });
+    const embed = u.embed({ color: embedColors.action, author: member });
 
     if (Array.isArray(matches)) matches = matches.join(", ");
     if (matches) embed.addFields({ name: "Matched", value: matches });
@@ -172,12 +187,20 @@ const modCommon = {
       embed.setTimestamp(msg.editedAt ?? msg.createdAt)
         .setDescription((msg.editedAt ? "[Edited]\n" : "") + msg.cleanContent || null)
         .addFields(
-          { name: "Channel", value: msg.channel?.toString(), inline: true },
-          { name: "Jump to Post", value: `[Original Message](${msg.url})`, inline: true },
+          { name: "Channel", value: msg.channel.name, inline: true },
+          { name: "Jump to Post", value: msg.url, inline: true },
           { name: "User", value: msg.webhookId ? userBackup(msg.author) ?? (await msg.fetchWebhook()).name : userBackup(msg.author) ?? "Unknown User" }
         );
-      if (msg.channel.parentId == u.sf.channels.minecraftcategory && msg.webhookId) {
-        msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({ embeds: [embed] });
+      if (msg.channel.parentId == u.sf.channels.minecraftcategory) {
+        msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({
+          embeds: [embed],
+          components: [
+            u.MessageActionRow()
+              .addComponents([
+                new u.Button().setCustomId("modCardCensor").setLabel("Censor").setEmoji("🤬").setStyle(Discord.ButtonStyle.Secondary)
+              ])
+          ]
+        });
       }
     } else if (interaction) {
       embed.setTimestamp(interaction.createdAt)
@@ -247,7 +270,6 @@ const modCommon = {
     }
     return card;
   },
-
   /**
    * Get a summary embed
    * @param {Discord.GuildMember|Discord.User} member
@@ -270,7 +292,7 @@ const modCommon = {
     }
 
     let text = response.join("\n");
-    text = text.length > 4090 ? text.substring(0, 4086) + "..." : text;
+    text = text.length > 4090 ? text.substring(0, 4090) + "..." : text;
 
     const userDoc = await u.db.user.fetchUser(member.id);
     let roleString = isMember ? member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role).join(", ") : "[Unknown]";
@@ -278,8 +300,8 @@ const modCommon = {
 
     const embed = u.embed({ author: member })
       .setTitle("Infraction Summary")
-      .setDescription(getInfractions ? text : null)
-      .setColor(0x00ff00)
+      .setDescription(text)
+      .setColor(embedColors.info)
       .addFields(
         { name: "ID", value: member.id, inline: true },
         { name: "Joined", value: isMember ? member.joinedAt ? u.time(member.joinedAt, 'R') : "unknown" : "unknown", inline: true },
@@ -306,48 +328,48 @@ const modCommon = {
 
       if (!confirm) {
         return {
-          embeds: [u.embed({ author: target }).setColor(0x0000ff).setDescription(`Kick ${confirm === false ? "cancelled" : "timed out"}`)],
-          components: []
-        };
-      } else if (confirm) {
-        // The actual kick part
-        const targetRoles = target.roles.cache.clone();
-        await target.send({ content: messageFromMods, embeds: [
-          u.embed()
-          .setTitle("User Kick")
-          .setDescription(`You have been kicked in ${interaction.guild.name} for:\n${reason}`)
-        ] }).catch(() => blocked(target));
-        await target.kick(reason);
-        success = true;
-        // Save infraction
-        u.db.infraction.save({
-          discordId: target.id,
-          description: `[User Kick]: ${reason}`,
-          value: 30,
-          mod: interaction.member.id
-        });
-
-        // Save roles
-        targetRoles.delete(u.sf.roles.trusted);
-        u.db.user.updateRoles(target, targetRoles.map(r => r.id));
-
-        // Log it
-        interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
-          u.embed({ author: target })
-          .setTitle("User Kick")
-          .setDescription(`**${interaction.member}** kicked **${userBackup(target)}** for:\n${reason}`)
-          .setColor(0x0000ff)
-        ] });
-        return {
-          embeds: [
-            u.embed({ author: target })
-            .setColor(0x00ff00)
-            .setDescription(`${target.toString()} kicked for:\n${reason}`)
-          ],
+          embeds: [u.embed({ author: target }).setColor(embedColors.handled).setDescription(`Kick ${confirm === false ? "cancelled" : "timed out"}`)],
           components: []
         };
       }
-      return "...Nothing happened";
+      // The actual kick part
+      const targetRoles = target.roles.cache.clone();
+      await target.send({ content: messageFromMods, embeds: [
+        u.embed()
+        .setTitle("User Kick")
+        .setDescription(`You have been kicked from ${interaction.guild.name}.`)
+        .addFields({ name: "Details", value: reason })
+        .setFooter({ text: `${interaction.member.displayName} has issued this kick.` })
+      ] }).catch(() => blocked(target));
+      await target.kick(reason);
+      success = true;
+      // Save infraction
+      u.db.infraction.save({
+        discordId: target.id,
+        description: `[User Kick]: ${reason}`,
+        value: 30,
+        mod: interaction.member.id
+      });
+
+      // Save roles
+      targetRoles.delete(u.sf.roles.trusted);
+      u.db.user.updateRoles(target, targetRoles.map(r => r.id));
+
+      // Log it
+      interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+        logEmbed(interaction, target)
+          .setTitle(`👢 User Kick`)
+          .addFields({ name: "Reason", value: reason })
+          .setColor(embedColors.info)
+      ] });
+      return {
+        embeds: [
+          u.embed({ author: target })
+          .setColor(embedColors.success)
+          .setDescription(`${target} kicked for:\n${reason}`)
+        ],
+        components: []
+      };
     } catch (error) {
       await u.errorHandler(error, interaction);
       return `I ran into an error! ${target} ` + (success ? "*was* kicked though." : "wasn't kicked.");
@@ -360,7 +382,7 @@ const modCommon = {
    * @param {Discord.GuildMember} target
    * @param {string} [reason]
    */
-  mute: async function(interaction, target, reason = "[No Reason]", apply = true) {
+  mute: async function(interaction, target, reason, apply = true) {
     const m = apply ? "mute" : "unmute";
     const M = apply ? "Mute" : "Unmute";
     let success = 0;
@@ -385,10 +407,10 @@ const modCommon = {
       success = 2; // vc status changed
 
       await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
-        u.embed({ author: target })
-        .setTitle(`Member ${M}`)
-        .setDescription(`**${interaction.member}** ${m}d **${userBackup(target)}** for:\n${reason}`)
-        .setColor(apply ? 0x0000ff : 0x00ff00)
+        logEmbed(interaction, target)
+          .setTitle(`${apply ? "🔇" : "🔊"} Member ${M}`)
+          .addFields({ name: "Reason", value: reason ?? "[Not Provided]" })
+          .setColor(embedColors.info)
       ] });
 
       if (apply) {
@@ -402,10 +424,10 @@ const modCommon = {
       return `${M}d ${target}.`;
     } catch (error) {
       await u.errorHandler(error, interaction);
-      return "I ran into an error! " + (
-        success > 1 ? `${target} *was* ${m}d and they're ${apply ? "not able" : "able"} to speak in voice channels.`
-          : success > 0 ? `They *were* ${m}d, but they may or may not be able to speak in voice channels.`
-            : `They weren't ${m}d and may or may not be able to speak in voice channels.`
+      return "I ran into an error" + (
+        success > 1 ? `, but ${target} *was* ${m}d and they're ${apply ? "not able" : "able"} to speak in voice channels.`
+          : success > 0 ? `, but ${target} *was* ${m}d, but they may or may not be able to speak in voice channels.`
+            : `! ${target} wasn't ${m}d and may or may not be able to speak in voice channels.`
       );
     }
   },
@@ -429,17 +451,16 @@ const modCommon = {
       const summary = await u.db.infraction.getSummary(target.id);
 
       await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
-        u.embed({ author: target })
-        .setColor("#0000FF")
-        .setDescription(note)
-        .addFields(
-          { name: "Resolved", value: `${userBackup(interaction.member)} added a note.` },
-          { name: `Infraction Summary (${summary.time} Days)`, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` }
-        )
-        .setTimestamp()
+        logEmbed(interaction, target)
+          .setTitle("🗒️ Note Created")
+          .setColor(embedColors.info)
+          .addFields(
+            { name: "Note", value: note },
+            { name: `Infraction Summary (${summary.time} Days)`, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` }
+          )
       ] });
 
-      return `Note added for user ${target.toString()}.`;
+      return `Note added for ${target}.`;
     } catch (error) {
       await u.errorHandler(error, interaction);
       return "I ran into an error! " + (success ? "I *was* able to save the note though." : "I wasn't able to save the note");
@@ -468,18 +489,17 @@ const modCommon = {
 
       // log it;
       await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
-        u.embed({ author: target })
-          .setTitle(`Member ${apply ? "Sent to" : "Released from"} Office`)
-          .setDescription(`**${interaction.member}** ${put} the office for:\n${reason}`)
-          .setColor(0x0000ff)
+        logEmbed(interaction, target)
+          .setTitle(`💼 Member ${apply ? "Sent to" : "Released from"} Office`)
+          .addFields({ name: "Reason", value: reason ?? "[Not Provided]" })
+          .setColor(embedColors.info)
       ] });
 
       if (apply) {
         await interaction.client.getTextChannel(u.sf.channels.office)?.send({ content:
           `${target}, you have been sent to the office in ${interaction.guild.name}.\n`
           + 'This allows you and the mods to have a private space to discuss issues or concerns.\n'
-          + `Please review our ${code}.`
-          + 'A member of the mod team will be available to discuss more details.',
+          + `Please review our ${code}. A member of the mod team will be available to discuss more details.`,
         allowedMentions: { parse: ['users'] }
         });
       }
@@ -525,14 +545,14 @@ const modCommon = {
       const summary = await u.db.infraction.getSummary(target.id);
 
       interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
-        u.embed({ author: target })
-        .setColor("#0000FF")
-        .setDescription(comment)
-        .addFields(
-          { name: "Resolved", value: `${interaction.member} changed ${userBackup(target)}'s nickname from ${u.escapeText(oldNick)} to ${u.escapeText(reset ? "default" : newNick)}.` },
-          { name: `Infraction Summary (${summary.time} Days) `, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` }
-        )
-        .setTimestamp()
+        logEmbed(interaction, target)
+          .setTitle("✏️ User Renamed")
+          .setDescription(comment)
+          .addFields(
+            { name: "Name Change", value: `\`${u.escapeText(oldNick)}\` ⏭️ \`${u.escapeText(reset ? "default" : newNick)}\`` },
+            { name: `Infraction Summary (${summary.time} Days) `, value: `Infractions: ${summary.count}\nPoints: ${summary.points}` }
+          )
+        .setColor(embedColors.info)
       ] });
 
       return `${target}'s nickname changed from ${u.escapeText(oldNick)} to ${u.escapeText(reset ? "default" : newNick)}.`;
@@ -597,12 +617,17 @@ const modCommon = {
       await target.timeout(time * 60 * 1000 || null, reason);
       success = true; // role changed
 
-      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
-        u.embed({ author: target })
-        .setTitle(`User ${T}`)
-        .setDescription(`**${interaction.member}** ${td} **${userBackup(target)}** ${apply ? `for ${time} minutes\n` : ""}\nReason:\n${reason ?? "[No Reason Provided]"}`)
-        .setColor(apply ? 0x0000ff : 0x00ff00)
-      ] });
+      const embed = logEmbed(interaction, target)
+        .setTitle(`${apply ? "⛔" : "✅"} User ${T}`)
+        .addFields(
+          { name: "Reason", value: reason ?? "[Not Provided]" },
+          { name: "Time", value: `${time} minutes` }
+        )
+        .setColor(embedColors.info);
+
+      if (apply) embed.addFields({ name: "Time", value: `${time} minutes` });
+
+      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
 
       return `${target} has been ${td}${apply ? ` for ${time} minutes` : ""}.`;
     } catch (error) {
@@ -620,7 +645,7 @@ const modCommon = {
     let success = false;
     try {
       if (target.roles.cache.has(u.sf.roles.trusted) == apply) return `${target} is ${apply ? "already trusted" : "not trusted yet"}!`;
-      const embed = u.embed({ author: target });
+      const embed = logEmbed(interaction, target).setColor(embedColors.info);
       if (apply) {
         await target.roles.add(u.sf.roles.trusted);
         success = true;
@@ -631,7 +656,7 @@ const modCommon = {
           + `Please remember to follow our ${code} when doing so.\n\n`
           + "If you'd like to join one of our in-server Houses, you can visit <http://3houses.live> to get started!"
         ).catch(() => blocked(target));
-        embed.setTitle("User Given Trusted").setDescription(`${interaction.member} trusted ${userBackup(target)}).`);
+        embed.setTitle("🤝 User Given Trusted");
       } else {
         await target.roles.remove([u.sf.roles.trusted, u.sf.roles.trustedplus]);
         success = true;
@@ -639,7 +664,7 @@ const modCommon = {
           + "This means you no longer have the ability to post images. "
           + `Please remember to follow our ${code} when posting images or links in the future.\n`
         ).catch(() => blocked(target));
-        embed.setTitle("User Trust Removed").setDescription(`${interaction.member} untrusted ${userBackup(target)}.`);
+        embed.setTitle("💢 User Trust Removed");
       }
       await modCommon.watch(interaction, target, !apply);
       interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
@@ -660,7 +685,7 @@ const modCommon = {
     try {
       if (target.roles.cache.has(u.sf.roles.trustedplus) == apply) return `${target} ${apply ? "already has" : "doesn't have"} the Trusted+ role!`;
       if (apply && !target.roles.cache.has(u.sf.roles.trusted)) return `${target} needs the Trusted role before they can get the Trusted+ role!`;
-      const embed = u.embed({ author: target });
+      const embed = logEmbed(interaction, target).setColor(embedColors.info);
 
       if (apply) {
         await target.roles.add(u.sf.roles.trustedplus);
@@ -671,7 +696,7 @@ const modCommon = {
           + `While streaming, please remember the Streaming Guidelines ( https://goo.gl/Pm3mwS ) and our ${code}.`
           + "Also, please be aware that LDSG may make changes to the Trusted+ list from time to time at its discretion."
         ).catch(() => blocked(target));
-        embed.setTitle("User Given Trusted+").setDescription(`${interaction.member} gave ${userBackup(target)} the <@&${u.sf.roles.trustedplus}> role.`);
+        embed.setTitle("🎥 User Given Trusted+");
       } else {
         await target.roles.remove(u.sf.roles.trustedplus);
         success = true;
@@ -681,8 +706,7 @@ const modCommon = {
           + `Please remember to follow our ${code}.`
         ).catch(() => blocked(target));
 
-        embed.setTitle("User Trusted+ Removed")
-        .setDescription(`${interaction.member} removed the <@&${u.sf.roles.trustedplus}> role from ${userBackup(target)}.`);
+        embed.setTitle("📤 User Trusted+ Removed");
       }
       interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
       return `${target} has been ${apply ? "added to" : "removed from"} the Trusted+ role!`;
@@ -703,9 +727,9 @@ const modCommon = {
     try {
       if (typeof target != 'string' && (target.user.bot)) return `${target} is a bot and shouldn't be watched.`;
       const id = typeof target == "string" ? target : target.id;
-      const watchlist = await u.db.user.getUsers({ watching: true });
-      if (apply && (watchlist.find(w => w.discordId == id) || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
-      if (!apply && (!watchlist.find(w => w.discordId == id) && !modCommon.watchlist.has(id))) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
+      const watchStatus = await u.db.user.fetchUser(id);
+      if (apply && (watchStatus?.watching || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
+      if (!apply && watchStatus && !watchStatus.watching && !modCommon.watchlist.has(id)) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
 
       await u.db.user.updateWatch(id, apply);
       if (apply) modCommon.watchlist.add(id);
@@ -715,13 +739,13 @@ const modCommon = {
       if (typeof target != 'string') {
         const watchLog = interaction.client.getTextChannel(u.sf.channels.modWatchList);
         const notifDesc = [
-          `**added** to the watchlist by ${interaction.member}.\nUse </mod watch:${u.sf.commands.slashMod}> to remove them.`,
-          `**removed** from the watchlist by ${interaction.member}.\nUse </mod watch:${u.sf.commands.slashMod}> to re-add them.`
+          `Use </mod watch:${u.sf.commands.slashMod}> to remove them.`,
+          `Use </mod watch:${u.sf.commands.slashMod}> to re-add them.`
         ];
-        const embed = u.embed({ author: target })
+        const embed = logEmbed(interaction, target)
           .setTitle(apply ? "Watching User 👀" : "Un-Watching User 💤")
-          .setColor(apply ? 0x00FF00 : 0xFF8800)
-          .setDescription(`${userBackup(target)} has been ${notifDesc[apply ? 0 : 1]}`);
+          .setDescription(notifDesc[apply ? 0 : 1])
+          .setColor(embedColors.info);
         watchLog?.send({ embeds: [embed] });
       }
       return `I'm${apply ? "" : " no longer"} watching ${target} ${apply ? "now :eyes:" : "anymore :zzz:"}.`;
@@ -741,10 +765,12 @@ const modCommon = {
   warn: async function(interaction, reason, value, target, message) {
     let success = false;
     try {
-      const embed = u.embed({ author: target })
-        .setColor("#0000FF")
-        .setDescription("Reason: " + reason)
-        .addFields({ name: "Resolved", value: `${userBackup(interaction.member ?? interaction.user)} issued a ${value} point warning.` })
+      const embed = logEmbed(interaction, target)
+        .addFields(
+          { name: "Warning", value: reason },
+          { name: "Points", value: `${value}` }
+        )
+        .setColor(embedColors.handled)
         .setTimestamp();
       if (message?.cleanContent) embed.addFields({ name: "Message Content", value: message.cleanContent });
       const flag = await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
@@ -765,14 +791,14 @@ const modCommon = {
         const response = messageFromMods + modCommon.warnMessage(u.escapeText(interaction.member?.displayName ?? interaction.user.displayName)) + `\n\n**Reason:** ${reason}`;
         await target.send({ content: response, embeds: [u.msgReplicaEmbed(message)] }).catch(() => blocked(target));
       } else {
-        await target.send(messageFromMods + `**${interaction.member.displayName}** has issued the following warning regarding your behavior or content you have posted:\n\n>>> ${reason}`);
+        await target.send(messageFromMods + `**${interaction.member.displayName}** has issued the following warning regarding your behavior or content you have posted:\n\n> ${reason}`);
       }
 
       const sum = await u.db.infraction.getSummary(target.id);
       embed.addFields({ name: `Infraction Summary (${sum.time} Days) `, value: `Infractions: ${sum.count}\nPoints: ${sum.points}` });
 
       flag?.edit({ embeds: [embed] });
-      return `${target} has been warned **${value}** points for reason \`${reason}\``;
+      return `${target} has been warned **${value}** points for: \`${reason}\``;
     } catch (error) {
       await u.errorHandler(error, interaction);
       return "I ran into an error! " + (success ? "I *was* able to save the warning though." : "I wasn't able to save the warning.");

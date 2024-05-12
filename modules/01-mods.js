@@ -2,6 +2,7 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   u = require("../utils/utils"),
+  config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
   c = require("../utils/modCommon");
 
@@ -10,63 +11,28 @@ const noTarget = "The user you provided was invalid. They may have left the serv
 /** @type {Map<string, any>} */
 const molasses = new Map();
 
-const Module = new Augur.Module()
-.addEvent("guildMemberAdd", async (member) => {
-  if (member.guild.id == u.sf.ldsg) {
-    try {
-      const user = await u.db.user.fetchUser(member.id);
-      if (!user || user.roles.includes(u.sf.roles.trusted)) return;
-      const watchLog = member.client.getTextChannel(u.sf.channels.modWatchList);
-      const embed = u.embed({ author: member })
-        .setColor(0x00FF00)
-        .setTitle("New Member 👀")
-        .setDescription(` ${member} has been automatically added to the watch list.\nUse </mod trust:${u.sf.commands.slashMod}> to remove them.`);
-      watchLog?.send({ embeds: [embed] });
-    } catch (e) { u.errorHandler(e, "Watchlist Auto-Add"); }
-  }
-})
-.addEvent("ready", async () => {
-  const list = await u.db.user.getUsers({ watching: true });
-  c.watchlist = new Set(list.map(l => l.discordId));
-})
-.addEvent("messageCreate", watch)
-.addEvent("messageUpdate", async (msg, newMsg) => {
-  if (newMsg.partial) newMsg = await newMsg.fetch();
-  watch(newMsg);
-});
-
 /** @param {Discord.Message} msg */
 async function watch(msg) {
   if (!msg.inGuild()) return;
-  const watchLog = msg.client.getTextChannel(u.sf.channels.modWatchList);
 
   if (
     msg.guild.id == u.sf.ldsg && // only LDSG
     !msg.system && !msg.webhookId && !msg.author.bot && // no bots
-    (!msg.member?.roles.cache.has(u.sf.roles.trusted) || c.watchlist.has(msg.author.id)) // only untrusted and watched
+    msg.member && (!msg.member.roles.cache.has(u.sf.roles.trusted) || c.watchlist.has(msg.author.id)) // only untrusted, watched, and in the server
   ) {
-    const files = msg.attachments.map(attachment => attachment.url);
-    const embed = u.msgReplicaEmbed(msg, `${!msg.member?.roles.cache.has(u.sf.roles.trusted) ? "🆕" : "👀"} Member Message`, true, false);
-    // potential idea, but not keeping for now
-    // const button = u.actionRow().addComponents(u.button().setCustomId("watchDiscuss").setEmoji("🔗").setLabel("Discuss").setStyle(Discord.ButtonStyle.Secondary));
-    watchLog?.send({ embeds: [embed], /** components: [button] */ });
-    if (files.length > 0) {
-      watchLog?.send({ files: files });
-    }
+    const files = msg.attachments.map(attachment => attachment.url)
+      .concat(msg.stickers.map(s => s.url));
+    const webhook = new Discord.WebhookClient({ url: config.webhooks.watchlist });
+    const decorator = !msg.member?.roles.cache.has(u.sf.roles.trusted) ? "🚪" : "👀";
+    webhook.send({
+      content: `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`,
+      files,
+      username: `${decorator} - ${msg.member?.displayName ?? msg.author.displayName}`.substring(0, 31),
+      avatarURL: msg.member?.displayAvatarURL() ?? msg.author.displayAvatarURL(),
+      allowedMentions: { parse: [] }
+    });
   }
 }
-
-// potential idea
-/** @param {Discord.ButtonInteraction<"cached">} int*/
-// async function watchDiscuss(int) {
-//   await int.deferReply({ ephemeral: true });
-//   const msg = await int.message.fetch();
-//   if (!msg) return int.editReply("I wasn't able to find that message.");
-//   if (msg.hasThread) return int.editReply("This message already has a thread attached to it.");
-//   const thread = await msg.startThread({ name: "Post Discussion" }); // maybe post to mod-discussion instead
-//   return int.editReply("I created the thread! You can find it here: " + thread.url);
-// }
-
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
 async function slashModWatch(interaction) {
@@ -103,7 +69,7 @@ async function slashModFilter(interaction) {
 
   const filtered = pf.scan(word);
   if (!u.perms.calc(interaction.member, ["mgr"])) {
-    return interaction.editReply("This command is for Management+ only.");
+    return interaction.editReply("This command is for Managers+ only.");
   }
 
   if (apply) {
@@ -143,7 +109,7 @@ async function slashModSummary(interaction) {
 async function slashModKick(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const target = interaction.options.getMember("user");
-  const reason = interaction.options.getString("reason") || "Violating the Code of Conduct";
+  const reason = interaction.options.getString("reason", true);
   if (!target) return interaction.editReply(noTarget);
 
   const kick = await c.kick(interaction, target, reason);
@@ -200,7 +166,7 @@ async function slashModOffice(interaction) {
 async function slashModPurge(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const number = interaction.options.getInteger("number", true);
-  const reason = interaction.options.getString("reason") ?? "No provided reason";
+  const reason = interaction.options.getString("reason", true);
   const channel = interaction.channel;
   if (!channel) return interaction.editReply("Well that's awkward, I can't access the channel you're in!");
   if (number < 1) return interaction.editReply("You need to provide a number greater than 0.");
@@ -213,7 +179,7 @@ async function slashModPurge(interaction) {
       .setTitle("Channel Purge")
       .setDescription(`**${interaction.member}** purged ${deleted.size} messages in ${interaction.channel}`)
       .addFields({ name: "Reason", value: reason })
-      .setColor(0x00ff00)
+      .setColor(c.colors.info)
   ] });
 
   return interaction.editReply(`I deleted ${deleted.size}/${toDelete.size} messages!`);
@@ -232,14 +198,14 @@ async function slashModRename(interaction) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
-async function slashModShowWatchlist(interaction) {
+async function slashModWatchlist(interaction) {
   await interaction.deferReply({ ephemeral: true });
   c.watchlist = new Set((await u.db.user.getUsers({ watching: true })).map(usr => usr.discordId));
 
   const e = u.embed({ author: interaction.member })
     .setTitle("Watchlist")
     .setDescription(`List of those who are trusted but watched.`)
-    .setColor(0x00ff00);
+    .setColor(c.colors.info);
 
   let wlStr = "";
   for (const member of c.watchlist) {
@@ -264,7 +230,7 @@ async function slashModSlowmode(interaction) {
   const delay = interaction.options.getInteger("delay") ?? 15;
   const indefinitely = interaction.options.getBoolean("indefinite") ?? false;
   const ch = interaction.channel;
-  if (!ch) return;
+  if (!ch) return interaction.editReply("I can't access the channel you're in!");
 
   if (duration == 0 || delay == 0) {
     await ch.setRateLimitPerUser(0).catch(e => u.errorHandler(e, interaction));
@@ -279,7 +245,7 @@ async function slashModSlowmode(interaction) {
       u.embed({ author: interaction.member })
         .setTitle("Channel Slowmode")
         .setDescription(`${interaction.member} disabled slowmode in ${ch}`)
-        .setColor(0x00ff00)
+        .setColor(c.colors.info)
         .setFooter({ text: old ? "Back to normal!" : "It's possible that the bot ran into an error while automatically resetting" })
     ] });
   } else {
@@ -308,7 +274,7 @@ async function slashModSlowmode(interaction) {
       u.embed({ author: interaction.member })
       .setTitle("Channel Slowmode")
       .setDescription(`${interaction.member} set a ${delay}-second slow mode ${durationStr} in ${ch}.`)
-      .setColor(0x00ff00)
+      .setColor(c.colors.info)
     ] });
   }
 }
@@ -374,43 +340,61 @@ async function slashModGrownups(interaction) {
 }
 
 
-Module.addInteraction({
+const Module = new Augur.Module()
+.addEvent("guildMemberAdd", async (member) => {
+  if (member.guild.id == u.sf.ldsg) {
+    try {
+      const user = await u.db.user.fetchUser(member.id);
+      if (!user || user.roles.includes(u.sf.roles.trusted)) return;
+      const watchLog = member.client.getTextChannel(u.sf.channels.modWatchList);
+      const embed = u.embed({ author: member })
+        .setColor(c.colors.info)
+        .setTitle("New Member 👀")
+        .setDescription(` ${member} has been automatically added to the watch list.\nUse </mod trust:${u.sf.commands.slashMod}> to remove them.`);
+      watchLog?.send({ embeds: [embed] });
+    } catch (e) { u.errorHandler(e, "Watchlist Auto-Add"); }
+  }
+})
+.setInit(async () => {
+  const list = await u.db.user.getUsers({ watching: true });
+  c.watchlist = new Set(list.map(l => l.discordId));
+})
+.addEvent("messageCreate", watch)
+.addEvent("messageUpdate", async (msg, newMsg) => {
+  if (newMsg.partial) newMsg = await newMsg.fetch();
+  watch(newMsg);
+})
+.addInteraction({
   name: "mod",
   guildId: u.sf.ldsg,
   id: u.sf.commands.slashMod,
   onlyGuild: true,
-  permissions: (int) => u.perms.calc(int.member, ["mod"]),
+  permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
   process: (interaction) => {
     try {
       const subcommand = interaction.options.getSubcommand(true);
       switch (subcommand) {
-      case "ban": return slashModBan(interaction);
-      case "filter": return slashModFilter(interaction);
-      case "kick": return slashModKick(interaction);
-      case "mute": return slashModMute(interaction);
-      case "note": return slashModNote(interaction);
-      case "office": return slashModOffice(interaction);
-      case "purge": return slashModPurge(interaction);
-      case "rename": return slashModRename(interaction);
-      case "slowmode": return slashModSlowmode(interaction);
-      case "watchlist": return slashModShowWatchlist(interaction);
-      case "summary": return slashModSummary(interaction);
-      case "trust": return slashModTrust(interaction);
-      case "timeout": return slashModTimeout(interaction);
-      case "warn": return slashModWarn(interaction);
-      case "watch": return slashModWatch(interaction);
-      case "grownups": return slashModGrownups(interaction);
-      default:
-        u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
+        case "ban": return slashModBan(interaction);
+        case "filter": return slashModFilter(interaction);
+        case "kick": return slashModKick(interaction);
+        case "mute": return slashModMute(interaction);
+        case "note": return slashModNote(interaction);
+        case "office": return slashModOffice(interaction);
+        case "purge": return slashModPurge(interaction);
+        case "rename": return slashModRename(interaction);
+        case "slowmode": return slashModSlowmode(interaction);
+        case "watchlist": return slashModWatchlist(interaction);
+        case "summary": return slashModSummary(interaction);
+        case "trust": return slashModTrust(interaction);
+        case "timeout": return slashModTimeout(interaction);
+        case "warn": return slashModWarn(interaction);
+        case "watch": return slashModWatch(interaction);
+        case "grownups": return slashModGrownups(interaction);
+        default:
+          u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
       }
     } catch (error) { u.errorHandler(error, interaction); }
   }
 });
-// .addInteraction({
-//   id: "watchDiscuss",
-//   type: "Button",
-//   onlyGuild: true,
-//   process: watchDiscuss
-// });
 
 module.exports = Module;
