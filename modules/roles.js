@@ -47,6 +47,7 @@ async function slashRoleWhoHas(int) {
     const ephemeral = int.channel?.id == u.sf.channels.general;
     await int.deferReply({ ephemeral });
     const role = int.options.getRole("role", true);
+    if (role.id == u.sf.ldsg) return await int.editReply("Everyone has that role, silly!");
     const members = role.members.map(m => m.displayName).sort();
     if (members.length == 0) return await int.editReply("I couldn't find any members with that role. :shrug:");
     const chunks = [];
@@ -160,13 +161,13 @@ Module.addInteraction({
   id: u.sf.commands.slashRole,
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
-    case "add": return await slashRoleAdd(interaction);
-    case "remove": return await slashRoleAdd(interaction, false);
-    case "give": return slashRoleGive(interaction);
-    case "take": return slashRoleGive(interaction, false);
-    case "inventory": return slashRoleInventory(interaction);
-    case "equip": return slashRoleEquip(interaction);
-    case "whohas": return slashRoleWhoHas(interaction);
+      case "add": return await slashRoleAdd(interaction);
+      case "remove": return await slashRoleAdd(interaction, false);
+      case "give": return slashRoleGive(interaction);
+      case "take": return slashRoleGive(interaction, false);
+      case "inventory": return slashRoleInventory(interaction);
+      case "equip": return slashRoleEquip(interaction);
+      case "whohas": return slashRoleWhoHas(interaction);
     }
   },
   autocomplete: (interaction) => {
