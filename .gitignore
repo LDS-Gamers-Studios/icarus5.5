@@ -2,7 +2,7 @@ node_modules
 storage/*
 tmp
 config/config.json
-config/snowflakes-testing-commands.json
+config/snowflakes-commands.json
 test.js
 *-.js
 *-.json

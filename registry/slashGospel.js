@@ -7,7 +7,7 @@ const verse = new u.sub()
   .addStringOption(
     new u.string()
       .setName("book")
-      .setDescription("The name of the book. `1 Nephi`, `Mosiah`, etc.")
+      .setDescription("The name of the book. 1 Nephi, Mosiah, etc.")
       .setRequired(false)
       .setAutocomplete(true)
   )
@@ -21,7 +21,7 @@ const verse = new u.sub()
   .addStringOption(
     new u.string()
       .setName("verses")
-      .setDescription("Formats: `3`, `3-5`, `3-6,8,10-14`, etc. using commas, dashes, and numbers.")
+      .setDescription("Formats: 3, 3-5, 3-6,8,10-14, etc. using commas, dashes, and numbers.")
       .setRequired(false)
   );
 
