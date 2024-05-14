@@ -1,5 +1,5 @@
 // @ts-check
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 const Infraction = require("../models/Infraction.model");
 
@@ -45,7 +45,7 @@ module.exports = {
    */
   getSummary: async function(discordId, time = 28) {
     if (typeof discordId != "string") throw new TypeError(outdated);
-    const since = moment().utcOffset(-7).subtract(time, "days");
+    const since = moment().tz("America/Denver").subtract(time, "days");
     /** @type {Infraction[]} */
     const records = (await Infraction.find({ discordId, timestamp: { $gte: since } }, undefined, { lean: true })
       .exec())
