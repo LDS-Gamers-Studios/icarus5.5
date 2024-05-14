@@ -83,7 +83,7 @@ const Module = new Augur.Module()
         channel.permissionOverwrites.create(u.sf.roles.ducttape, mutedPerms, { reason: "New channel permissions update" })
           .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
       } else {
-        channel.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [
+        channel.client.getTextChannel(u.sf.channels.logistics)?.send({ embeds: [
           u.embed({
             title: "Update New Channel Permissions",
             description: `Insufficient permissions to update channel ${channel} (#${channel.name}). Muted permissions need to be applied manually. Default denied permissions for Muted and Duct Tape are:\n\`\`\`${Object.keys(mutedPerms).join('\n')}\`\`\``,
