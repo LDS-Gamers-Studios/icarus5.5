@@ -6,7 +6,7 @@ const Discord = require("discord.js"),
   csf = require("../config/snowflakes-commands.json"),
   db = require("../database/dbControllers.js"),
   p = require('./perms.js'),
-  moment = require('moment'),
+  moment = require('moment-timezone'),
   config = require("../config/config.json");
 
 const errorLog = new Discord.WebhookClient({ url: config.webhooks.error });
@@ -279,11 +279,11 @@ const utils = {
       });
   },
   /**
-   * Shortcut to moment with the correct UTC offset (MST)
+   * Shortcut to moment with the correct UTC offset (Mountain Time)
    * @param {moment.MomentInput} [input]
    * @param {boolean} [strict]
    */
-  moment: (input, strict) => moment(input, strict).utcOffset(-7),
+  moment: (input, strict) => moment(input, strict).tz("America/Denver"),
   /**
    * This task is extremely complicated.
    * You need to understand it perfectly to use it.
