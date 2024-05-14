@@ -142,11 +142,11 @@ async function slashBankGive(interaction) {
     giver.send({ embeds: [embed] }).catch(u.noop);
 
     if (toIcarus) {
-      const hoh = interaction.client.getTextChannel(u.sf.channels.management);
+      const hoh = interaction.client.getTextChannel(u.sf.channels.logistics);
       const hohEmbed = u.embed({ author: giver })
         .setDescription(`**${u.escapeText(giver.displayName)}** gave me ${coin}${value}.`)
         .addFields({ name: "Reason", value: reason });
-      hoh?.send({ content: `<@&${u.sf.roles.manager}>`, embeds: [hohEmbed], allowedMentions: { parse: ['roles'] } });
+      hoh?.send({ embeds: [hohEmbed] });
     }
   } catch (e) { u.errorHandler(e, interaction); }
 }
@@ -268,12 +268,12 @@ async function slashBankGameRedeem(interaction) {
     });
 
     embed = u.embed({ author: interaction.member })
-      .setDescription(`${interaction.user.username} just redeemed a key for a ${game.Title} (${game.System}) key.`)
+      .setDescription(`${interaction.user.username} just redeemed ${gb} for a ${game.Title} (${game.System}) key.`)
       .addFields(
         { name: "Cost", value: gb + game.Cost, inline: true },
         { name: "Balance", value: `${gb}${balance.gb - parseInt(game.Cost)}`, inline: true }
       );
-    interaction.client.getTextChannel(u.sf.channels.management)?.send({ content: `<@&${u.sf.roles.manager}>`, embeds: [embed], allowedMentions: { parse: ['roles'] } });
+    interaction.client.getTextChannel(u.sf.channels.logistics)?.send({ embeds: [embed] });
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
@@ -323,7 +323,7 @@ async function slashBankDiscount(interaction) {
           { name: "Balance", value: `${gb}${balance.gb + withdraw.value}` }
         )
         .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb} for a store coupon code.`);
-      interaction.client.getTextChannel(u.sf.channels.management)?.send({ content: `<@&${u.sf.roles.manager}>`, embeds: [embed], allowedMentions: { parse: ["roles"] } });
+      interaction.client.getTextChannel(u.sf.channels.logistics)?.send({ embeds: [embed] });
     } else {
       interaction.editReply("Sorry, something went wrong. Please try again.");
     }
