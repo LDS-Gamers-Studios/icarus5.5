@@ -22,8 +22,6 @@ const Augur = require("augurbot-ts"),
 /** @type {Discord.Collection<string, Omit<Book, "abbreviations">>} */
 const abbreviationTable = new u.Collection();
 
-let searchExp;
-
 const works = {
   "ot": "old-testament",
   "nt": "new-testament",
@@ -223,10 +221,7 @@ async function slashGospelNews(interaction) {
 
 const Module = new Augur.Module()
 .setInit(() => {
-  for (const book of books) {
-    refAbbrBuild(book);
-  }
-  searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")})\\W(\\d+)\\W?([\\d\\-;,\\W]+)`, "ig");
+  books.map(refAbbrBuild);
 })
 .addInteraction({
   name: "gospel",
@@ -252,6 +247,7 @@ const Module = new Augur.Module()
 .addEvent("messageCreate", msg => {
   if (!msg.inGuild()) return;
   if (msg.channel.parent?.id === u.sf.channels.gospelCategory && !u.parse(msg) && !msg.author.bot) {
+    const searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")})\\W(\\d+)\\W?([\\d\\-;,\\W]+)`, "ig");
     const match = searchExp.exec(msg.cleanContent);
     if (!match) return;
     return slashGospelVerse(msg, { book: match[1], chapter: match[2], verses: match[3] });
