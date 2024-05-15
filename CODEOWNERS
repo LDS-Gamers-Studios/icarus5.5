@@ -5,12 +5,8 @@
 # the repo. Unless a later match takes precedence,
 # @global-owner1 and @global-owner2 will be requested for
 # review when someone opens a pull request.
+# REQUIRED FOR ALL PRs
 *       @bobbythecatfish
-*       @LDSGOhGo
-
-# Elite Dangerous files
-/utils/EliteApi.js          @bobbythecatfish
-/modules/eliteDangerous.js  @bobbythecatfish
 
 # Order is important; the last matching pattern takes the most
 # precedence. When someone opens a pull request that only
