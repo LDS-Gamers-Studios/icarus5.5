@@ -252,6 +252,7 @@ const Module = new Augur.Module()
 .addEvent("messageCreate", msg => {
   if (!msg.inGuild()) return;
   if (msg.channel.parent?.id === u.sf.channels.gospelCategory && !u.parse(msg) && !msg.author.bot) {
+    searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")})\\W(\\d+)\\W?([\\d\\-;,\\W]+)`, "ig");
     const match = searchExp.exec(msg.cleanContent);
     if (!match) return;
     return slashGospelVerse(msg, { book: match[1], chapter: match[2], verses: match[3] });
