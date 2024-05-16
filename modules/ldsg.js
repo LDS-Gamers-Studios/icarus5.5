@@ -21,11 +21,16 @@ async function slashLdsgMembers(interaction) {
 
 const sendOptions = [
   u.MessageActionRow().setComponents([
-    new u.Button().setCustomId("pa").setEmoji("🗣️").setLabel("Public Affairs").setStyle(ButtonStyle.Primary),
-    new u.Button().setCustomId("log").setEmoji("🚚").setLabel("Logistics").setStyle(ButtonStyle.Primary),
-    new u.Button().setCustomId("ops").setEmoji("🕵️").setLabel("Operations").setStyle(ButtonStyle.Primary),
-    new u.Button().setCustomId("icarus").setEmoji("🐤").setLabel("Icarus").setStyle(ButtonStyle.Primary),
-  ])];
+    new u.Button().setCustomId("pa").setEmoji("🗣️").setLabel("Public Affairs").setStyle(ButtonStyle.Success),
+    new u.Button().setCustomId("log").setEmoji("🚚").setLabel("Logistics").setStyle(ButtonStyle.Success),
+    new u.Button().setCustomId("ops").setEmoji("🗓️").setLabel("Operations").setStyle(ButtonStyle.Success),
+    new u.Button().setCustomId("mgmt").setEmoji("⚙️").setLabel("Management").setStyle(ButtonStyle.Primary),
+    new u.Button().setCustomId("icarus").setEmoji("🤖").setLabel("Icarus").setStyle(ButtonStyle.Primary),
+  ]),
+  u.MessageActionRow().setComponents([
+    new u.Button().setCustomId("ignore").setEmoji("⚠️").setLabel("Ignore").setStyle(ButtonStyle.Danger),
+  ])
+];
 
 const replyOption = [
   u.MessageActionRow().setComponents([
@@ -63,23 +68,24 @@ async function processCardAction(int) {
     let em;
     let reply;
     let member;
+    /** @type {String} */
+    let channel;
     switch (int.customId) {
       case "pa":
-        embed.addFields({ name: `Sent to Public Affairs`, value: `by ${int.user}` });
-        int.client.getForumChannel(u.sf.channels.publicaffairsForum)?.threads.create({ name: `Suggestion from ${suggestion.embeds[0].author?.name}`, message: { embeds: [suggestion.embeds[0]], components: replyOption } });
-        return int.update({ embeds: [embed], components: [] });
+        channel = u.sf.channels.publicaffairsForum;
+        break;
       case "log":
-        embed.addFields({ name: `Sent to Logistics`, value: `by ${int.user}` });
-        int.client.getForumChannel(u.sf.channels.logisticsForum)?.threads.create({ name: `Suggestion from ${suggestion.embeds[0].author?.name}`, message: { embeds: [suggestion.embeds[0]], components: replyOption } });
-        return int.update({ embeds: [embed], components: [] });
+        channel = u.sf.channels.logisticsForum;
+        break;
       case "ops":
-        embed.addFields({ name: `Sent to Operations`, value: `by ${int.user}` });
-        int.client.getForumChannel(u.sf.channels.operationsForum)?.threads.create({ name: `Suggestion from ${suggestion.embeds[0].author?.name}`, message: { embeds: [suggestion.embeds[0]], components: replyOption } });
-        return int.update({ embeds: [embed], components: [] });
+        channel = u.sf.channels.operationsForum;
+        break;
       case "icarus":
-        embed.addFields({ name: `Sent to Icarus Developers`, value: `by ${int.user}` });
-        int.client.getForumChannel(u.sf.channels.bottestingForums)?.threads.create({ name: `Suggestion from ${suggestion.embeds[0].author?.name}`, message: { embeds: [suggestion.embeds[0]], components: replyOption } });
-        return int.update({ embeds: [embed], components: [] });
+        channel = u.sf.channels.bottestingForums;
+        break;
+      case "mgmt":
+        channel = u.sf.channels.managementForum;
+        break;
       case "reply":
         await int.showModal(modal);
         submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
@@ -93,8 +99,6 @@ async function processCardAction(int) {
         em = u.embed({ author: int.user })
           .setTitle("Suggestion feedback")
           .addFields({ name: "Reply:", value: reply });
-        console.log(suggestion.embeds[0].fields);
-        console.log(suggestion.embeds[0].fields.find(field => field.name == "User ID:")?.value);
         member = int.guild.members.cache.get(suggestion.embeds[0].fields.find(field => field.name === "User ID:")?.value ?? "");
         if (!member) {
           return int.channel?.send("I could not find that member");
@@ -106,7 +110,15 @@ async function processCardAction(int) {
           u.errorHandler(e, int);
           return int.channel?.send("Failed to message member, they may have me blocked. You will need to reach out to them on your own this time!");
         }
+      case "ignore":
+        embed.addFields({ name: `Suggestion ignored`, value: `by ${int.user}` });
+        return int.update({ embeds: [embed], components: [] });
+      default:
+        channel = "Channel not found";
     }
+    embed.addFields({ name: `Sent to <#${channel}>`, value: `by ${int.user}` });
+    int.client.getForumChannel(channel)?.threads.create({ name: `Suggestion from ${suggestion.embeds[0].author?.name}`, message: { embeds: [suggestion.embeds[0]], components: replyOption } });
+    return int.update({ embeds: [embed], components: [] });
   } catch (e) { u.errorHandler(e, int); }
 }
 
@@ -127,7 +139,7 @@ const Module = new Augur.Module()
     if (!u.perms.calc(int.member, ["team"])) {
       return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
     }
-    if (['pa', 'log', 'ops', 'icarus', 'reply']
+    if (['pa', 'log', 'ops', 'icarus', 'reply', 'mgmt', 'ignore']
       .includes(int.customId)) return processCardAction(int);
   });
 
