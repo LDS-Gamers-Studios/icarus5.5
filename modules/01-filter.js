@@ -479,12 +479,12 @@ const Module = new Augur.Module()
 })
 .addEvent("interactionCreate", (int) => {
   if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
+  if (!['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
+    .includes(int.customId.replace("modCard", "").toLowerCase())) return;
   if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
-    int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
-    return;
+    return int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
   }
-  if (['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
-    .includes(int.customId.replace("modCard", "").toLowerCase())) return processCardAction(int);
+  processCardAction(int);
 })
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
