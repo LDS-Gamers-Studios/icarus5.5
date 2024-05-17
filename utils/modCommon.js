@@ -313,7 +313,7 @@ const modCommon = {
         .addFields({ name: "Activity", value: `Active Minutes: ${userDoc?.posts ?? "Unknown"}`, inline: true });
     }
     return embed;
-    
+
   },
   /**
    * They get the boot

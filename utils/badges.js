@@ -28,9 +28,9 @@ async function getBadgeData() {
 
     for (const role of roles) {
       // Only add to the map...
-      if (!role["Base Role ID"] ||  // if they have a role ID
-        !role["Badge"] ||  // if they have a badge listed
-        !fs.existsSync(`./media/badges/${role["Badge"]}.png`)  // and if the badge path is valid
+      if (!role["Base Role ID"] || // if they have a role ID
+        !role["Badge"] || // if they have a badge listed
+        !fs.existsSync(`./media/badges/${role["Badge"]}.png`) // and if the badge path is valid
       ) continue;
 
       badgeMap.set(role["Base Role ID"], {

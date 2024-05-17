@@ -9,7 +9,7 @@ const Augur = require("augurbot-ts"),
   RankInfo = require("../utils/rankInfo"),
   Jimp = require("jimp");
 
-let font, cardBackground
+let font, cardBackground;
 
 /**
  * Creates a profile card - a PNG that contains some user information in a fun format!
@@ -81,7 +81,7 @@ async function slashUserProfile(interaction, user) {
 
 const Module = new Augur.Module()
   .setInit(async () => {
-    font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE)
+    font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
     cardBackground = await Jimp.read("./media/background.jpg");
   })
   .addInteraction({
