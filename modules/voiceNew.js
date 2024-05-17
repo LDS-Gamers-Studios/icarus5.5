@@ -150,10 +150,10 @@ async function selectUsers(int, action) {
     .setMaxValues(1)
     .setPlaceholder(`The user to ${action}`);
   const select = u.MessageActionRow().addComponents([menu]);
-  const m = await int.editReply({ components: [...components, select] });
+  const m = await int.editReply({ components: [...components, select] }).catch(u.noop);
 
   const received = await m.awaitMessageComponent({ componentType: Discord.ComponentType.UserSelect, filter: (i) => i.customId == id, time: 5 * 60 * 1000 }).catch(() => {
-    int.editReply({ components });
+    int.editReply({ components }).catch(u.noop);
     return;
   });
   return received;
@@ -305,7 +305,7 @@ const Module = new Augur.Module()
 .addEvent("interactionCreate", async (int) => {
   if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return false;
   const channel = int.member.voice.channel;
-  if (!channel || channel.id != int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true });
+  if (!channel || channel.id != int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true }).catch(u.noop);
   await int.deferUpdate();
   let result;
   switch (int.customId) {

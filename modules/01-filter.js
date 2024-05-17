@@ -484,7 +484,7 @@ const Module = new Augur.Module()
   if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
     return int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
   }
-  processCardAction(int)
+  processCardAction(int);
 })
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
