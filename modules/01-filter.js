@@ -478,9 +478,9 @@ const Module = new Augur.Module()
   processMessageLanguage(newMsg);
 })
 .addEvent("interactionCreate", (int) => {
+  if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
   if (!['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
     .includes(int.customId.replace("modCard", "").toLowerCase())) return;
-  if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
   if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
     return int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
   }
