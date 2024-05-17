@@ -81,10 +81,10 @@ function getComponents(user, channel, oldMsg) {
 async function edit(int, channel, content) {
   // Return an error message of some sort
   if (content) {
-    return int.editReply({ ...getComponents(int.user, channel, int.message), content });
+    return int.editReply({ ...getComponents(int.user, channel, int.message), content }).catch(u.noop);
   }
   // Edit the card
-  return int.editReply(getComponents(int.user, channel, int.message));
+  return int.editReply(getComponents(int.user, channel, int.message)).catch(u.noop);
 }
 
 /** @param {Discord.BaseGuildVoiceChannel} channel*/
