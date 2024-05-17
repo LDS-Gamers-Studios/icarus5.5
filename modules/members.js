@@ -4,7 +4,12 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
   Discord = require("discord.js"),
-  config = require("../config/config.json");
+  config = require("../config/config.json"),
+  badgeData = require("../utils/badges"),
+  RankInfo = require("../utils/rankInfo"),
+  Jimp = require("jimp");
+
+let font, cardBackground
 
 /**
  * Creates a profile card - a PNG that contains some user information in a fun format!
@@ -13,13 +18,7 @@ const Augur = require("augurbot-ts"),
  */
 async function makeProfileCard(member) {
   try {
-    const badgeData = require("../utils/badges"),
-      RankInfo = require("../utils/RankInfo"),
-      Jimp = require("jimp");
-
-    const badgePath = "./media/badges/";
-    const font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
-    const card = await Jimp.read("./media/background.jpg");
+    const card = cardBackground.clone();
 
     const members = member.guild.members.cache;
     const rank = await u.db.user.getRank(member.id, members);
@@ -30,9 +29,9 @@ async function makeProfileCard(member) {
     card.blit(avatar, 8, 8)
       // eslint-disable-next-line no-control-regex
       .print(font, 80, 8, member.displayName.replace(/[^\x00-\x7F]/g, ""), 212)
-      .print(font, 80, 28, "Joined: " + (member.joinedAt ? member.joinedAt.toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' }) : "???"), 212);
+      .print(font, 80, 28, "Joined: " + (member.joinedAt ? u.moment(member.joinedAt).format("MMMM D, YYYY") : "???"), 212);
 
-    const rankOffset = (!rank ? 80 : 168);
+    const rankOffset = (rank ? 168 : 80);
     if (rank) {
       const level = RankInfo.level(rank.totalXP);
       card.print(font, 8, 80, `Current Level: ${level} (${rank.totalXP.toLocaleString()} XP)`, 284)
@@ -42,8 +41,7 @@ async function makeProfileCard(member) {
     }
 
     for (let i = 0; i < badges.length; i++) {
-      const badge = await Jimp.read(badgePath + badges[i].image);
-      // card.blit(badge.resize(48, 48), 10 + (58 * (i % 5)), rankOffset + (58 * Math.floor(i / 5)));
+      const badge = await Jimp.read('./media/badges/' + badges[i].image);
       card.blit(badge.resize(61, 61), 10 + (73 * (i % 4)), rankOffset + (73 * Math.floor(i / 4)));
     }
 
@@ -64,7 +62,7 @@ async function slashUserInfo(interaction, user) {
   const embed = await c.getSummaryEmbed(user, 0, interaction.guild, false);
   embed
   // un-mod-ifying it
-    .setTitle(null)
+    .setTitle(`About ${user.displayName}`)
     .setColor(parseInt(config.color));
   return interaction.reply({ embeds: [embed], ephemeral: interaction.channelId != u.sf.channels.botspam });
 }
@@ -82,6 +80,10 @@ async function slashUserProfile(interaction, user) {
 }
 
 const Module = new Augur.Module()
+  .setInit(async () => {
+    font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE)
+    cardBackground = await Jimp.read("./media/background.jpg");
+  })
   .addInteraction({
     name: "user",
     id: u.sf.commands.slashUser,

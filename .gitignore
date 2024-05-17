@@ -9,7 +9,7 @@ test.js
 data/banned.json
 site/*
 .DS_Store
-media/banners/*
+media/badges/*
 naughty.csv
 
 # For Visual Studio's temp directory
