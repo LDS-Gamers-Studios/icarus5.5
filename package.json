@@ -27,6 +27,7 @@
     "google-spreadsheet": "^3.1.15",
     "jimp": "^0.22.10",
     "moment": "^2.29.1",
+    "moment-timezone": "^0.5.45",
     "mongoose": "^7.6.3",
     "nanoid": "^3.1.25",
     "pet-pet-gif": "^1.0.9",

@@ -2,6 +2,7 @@
 const config = require("./config/config.json"),
   u = require("./utils/utils"),
   path = require("path"),
+  fs = require("fs"),
   axios = require("axios");
 
 /************************
@@ -27,26 +28,24 @@ const guildCommandFiles = [
 ];
 
 if (!config.devMode) guildCommandFiles.push("slashBotHidden-.js"); // secret commands >:)
+
 /**********************
  * END "CONFIG" BLOCK *
  **********************/
 
+/**
+ * @typedef ReturnedCommand
+ * @prop {{type: number, id: string, name: string}[]} data
+ */
+
+/** @param {number} typeId */
 function getCommandType(typeId) {
-  let commandType;
   switch (typeId) {
-  case 1:
-    commandType = "Slash";
-    break;
-  case 2:
-    commandType = "User";
-    break;
-  case 3:
-    commandType = "Message";
-    break;
-  default:
-    commandType = typeId;
+    case 1: return "slash";
+    case 2: return "user";
+    case 3: return "message";
+    default: return typeId;
   }
-  return commandType;
 }
 
 /** @param {axios.AxiosError} error */
@@ -112,6 +111,7 @@ async function register() {
     const load = require(path.resolve(commandPath, command));
     globalCommandLoads.push(load);
   }
+  /** @type {ReturnedCommand|void} */
   // @ts-expect-error
   const global = await axios({
     method: "put",
@@ -127,6 +127,15 @@ async function register() {
       console.log(`${c.name} (${commandType}): ${c.id}`);
     }
   }
+  const files = { commands: Object.fromEntries((global?.data ?? []).concat(guild.data).map(cmd => {
+    return [
+      `${getCommandType(cmd.type)}${cmd.name[0].toUpperCase()}${cmd.name.substring(1).toLowerCase()}`,
+      cmd.id
+    ];
+  }).sort((a, b) => a[0].localeCompare(b[0]))) };
+  fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands.json"), JSON.stringify(files, null, 2));
+  fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands-example.json"), JSON.stringify({ commands: Object.fromEntries(Object.keys(files.commands).map(f => [f, ""])) }, null, 2));
+  console.log("Command snowflake files updated");
   process.exit();
 }
 

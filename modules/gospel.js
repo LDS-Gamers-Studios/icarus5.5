@@ -1,10 +1,10 @@
 // @ts-check
-const Augur = require("augurbot-ts");
-const Discord = require("discord.js");
-const moment = require('moment');
-const Parser = require("rss-parser");
-const u = require("../utils/utils");
-const books = require("../data/gospel/books.json");
+const Augur = require("augurbot-ts"),
+  Discord = require("discord.js"),
+  Parser = require("rss-parser"),
+  u = require("../utils/utils"),
+  books = require("../data/gospel/books.json");
+
 /**
  * @typedef Book
  * @prop {string} bookName
@@ -21,8 +21,6 @@ const books = require("../data/gospel/books.json");
 
 /** @type {Discord.Collection<string, Omit<Book, "abbreviations">>} */
 const abbreviationTable = new u.Collection();
-
-let searchExp;
 
 const works = {
   "ot": "old-testament",
@@ -83,7 +81,7 @@ function getScriptureMastery(book, chapter) {
 async function slashGospelVerse(interaction, parsed) {
   let book, chapter, verses;
   if (parsed) {
-    if (interaction instanceof Discord.ChatInputCommandInteraction) return;
+    if (interaction instanceof Discord.ChatInputCommandInteraction) return; // Interaction and parsed are mutually exclusive
     ({ book, chapter, verses } = parsed);
   } else {
     if (interaction instanceof Discord.Message) return;
@@ -172,21 +170,21 @@ function parseVerseRange(verses) {
 /** @param {Date} inputDate */
 function calculateDate(inputDate, debug = false) {
   inputDate.setHours(10); // weird moment stuff
-  const date = moment(inputDate);
+  const date = u.moment(inputDate);
   // Set the day to Monday. If the day is Sunday (0), set it to subtract a week
   const monday = date;
   monday.day(monday.day() == 0 ? -6 : 1);
   // Account for the end of the year;
   if (monday.month() == 11 && monday.date() > 25) monday.day(-6);
-  const str = `${moment(monday).format("MMMM Do YYYY")}`;
-  const week = moment(monday).format("ww");
+  const str = `${u.moment(monday).format("MMMM Do YYYY")}`;
+  const week = u.moment(monday).format("ww");
 
   const manual = manuals.get(date.year());
   if (manual) {
     // If a feature gets added to select a date, look at the old code on icarus5.
     // The link is different and 2020 has a gap for conference
     const link = `https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-home-and-church-${manual}/${week.padStart(2, "0")}`;
-    if (debug) return `${moment(date).format("MM/DD (ddd)")}: Week ${week.padStart(2, "0")}`;
+    if (debug) return `${u.moment(date).format("MM/DD (ddd)")}: Week ${week.padStart(2, "0")}`;
     return { link, str };
   } else {
     return null;
@@ -217,44 +215,42 @@ async function slashGospelNews(interaction) {
     .setURL(newsItem.link || "Url")
     .setDescription((newsItem.content || "Description").replace(/<[\s\S]+?>/g, "")) // Remove all HTML tags from the description
     .setTimestamp(new Date(newsItem.pubDate || 1));
-  const image = u.attachment().setFile('./media/ldsnewsroom.png').setName(`image.png`);
+  const image = new u.Attachment('./media/ldsnewsroom.png', { name: "image.png" });
   interaction.editReply({ embeds: [embed], files: [image] });
 }
 
 const Module = new Augur.Module()
 .setInit(() => {
-  for (const book of books) {
-    refAbbrBuild(book);
-  }
-  searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")})\\W(\\d+)\\W?([\\d\\-;,\\W]+)`, "ig");
+  books.map(refAbbrBuild);
 })
 .addInteraction({
   name: "gospel",
   id: u.sf.commands.slashGospel,
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
-    case "verse": return slashGospelVerse(interaction);
-    case "comefollowme": return slashGospelComeFollowMe(interaction);
-    case "news": return slashGospelNews(interaction);
+      case "comefollowme": return slashGospelComeFollowMe(interaction);
+      case "news": return slashGospelNews(interaction);
+      case "verse": return slashGospelVerse(interaction);
     }
   },
   autocomplete: (int) => {
     const option = int.options.getFocused(true);
     // Supply book names
     if (option.name == 'book') {
-      const values = abbreviationTable
-        .filter((b, k) => option.value ? k.toLowerCase().startsWith(option.value.toLowerCase()) : true)
+      const values = u.autocompleteSort(option.value, abbreviationTable)
         .map(b => b.bookName).slice(0, 24);
+
       return int.respond(u.unique(values).map(v => ({ name: v, value: v })));
     }
   }
 })
-.addEvent("messageCreate", async msg => {
+.addEvent("messageCreate", msg => {
   if (!msg.inGuild()) return;
   if (msg.channel.parent?.id === u.sf.channels.gospelCategory && !u.parse(msg) && !msg.author.bot) {
+    const searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")})\\W(\\d+)\\W?([\\d\\-;,\\W]+)`, "ig");
     const match = searchExp.exec(msg.cleanContent);
     if (!match) return;
-    return await slashGospelVerse(msg, { book: match[1], chapter: match[2], verses: match[3] });
+    return slashGospelVerse(msg, { book: match[1], chapter: match[2], verses: match[3] });
   }
 })
 .addCommand({ name: "debugcfm",

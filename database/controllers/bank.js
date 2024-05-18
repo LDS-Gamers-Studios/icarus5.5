@@ -2,14 +2,14 @@
 const Bank = require("../models/Bank.model");
 
 /**
- * @typedef {Object} CurrencyRecord
- * @property {String} discordId  The user who recieved the currency.
- * @property {Date} timestamp
- * @property {String} description Description about the transaction
- * @property {Number} value  The amount given.
- * @property {String} currency The type of currency to give. (em or gb) Defaults to em
- * @property {String} giver  The user who gave the currency.
- * @property {Boolean} hp Whether the addition counts for house points.
+ * @typedef CurrencyRecord
+ * @prop {String} discordId  The user who recieved the currency.
+ * @prop {Date} timestamp When the transaction occured
+ * @prop {String} description Description about the transaction
+ * @prop {Number} value  The amount given.
+ * @prop {String} currency The type of currency to give. (em or gb) Defaults to em
+ * @prop {String} giver  The user who gave the currency.
+ * @prop {Boolean} hp Whether the addition counts for house points.
  */
 
 const outdated = "Expected a Discord ID but likely recieved an object instead. That's deprecated now!";

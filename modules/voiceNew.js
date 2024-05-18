@@ -4,37 +4,32 @@ const Augur = require('augurbot-ts'),
   config = require('../config/config.json'),
   u = require('../utils/utils');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
-const { nanoid } = require('nanoid');
-
 
 /** @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">}|Discord.Interaction<"cached">|false>} voice */
 
 /**
  * @param {updates} options
- * @return {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>[]}
  */
 const actionRow = (options) => {
   const styles = Discord.ButtonStyle;
   const buttons1 = [
-    options.locked ? new Discord.ButtonBuilder().setCustomId("voiceUnlock").setLabel("Unlock").setEmoji("🔓").setStyle(styles.Secondary) :
-      new Discord.ButtonBuilder().setCustomId("voiceLock").setLabel("Lock").setEmoji("🔒").setStyle(styles.Secondary),
+    options.locked ? new u.Button().setCustomId("voiceUnlock").setLabel("Unlock").setEmoji("🔓").setStyle(styles.Secondary) :
+      new u.Button().setCustomId("voiceLock").setLabel("Lock").setEmoji("🔒").setStyle(styles.Secondary),
 
-    options.streamlocked ? new Discord.ButtonBuilder().setCustomId("voiceStreamUnlock").setLabel("Stream Unlock").setEmoji("🔓").setStyle(styles.Secondary) :
-      new Discord.ButtonBuilder().setCustomId("voiceStreamLock").setLabel("Stream Lock").setEmoji("🔇").setStyle(styles.Secondary),
+    options.streamlocked ? new u.Button().setCustomId("voiceStreamUnlock").setLabel("Stream Unlock").setEmoji("🔓").setStyle(styles.Secondary) :
+      new u.Button().setCustomId("voiceStreamLock").setLabel("Stream Lock").setEmoji("🔇").setStyle(styles.Secondary),
 
-    new Discord.ButtonBuilder().setCustomId("voiceAllowUser").setLabel("Allow User").setEmoji("😎").setDisabled(!options.locked).setStyle(styles.Primary),
-    new Discord.ButtonBuilder().setCustomId("voiceStreamAllow").setLabel("Allow to Speak").setEmoji("🗣️").setDisabled(!options.streamlocked).setStyle(styles.Primary),
-    new Discord.ButtonBuilder().setCustomId("voiceStreamDeny").setLabel("Deny to Speak").setEmoji("🤐").setDisabled(!options.streamlocked).setStyle(styles.Danger),
+    new u.Button().setCustomId("voiceAllowUser").setLabel("Allow User").setEmoji("😎").setDisabled(!options.locked).setStyle(styles.Primary),
+    new u.Button().setCustomId("voiceStreamAllow").setLabel("Allow to Speak").setEmoji("🗣️").setDisabled(!options.streamlocked).setStyle(styles.Primary),
+    new u.Button().setCustomId("voiceStreamDeny").setLabel("Deny to Speak").setEmoji("🤐").setDisabled(!options.streamlocked).setStyle(styles.Danger),
   ];
 
   const buttons2 = [
-    new Discord.ButtonBuilder().setCustomId("voiceKickUser").setLabel("Kick User").setStyle(styles.Danger),
+    new u.Button().setCustomId("voiceKickUser").setLabel("Kick User").setStyle(styles.Danger),
   ];
   return [
-    // @ts-ignore
-    new Discord.ActionRowBuilder().addComponents(buttons1.filter(c => c !== undefined)),
-    // @ts-ignore
-    new Discord.ActionRowBuilder().addComponents(buttons2),
+    u.MessageActionRow().addComponents(buttons1),
+    u.MessageActionRow().addComponents(buttons2),
   ];
 };
 
@@ -54,18 +49,18 @@ function getComponents(user, channel, oldMsg) {
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak") && !ignore.includes(p.id)).map(p => `<@${p.id}>`);
   const banned = channel.permissionOverwrites.cache.filter(p => p.deny.has("Connect") && !ignore.includes(p.id)).map(p => `<@${p.id}>`);
   // Set new statuses
-  let status = "";
+  let status = "Channel Unlocked & Unmuted 🔓 🔊";
   if (locked && streamlocked) status = "Channel Locked & Muted 🔒 🔇";
   else if (locked) status = "Channel Locked 🔒 🔊";
   else if (streamlocked) status = "Channel Muted 🔓 🔇";
-  else status = "Channel Unlocked & Unmuted 🔓 🔊";
+  // Create a new embed from the old one
   const embed = u.embed(oldMsg?.embeds[0]).setFields([
     { name: "Status", value: status, inline: true },
     { name: "Allowed Users", value: allowedUsers.length > 0 ? allowedUsers.join("\n") : locked ? "Nobody" : "Everyone!", inline: true },
     { name: "Can Speak", value: allowedSpeak.length > 0 ? allowedSpeak.join("\n") : streamlocked ? "Nobody" : "Everyone!", inline: true },
     { name: "Banned Users", value: banned.length > 0 ? banned.join("\n") : "Nobody", inline: true },
   ]).setDescription(`Controls for ${channel}`)
-  .setTitle("VC Control Panel");
+  .setTitle(`${channel.name} Control Panel`);
   const components = actionRow({ locked, streamlocked, allowedSpeak, allowedUsers });
   return { embeds: [embed], components, content: null };
 }
@@ -86,10 +81,10 @@ function getComponents(user, channel, oldMsg) {
 async function edit(int, channel, content) {
   // Return an error message of some sort
   if (content) {
-    return int.editReply({ ...getComponents(int.user, channel, int.message), content });
+    return int.editReply({ ...getComponents(int.user, channel, int.message), content }).catch(u.noop);
   }
   // Edit the card
-  return int.editReply(getComponents(int.user, channel, int.message));
+  return int.editReply(getComponents(int.user, channel, int.message)).catch(u.noop);
 }
 
 /** @param {Discord.BaseGuildVoiceChannel} channel*/
@@ -144,22 +139,21 @@ function overwrite(channel, perms) {
 
 /**
  * @param {Discord.ButtonInteraction<"cached">} int
- * @param {string} action
+ * @param {string} action The user to \<action>
  */
 async function selectUsers(int, action) {
   const components = int.message.components;
-  const id = nanoid(10);
-  const menu = new Discord.UserSelectMenuBuilder()
-  .setCustomId(id)
-  .setMinValues(1)
-  .setMaxValues(1)
-  .setPlaceholder(`The user to ${action}`);
-  const select = new Discord.ActionRowBuilder().addComponents([menu]);
-  // @ts-ignore
-  const m = await int.editReply({ components: [...components, select] });
+  const id = u.customId(10);
+  const menu = new u.SelectMenu.User()
+    .setCustomId(id)
+    .setMinValues(1)
+    .setMaxValues(1)
+    .setPlaceholder(`The user to ${action}`);
+  const select = u.MessageActionRow().addComponents([menu]);
+  const m = await int.editReply({ components: [...components, select] }).catch(u.noop);
 
   const received = await m.awaitMessageComponent({ componentType: Discord.ComponentType.UserSelect, filter: (i) => i.customId == id, time: 5 * 60 * 1000 }).catch(() => {
-    int.editReply({ components });
+    int.editReply({ components }).catch(u.noop);
     return;
   });
   return received;
@@ -302,6 +296,7 @@ async function kickUser(int, channel) {
   const { member, newInt } = user;
   if (!member) return { msg: noUser, int: newInt };
   if (!channel.members.has(member.id)) return { msg: `${member} isn't in your channel!`, int: newInt };
+  await channel.permissionOverwrites.delete(member);
   await member.voice.disconnect();
   return newInt;
 }
@@ -310,32 +305,31 @@ const Module = new Augur.Module()
 .addEvent("interactionCreate", async (int) => {
   if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return false;
   const channel = int.member.voice.channel;
-  if (!channel || channel.id != int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true });
+  if (!channel || channel.id != int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true }).catch(u.noop);
   await int.deferUpdate();
   let result;
   switch (int.customId) {
-  case "voiceUnlock": result = await unlock(int, channel); break;
-  case "voiceStreamUnlock": result = await streamUnlock(int, channel); break;
-  case "voiceAllowUser": result = await allowUser(int, channel); break;
-  case "voiceStreamAllow": result = await streamAllow(int, channel); break;
-  case "voiceStreamDeny": result = await streamDeny(int, channel); break;
+    case "voiceUnlock": result = await unlock(int, channel); break;
+    case "voiceStreamUnlock": result = await streamUnlock(int, channel); break;
+    case "voiceAllowUser": result = await allowUser(int, channel); break;
+    case "voiceStreamAllow": result = await streamAllow(int, channel); break;
+    case "voiceStreamDeny": result = await streamDeny(int, channel); break;
 
-  // Only showed sometimes
-  case "voiceLock": result = await lock(int, channel); break;
-  case "voiceStreamLock": result = await streamLock(int, channel); break;
+    // Only showed sometimes
+    case "voiceLock": result = await lock(int, channel); break;
+    case "voiceStreamLock": result = await streamLock(int, channel); break;
 
-  // Second row
-  case "voiceKickUser": result = await kickUser(int, channel); break;
-  default: return;
+    // Second row
+    case "voiceKickUser": result = await kickUser(int, channel); break;
+    default: return;
   }
   if (result == false) return;
   else if (result instanceof Discord.ButtonInteraction || result instanceof Discord.UserSelectMenuInteraction) edit(result, channel);
   else if ("int" in result && !(result.int instanceof Discord.ChatInputCommandInteraction)) edit(result.int, channel, result.msg);
-  else console.log(result);
-
 })
 .addInteraction({ name: "slashVoice",
   id: u.sf.commands.slashVoice,
+  guildId: u.sf.ldsg,
   onlyGuild: true,
   permissions: (int) => u.perms.calc(int.member, ["notMuted"]),
   process: async (int) => {
@@ -351,24 +345,41 @@ const Module = new Augur.Module()
     let result;
     const user = int.options.getUser("user");
     switch (subcommand) {
-    case "lock": result = await (user ? !isLocked(channel) ? lock(int, channel).then(() => allowUser(int, channel)) : allowUser(int, channel) : lock(int, channel)); break;
-    case "unlock": result = await unlock(int, channel); break;
-    case "streamlock": result = await (user ? !isStreamLocked(channel) ? streamLock(int, channel).then(() => streamAllow(int, channel)) : streamAllow(int, channel) : streamLock(int, channel)); break;
-    case "streamunlock": result = await streamUnlock(int, channel); break;
-    case "kick": result = await kickUser(int, channel); break;
-    default: return int.editReply("You did something I don't know how to process!");
+      case "lock": {
+        if (user) {
+          if (!isLocked(channel)) await lock(int, channel);
+          result = await allowUser(int, channel);
+        } else {
+          result = await lock(int, channel);
+        }
+        break;
+      }
+      case "unlock": result = await unlock(int, channel); break;
+      case "streamlock": {
+        if (user) {
+          if (!isStreamLocked(channel)) await streamLock(int, channel);
+          result = await streamAllow(int, channel);
+        } else {
+          result = await streamLock(int, channel);
+        }
+        break;
+      }
+
+      case "streamunlock": result = await streamUnlock(int, channel); break;
+      case "kick": result = await kickUser(int, channel); break;
+      default: return int.editReply("You did something I don't know how to process!");
     }
     if (result == false) return;
     else if (result instanceof Discord.BaseInteraction) return int.editReply(`${subcommand} successful!`);
-    else int.editReply(result?.msg ?? "I ran into an error.");
+    else int.editReply(result.msg ?? "I ran into an error.");
   }
 })
 .addEvent("voiceStateUpdate", (oldState, newState) => {
   if (oldState.guild.id != u.sf.ldsg) return;
   updateChannels(oldState, newState);
-  if (oldState.channel || !newState.channel || !newState.member) return;
+  if (oldState.channel || !newState.channel || !newState.member || newState.channel.parentId != u.sf.channels.voiceCategory) return;
   const components = getComponents(newState.member.user, newState.channel);
-  newState.channel.send({ embeds: components.embeds, components: components.components });
+  if (newState.channel.members.size == 1) newState.channel.send({ embeds: components.embeds, components: components.components });
 })
 .setInit(async () => {
   if (!config.google.sheets.config) return console.log("No Sheets ID");
@@ -376,7 +387,7 @@ const Module = new Augur.Module()
   try {
     await doc.useServiceAccountAuth(config.google.creds);
     await doc.loadInfo();
-    // @ts-ignore
+    // @ts-ignore sheets stuff
     const channels = await doc.sheetsByTitle["Voice Channel Names"].getRows();
     channelNames = channels.map(x => x["Name"]);
   } catch (e) {
@@ -410,18 +421,18 @@ async function updateChannels(oldState, newState, bypass = false) {
     return;
   }
   processing = true;
-  const communityVoice = Module.client.getCategoryChannel(u.sf.channels.voiceCategory);
-  if (!communityVoice) return processing = false;
-  const channels = communityVoice.children.cache.filter(c => c.id != u.sf.channels.voiceAFK && c.isVoiceBased());
+  const voiceCategory = Module.client.getCategoryChannel(u.sf.channels.voiceCategory);
+  if (!voiceCategory) return processing = false;
+  const channels = voiceCategory.children.cache.filter(c => c.id != u.sf.channels.voiceAFK && c.isVoiceBased());
   const open = channels.filter(c => c.members.size == 0);
   const bitrates = [64, 96];
-  if (!config.devMode) bitrates.push(128); // Only available in boosted server
-  else bitrates.push(32); // makes up for it... kinda
+  if (voiceCategory.guild.maximumBitrate > 96 * 1000) bitrates.push(128); // Only available in boosted server
+  else bitrates.push(32); // makes up for it... kinda... not really.
   const used = channels.map(c => c.isVoiceBased() ? c.bitrate : 0);
   const bitrate = bitrates.find(c => !used.includes(c * 1000)) ?? u.rand(bitrates);
   if (open.size < 2 || channels.size < 3) {
     const name = u.rand(channelNames.filter(cn => !channels.find(ch => ch.name.includes(cn)))) ?? "Room Error";
-    communityVoice.children.create({
+    voiceCategory.children.create({
       name: `${name} (${bitrate} kbps)`,
       type: Discord.ChannelType.GuildVoice,
       bitrate: bitrate * 1000,

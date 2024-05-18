@@ -1,5 +1,5 @@
 // @ts-check
-const moment = require("moment");
+const moment = require('moment-timezone');
 
 const Infraction = require("../models/Infraction.model");
 
@@ -22,21 +22,21 @@ module.exports = {
 
   /**
    * Get an infraction by its associated mod flag.
-   * @param {String} flag The mod flag ID for the infraction
-   * @returns {Promise<Infraction | undefined>}
+   * @param {String} flagId The mod flag ID for the infraction
+   * @returns {Promise<Infraction | null>}
    */
-  getByFlag: function(flag) {
-    if (typeof flag != "string") throw new TypeError(outdated);
-    return Infraction.findOne({ flag }).exec().then(i => i?.toObject());
+  getByFlag: function(flagId) {
+    if (typeof flagId != "string") throw new TypeError(outdated);
+    return Infraction.findOne({ flag: flagId }, undefined, { lean: true }).exec();
   },
   /**
    * Get an infraction by its associated mod flag.
    * @param {String} message The flagged message ID
-   * @returns {Promise<Infraction | undefined>}
+   * @returns {Promise<Infraction | null>}
    */
   getByMsg: function(message) {
     if (typeof message != "string") throw new TypeError(outdated);
-    return Infraction.findOne({ message }).exec().then(i => i?.toObject());
+    return Infraction.findOne({ message }, undefined, { lean: true }).exec();
   },
   /**
    * Get a summary of a user's infractions.
@@ -45,11 +45,10 @@ module.exports = {
    */
   getSummary: async function(discordId, time = 28) {
     if (typeof discordId != "string") throw new TypeError(outdated);
-    const since = moment().subtract(time, "days");
+    const since = moment().tz("America/Denver").subtract(time, "days");
     /** @type {Infraction[]} */
-    const records = (await Infraction.find({ discordId, timestamp: { $gte: since } })
+    const records = (await Infraction.find({ discordId, timestamp: { $gte: since } }, undefined, { lean: true })
       .exec())
-      .map(r => r.toObject())
       // -1 is cleared
       .filter(r => r.value > -1);
     return {
@@ -63,11 +62,11 @@ module.exports = {
   /**
      * Remove/delete an infraction
      * @param {String} flag The infraction flag
-     * @return {Promise<Infraction | undefined>}
+     * @return {Promise<Infraction | null>}
      */
   remove: function(flag) {
     if (typeof flag != "string") throw new TypeError(outdated);
-    return Infraction.findOneAndDelete({ flag }, { new: false }).exec().then(f => f?.toObject());
+    return Infraction.findOneAndDelete({ flag }, { new: false, lean: true }).exec();
   },
   /**
      * Save an infraction
@@ -86,9 +85,9 @@ module.exports = {
   /**
    * Update an infraction
    * @param {Infraction} infraction The edited infraction
-   * @return {Promise<Infraction | undefined>}
+   * @return {Promise<Infraction | null>}
    */
   update: function(infraction) {
-    return Infraction.findOneAndUpdate({ flag: infraction.flag }, { handler: infraction.handler, value: infraction.value }, { new: true }).exec().then(f => f?.toObject());
+    return Infraction.findOneAndUpdate({ flag: infraction.flag }, { handler: infraction.handler, value: infraction.value }, { new: true, lean: true }).exec();
   }
 };

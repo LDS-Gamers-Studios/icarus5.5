@@ -37,7 +37,6 @@ async function jimpRead(url) {
     }
     return img;
   } catch (e) {
-    u.errorHandler(e);
     return null;
   }
 }
@@ -51,7 +50,7 @@ async function jimpRead(url) {
  * @returns {Promise<any>}
  */
 async function sendImg(int, img, name, format = "png") {
-  const image = u.attachment().setFile(img).setName(`image.${format}`);
+  const image = new u.Attachment(img, { name: `image.${format}` });
   const embed = u.embed().setTitle(name).setImage(`attachment://image.${format}`);
   return int.editReply({ embeds: [embed], files: [image] });
 }
@@ -59,7 +58,7 @@ async function sendImg(int, img, name, format = "png") {
 /**
  * Get the image from an interaction.
  * @param {Discord.ChatInputCommandInteraction} int
- * @param {16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096 | undefined} size size of the image
+ * @param {Discord.ImageSize} size size of the image
  * @returns {{ image: string, name: string}} image url
  */
 function targetImg(int, size = 256) {
@@ -119,7 +118,7 @@ async function andywarhol(int, image) {
 /** @type {filterFunction} */
 async function colorme(int, image) {
   const { name, img } = image;
-  const color = Math.floor(Math.random() * 359);
+  const color = u.rand([45, 90, 135, 180]);
   const output = await img.color([{ apply: ColorActionName.HUE, params: [color] }]).getBufferAsync(Jimp.MIME_PNG);
   return await sendImg(int, output, `Colorize ${name} (Hue: ${color})`);
 }
@@ -139,8 +138,8 @@ async function flex(int, image) {
   const { name, img } = image;
   const right = await Jimp.read("./media/flexArm.png");
   const left = right.clone().flip(true, Math.random() > 0.5);
-  const canvas = new Jimp(368, 128, 0x00000000);
   right.flip(false, Math.random() > 0.5);
+  const canvas = new Jimp(368, 128, 0x00000000);
   if (!img.hasAlpha()) img.circle();
   img.resize(128, 128);
   const output = await canvas.blit(left, 0, 4)
@@ -212,31 +211,32 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashAvatar,
   process: async (interaction) => {
     await interaction.deferReply();
+
     const url = targetImg(interaction);
     const img = await jimpRead(url.image);
     if (!img) return errorReading(interaction);
     const i = { name: url.name, img };
     switch (interaction.options.getString('filter')) {
-    case "andywarhol": return andywarhol(interaction, i);
-    case "colorme": return colorme(interaction, i);
-    case "deepfry": return deepfry(interaction, i);
-    case "flex": return flex(interaction, i);
-    case "metal": return metal(interaction, i);
-    case "personal": return personal(interaction, i);
-    case "petpet": return petpet(interaction);
-    case "popart": return popart(interaction, i);
+      case "andywarhol": return andywarhol(interaction, i);
+      case "colorme": return colorme(interaction, i);
+      case "deepfry": return deepfry(interaction, i);
+      case "flex": return flex(interaction, i);
+      case "metal": return metal(interaction, i);
+      case "personal": return personal(interaction, i);
+      case "petpet": return petpet(interaction);
+      case "popart": return popart(interaction, i);
 
-    // basic filters
-    case "fisheye": return basicFilter(interaction, i, 'Fisheye', null);
-    case "invert": return basicFilter(interaction, i, 'Invert', null);
-    case "blur": return basicFilter(interaction, i, 'Blur', [5]);
-    case "flipx": return basicFilter(interaction, i, 'Flip', [true, false]);
-    case "flipy": return basicFilter(interaction, i, 'Flip', [false, true]);
-    case "flipxy": return basicFilter(interaction, i, 'Flip', [true, true]);
-    case "blurple": return basicFilter(interaction, i, 'Color', [[{ apply: "desaturate", params: [100] }, { apply: "saturate", params: [47.7] }, { apply: "hue", params: [227] }]]);
-    case "grayscale": return basicFilter(interaction, i, 'Color', [[{ apply: "desaturate", params: [100] }]]);
+      // basic filters
+      case "fisheye": return basicFilter(interaction, i, 'Fisheye', null);
+      case "invert": return basicFilter(interaction, i, 'Invert', null);
+      case "blur": return basicFilter(interaction, i, 'Blur', [5]);
+      case "flipx": return basicFilter(interaction, i, 'Flip', [true, false]);
+      case "flipy": return basicFilter(interaction, i, 'Flip', [false, true]);
+      case "flipxy": return basicFilter(interaction, i, 'Flip', [true, true]);
+      case "blurple": return basicFilter(interaction, i, 'Color', [[{ apply: "desaturate", params: [100] }, { apply: "saturate", params: [47.7] }, { apply: "hue", params: [227] }]]);
+      case "grayscale": return basicFilter(interaction, i, 'Color', [[{ apply: "desaturate", params: [100] }]]);
 
-    default: return avatar(interaction);
+      default: return avatar(interaction);
     }
   }
 });
