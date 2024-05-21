@@ -47,7 +47,9 @@ function runTag(msg) {
 
     const regex = /<@random ?\[(.*?)\]>/gm;
     if (regex.test(response)) {
+      console.log("true");
       const replace = (/** @type {string} */ str) => u.rand(str.replace(regex, '$1').split('|'));
+      console.log(response.replace(regex, replace));
       response = response.replace(regex, replace);
     }
     response = response
@@ -179,7 +181,7 @@ async function slashTagVariables(int) {
     "`<@randomchannel>` A random public channel",
     "`<@random [item1|item2|item3...]>`: Randomly selects one of the items. Separate with `|`. (No, there can't be `<@random>`s inside of `<@random>`s)",
     "",
-    "Example: <@target> took over <@channel>, but <@author> <@random is complicit|might have something to say about it>."
+    "Example: <@target> took over <@channel>, but <@author> <@random [is complicit|might have something to say about it]>."
   ];
   const embed = u.embed().setTitle("Tag Placeholders").setDescription(`You can use these when creating or modifying tags for some user customization. The \`<@thing>\` gets replaced with the proper value when the command is run. \n\n${placeholderDescriptions.join('\n')}`);
   return int.editReply({ embeds: [embed] });
