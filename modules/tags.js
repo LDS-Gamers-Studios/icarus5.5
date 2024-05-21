@@ -95,10 +95,10 @@ async function slashTagCreate(int) {
   if (command.response) embed.addFields({ name: "Response", value: command.response });
   try {
     // report the tag creation
-    int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
+    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
     int.editReply({ content: "Tag created!", embeds: [embed.setDescription(`Try it out with \`!${name}\``)], files: attachment ? [attachment] : [] });
   } catch (error) {
-    int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag creation preview was too long to send." })] });
+    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag creation preview was too long to send." })] });
     int.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
 }
@@ -137,10 +137,10 @@ async function slashTagModify(int) {
         { name: "Attachment Status", value: currentTag.attachment ? attachment ? "Removed" : "Replaced" : attachment ? "Added" : "Unchanged" }
       );
     }
-    int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
+    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
     int.editReply({ embeds: [embed.setDescription(null)] });
   } catch (error) {
-    int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag change preview was too long to send" })] });
+    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag change preview was too long to send" })] });
     int.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
 }
@@ -160,11 +160,11 @@ async function slashTagDelete(int) {
       embed.addFields({ name: "Attachment", value: "[Deleted]" });
       fs.rmSync(process.cwd() + `/media/tags/${command._id.toString()}`);
     }
-    int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed] });
+    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed] });
     int.editReply({ embeds: [embed.setDescription(null)] });
   } catch (err) {
     console.log(err);
-    int.client.getTextChannel(u.sf.channels.management)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag deletion preview was too long to send" })] });
+    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag deletion preview was too long to send" })] });
     int.editReply(`I deleted the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
   tags.delete(name);
@@ -194,9 +194,8 @@ async function slashTagValue(int) {
   if (!tag) return int.editReply(`Looks like that tag doesn't exist.`);
   const embed = u.embed({ author: int.member })
     .setTitle(tag.tag)
-    .setDescription(tag.response ?? null)
-    .setImage(tag.attachment ?? null);
-  return int.editReply({ embeds: [embed] });
+    .setDescription(tag.response || null);
+  return int.editReply({ embeds: [embed], files: tag.attachment ? [new u.Attachment(`./media/tags/${tag._id}`).setName(tag.attachment)] : [] });
 }
 
 const Module = new Augur.Module()
