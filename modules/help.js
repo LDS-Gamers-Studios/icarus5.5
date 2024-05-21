@@ -22,7 +22,7 @@ const Module = new Augur.Module()
         embeds.push(modifiableEmbed);
         modifiableEmbed = embed.setTitle(embed.data.title + " (cont.)");
       }
-      modifiableEmbed.setDescription((modifiableEmbed.data.description ?? "") + `${config.prefix}${tag.tag}\n`);
+      modifiableEmbed.setDescription((modifiableEmbed.data.description ?? "") + `${config.prefix}${u.escapeText(tag.tag)}\n`);
     }
     if (embeds.length == 0) return int.editReply({ embeds: [modifiableEmbed] });
     const first = embeds.shift();
