@@ -81,10 +81,10 @@ function getComponents(user, channel, oldMsg) {
 async function edit(int, channel, content) {
   // Return an error message of some sort
   if (content) {
-    return int.editReply({ ...getComponents(int.user, channel, int.message), content });
+    return int.editReply({ ...getComponents(int.user, channel, int.message), content }).catch(u.noop);
   }
   // Edit the card
-  return int.editReply(getComponents(int.user, channel, int.message));
+  return int.editReply(getComponents(int.user, channel, int.message)).catch(u.noop);
 }
 
 /** @param {Discord.BaseGuildVoiceChannel} channel*/
@@ -150,10 +150,10 @@ async function selectUsers(int, action) {
     .setMaxValues(1)
     .setPlaceholder(`The user to ${action}`);
   const select = u.MessageActionRow().addComponents([menu]);
-  const m = await int.editReply({ components: [...components, select] });
+  const m = await int.editReply({ components: [...components, select] }).catch(u.noop);
 
   const received = await m.awaitMessageComponent({ componentType: Discord.ComponentType.UserSelect, filter: (i) => i.customId == id, time: 5 * 60 * 1000 }).catch(() => {
-    int.editReply({ components });
+    int.editReply({ components }).catch(u.noop);
     return;
   });
   return received;
@@ -305,7 +305,7 @@ const Module = new Augur.Module()
 .addEvent("interactionCreate", async (int) => {
   if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return false;
   const channel = int.member.voice.channel;
-  if (!channel || channel.id != int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true });
+  if (!channel || channel.id != int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true }).catch(u.noop);
   await int.deferUpdate();
   let result;
   switch (int.customId) {
@@ -379,7 +379,7 @@ const Module = new Augur.Module()
   updateChannels(oldState, newState);
   if (oldState.channel || !newState.channel || !newState.member || newState.channel.parentId != u.sf.channels.voiceCategory) return;
   const components = getComponents(newState.member.user, newState.channel);
-  newState.channel.send({ embeds: components.embeds, components: components.components });
+  if (newState.channel.members.size == 1) newState.channel.send({ embeds: components.embeds, components: components.components });
 })
 .setInit(async () => {
   if (!config.google.sheets.config) return console.log("No Sheets ID");

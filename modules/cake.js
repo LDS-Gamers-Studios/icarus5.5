@@ -101,7 +101,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
         const join = u.moment(testJoinDate ?? member.joinedAt ?? 0).subtract(offset?.priorTenure || 0, "days");
         if (checkDate(join, now, true)) {
           const years = now.year() - join.year();
-          // yell at management if not
+          // yell at devs if not
           if (tenureCache.has(years)) {
             const roles = tenureCache.clone();
             roles.delete(years);
@@ -117,9 +117,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
       } catch (e) { u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`); continue; }
     }
     if (unknownYears.size > 0) {
-      const content = `## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`;
-      Module.client.getTextChannel(u.sf.channels.management)?.send(content + "\nI've also notified the bot team, please work with them on fixing this issue.");
-      Module.client.getTextChannel(u.sf.channels.bottesting)?.send(content);
+      Module.client.getTextChannel(u.sf.channels.bottesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
     }
     if (celebrating.size > 0) {
       const embed = u.embed()
