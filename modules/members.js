@@ -40,10 +40,12 @@ async function makeProfileCard(member) {
         .print(font, 154, 128, `Lifetime Rank: ${rank.rank.lifetime}/${member.guild.memberCount}`, 138);
     }
 
-    for (let i = 0; i < badges.length; i++) {
-      const badge = await Jimp.read('./media/badges/' + badges[i].image);
+    const promises = badges.map(async (b, i) => {
+      const badge = await Jimp.read(`./media/badges/${b.image}`);
       card.blit(badge.resize(61, 61), 10 + (73 * (i % 4)), rankOffset + (73 * Math.floor(i / 4)));
-    }
+    });
+
+    await Promise.all(promises) // Wait for all the blitting to be done
 
     card.crop(0, 0, 300, Math.min(rankOffset + 73 * Math.ceil((badges.length) / 4), 533));
 
