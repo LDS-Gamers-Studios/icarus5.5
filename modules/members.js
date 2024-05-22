@@ -45,7 +45,7 @@ async function makeProfileCard(member) {
       card.blit(badge.resize(61, 61), 10 + (73 * (i % 4)), rankOffset + (73 * Math.floor(i / 4)));
     });
 
-    await Promise.all(promises) // Wait for all the blitting to be done
+    await Promise.all(promises); // Wait for all the blitting to be done
 
     card.crop(0, 0, 300, Math.min(rankOffset + 73 * Math.ceil((badges.length) / 4), 533));
 
