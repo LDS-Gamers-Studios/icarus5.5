@@ -1,9 +1,10 @@
 // @ts-check
 const config = require("./config/config.json"),
-  u = require("./utils/utils"),
   path = require("path"),
   fs = require("fs"),
   axios = require("axios");
+
+const ldsg = require(`./config/snowflakes${config.devMode ? "-testing" : ""}.json`).ldsg;
 
 /************************
  * BEGIN "CONFIG" BLOCK *
@@ -93,7 +94,7 @@ async function register() {
   // @ts-expect-error
   const guild = await axios({
     method: "put",
-    url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${u.sf.ldsg}/commands`,
+    url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${ldsg}/commands`,
     headers: { Authorization: `Bot ${config.token}` },
     data: guildCommandLoads
   }).catch(displayError);

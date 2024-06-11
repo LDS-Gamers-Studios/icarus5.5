@@ -263,15 +263,15 @@ async function processDiscordInvites(msg) {
   const inviteRegex = /(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)(\w+)/ig;
   const matched = msg.cleanContent.match(inviteRegex);
   if (!matched) return null;
-  const code = matched.map(m => m.replace(/(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)/, ""));
-  const filtered = code.filter(co => co != msg.guild.id);
+  const code = matched.map(m => ({ event: /discord(app)?\.com\/events/i.test(m), code: m.replace(/(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)/, "") }));
+  const filtered = code.filter(co => co.code != msg.guild.id);
   if (filtered.length == 0) return null;
-  const foundInvites = filtered.map(inv => isNaN(parseInt(inv)) ? bot.fetchInvite(inv.trim()) : bot.fetchGuildWidget(inv));
+  const foundInvites = filtered.map(inv => inv.event ? bot.fetchGuildWidget(inv.code) : bot.fetchInvite(inv.code.trim()));
   try {
     const resolved = await Promise.all(foundInvites);
     return reportInvites(msg, matched, resolved);
   } catch (error) {
-    if (error && ["Unknown Invite", "Unknown Guild"].includes(error.message)) return reportInvites(msg, matched);
+    if (error && ["Unknown Invite", "Unknown Guild", "Widget Disabled"].includes(error.message)) return reportInvites(msg, matched);
     u.errorHandler(error, msg);
     return null;
   }
@@ -479,12 +479,12 @@ const Module = new Augur.Module()
 })
 .addEvent("interactionCreate", (int) => {
   if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
+  if (!['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
+    .includes(int.customId.replace("modCard", "").toLowerCase())) return;
   if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
-    int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
-    return;
+    return int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
   }
-  if (['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
-    .includes(int.customId.replace("modCard", "").toLowerCase())) return processCardAction(int);
+  processCardAction(int);
 })
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
