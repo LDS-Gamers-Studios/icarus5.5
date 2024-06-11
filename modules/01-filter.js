@@ -271,7 +271,7 @@ async function processDiscordInvites(msg) {
     const resolved = await Promise.all(foundInvites);
     return reportInvites(msg, matched, resolved);
   } catch (error) {
-    if (error && ["Unknown Invite", "Unknown Guild"].includes(error.message)) return reportInvites(msg, matched);
+    if (error && ["Unknown Invite", "Unknown Guild", "Widget Disabled"].includes(error.message)) return reportInvites(msg, matched);
     u.errorHandler(error, msg);
     return null;
   }
