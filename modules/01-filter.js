@@ -263,10 +263,10 @@ async function processDiscordInvites(msg) {
   const inviteRegex = /(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)(\w+)/ig;
   const matched = msg.cleanContent.match(inviteRegex);
   if (!matched) return null;
-  const code = matched.map(m => m.replace(/(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)/, ""));
-  const filtered = code.filter(co => co != msg.guild.id);
+  const code = matched.map(m => ({ event: /discord(app)?\.com\/events/i.test(m), code: m.replace(/(https?:\/\/)?discord(app)?\.(gg(\/invite)?\/|com\/(invite|events)\/)/, "") }));
+  const filtered = code.filter(co => co.code != msg.guild.id);
   if (filtered.length == 0) return null;
-  const foundInvites = filtered.map(inv => isNaN(parseInt(inv)) ? bot.fetchInvite(inv.trim()) : bot.fetchGuildWidget(inv));
+  const foundInvites = filtered.map(inv => inv.event ? bot.fetchGuildWidget(inv.code) : bot.fetchInvite(inv.code.trim()));
   try {
     const resolved = await Promise.all(foundInvites);
     return reportInvites(msg, matched, resolved);
