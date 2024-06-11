@@ -26,6 +26,7 @@ const actionRow = (options) => {
 
   const buttons2 = [
     new u.Button().setCustomId("voiceKickUser").setLabel("Kick User").setStyle(styles.Danger),
+    new u.Button().setCustomId("voiceCardRefresh").setLabel("Refresh").setStyle(styles.Primary).setEmoji("⌛")
   ];
   return [
     u.MessageActionRow().addComponents(buttons1),
@@ -74,12 +75,13 @@ function getComponents(user, channel, oldMsg) {
  */
 
 /**
- * @param {Augur.GuildInteraction<"Button"|"SelectMenuUser">} int
+ * @param {Augur.GuildInteraction<"Button"|"SelectMenuUser"|"CommandSlash">} int
  * @param {Discord.BaseGuildVoiceChannel} channel
  * @param {string} [content]
 */
 async function edit(int, channel, content) {
   // Return an error message of some sort
+  if (int instanceof Discord.ChatInputCommandInteraction) return int.editReply(getComponents(int.user, channel));
   if (content) {
     return int.editReply({ ...getComponents(int.user, channel, int.message), content }).catch(u.noop);
   }
@@ -151,7 +153,7 @@ async function selectUsers(int, action) {
     .setPlaceholder(`The user to ${action}`);
   const select = u.MessageActionRow().addComponents([menu]);
   const m = await int.editReply({ components: [...components, select] }).catch(u.noop);
-
+  if (!m) return;
   const received = await m.awaitMessageComponent({ componentType: Discord.ComponentType.UserSelect, filter: (i) => i.customId == id, time: 5 * 60 * 1000 }).catch(() => {
     int.editReply({ components }).catch(u.noop);
     return;
@@ -321,6 +323,7 @@ const Module = new Augur.Module()
 
     // Second row
     case "voiceKickUser": result = await kickUser(int, channel); break;
+    case "voiceCardRefresh": return edit(int, channel, "Refreshed!");
     default: return;
   }
   if (result == false) return;
@@ -367,6 +370,10 @@ const Module = new Augur.Module()
 
       case "streamunlock": result = await streamUnlock(int, channel); break;
       case "kick": result = await kickUser(int, channel); break;
+      case "controls": {
+        if (int.channelId != channel.id) return int.editReply(`You need to use this command in ${channel} for it to work properly.`);
+        return edit(int, channel);
+      }
       default: return int.editReply("You did something I don't know how to process!");
     }
     if (result == false) return;
