@@ -1,16 +1,16 @@
 // @ts-check
-const Augur = require("augurbot-ts");
-const u = require("../utils/utils");
-const config = require("../config/config.json");
-const { GoogleSpreadsheet } = require("google-spreadsheet");
-const Discord = require("discord.js");
-const c = require("../utils/modCommon");
+const Augur = require("augurbot-ts"),
+  Discord = require("discord.js"),
+  u = require("../utils/utils"),
+  c = require("../utils/modCommon"),
+  config = require("../config/config.json"),
+  { GoogleSpreadsheet } = require("google-spreadsheet");
 
 /** @type {Discord.Collection<string, Discord.Role>} */
-let roles = new u.Collection();
+let optRoles = new u.Collection();
 
 /** @type {Discord.Collection<string, {colorId: string, baseId: string, inherited: string[]}>} */
-let eRoles = new u.Collection();
+let equipRoles = new u.Collection();
 
 /**
  * @param {Discord.GuildMember} member
@@ -24,15 +24,15 @@ const hasRole = (member, id) => member?.roles.cache.has(id);
 */
 async function slashRoleAdd(int, give = true) {
   await int.deferReply({ ephemeral: true });
-  const pres = give ? "add" : "remove";
+  const pres = give ? "added" : "removed";
   const input = int.options.getString("role", true);
   const admin = u.perms.calc(int.member, ["mgr"]);
-  const role = (admin ? int.guild.roles.cache.filter(r => !r.name.match(/(--)|(\^\^)|(~~)/)) : roles).find(r => r.name.toLowerCase() == input.toLowerCase());
+  const role = (admin ? int.guild.roles.cache.filter(r => !r.name.match(/[-^~]{2}/)) : optRoles).find(r => r.name.toLowerCase() == input.toLowerCase());
   if (role) {
     try {
       if (hasRole(int.member, role.id) == give) return int.editReply(`You ${give ? "already" : "don't"} have the ${role} role!`);
       give ? await int.member?.roles.add(role) : await int.member?.roles.remove(role);
-      return int.editReply(`Successfully ${pres}ed the ${role} role`);
+      return int.editReply(`Successfully ${pres} the ${role} role`);
     } catch (e) {
       return int.editReply(`Failed to ${pres} the ${role} role`);
     }
@@ -47,23 +47,10 @@ async function slashRoleWhoHas(int) {
     const ephemeral = int.channel?.id == u.sf.channels.general;
     await int.deferReply({ ephemeral });
     const role = int.options.getRole("role", true);
-    if (role.id == u.sf.ldsg) return await int.editReply("Everyone has that role, silly!");
+    if (role.id == u.sf.ldsg) return int.editReply("Everyone has that role, silly!");
     const members = role.members.map(m => m.displayName).sort();
-    if (members.length == 0) return await int.editReply("I couldn't find any members with that role. :shrug:");
-    const chunks = [];
-    let activeChunk = "";
-    for (const member of members) {
-      if (activeChunk.length + member.length + 2 > 1900) {
-        chunks.push(activeChunk);
-        activeChunk = "";
-      }
-      activeChunk += `${member}\n`;
-    }
-    chunks.push(activeChunk);
-    for (const chunk of chunks) {
-      if (chunk == chunks[0]) await int.editReply(`Members with the ${role} role: ${role.members.size}\n\`\`\`\n${chunk}\n\`\`\``);
-      else await int.followUp({ content: `Continued:\n\`\`\`${chunk}\`\`\``, ephemeral });
-    }
+    if (members.length == 0) return int.editReply("I couldn't find any members with that role. :shrug:");
+    return await u.pagedEmbeds(int, u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`), members, ephemeral);
   } catch (error) { u.errorHandler(error, int); }
 }
 
@@ -75,14 +62,13 @@ async function slashRoleGive(int, give = true) {
   try {
     await int.deferReply({ ephemeral: true });
     const recipient = int.options.getMember("user");
-    if (!recipient) return int.editReply("I couldn't find that user!");
     const response = await c.assignRole(int, recipient, give);
     return int.editReply(response);
   } catch (error) { u.errorHandler(error, int); }
 }
 /** @param {Discord.GuildMember} member */
 function getInventory(member) {
-  return u.perms.isMgmt(member) ? eRoles : eRoles.filter(r => member.roles.cache.hasAny(r.baseId, ...r.inherited));
+  return u.perms.isMgmt(member) ? equipRoles : equipRoles.filter(r => member.roles.cache.hasAny(r.baseId, ...r.inherited));
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -105,8 +91,8 @@ async function slashRoleInventory(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashRoleEquip(int) {
   try {
-    await int.deferReply({ ephemeral: true });
-    const allColors = eRoles.map(r => r.colorId);
+    await int.deferReply({ ephemeral: int.channel?.id != u.sf.channels.botspam });
+    const allColors = equipRoles.map(r => r.colorId);
     const available = getInventory(int.member);
     const input = int.options.getString("color");
     if (!input) {
@@ -114,7 +100,7 @@ async function slashRoleEquip(int) {
       return int.editReply("Color removed!");
     }
     const real = int.guild.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
-    const role = int.guild.roles.cache.find(r => r.id == eRoles.find(a => a.baseId == real?.id || a.colorId == real?.id)?.colorId);
+    const role = int.guild.roles.cache.find(r => r.id == equipRoles.find(a => a.baseId == real?.id || a.colorId == real?.id)?.colorId);
     if (!role) {
       return int.editReply(`Sorry, that's not a color role on this server. Check </role inventory:${u.sf.commands.slashRole}> to see what you can equip.`);
     } else if (!available.has(role.id)) {
@@ -138,17 +124,17 @@ async function setRoles() {
     /** @type {{RoleId: string}[]} */
     // @ts-ignore
     const rows = await doc.sheetsByTitle["Opt-In Roles"].getRows();
-    roles.clear();
+    optRoles.clear();
     const ids = rows.map(r => r["RoleId"]).filter(filterBlank);
-    roles = ldsg?.roles.cache.filter(r => ids.includes(r.id)) ?? new u.Collection();
+    optRoles = ldsg?.roles.cache.filter(r => ids.includes(r.id)) ?? new u.Collection();
     /** @type {{"Color Role ID": string, "Base Role ID": string, "Lower Roles": string}[]} */
     // @ts-ignore
-    const equipRoles = await doc.sheetsByTitle["Roles"].getRows();
+    const eRoles = await doc.sheetsByTitle["Roles"].getRows();
 
-    const mappedEquips = equipRoles
+    const mappedEquips = eRoles
       .filter(r => r != null && r != undefined && r["Base Role ID"] && r["Color Role ID"])
       .map(r => ({ colorId: r["Color Role ID"], baseId: r["Base Role ID"], inherited: r["Lower Roles"]?.split(" ").filter(filterBlank) ?? [] }));
-    eRoles = new u.Collection(mappedEquips.map(e => [e.colorId, e]));
+    equipRoles = new u.Collection(mappedEquips.map(e => [e.colorId, e]));
   } catch (e) { u.errorHandler(e, "Load Color & Equip Roles"); }
 }
 
@@ -161,8 +147,8 @@ Module.addInteraction({
   id: u.sf.commands.slashRole,
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
-      case "add": return await slashRoleAdd(interaction);
-      case "remove": return await slashRoleAdd(interaction, false);
+      case "add": return slashRoleAdd(interaction);
+      case "remove": return slashRoleAdd(interaction, false);
       case "give": return slashRoleGive(interaction);
       case "take": return slashRoleGive(interaction, false);
       case "inventory": return slashRoleInventory(interaction);
@@ -180,7 +166,7 @@ Module.addInteraction({
         return interaction.respond(values.map(v => ({ name: v, value: v })));
       }
       const adding = sub == "add";
-      const values = (u.perms.isAdmin(interaction.member) ? interaction.guild.roles.cache : roles)
+      const values = (u.perms.isAdmin(interaction.member) ? interaction.guild.roles.cache : optRoles)
         .filter(r => r.name.toLowerCase().includes(option.value.toLowerCase()) && // relevant
           r.comparePositionTo(u.sf.roles.icarus) < 0 && // able to be given
           !r.managed && r.id != u.sf.ldsg && // not managed or @everyone

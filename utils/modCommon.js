@@ -678,7 +678,7 @@ const modCommon = {
    * Give somebody a staff assigned role
    * @param {Augur.GuildInteraction<"CommandSlash">} int
    * @param {Boolean} give
-   * @param {Discord.GuildMember} recipient
+   * @param {Discord.GuildMember | null} recipient
    * @returns {Promise<string>}
    */
   assignRole: async function(int, recipient, give = true) {

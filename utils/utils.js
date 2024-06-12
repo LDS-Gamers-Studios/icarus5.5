@@ -205,6 +205,35 @@ const utils = {
     return embed;
   },
   /**
+ * @param {Discord.CommandInteraction | null} int
+ * @param {Discord.EmbedBuilder} embed
+ * @param {string[]} lines
+ */
+  pagedEmbeds: (int, embed, lines, ephemeral = true) => {
+    const descriptions = [];
+    let active = "";
+    lines.forEach((line) => {
+      if (active.length + line.length > 4050) {
+        descriptions.push(active);
+        active = "";
+      }
+      active += `${line}\n`;
+    });
+    descriptions.push(active);
+    const embeds = descriptions.map(desc => {
+      return utils.embed(embed.toJSON()).setDescription(desc);
+    });
+    if (!int) return embeds;
+    return Promise.all(embeds.map(async (e, i) => {
+      if (i == 0) {
+        if (int.deferred || int.replied) return int.editReply({ embeds: [e] });
+        else return await int.reply({ embeds: [e], ephemeral });
+      } else {
+        return int.followUp({ embeds: [e.setTitle("Cont.")], ephemeral });
+      }
+    }));
+  },
+  /**
    * Handles a command exception/error. Most likely called from a catch.
    * Reports the error and lets the user know.
    * @param {Error | null} [error] The error to report.
