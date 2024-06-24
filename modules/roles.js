@@ -24,7 +24,6 @@ const hasRole = (member, id) => member?.roles.cache.has(id);
 */
 async function slashRoleAdd(int, give = true) {
   await int.deferReply({ ephemeral: true });
-  const pres = give ? "added" : "removed";
   const input = int.options.getString("role", true);
   const admin = u.perms.calc(int.member, ["mgr"]);
   const role = (admin ? int.guild.roles.cache.filter(r => !r.name.match(/[-^~]{2}/)) : optRoles).find(r => r.name.toLowerCase() == input.toLowerCase());
@@ -32,9 +31,9 @@ async function slashRoleAdd(int, give = true) {
     try {
       if (hasRole(int.member, role.id) == give) return int.editReply(`You ${give ? "already" : "don't"} have the ${role} role!`);
       give ? await int.member?.roles.add(role) : await int.member?.roles.remove(role);
-      return int.editReply(`Successfully ${pres} the ${role} role`);
+      return int.editReply(`Successfully ${give ? "added" : "removed"} the ${role} role`);
     } catch (e) {
-      return int.editReply(`Failed to ${pres} the ${role} role`);
+      return int.editReply(`Failed to ${give ? "add" : "remove"} the ${role} role`);
     }
   } else {
     return admin ? int.editReply(`I couldn't find the ${input} role`) : int.editReply(`You didn't give me a valid role`);
@@ -62,7 +61,9 @@ async function slashRoleGive(int, give = true) {
   try {
     await int.deferReply({ ephemeral: true });
     const recipient = int.options.getMember("user");
-    const response = await c.assignRole(int, recipient, give);
+    if (!recipient) return `I couldn't find that user!`;
+    const role = int.options.getString("role", true);
+    const response = await c.assignRole(int, recipient, role, give);
     return int.editReply(response);
   } catch (error) { u.errorHandler(error, int); }
 }
@@ -124,9 +125,8 @@ async function setRoles() {
     /** @type {{RoleId: string}[]} */
     // @ts-ignore
     const rows = await doc.sheetsByTitle["Opt-In Roles"].getRows();
-    optRoles.clear();
     const ids = rows.map(r => r["RoleId"]).filter(filterBlank);
-    optRoles = ldsg?.roles.cache.filter(r => ids.includes(r.id)) ?? new u.Collection();
+    optRoles = ldsg.roles.cache.filter(r => ids.includes(r.id));
     /** @type {{"Color Role ID": string, "Base Role ID": string, "Lower Roles": string}[]} */
     // @ts-ignore
     const eRoles = await doc.sheetsByTitle["Roles"].getRows();
@@ -160,7 +160,7 @@ Module.addInteraction({
     const option = interaction.options.getFocused(true);
     const sub = interaction.options.getSubcommand(true);
     if (option.name == 'role') {
-      if (sub == "give" || sub == "take") {
+      if (["give", "take"].includes(sub)) {
         if (!u.perms.calc(interaction.member, ["team", "mod", "mgr"])) return;
         const values = ["Adulting", "Bookworm", "LDSG Lady"];
         return interaction.respond(values.map(v => ({ name: v, value: v })));

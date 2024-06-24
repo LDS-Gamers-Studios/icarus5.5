@@ -678,26 +678,24 @@ const modCommon = {
    * Give somebody a staff assigned role
    * @param {Augur.GuildInteraction<"CommandSlash">} int
    * @param {Boolean} give
-   * @param {Discord.GuildMember | null} recipient
+   * @param {Discord.GuildMember} recipient
+   * @param {string} input
    * @returns {Promise<string>}
    */
-  assignRole: async function(int, recipient, give = true) {
+  assignRole: async function(int, recipient, input, give = true) {
     /** @param {Discord.GuildMember} member @param {string} id*/
-    const hasRole = (member, id) => member?.roles.cache.has(id);
     try {
       const pres = give ? "give" : "take";
       const past = give ? "gave" : "took";
-      const input = int.options.getString("role", true);
       if (!u.perms.calc(int.member, ["team", "mod", "mgr"])) return "*Nice try!* This command is for Team+ only";
       if (!u.perms.calc(int.member, ["mod", "mgr"]) && ["adulting", "lady"].includes(input.toLowerCase())) return "This command is for Mod+ only";
-      if (!recipient) return `I couldn't find that user!`;
       const role = int.guild.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
       if (role) {
         if (![u.sf.roles.adulting, u.sf.roles.lady, u.sf.roles.bookworm].includes(role.id)) {
           return `This command is not for the ${role} role`;
         }
         try {
-          if (hasRole(recipient, role.id) == give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${role} role`;
+          if (recipient?.roles.cache.has(role.id) == give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${role} role`;
           give ? await recipient?.roles.add(role.id) : await recipient?.roles.remove(role.id);
           const returnStr = `Successfully ${past} the ${role} role ${give ? "to" : "from"} ${recipient}`;
           if (role.id == u.sf.roles.bookworm) return returnStr;

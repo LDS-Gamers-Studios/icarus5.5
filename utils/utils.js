@@ -224,12 +224,12 @@ const utils = {
       return utils.embed(embed.toJSON()).setDescription(desc);
     });
     if (!int) return embeds;
-    return Promise.all(embeds.map(async (e, i) => {
+    return Promise.all(embeds.map((e, i) => {
       if (i == 0) {
         if (int.deferred || int.replied) return int.editReply({ embeds: [e] });
-        else return await int.reply({ embeds: [e], ephemeral });
+        else return int.reply({ embeds: [e], ephemeral });
       } else {
-        return int.followUp({ embeds: [e.setTitle("Cont.")], ephemeral });
+        return int.followUp({ embeds: [e.setTitle(`${e.data.title} Cont.`)], ephemeral });
       }
     }));
   },
