@@ -14,7 +14,7 @@ async function slashLdsgMembers(interaction) {
     if (!ldsg) throw new Error("Couldn't find LDSG");
     const online = ldsg.members.cache.filter((member) => member?.presence && member.presence.status != "offline");
     const response = `📈 **Members:**\n${ldsg.memberCount} Members\n${online.size} Online`;
-    await interaction.reply(response );
+    await interaction.reply(response);
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
@@ -72,7 +72,7 @@ async function processCardAction(int) {
           .setLabel("Rename")
           .setStyle(Discord.TextInputStyle.Short)
           .setRequired(true)
-          .setPlaceholder("New title for the forum post") 
+          .setPlaceholder("New title for the forum post")
       ])
     ).setCustomId("rename").setTitle("Rename");
     let submitted;
@@ -111,7 +111,7 @@ async function processCardAction(int) {
         return int.channel?.send("Failed to message member, they may have me blocked. You will need to reach out to them on your own this time!");
       }
     } else if (int.customId == "suggestionRename") {
-      if(!int.channel) return int.reply("Channel error");
+      if (!int.channel) return int.reply("Channel error");
       const post = int.guild.channels.cache.get(int.channel.id);
       await int.showModal(edit);
       submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
@@ -126,7 +126,7 @@ async function processCardAction(int) {
         int.channel.send(`Changed title from "${old}" to "${name}"`);
       } catch (e) {
         u.errorHandler(e, int);
-        return int.channel.send("Failed to rename forum post")
+        return int.channel.send("Failed to rename forum post");
       }
     } else {
       embed.addFields({ name: `Suggestion ignored`, value: `by ${int.user}` });
