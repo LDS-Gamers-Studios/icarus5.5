@@ -227,5 +227,5 @@ module.exports = new u.cmd()
   .addSubcommand(warn)
   .addSubcommand(watch)
   .setDMPermission(false)
-  .setDefaultMemberPermissions(0)
+  .setDefaultMemberPermissions(u.devMode)
   .toJSON();
