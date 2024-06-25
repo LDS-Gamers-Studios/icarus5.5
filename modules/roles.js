@@ -61,10 +61,18 @@ async function slashRoleGive(int, give = true) {
   try {
     await int.deferReply({ ephemeral: true });
     const recipient = int.options.getMember("user");
-    if (!recipient) return `I couldn't find that user!`;
-    const role = int.options.getString("role", true);
-    const response = await c.assignRole(int, recipient, role, give);
-    return int.editReply(response);
+    if (!recipient) return int.editReply("I couldn't find that user!");
+    const input = int.options.getString("role", true);
+    if (!u.perms.calc(int.member, ["team", "mod", "mgr"])) return int.editReply("*Nice try!* This command is for Team+ only");
+    if (!u.perms.calc(int.member, ["mod", "mgr"]) && ["adulting", "lady"].includes(input.toLowerCase())) return int.editReply("This command is for Mod+ only");
+    const role = int.guild.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
+    if (role) {
+      if (![u.sf.roles.adulting, u.sf.roles.lady, u.sf.roles.bookworm].includes(role.id)) {
+        return int.editReply(`This command is not for the ${role} role`);
+      }
+      const response = await c.assignRole(int, recipient, role, give);
+      return int.editReply(response);
+    }
   } catch (error) { u.errorHandler(error, int); }
 }
 /** @param {Discord.GuildMember} member */
