@@ -5,8 +5,8 @@ const mongoose = require('mongoose'),
 
 const TagSchema = new Schema({
   tag: { type: String, required: true, unique: true },
-  response: String,
-  attachment: String
+  response: { type: String, default: null },
+  attachment: { type: String, default: null }
 });
 
 module.exports = mongoose.model("Tag", TagSchema);

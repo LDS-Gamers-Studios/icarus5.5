@@ -4,16 +4,13 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   fs = require('fs'),
   axios = require('axios'),
+  config = require('../config/config.json'),
   u = require("../utils/utils");
 
-/**
- * @type {Discord.Collection<string, {tag: string, response?: string, attachment?: string, _id: import("mongoose").Types.ObjectId}>}
- */
+/** @type {Discord.Collection<string, {tag: string, response?: string | null, attachment?: string | null, _id: import("mongoose").Types.ObjectId}>} */
 let tags = new u.Collection();
 
-/**
- * @param {string | undefined} tag The tag name to find
- */
+/** @param {string | undefined} tag The tag name to find */
 const findTag = (tag) => tag ? tags.find(t => t.tag.toLowerCase() == tag.toLowerCase()) ?? null : null;
 
 /**
@@ -47,9 +44,7 @@ function runTag(msg) {
 
     const regex = /<@random ?\[(.*?)\]>/gm;
     if (regex.test(response)) {
-      console.log("true");
       const replace = (/** @type {string} */ str) => u.rand(str.replace(regex, '$1').split('|'));
-      console.log(response.replace(regex, replace));
       response = response.replace(regex, replace);
     }
     response = response
@@ -71,21 +66,38 @@ function runTag(msg) {
   });
 }
 
+const contentModal = (value = "") => new u.Modal().addComponents(
+  u.ModalActionRow().addComponents(
+    new u.TextInput()
+      .setCustomId("content")
+      .setLabel("Content (optional)")
+      .setPlaceholder("Leave blank for no content")
+      .setRequired(false)
+      .setStyle(Discord.TextInputStyle.Paragraph)
+      .setValue(value)
+  )
+)
+  .setTitle("Tag Content")
+  .setCustomId("tagContent");
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagCreate(int) {
   // Get and validate input
   const name = int.options.getString('name', true).toLowerCase().replace("\n", " ");
-  const content = int.options.getString('content');
   const attachment = int.options.getAttachment('attachment');
   if (findTag(name)) return int.editReply(`Looks like that tag already exists. Try </tag modify:${u.sf.commands.slashTag}> or </tag delete:${u.sf.commands.slashTag}> instead.`);
-  if (!content && !attachment) return int.editReply("I either need content or a file.");
+  await int.showModal(contentModal());
+  const content = await int.awaitModalSubmit({ time: 5 * 3 * 1000, dispose: true }).catch(() => null);
+  if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", ephemeral: true });
+  await content.deferReply({ ephemeral: true });
+  if (!content.fields.getTextInputValue("content") && !attachment) return int.editReply("I either need content or a file.");
   // Create the tag
   const command = await u.db.tags.manageTag({
     tag: name,
-    response: content ?? undefined,
-    attachment: attachment?.name
+    response: content.fields.getTextInputValue("content") || null,
+    attachment: attachment?.name || null
   });
-  if (!command) return int.editReply("I wasn't able to save that. Please try again later or with a different name.");
+  if (!command) return content.editReply("I wasn't able to save that. Please try again later or with a different name.");
   if (attachment) saveAttachment(attachment, command);
 
   tags.set(command.tag, command);
@@ -96,10 +108,10 @@ async function slashTagCreate(int) {
   try {
     // report the tag creation
     int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
-    int.editReply({ content: "Tag created!", embeds: [embed.setDescription(`Try it out with \`!${name}\``)], files: attachment ? [attachment] : [] });
+    content.editReply({ content: "Tag created!", embeds: [embed.setDescription(`Try it out with \`${config.prefix}${name}\``)], files: attachment ? [attachment] : [] });
   } catch (error) {
     int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag creation preview was too long to send." })] });
-    int.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
+    content.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
 }
 
@@ -107,46 +119,50 @@ async function slashTagCreate(int) {
 async function slashTagModify(int) {
   // get and validate inputs
   const name = int.options.getString('name', true).toLowerCase().replace("\n", "");
-  const content = int.options.getString('content');
-  const attachment = int.options.getAttachment('attachment');
   const currentTag = findTag(name);
-  if (!currentTag) return int.editReply(`Looks like that tag doesn't exist.`);
-  if (!content && !attachment) return int.editReply(`I need a response, a file, or both. If you want to delete the tag, use </tag delete:<${u.sf.commands.slashTag}>.`);
+  if (!currentTag) return int.reply({ content: `I couldn't find that tag.`, ephemeral: true });
+  await int.showModal(contentModal(currentTag.response ?? ""));
+  const content = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => null);
+  if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", ephemeral: true });
+  await content.deferReply({ ephemeral: true });
+  const attachment = int.options.getAttachment('attachment');
+  if (!content.fields.getTextInputValue("content") && !attachment) return int.followUp({ content: `I need a response, a file, or both. If you want to delete the tag, use </tag delete:<${u.sf.commands.slashTag}>.`, ephemeral: true });
 
   // modify the tag
   const command = await u.db.tags.manageTag({
     tag: name,
-    response: content ?? undefined,
-    attachment: attachment?.name
+    response: content?.fields.getTextInputValue("content") || null,
+    attachment: attachment?.name || null
   });
 
-  if (!command) return int.editReply("I wasn't able to update that. Please try again later or contact a dev to see what went wrong.");
+  if (!command) return content.editReply("I wasn't able to update that. Please try again later or contact a dev to see what went wrong.");
   if (attachment) saveAttachment(attachment, command);
 
   tags.set(command.tag, command);
   const embed = u.embed({ author: int.member })
     .setTitle("Tag modified")
-    .setDescription(`${int.member} modified the tag "${name}`);
+    .setDescription(`${int.member} modified the tag \`${name}\``);
 
   // log the modification
   try {
     if (command.response != currentTag.response) {
       embed.addFields(
         { name: "Old Response", value: currentTag.response ?? 'None' },
-        { name: "New Response", value: command.response ?? 'None' },
-        { name: "Attachment Status", value: currentTag.attachment ? attachment ? "Removed" : "Replaced" : attachment ? "Added" : "Unchanged" }
+        { name: "New Response", value: command.response ?? 'None' }
       );
     }
+    if (command.attachment != currentTag.attachment) embed.addFields({ name: "Attachment Status", value: currentTag.attachment ? attachment ? "Replaced" : "Removed" : attachment ? "Added" : "Unchanged" });
     int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
-    int.editReply({ embeds: [embed.setDescription(null)] });
+    content.editReply({ embeds: [embed.setDescription(null)] });
   } catch (error) {
     int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag change preview was too long to send" })] });
-    int.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
+    content.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagDelete(int) {
+  await int.deferReply({ ephemeral: true });
   const name = int.options.getString('name', true).toLowerCase().replace("\n", "");
   if (!findTag(name)) return int.editReply(`Looks like that tag doesn't exist.`);
   const command = await u.db.tags.deleteTag(name);
@@ -163,7 +179,6 @@ async function slashTagDelete(int) {
     int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed] });
     int.editReply({ embeds: [embed.setDescription(null)] });
   } catch (err) {
-    console.log(err);
     int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag deletion preview was too long to send" })] });
     int.editReply(`I deleted the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
@@ -172,6 +187,7 @@ async function slashTagDelete(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagVariables(int) {
+  await int.deferReply({ ephemeral: true });
   const placeholderDescriptions = [
     "`<@author>`: Pings the user",
     "`<@authorname>`: The user's nickname",
@@ -189,6 +205,7 @@ async function slashTagVariables(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagValue(int) {
+  await int.deferReply({ ephemeral: true });
   const name = int.options.getString('name', true).toLowerCase();
   const tag = findTag(name);
   if (!tag) return int.editReply(`Looks like that tag doesn't exist.`);
@@ -205,7 +222,6 @@ const Module = new Augur.Module()
   onlyGuild: true,
   permissions: (int) => u.perms.calc(int.member, ["mgr"]),
   process: async (int) => {
-    await int.deferReply({ ephemeral: true });
     switch (int.options.getSubcommand()) {
       case "create": return slashTagCreate(int);
       case "modify": return slashTagModify(int);
@@ -217,7 +233,7 @@ const Module = new Augur.Module()
   autocomplete: (int) => {
     const focusedValue = int.options.getFocused()?.toLowerCase();
     const filtered = tags.filter(tag => tag.tag.toLowerCase().includes(focusedValue));
-    return int.respond(filtered.map(choice => ({ name: choice.tag, value: choice.tag })).slice(0, 24));
+    return int.respond(filtered.map(choice => ({ name: choice.tag, value: choice.tag })).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 24));
   }
 })
 .addEvent("messageCreate", async (msg) => { if (!msg.author.bot) return runTag(msg); })

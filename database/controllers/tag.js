@@ -4,8 +4,8 @@ const Tag = require("../models/Tag.model");
 /**
  * @typedef tag
  * @prop {string} tag the tag name
- * @prop {string} [response] the tag response
- * @prop {string} [attachment] the tag file name
+ * @prop {string | null} [response] the tag response
+ * @prop {string | null} [attachment] the tag file name
  * @prop {import("mongoose").Types.ObjectId} _id the id of the tag
  */
 
