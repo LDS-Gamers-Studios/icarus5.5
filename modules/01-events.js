@@ -45,7 +45,8 @@ async function update(oldUser, newUser) {
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setDescription(newUser.toString())
-        .setFooter({ text: `${user?.posts ?? 0} active minutes ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
+        .addFields({ name: "Activity", value: `${user?.posts ?? 0} active minutes ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` })
+        .setFooter({ text: newUser.id });
 
       const usernames = [
         oldUser instanceof Discord.User ? oldUser.username : oldUser.displayName,
@@ -65,7 +66,11 @@ async function update(oldUser, newUser) {
       } else {
         embed.setThumbnail(newUser.displayAvatarURL());
       }
-      if ((embed.data.fields?.length || 0) > 0) ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed] });
+      if ((embed.data.fields?.length || 0) > 0) {
+        ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed], components: [
+          u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
+        ] });
+      }
     }
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.displayName)} (${newUser.id})`); }
 }
@@ -106,8 +111,12 @@ const Module = new Augur.Module()
           author: user,
           title: `${user.username} has been banned`,
           color: c.colors.info,
-          description: user.toString()
+          description: user.toString(),
+          footer: { text: user.id }
         })
+      ],
+      components: [
+        u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
       ]
     });
   }
@@ -128,7 +137,8 @@ const Module = new Augur.Module()
           { name: "User", value: member.toString(), inline: true },
           { name: "Account Created", value: member.user.createdAt.toLocaleDateString(), inline: true }
         )
-        .setThumbnail(member.user.displayAvatarURL({ extension: "png" }));
+        .setThumbnail(member.user.displayAvatarURL({ extension: "png" }))
+        .setFooter({ text: member.id });
 
       let welcomeString;
 
@@ -146,7 +156,10 @@ const Module = new Augur.Module()
         if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
 
         embed.setTitle(member.displayName + " has rejoined the server.")
-          .addFields({ name: "Roles", value: roleString });
+          .addFields(
+            { name: "Roles", value: roleString },
+            { name: "Activity", value: `${user.posts} Active Minutes` }
+          );
         welcomeString = `Welcome back, ${member}! Glad to see you again.`;
 
       } else { // Member is new
@@ -176,7 +189,9 @@ const Module = new Augur.Module()
 
         u.db.user.newUser(member.id);
       }
-      modLogs?.send({ embeds: [embed] });
+      modLogs?.send({ embeds: [embed], components: [
+        u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
+      ] });
 
       const { enabled, count } = config.memberMilestone;
 
@@ -200,13 +215,16 @@ const Module = new Augur.Module()
         author: member,
         title: `${member.displayName} has left the server`,
         color: c.colors.info,
+        footer: { text: member.id }
       })
       .addFields(
         { name: "User", value: member.toString() },
         { name: "Joined", value: u.moment(member.joinedAt).fromNow(), inline: true },
         { name: "Activity", value: (user?.posts || 0) + " Active Minutes", inline: true }
       );
-      member.guild.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+      member.guild.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed], components: [
+        u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
+      ] });
     }
   } catch (error) { u.errorHandler(error, `Member Leave: ${u.escapeText(member.displayName)} (${member.id})`); }
 })

@@ -1,6 +1,10 @@
 // @ts-check
 const u = require("./regUtils");
 
+const controls = new u.sub()
+  .setName("controls")
+  .setDescription("Generate a control panel for your voice channel.");
+
 const lock = new u.sub()
   .setName("lock")
   .setDescription("Lock your voice channel")
@@ -45,6 +49,7 @@ const kick = new u.sub()
 module.exports = new u.cmd()
   .setName("voice")
   .setDescription("Voice channel options")
+  .addSubcommand(controls)
   .addSubcommand(lock)
   .addSubcommand(unlock)
   .addSubcommand(streamlock)

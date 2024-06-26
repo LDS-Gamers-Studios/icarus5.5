@@ -60,5 +60,5 @@ module.exports = new u.cmd()
   .addSubcommand(reload)
   .addSubcommand(getid)
   .setDMPermission(false)
-  .setDefaultMemberPermissions(0)
+  .setDefaultMemberPermissions(u.devMode)
   .toJSON();

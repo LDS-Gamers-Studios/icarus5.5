@@ -637,7 +637,7 @@ const modCommon = {
 
   /**
    * Give someone the Trusted Role
-   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString"|"Button">} interaction
    * @param {Discord.GuildMember} target
    */
   trust: async function(interaction, target, apply = true) {

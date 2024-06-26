@@ -4,7 +4,8 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   Rank = require("../utils/rankInfo"),
   config = require('../config/config.json'),
-  u = require("../utils/utils");
+  u = require("../utils/utils"),
+  c = require("../utils/modCommon");
 
 const active = new Set();
 
@@ -118,6 +119,13 @@ async function rankClockwork(client) {
                     { name: "Joined", value: u.time(new Date(Math.floor(member.joinedTimestamp ?? 1)), "R") },
                     { name: "Account Created", value: u.time(new Date(Math.floor(member.user.createdTimestamp)), 'R') }
                   )
+                  .setFooter({ text: member.id })
+              ],
+              components: [
+                u.MessageActionRow().addComponents(
+                  new u.Button().setCustomId("timeModTrust").setEmoji("👍").setLabel("Give Trusted").setStyle(Discord.ButtonStyle.Success),
+                  new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary)
+                )
               ]
             });
           }
@@ -166,6 +174,36 @@ const Module = new Augur.Module()
     } catch (error) {
       u.errorHandler(error, interaction);
     }
+  }
+})
+.addInteraction({
+  name: "timeModTrust",
+  id: "timeModTrust",
+  type: "Button",
+  onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
+  process: async (int) => {
+    await int.deferReply({ ephemeral: true });
+    const userId = int.message.embeds[0]?.footer?.text;
+    const target = int.guild.members.cache.get(userId ?? "0");
+    if (!target) return int.editReply("I couldn't find that user!");
+    const response = await c.trust(int, target, true);
+    return int.editReply(response);
+  }
+})
+.addInteraction({
+  name: "timeModInfo",
+  id: "timeModInfo",
+  type: "Button",
+  onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
+  process: async (int) => {
+    await int.deferReply({ ephemeral: true });
+    const userId = int.message.embeds[0]?.footer?.text;
+    const target = int.guild.members.cache.get(userId ?? "0");
+    if (!target) return int.editReply("I couldn't find that user!");
+    const e = await c.getSummaryEmbed(target);
+    return int.editReply({ embeds: [e] });
   }
 })
 
