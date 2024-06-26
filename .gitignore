@@ -10,6 +10,7 @@ data/banned.json
 site/*
 .DS_Store
 media/banners/*
+media/tags/*
 naughty.csv
 
 # For Visual Studio's temp directory
