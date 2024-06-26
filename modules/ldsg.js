@@ -140,6 +140,7 @@ async function processCardAction(int) {
         try {
           const old = post?.name;
           await post?.setName(title);
+          em.setTitle(title);
           int.followUp({ content: `> Changed title from "${old}" to "${title}"`, ephemeral: true });
         } catch (e) {
           u.errorHandler(e, int);
