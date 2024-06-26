@@ -72,6 +72,8 @@ async function slashRoleGive(int, give = true) {
       }
       const response = await c.assignRole(int, recipient, role, give);
       return int.editReply(response);
+    } else {
+      return int.editReply("I couldn't find that role!");
     }
   } catch (error) { u.errorHandler(error, int); }
 }
