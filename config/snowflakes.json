@@ -28,11 +28,11 @@
     "welcome": "121751722308796416"
   },
   "forums": {
-    "bottestingForum": "1205245417713967135",
-    "logisticsForum": "1239611804838002778",
-    "managementForum": "",
-    "operationsForum": "",
-    "publicaffairsForum": ""
+    "bottesting": "1205245417713967135",
+    "logistics": "1239611804838002778",
+    "management": "",
+    "operations": "1208550093528244325",
+    "publicaffairs": "1208550026025111562"
   },
   "emoji": {
     "banhammer": "1238140124726951956",

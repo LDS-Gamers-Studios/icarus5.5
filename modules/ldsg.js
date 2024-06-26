@@ -13,7 +13,7 @@ async function slashLdsgMembers(interaction) {
     const ldsg = interaction.client.guilds.cache.get(u.sf.ldsg);
     if (!ldsg) throw new Error("Couldn't find LDSG");
     const online = ldsg.members.cache.filter((member) => member?.presence && member.presence.status != "offline");
-    await interaction.reply(`📈 **Members:**\n${ldsg.memberCount} Members\n${online.size} Online`);
+    interaction.reply(`📈 **Members:**\n${ldsg.memberCount} Members\n${online.size} Online`);
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
@@ -33,9 +33,7 @@ const sendOptions = [
 const replyOption = [
   u.MessageActionRow().setComponents([
     new u.Button().setCustomId("suggestionReply").setEmoji("🗨️").setLabel("Reply to user").setStyle(Discord.ButtonStyle.Primary),
-    new u.Button().setCustomId("suggestionRename").setEmoji("✏️").setLabel("Set title").setStyle(Discord.ButtonStyle.Primary),
-    new u.Button().setCustomId("suggestionIssue").setEmoji("✏️").setLabel("Set Issue").setStyle(Discord.ButtonStyle.Primary),
-    new u.Button().setCustomId("suggestionCause").setEmoji("✏️").setLabel("Set Root Cause").setStyle(Discord.ButtonStyle.Primary)
+    new u.Button().setCustomId("suggestionManage").setEmoji("✏️").setLabel("Manage Ticket").setStyle(Discord.ButtonStyle.Primary),
   ])
 ];
 
@@ -67,42 +65,38 @@ async function processCardAction(int) {
           .setPlaceholder("Your reply to the user")
       ])
     ).setCustomId("reply").setTitle("Suggestion Reply");
-    const titleModal = new u.Modal().addComponents(
+    const manageModal = new u.Modal().addComponents(
       u.ModalActionRow().addComponents([
         new u.TextInput()
           .setCustomId("renameText")
           .setLabel("Rename")
           .setStyle(Discord.TextInputStyle.Short)
-          .setRequired(true)
-          .setPlaceholder("New title for the forum post")
-      ])
-    ).setCustomId("setName").setTitle("Rename");
-    const issueModal = new u.Modal().addComponents(
+          .setRequired(false)
+          .setPlaceholder("New title for the forum post"),
+      ]),
       u.ModalActionRow().addComponents([
         new u.TextInput()
           .setCustomId("issueText")
           .setLabel("Set Issue")
           .setStyle(Discord.TextInputStyle.Short)
-          .setRequired(true)
+          .setRequired(false)
           .setPlaceholder("New issue text")
-      ])
-    ).setCustomId("setIssue").setTitle("Set Issue");
-    const causeModal = new u.Modal().addComponents(
+      ]),
       u.ModalActionRow().addComponents([
         new u.TextInput()
           .setCustomId("causeText")
           .setLabel("Set Cause")
           .setStyle(Discord.TextInputStyle.Short)
-          .setRequired(true)
+          .setRequired(false)
           .setPlaceholder("New root cause text")
       ])
-    ).setCustomId("setCause").setTitle("Set Cause");
+    ).setCustomId("manageModal").setTitle("Manage Ticket");
     const channel = {
-      suggestionPA: u.sf.forums.publicaffairsForum,
-      suggestionLog: u.sf.forums.logisticsForum,
-      suggestionOps: u.sf.forums.operationsForum,
-      suggestionMgmt: u.sf.forums.managementForum,
-      suggestionIcarus: u.sf.forums.bottestingForum
+      suggestionPA: u.sf.forums.publicaffairs,
+      suggestionLog: u.sf.forums.logistics,
+      suggestionOps: u.sf.forums.operations,
+      suggestionMgmt: u.sf.forums.management,
+      suggestionIcarus: u.sf.forums.bottesting
     }[int.customId];
     if (channel) {
       await int.update({ embeds: [u.embed(suggestion.embeds[0]).setColor("#808080").addFields({ name: `Status`, value: `Sent to <#${channel}> by ${int.user}` })], components: [] });
@@ -127,44 +121,34 @@ async function processCardAction(int) {
         u.errorHandler(e, int);
         return int.channel?.send("Failed to message member, they may have me blocked. You will need to reach out to them on your own this time!");
       }
-    } else if (int.customId == "suggestionRename") {
+    } else if (int.customId == "suggestionManage") {
       if (!int.channel) return int.reply({ content: "Channel error", ephemeral: true });
       const post = int.guild.channels.cache.get(int.channel.id);
-      await int.showModal(titleModal);
+      await int.showModal(manageModal);
       const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
         return null;
       });
       if (!submitted) return int.channel?.send("I fell asleep waiting for your input...");
       await submitted.deferUpdate();
-      const name = submitted.fields.getTextInputValue("renameText");
-      const old = post?.name;
-      try {
-        await post?.setName(name);
-        int.channel.send(`> Changed title from "${old}" to "${name}"`);
-      } catch (e) {
-        u.errorHandler(e, int);
-        return int.channel.send("Failed to rename forum post");
+      const title = submitted.fields.getTextInputValue("renameText");
+      const issue = submitted.fields.getTextInputValue("issueText");
+      const cause = submitted.fields.getTextInputValue("causeText");
+      if (!title && !issue && !cause) return int.followUp({ content: "I need some stuff to change!", ephemeral: true });
+      const fields = int.message.embeds[0].fields;
+      const em = u.embed(int.message.embeds[0]);
+      if (title) {
+        try {
+          const old = post?.name;
+          await post?.setName(title);
+          int.followUp({ content: `> Changed title from "${old}" to "${title}"`, ephemeral: true });
+        } catch (e) {
+          u.errorHandler(e, int);
+          return int.channel.send("Failed to rename forum post");
+        }
       }
-    } else if (["suggestionIssue", "suggestionCause"].includes(int.customId)) {
-      const is = int.customId == "suggestionIssue";
-      is ? await int.showModal(issueModal) : await int.showModal(causeModal);
-      const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
-        return null;
-      });
-      if (!submitted) return int.channel?.send("I fell asleep waiting for your input...");
-      await submitted.deferUpdate();
-      const input = is ? submitted.fields.getTextInputValue("issueText") : submitted.fields.getTextInputValue("causeText");
-      const em = int.message.embeds[0];
-      const field = is ? em.fields.find((element) => element.name == "Issue") : em.fields.find((element) => element.name == "Root Cause");
-      if (field) {
-        const past = field.value;
-        field.value = input;
-        int.message.edit({ content: int.message.content, embeds: [em], components: replyOption });
-        return int.channel?.send(`> Updated ${is ? "Issue" : "Root Cause"} from "${past}" to "${input}"`);
-      } else {
-        int.message.edit({ content: int.message.content, embeds: [is ? u.embed(em).addFields({ name: "Issue", value: input }) : u.embed(em).addFields({ name: "Root Cause", value: input })], components: replyOption });
-        return int.channel?.send(`> Set ${is ? "Issue" : "Root Cause"} to ${input}`);
-      }
+      if (issue) em.setFields([...fields.filter(f => f.name != "Issue"), { name: "Issue", value: issue }]);
+      if (cause) em.setFields([...fields.filter(f => f.name != "Root Cause"), { name: "Root Cause", value: cause }]);
+      return int.message.edit({ content: int.message.content, embeds: [em], components: replyOption });
     } else {
       return int.update({ embeds: [embed.setColor("#808080").addFields({ name: `Suggestion ignored`, value: `by ${int.user}` })], components: [] });
     }
