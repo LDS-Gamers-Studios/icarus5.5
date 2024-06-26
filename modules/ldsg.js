@@ -102,6 +102,13 @@ async function processCardAction(int) {
       await int.update({ embeds: [u.embed(suggestion.embeds[0]).setColor("#808080").addFields({ name: `Status`, value: `Sent to <#${channel}> by ${int.user}` })], components: [] });
       return int.client.getForumChannel(channel)?.threads.create({ name: `Suggestion from ${suggestion.embeds[0].author?.name}`, message: { content: suggestion.embeds[0].description ?? "", embeds: [embed], components: replyOption } });
     } else if (int.customId == "suggestionReply") {
+      const team = {
+        [u.sf.forums.publicaffairs]: "Public Affairs",
+        [u.sf.forums.logistics]: "Logistics",
+        [u.sf.forums.operations]: "Operations",
+        [u.sf.forums.management]: "Management",
+        [u.sf.forums.bottesting]: "Icarus Development"
+      }[int.channel?.parentId];
       await int.showModal(replyModal);
       const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
         return null;
@@ -111,7 +118,9 @@ async function processCardAction(int) {
       const reply = submitted.fields.getTextInputValue("replyText");
       const em = u.embed({ author: int.user })
           .setTitle("Suggestion Feedback")
-          .addFields({ name: "Reply:", value: reply });
+          .setDescription(embed.data.description ?? "")
+          .addFields({ name: "Reply:", value: reply })
+          .setFooter({ text: `- ${team} Team` });
       const member = int.guild.members.cache.get(suggestion.embeds[0].footer?.text ?? "");
       if (!member) return int.channel?.send("I could not find that member");
       try {
