@@ -13,10 +13,15 @@ let optRoles = new u.Collection();
 let equipRoles = new u.Collection();
 
 /**
+ * @typedef {"team"|"mod"|"mgr"|"mgmt"} perms
+ * @type {{role: Discord.Role, permissions: perms}[]}
+ * */
+let teamAddRoles;
+/**
  * @param {Discord.GuildMember} member
  * @param {string} id
 */
-const hasRole = (member, id) => member?.roles.cache.has(id);
+const hasRole = (member, id) => member.roles.cache.has(id);
 
 /**
  * @param {Augur.GuildInteraction<"CommandSlash">} int
@@ -27,16 +32,14 @@ async function slashRoleAdd(int, give = true) {
   const input = int.options.getString("role", true);
   const admin = u.perms.calc(int.member, ["mgr"]);
   const role = (admin ? int.guild.roles.cache.filter(r => !r.name.match(/[-^~]{2}/)) : optRoles).find(r => r.name.toLowerCase() == input.toLowerCase());
-  if (role) {
-    try {
-      if (hasRole(int.member, role.id) == give) return int.editReply(`You ${give ? "already" : "don't"} have the ${role} role!`);
-      give ? await int.member?.roles.add(role) : await int.member?.roles.remove(role);
-      return int.editReply(`Successfully ${give ? "added" : "removed"} the ${role} role`);
-    } catch (e) {
-      return int.editReply(`Failed to ${give ? "add" : "remove"} the ${role} role`);
-    }
-  } else {
-    return admin ? int.editReply(`I couldn't find the ${input} role`) : int.editReply(`You didn't give me a valid role`);
+  if (!role) return admin ? int.editReply(`I couldn't find the ${input} role.`) : int.editReply(`You didn't give me a valid role!`);
+  try {
+    if (hasRole(int.member, role.id) == give) return int.editReply(`You ${give ? "already" : "don't"} have the ${role} role!`); // prevent them from doing something useless
+    if (role.managed || role.id == role.guild.roles.everyone.id || role.position >= (int.guild.members.me?.roles.highest.position ?? 0)) return int.editReply(`You can't ${give ? "add" : "remove"} that role!`); // prevent adding managed or higher than bot can add
+    give ? await int.member?.roles.add(role) : await int.member?.roles.remove(role);
+    return int.editReply(`Successfully ${give ? "added" : "removed"} the ${role} role!`);
+  } catch (e) {
+    return int.editReply(`Failed to ${give ? "add" : "remove"} the ${role} role.`);
   }
 }
 
@@ -49,7 +52,7 @@ async function slashRoleWhoHas(int) {
     if (role.id == u.sf.ldsg) return int.editReply("Everyone has that role, silly!");
     const members = role.members.map(m => m.displayName).sort();
     if (members.length == 0) return int.editReply("I couldn't find any members with that role. :shrug:");
-    return await u.pagedEmbeds(int, u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`), members, ephemeral);
+    return u.pagedEmbeds(int, u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`), members, ephemeral);
   } catch (error) { u.errorHandler(error, int); }
 }
 
@@ -61,20 +64,14 @@ async function slashRoleGive(int, give = true) {
   try {
     await int.deferReply({ ephemeral: true });
     const recipient = int.options.getMember("user");
+    if (!u.perms.calc(int.member, ["team", "mod", "mgr"])) return int.editReply("*Nice try!* This command is for Team+ only.");
     if (!recipient) return int.editReply("I couldn't find that user!");
     const input = int.options.getString("role", true);
-    if (!u.perms.calc(int.member, ["team", "mod", "mgr"])) return int.editReply("*Nice try!* This command is for Team+ only");
-    if (!u.perms.calc(int.member, ["mod", "mgr"]) && ["adulting", "lady"].includes(input.toLowerCase())) return int.editReply("This command is for Mod+ only");
-    const role = int.guild.roles.cache.find(r => r.name.toLowerCase() == input.toLowerCase());
-    if (role) {
-      if (![u.sf.roles.adulting, u.sf.roles.lady, u.sf.roles.bookworm].includes(role.id)) {
-        return int.editReply(`This command is not for the ${role} role`);
-      }
-      const response = await c.assignRole(int, recipient, role, give);
-      return int.editReply(response);
-    } else {
-      return int.editReply("I couldn't find that role!");
-    }
+    const role = teamAddRoles.find(r => r.role.name.toLowerCase() == input.toLowerCase());
+    if (!role) return int.editReply("I couldn't find that role!");
+    if (!u.perms.calc(int.member, [role.permissions])) return int.editReply(`You don't have the right permissions to ${give ? "give" : "take"} this role.`);
+    const response = await c.assignRole(int, recipient, role.role, give);
+    return int.editReply(response);
   } catch (error) { u.errorHandler(error, int); }
 }
 /** @param {Discord.GuildMember} member */
@@ -137,10 +134,14 @@ async function setRoles() {
     const rows = await doc.sheetsByTitle["Opt-In Roles"].getRows();
     const ids = rows.map(r => r["RoleId"]).filter(filterBlank);
     optRoles = ldsg.roles.cache.filter(r => ids.includes(r.id));
-    /** @type {{"Color Role ID": string, "Base Role ID": string, "Lower Roles": string}[]} */
+    /** @type {{"Color Role ID": string, "Base Role ID": string, "Lower Roles": string, Type: string, Level: perms}[]} */
     // @ts-ignore
     const eRoles = await doc.sheetsByTitle["Roles"].getRows();
-
+    teamAddRoles = eRoles.filter(f => f.Type == 'Team Assign').map(r => {
+      const role = ldsg.roles.cache.get(r["Base Role ID"]);
+      if (!role) throw new Error(`Missing Role for Team Assign`);
+      return { role, permissions: r.Level };
+    });
     const mappedEquips = eRoles
       .filter(r => r != null && r != undefined && r["Base Role ID"] && r["Color Role ID"])
       .map(r => ({ colorId: r["Color Role ID"], baseId: r["Base Role ID"], inherited: r["Lower Roles"]?.split(" ").filter(filterBlank) ?? [] }));
@@ -156,6 +157,7 @@ Module.addInteraction({
   onlyGuild: true,
   id: u.sf.commands.slashRole,
   process: async (interaction) => {
+
     switch (interaction.options.getSubcommand(true)) {
       case "add": return slashRoleAdd(interaction);
       case "remove": return slashRoleAdd(interaction, false);
@@ -172,8 +174,15 @@ Module.addInteraction({
     if (option.name == 'role') {
       if (["give", "take"].includes(sub)) {
         if (!u.perms.calc(interaction.member, ["team", "mod", "mgr"])) return;
-        const values = ["Adulting", "Bookworm", "LDSG Lady"];
-        return interaction.respond(values.map(v => ({ name: v, value: v })));
+        const withPerms = teamAddRoles.filter(r => {
+          if (option.value && !r.role.name.toLowerCase().includes(option.value.toLowerCase())) return;
+          /** @type {("mgr"|"mod"|"team")[]} */
+          const permArr = ['mgr'];
+          if (r.permissions == 'mod') permArr.push("mod");
+          if (['team', 'mod'].includes(r.permissions)) permArr.push("team");
+          return u.perms.calc(interaction.member, permArr);
+        }).sort((a, b) => b.role.comparePositionTo(a.role)).map(r => r.role.name);
+        return interaction.respond(withPerms.map(r => ({ name: r, value: r })));
       }
       const adding = sub == "add";
       const values = (u.perms.isAdmin(interaction.member) ? interaction.guild.roles.cache : optRoles)

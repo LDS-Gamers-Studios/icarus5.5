@@ -19,37 +19,25 @@ const remove = new u.sub()
 
 const give = new u.sub()
   .setName("give")
-  .setDescription("[STAFF] Give someone a role")
+  .setDescription("[TEAM+] Give someone a role")
   .addUserOption(
     new u.user()
       .setName("user")
       .setDescription("The user to receive the role")
       .setRequired(true)
   )
-  .addStringOption(
-    new u.string()
-    .setName("role")
-    .setDescription("The role to give")
-    .setRequired(true)
-    .setAutocomplete(true)
-  );
+  .addStringOption(role("give"));
 
 const take = new u.sub()
 .setName("take")
-.setDescription("[STAFF] Take a role from someone")
+.setDescription("[TEAM+] Take a role from someone")
 .addUserOption(
   new u.user()
     .setName("user")
     .setDescription("The user to take the role from")
     .setRequired(true)
 )
-.addStringOption(
-  new u.string()
-  .setName("role")
-  .setDescription("The role to take")
-  .setRequired(true)
-  .setAutocomplete(true)
-);
+.addStringOption(role("take"));
 
 const inventory = new u.sub()
   .setName("inventory")

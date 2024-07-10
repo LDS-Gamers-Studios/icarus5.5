@@ -229,7 +229,7 @@ const utils = {
         if (int.deferred || int.replied) return int.editReply({ embeds: [e] });
         else return int.reply({ embeds: [e], ephemeral });
       } else {
-        return int.followUp({ embeds: [e.setTitle(`${e.data.title} Cont.`)], ephemeral });
+        return int.followUp({ embeds: [e.setTitle(`${e.data.title ?? ""} Cont.`)], ephemeral });
       }
     }));
   },
