@@ -381,9 +381,9 @@ const Module = new Augur.Module()
     else int.editReply(result.msg ?? "I ran into an error.");
   }
 })
-.addEvent("voiceStateUpdate", (oldState, newState) => {
+.addEvent("voiceStateUpdate", async (oldState, newState) => {
   if (oldState.guild.id != u.sf.ldsg) return;
-  updateChannels(oldState, newState);
+  await updateChannels(oldState, newState);
   if (oldState.channel || !newState.channel || !newState.member || newState.channel.parentId != u.sf.channels.voiceCategory) return;
   const components = getComponents(newState.member.user, newState.channel);
   if (newState.channel.members.size == 1) newState.channel.send({ embeds: components.embeds, components: components.components });
