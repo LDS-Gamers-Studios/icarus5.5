@@ -17,19 +17,6 @@ async function slashLdsgMembers(interaction) {
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
-const sendOptions = [
-  u.MessageActionRow().setComponents([
-    new u.Button().setCustomId("suggestionPA").setEmoji("🗣️").setLabel("Public Affairs").setStyle(Discord.ButtonStyle.Success),
-    new u.Button().setCustomId("suggestionLog").setEmoji("🚚").setLabel("Logistics").setStyle(Discord.ButtonStyle.Success),
-    new u.Button().setCustomId("suggestionOps").setEmoji("🗓️").setLabel("Operations").setStyle(Discord.ButtonStyle.Success),
-    new u.Button().setCustomId("suggestionMgmt").setEmoji("⚙️").setLabel("Management").setStyle(Discord.ButtonStyle.Primary),
-    new u.Button().setCustomId("suggestionIcarus").setEmoji("🤖").setLabel("Icarus").setStyle(Discord.ButtonStyle.Primary),
-  ]),
-  u.MessageActionRow().setComponents([
-    new u.Button().setCustomId("suggestionIgnore").setEmoji("⚠️").setLabel("Ignore").setStyle(Discord.ButtonStyle.Danger),
-  ])
-];
-
 const replyOption = [
   u.MessageActionRow().setComponents([
     new u.Button().setCustomId("suggestionReply").setEmoji("🗨️").setLabel("Reply to user").setStyle(Discord.ButtonStyle.Primary),
@@ -45,7 +32,7 @@ async function slashLdsgSuggest(int) {
     .setTitle("Suggestion")
     .setDescription(suggestion)
     .setFooter({ text: int.user.id });
-  await int.client.getTextChannel(u.sf.channels.suggestionBox)?.send({ embeds: [embed], components: sendOptions });
+  await int.client.getForumChannel(u.sf.channels.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user}`, message: { content: suggestion ?? "", embeds: [embed], components: replyOption } });
   int.editReply("Sent!");
   return int.user.send({ content: "You have sent the following suggestion to the LDSG Team for review:", embeds: [embed] });
 }
@@ -91,24 +78,7 @@ async function processCardAction(int) {
           .setPlaceholder("New root cause text")
       ])
     ).setCustomId("manageModal").setTitle("Manage Ticket");
-    const channel = {
-      suggestionPA: u.sf.forums.publicaffairs,
-      suggestionLog: u.sf.forums.logistics,
-      suggestionOps: u.sf.forums.operations,
-      suggestionMgmt: u.sf.forums.management,
-      suggestionIcarus: u.sf.forums.bottesting
-    }[int.customId];
-    if (channel) {
-      await int.update({ embeds: [u.embed(suggestion.embeds[0]).setColor("#808080").addFields({ name: `Status`, value: `Sent to <#${channel}> by ${int.user}` })], components: [] });
-      return int.client.getForumChannel(channel)?.threads.create({ name: `Suggestion from ${suggestion.embeds[0].author?.name}`, message: { content: suggestion.embeds[0].description ?? "", embeds: [embed], components: replyOption } });
-    } else if (int.customId == "suggestionReply") {
-      const team = {
-        [u.sf.forums.publicaffairs]: "Public Affairs",
-        [u.sf.forums.logistics]: "Logistics",
-        [u.sf.forums.operations]: "Operations",
-        [u.sf.forums.management]: "Management",
-        [u.sf.forums.bottesting]: "Icarus Development"
-      }[int.channel?.parentId];
+    if (int.customId == "suggestionReply") {
       await int.showModal(replyModal);
       const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
         return null;
@@ -120,7 +90,7 @@ async function processCardAction(int) {
           .setTitle("Suggestion Feedback")
           .setDescription(embed.data.description ?? "")
           .addFields({ name: "Reply:", value: reply })
-          .setFooter({ text: `- ${team} Team` });
+          .setFooter({ text: `-LDSG Team` });
       const member = int.guild.members.cache.get(suggestion.embeds[0].footer?.text ?? "");
       if (!member) return int.channel?.send("I could not find that member");
       try {
@@ -159,8 +129,6 @@ async function processCardAction(int) {
       if (issue) em.setFields([...fields.filter(f => f.name != "Issue"), { name: "Issue", value: issue }]);
       if (cause) em.setFields([...fields.filter(f => f.name != "Root Cause"), { name: "Root Cause", value: cause }]);
       return int.message.edit({ content: int.message.content, embeds: [em], components: replyOption });
-    } else {
-      return int.update({ embeds: [embed.setColor("#808080").addFields({ name: `Suggestion ignored`, value: `by ${int.user}` })], components: [] });
     }
   } catch (e) { u.noop; }
 }
