@@ -11,7 +11,7 @@ const Module = new Augur.Module()
   process: async (interaction) => {
     try {
       await interaction.deferReply({ ephemeral: true });
-      const message = await interaction.channel?.messages.fetch(interaction.targetId);
+      const message = await interaction.channel?.messages.fetch(interaction.targetId).catch(u.noop);
       if (message) {
         await interaction.editReply("I'm sending you a DM!");
         const embed = u.embed({ author: message.member ?? message.author })

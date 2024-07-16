@@ -87,7 +87,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
     const now = u.moment(testDate);
     if (!guild) return u.errorHandler(new Error("LDSG is unavailable???"));
 
-    const members = testMember ?? await guild.members.fetch();
+    const members = testMember ?? await guild.members.fetch().catch(u.noop) ?? guild.members.cache;
     const offsets = testJoinDate ? [] : await u.db.user.getUsers({ discordId: { $in: [...members.keys()] }, priorTenure: { $gt: 0 } });
 
     /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
