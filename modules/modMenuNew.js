@@ -332,8 +332,8 @@ async function purgeChannel(int, msg) {
   if (!channel) return edit(int, "Well that's awkward, I can't access the channel you're in!");
 
   u.clean(msg, 0);
-  const toDelete = await channel.messages.fetch({ after: msg.id, limit: 100 });
-
+  const toDelete = await channel.messages.fetch({ after: msg.id, limit: 100 }).catch(u.noop);
+  if (!toDelete) return edit(int, "I couldn't get those messages.");
   const deleted = await channel.bulkDelete(toDelete, true);
 
   int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [

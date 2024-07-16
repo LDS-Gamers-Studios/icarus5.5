@@ -11,27 +11,37 @@ const noTarget = "The user you provided was invalid. They may have left the serv
 /** @type {Map<string, any>} */
 const molasses = new Map();
 
-/** @param {Discord.Message} msg */
-async function watch(msg) {
-  if (!msg.inGuild()) return;
+/**
+ * @param {Discord.Message} [msg]
+ * @param {Discord.VoiceState} [oldState]
+ * @param {Discord.VoiceState} [newState]
+ */
+async function watch(msg, oldState, newState) {
+  const guild = msg?.guild || oldState?.guild || newState?.guild;
+  const member = msg?.member || oldState?.member || newState?.member;
+  if (!guild || !member) return; // make sure vars are defined and in a server;
+  if (msg && (msg.system || msg.webhookId)) return; // no bot messages
+  if (member.user.bot || (member.roles.cache.has(u.sf.roles.trusted) && !c.watchlist.has(member.id))) return; // filter not in the watchlist
 
-  if (
-    msg.guild.id == u.sf.ldsg && // only LDSG
-    !msg.system && !msg.webhookId && !msg.author.bot && // no bots
-    msg.member && (!msg.member.roles.cache.has(u.sf.roles.trusted) || c.watchlist.has(msg.author.id)) // only untrusted, watched, and in the server
-  ) {
-    const files = msg.attachments.map(attachment => attachment.url)
-      .concat(msg.stickers.map(s => s.url));
-    const webhook = new Discord.WebhookClient({ url: config.webhooks.watchlist });
-    const decorator = !msg.member?.roles.cache.has(u.sf.roles.trusted) ? "🚪" : "👀";
-    webhook.send({
-      content: `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`,
-      files,
-      username: `${decorator} - ${msg.member?.displayName ?? msg.author.displayName}`.substring(0, 31),
-      avatarURL: msg.member?.displayAvatarURL() ?? msg.author.displayAvatarURL(),
-      allowedMentions: { parse: [] }
-    });
+  const decorator = !member.roles.cache.has(u.sf.roles.trusted) ? "🚪" : "👀";
+  const payload = {
+    username: `${decorator} - ${member.displayName}`.substring(0, 31),
+    avatarURL: member.displayAvatarURL(),
+    allowedMentions: { parse: [] }
+  };
+  if (msg) {
+    payload.files = msg.attachments.map(attachment => attachment.url).concat(msg.stickers.map(s => s.url));
+    payload.content = `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`;
+  } else if (oldState?.channelId != newState?.channelId) {
+    if (newState?.channel) payload.content = `🎙️ Joined ${newState.channel.name}`;
+    else if (oldState?.channel) payload.content = `🔇 Left ${oldState.channel.name}`;
+    else return;
+  } else {
+    return;
   }
+  const webhook = new Discord.WebhookClient({ url: config.webhooks.watchlist });
+
+  webhook.send(payload);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
@@ -170,7 +180,10 @@ async function slashModPurge(interaction) {
   const channel = interaction.channel;
   if (!channel) return interaction.editReply("Well that's awkward, I can't access the channel you're in!");
   if (number < 1) return interaction.editReply("You need to provide a number greater than 0.");
-  const toDelete = await interaction.channel?.messages.fetch({ limit: Math.min(number, 100) });
+  const toDelete = await interaction.channel?.messages.fetch({ limit: Math.min(number, 100) }).catch(() => {
+    interaction.editReply("I couldn't get the messages in that channel. Sorry!");
+  });
+  if (!toDelete) return;
 
   const deleted = await channel.bulkDelete(toDelete, true);
   // Log it
@@ -361,8 +374,12 @@ const Module = new Augur.Module()
 })
 .addEvent("messageCreate", watch)
 .addEvent("messageUpdate", async (msg, newMsg) => {
-  if (newMsg.partial) newMsg = await newMsg.fetch();
+  if (newMsg.partial) newMsg = await newMsg.fetch().catch(() => newMsg);
+  if (newMsg.partial) return; // failed to fetch
   watch(newMsg);
+})
+.addEvent("voiceStateUpdate", (oldS, newS) => {
+  watch(undefined, oldS, newS);
 })
 .addInteraction({
   name: "mod",

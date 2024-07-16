@@ -39,13 +39,13 @@ async function update(oldUser, newUser) {
   try {
     const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
     const newMember = ldsg?.members.cache.get(newUser.id);
-    if (oldUser.partial) oldUser = await oldUser.fetch();
+    if (oldUser.partial) oldUser = await oldUser.fetch().catch(() => oldUser);
+    if (oldUser.partial) return; // failed to fetch
     const user = await u.db.user.fetchUser(newUser.id);
     if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setDescription(newUser.toString())
-        .addFields({ name: "Activity", value: `${user?.posts ?? 0} active minutes ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` })
         .setFooter({ text: newUser.id });
 
       const usernames = [
@@ -67,6 +67,7 @@ async function update(oldUser, newUser) {
         embed.setThumbnail(newUser.displayAvatarURL());
       }
       if ((embed.data.fields?.length || 0) > 0) {
+        embed.addFields({ name: "Activity", value: `${user?.posts ?? 0} active minutes in ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
         ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed], components: [
           u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
         ] });
@@ -207,7 +208,8 @@ const Module = new Augur.Module()
 .addEvent("guildMemberRemove", async (member) => {
   try {
     if (member.guild.id == u.sf.ldsg) {
-      if (member.partial) member = await member.fetch();
+      if (member.partial) member = await member.fetch().catch(() => member);
+      if (member.partial) return; // failed to fetch
       await u.db.user.updateTenure(member);
       await u.db.user.updateRoles(member);
       const user = await u.db.user.fetchUser(member.id);
