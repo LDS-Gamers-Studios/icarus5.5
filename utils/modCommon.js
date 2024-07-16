@@ -189,7 +189,7 @@ const modCommon = {
         .addFields(
           { name: "Channel", value: msg.channel.name, inline: true },
           { name: "Jump to Post", value: msg.url, inline: true },
-          { name: "User", value: msg.webhookId ? userBackup(msg.author) ?? (await msg.fetchWebhook()).name : userBackup(msg.author) ?? "Unknown User" }
+          { name: "User", value: (msg.webhookId ? userBackup(msg.author) ?? (await msg.fetchWebhook().catch(u.noop))?.name : userBackup(msg.author)) ?? "Unknown User" }
         );
       if (msg.channel.parentId == u.sf.channels.minecraftcategory) {
         msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({
@@ -574,7 +574,8 @@ const modCommon = {
     for (const [, channel] of guild.channels.cache) {
       const perms = channel.permissionsFor(message.client.user);
       if (!channel.isTextBased() || !perms?.has("ManageMessages") || !perms.has("ViewChannel") || !perms.has("Connect")) continue;
-      const fetched = await channel.messages.fetch({ around: message.id, limit: 30 });
+      const fetched = await channel.messages.fetch({ around: message.id, limit: 30 }).catch(u.noop);
+      if (!fetched) return { deleted: 0, channels: [] };
       const messages = fetched.filter(m =>
         m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
         m.createdTimestamp >= (message.createdTimestamp - timeDiff) &&
