@@ -214,6 +214,7 @@ const modCommon = {
         { name: "Flagged By", value: snitch, inline: true },
         { name: "Reason", value: flagReason, inline: true }
       );
+      embed.setImage(msg?.attachments.at(0)?.url ?? null);
       if (furtherInfo) embed.addFields({ name: "Further Information", value: furtherInfo, inline: true });
     } else if (flagReason) {
       embed.addFields({ name: "Reason", value: flagReason });
