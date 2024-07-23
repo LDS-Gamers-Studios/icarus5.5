@@ -7,11 +7,12 @@ const Discord = require("discord.js"),
   db = require("../database/dbControllers.js"),
   p = require('./perms.js'),
   moment = require('moment-timezone'),
+  { GoogleSpreadsheet } = require("google-spreadsheet"),
   config = require("../config/config.json");
 
 const errorLog = new Discord.WebhookClient({ url: config.webhooks.error });
 const { nanoid } = require("nanoid");
-
+const doc = new GoogleSpreadsheet(config.google.sheets.config);
 /**
  * @typedef ParsedInteraction
  * @property {String | null} command - The command issued, represented as a string.
@@ -365,6 +366,14 @@ const utils = {
    */
   unique: function(items) {
     return [...new Set(items)];
+  },
+  loadSheets: async function(loggedIn = true) {
+    if (!loggedIn) await doc.useServiceAccountAuth(config.google.creds);
+    await doc.loadInfo();
+  },
+  /** @param {string} sheet */
+  sheet: function(sheet) {
+    return doc.sheetsByTitle[sheet];
   }
 };
 

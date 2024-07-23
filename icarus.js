@@ -13,7 +13,10 @@ const client = new AugurClient(config, {
   },
   commands: "./modules",
   errorHandler: u.errorHandler,
-  parse: u.parse
+  parse: u.parse,
+  delayStart: () => {
+    return u.loadSheets(false);
+  }
 });
 
 client.login();

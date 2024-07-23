@@ -3,7 +3,6 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
   u = require("../utils/utils");
-const { GoogleSpreadsheet } = require("google-spreadsheet");
 
 function celebrate() {
   if (u.moment().hours() == 15) {
@@ -150,14 +149,10 @@ const Module = new Augur.Module()
   celebrate();
 })
 .setInit(async () => {
-  if (!config.google.sheets.config) return console.log("No Sheets ID");
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
-    await doc.useServiceAccountAuth(config.google.creds);
-    await doc.loadInfo();
     /** @type {any[]} */
     // @ts-ignore cuz google sheets be dumb
-    const roles = await doc.sheetsByTitle["Roles"].getRows();
+    const roles = await u.sheet("Roles").getRows();
 
     const a = roles.filter(r => r["Type"] == "Year").map(r => {
       return {

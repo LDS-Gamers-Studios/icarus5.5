@@ -3,8 +3,7 @@
 const Augur = require("augurbot-ts"),
   axios = require('axios'),
   u = require("../utils/utils"),
-  config = require('../config/config.json'),
-  { GoogleSpreadsheet } = require('google-spreadsheet');
+  config = require('../config/config.json');
 
 
 /**
@@ -57,11 +56,8 @@ async function champs(int) {
   const user = (str) => int.options.getMember(str);
   const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr != null));
   const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
-  await doc.useServiceAccountAuth(config.google.creds);
-  await doc.loadInfo();
   // @ts-expect-error
-  await doc.sheetsByTitle["Tourney Champions"].addRows(users.map(usr => ({ "Tourney Name": tName, "User ID": usr?.id, "Take Role At": date })));
+  await u.sheet("Tourney Champions").addRows(users.map(usr => ({ "Tourney Name": tName, "User ID": usr?.id, "Take Role At": date })));
   for (const member of users) {
     member?.roles.add(u.sf.roles.champion);
   }
