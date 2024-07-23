@@ -55,7 +55,7 @@ async function getReason(int, description) {
       .setRequired(true)
       .setStyle(Discord.TextInputStyle.Paragraph)
   ];
-  const modal = new u.modal()
+  const modal = new u.Modal()
     .setTitle("Reason")
     .setCustomId("modMenuReason")
     .addComponents(
@@ -159,7 +159,7 @@ async function userSummary(int, usr) {
 /** @type {user} */
 async function noteUser(int, usr) {
   if (!usr) return usrErr(int);
-  const modal = new u.modal()
+  const modal = new u.Modal()
     .setTitle("Note")
     .setCustomId("noteModal")
     .addComponents(
@@ -187,7 +187,7 @@ async function noteUser(int, usr) {
 /** @type {user} */
 async function renameUser(int, usr) {
   if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
-  const modal = new u.modal()
+  const modal = new u.Modal()
     .setTitle("Rename User")
     .setCustomId("modMenuRename")
     .addComponents(
