@@ -677,6 +677,34 @@ const modCommon = {
   },
 
   /**
+   * Give somebody a staff assigned role
+   * @param {Augur.GuildInteraction<"CommandSlash">} int
+   * @param {Boolean} give
+   * @param {Discord.GuildMember} recipient
+   * @param {Discord.Role} role
+   * @returns {Promise<string>}
+   */
+  assignRole: async function(int, recipient, role, give = true) {
+    /** @param {Discord.GuildMember} member @param {string} id*/
+    try {
+      const pres = give ? "give" : "take";
+      const past = give ? "gave" : "took";
+      try {
+        if (recipient.roles.cache.has(role.id) == give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${role} role`;
+        give ? await recipient?.roles.add(role.id) : await recipient?.roles.remove(role.id);
+        const returnStr = `Successfully ${past} the ${role} role ${give ? "to" : "from"} ${recipient}`;
+        if (role.id == u.sf.roles.bookworm) return returnStr;
+        const embed = u.embed({ author: recipient, color: 0x00ffff })
+            .setTitle(`User ${give ? "added to" : "removed from"} ${role.name}`)
+            .setDescription(`${int.member} ${past} the ${role} role ${give ? "to" : "from"} ${recipient}.`);
+        int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+        return returnStr;
+      } catch (e) { return `Failed to ${pres} ${recipient} the ${role} role`; }
+    } catch (error) { u.errorHandler(error, int); }
+    return "I could not find that role!";
+  },
+
+  /**
    * Give someone the Trusted+ Role
    * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
    * @param {Discord.GuildMember} target
