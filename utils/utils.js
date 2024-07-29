@@ -213,7 +213,7 @@ const utils = {
     const descriptions = [];
     let active = "";
     lines.forEach((line) => {
-      if (active.length + line.length > 1) {
+      if (active.length + line.length > 4000) {
         descriptions.push(active);
         active = "";
       }

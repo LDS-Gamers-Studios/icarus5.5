@@ -58,6 +58,9 @@ const equip = new u.sub()
   .setDescription("Equip a color role (leave blank to remove)")
   .addStringOption(role("equip"));
 
+const list = new u.sub()
+  .setName("list")
+  .setDescription("Get a list of opt-in roles, including a list of ones you have.");
 
 module.exports = new u.cmd()
   .setName("role")
@@ -69,5 +72,6 @@ module.exports = new u.cmd()
   .addSubcommand(inventory)
   .addSubcommand(who)
   .addSubcommand(equip)
+  .addSubcommand(list)
   .setDMPermission(false)
   .toJSON();

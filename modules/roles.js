@@ -44,6 +44,18 @@ async function slashRoleAdd(int, give = true) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashRoleList(int) {
+  const ephemeral = int.channel?.id == u.sf.channels.general;
+  const has = int.member.roles.cache.intersect(optRoles);
+  const without = optRoles.difference(has);
+  const embed = u.embed().setTitle("Opt-In Roles")
+    .setDescription(`You can add these roles with </role add:${u.sf.commands.slashRole}> to recieve pings and access to certain channels`);
+  if (has.size > 0) embed.addFields({ name: "Already Have", value: [...has.values()].join("\n") });
+  embed.addFields({ name: "Available to Add", value: [...without.values()].join("\n") || "You have all the opt-in roles already!" });
+  return int.reply({ embeds: [embed], ephemeral });
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashRoleWhoHas(int) {
   try {
     const ephemeral = int.channel?.id == u.sf.channels.general;
@@ -76,7 +88,7 @@ async function slashRoleGive(int, give = true) {
 }
 /** @param {Discord.GuildMember} member */
 function getInventory(member) {
-  return u.perms.isMgmt(member) ? equipRoles : equipRoles.filter(r => member.roles.cache.hasAny(r.baseId, ...r.inherited));
+  return u.perms.calc(member, ["mgr"]) ? equipRoles : equipRoles.filter(r => member.roles.cache.hasAny(r.baseId, ...r.inherited));
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -132,7 +144,7 @@ async function setRoles() {
     /** @type {{RoleId: string}[]} */
     // @ts-ignore
     const rows = await doc.sheetsByTitle["Opt-In Roles"].getRows();
-    const ids = rows.map(r => r["RoleId"]).filter(filterBlank);
+    const ids = rows.map(r => r["RoleID"]).filter(filterBlank);
     optRoles = ldsg.roles.cache.filter(r => ids.includes(r.id));
     /** @type {{"Color Role ID": string, "Base Role ID": string, "Lower Roles": string, Type: string, Level: perms}[]} */
     // @ts-ignore
@@ -157,10 +169,10 @@ Module.addInteraction({
   onlyGuild: true,
   id: u.sf.commands.slashRole,
   process: async (interaction) => {
-
     switch (interaction.options.getSubcommand(true)) {
       case "add": return slashRoleAdd(interaction);
       case "remove": return slashRoleAdd(interaction, false);
+      case "list": return slashRoleList(interaction);
       case "give": return slashRoleGive(interaction);
       case "take": return slashRoleGive(interaction, false);
       case "inventory": return slashRoleInventory(interaction);
@@ -185,7 +197,7 @@ Module.addInteraction({
         return interaction.respond(withPerms.map(r => ({ name: r, value: r })));
       }
       const adding = sub == "add";
-      const values = (u.perms.isAdmin(interaction.member) ? interaction.guild.roles.cache : optRoles)
+      const values = (u.perms.calc(interaction.member, ["mgr"]) ? interaction.guild.roles.cache : optRoles)
         .filter(r => r.name.toLowerCase().includes(option.value.toLowerCase()) && // relevant
           r.comparePositionTo(u.sf.roles.icarus) < 0 && // able to be given
           !r.managed && r.id != u.sf.ldsg && // not managed or @everyone
