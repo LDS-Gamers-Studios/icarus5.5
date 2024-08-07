@@ -3,7 +3,6 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  { GoogleSpreadsheet } = require("google-spreadsheet"),
   config = require('../config/config.json');
 
 const mutedPerms = {
@@ -233,14 +232,10 @@ const Module = new Augur.Module()
 .addEvent("guildMemberUpdate", update)
 .addEvent("userUpdate", update)
 .setInit(async () => {
-  if (!config.google.sheets.config) return console.log("No Sheets ID");
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
-    await doc.useServiceAccountAuth(config.google.creds);
-    await doc.loadInfo();
     /** @type {Sponsor[]} */
     // @ts-ignore sheets stuff
-    const channels = await doc.sheetsByTitle["Sponsor Channels"].getRows();
+    const channels = await u.sheet("Sponsor Channels").getRows();
     emojis = Array.from(channels.map(x => [x.Sponsor, x.Emoji]))
       .concat([
         ["buttermelon", u.sf.emoji.buttermelon],

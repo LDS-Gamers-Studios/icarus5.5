@@ -3,7 +3,6 @@ const Augur = require('augurbot-ts'),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
   u = require('../utils/utils');
-const { GoogleSpreadsheet } = require('google-spreadsheet');
 
 /** @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">}|Discord.Interaction<"cached">|false>} voice */
 
@@ -285,7 +284,7 @@ async function streamDeny(int, channel) {
 
   const { member, newInt } = user;
   if (!member) return { msg: noUser, int: newInt };
-  if (member.id == user.id) return { msg: `You can't deny yourself from speaking!` };
+  if (member.id == user.id) return { msg: `You can't deny yourself from speaking!`, int: newInt };
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id);
   if (!allowedSpeak.includes(member.id)) return { msg: `${member} wasn't able to speak in the first place!`, int: newInt };
 
@@ -395,12 +394,9 @@ const Module = new Augur.Module()
 })
 .setInit(async () => {
   if (!config.google.sheets.config) return console.log("No Sheets ID");
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
-    await doc.useServiceAccountAuth(config.google.creds);
-    await doc.loadInfo();
     // @ts-ignore sheets stuff
-    const channels = await doc.sheetsByTitle["Voice Channel Names"].getRows();
+    const channels = await u.sheet("Voice Channel Names").getRows();
     channelNames = channels.map(x => x["Name"]);
   } catch (e) {
     u.errorHandler(e, "Voice Channel Init");

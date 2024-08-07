@@ -3,7 +3,6 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
   u = require("../utils/utils");
-const { GoogleSpreadsheet } = require("google-spreadsheet");
 
 function celebrate() {
   if (u.moment().hours() == 15) {
@@ -103,7 +102,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
           const years = now.year() - join.year();
           // yell at devs if not
           if (tenureCache.has(years)) {
-            const roles = tenureCache.clone();
+            const roles = tenureCache.filter((r, y) => member.roles.cache.has(r) && y != years);
             roles.delete(years);
             await member.roles.remove([...roles.values()]).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
             await member.roles.add(tenureCache.get(years) ?? "").catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
@@ -150,14 +149,10 @@ const Module = new Augur.Module()
   celebrate();
 })
 .setInit(async () => {
-  if (!config.google.sheets.config) return console.log("No Sheets ID");
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
-    await doc.useServiceAccountAuth(config.google.creds);
-    await doc.loadInfo();
     /** @type {any[]} */
     // @ts-ignore cuz google sheets be dumb
-    const roles = await doc.sheetsByTitle["Roles"].getRows();
+    const roles = await u.sheet("Roles").getRows();
 
     const a = roles.filter(r => r["Type"] == "Year").map(r => {
       return {
@@ -192,11 +187,14 @@ const Module = new Augur.Module()
     testCakeDays(date, new Date(), new u.Collection().set(msg.author.id, msg.member));
   }
 })
-// @ts-ignore its an augur thing im too lazy to fix
 .setClockwork(() => {
-  try {
-    return setInterval(celebrate, 60 * 60 * 1000);
-  } catch (e) { u.errorHandler(e, "Birthday Clockwork Error"); }
+  return setInterval(() => {
+    try {
+      celebrate();
+    } catch (error) {
+      u.errorHandler(error, "Birthday Clockwork Error");
+    }
+  }, 60 * 60 * 1000);
 });
 
 module.exports = Module;

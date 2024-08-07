@@ -134,7 +134,11 @@ async function register() {
     ];
   }).sort((a, b) => a[0].localeCompare(b[0]))) };
   fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands.json"), JSON.stringify(files, null, 2));
-  fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands-example.json"), JSON.stringify({ commands: Object.fromEntries(Object.keys(files.commands).map(f => [f, ""])) }, null, 2));
+  const oldExample = require("./config/snowflakes-commands-example.json");
+  const oldKeys = Object.keys(oldExample.commands);
+  const newKeys = Object.keys(files.commands);
+  const diff = oldKeys.filter(c => !newKeys.includes(c)).concat(newKeys.filter(c => !oldKeys.includes(c)));
+  if (diff.length > 0) fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands-example.json"), JSON.stringify({ commands: Object.fromEntries(newKeys.map(f => [f, ""])) }, null, 2));
   console.log("Command snowflake files updated");
   process.exit();
 }

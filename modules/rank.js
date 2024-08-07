@@ -1,9 +1,7 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
-  { GoogleSpreadsheet } = require('google-spreadsheet'),
   Discord = require("discord.js"),
   Rank = require("../utils/rankInfo"),
-  config = require('../config/config.json'),
   u = require("../utils/utils"),
   c = require("../utils/modCommon");
 
@@ -211,14 +209,10 @@ const Module = new Augur.Module()
   if (talking) {
     for (const user of talking) active.add(user);
   }
-  if (!config.google.sheets.config) return console.log("No Sheets ID");
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
-    await doc.useServiceAccountAuth(config.google.creds);
-    await doc.loadInfo();
     /** @type {any[]} */
     // @ts-ignore cuz google sheets be dumb
-    const roles = await doc.sheetsByTitle["Roles"].getRows();
+    const roles = await u.sheet("Roles").getRows();
     const a = roles.filter(r => r["Type"] == "Rank").map(r => {
       return {
         role: r["Base Role ID"],
