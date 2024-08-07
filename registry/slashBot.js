@@ -91,7 +91,7 @@ const status = new u.sub()
     new u.string()
       .setName("type")
       .setDescription("The activity type")
-      .setChoices(Object.keys(Discord.ActivityType).filter(t => Number.isNaN(parseInt(t))).map(t => ({ name: t, value: t })))
+      .setChoices(...Object.keys(Discord.ActivityType).filter(t => Number.isNaN(parseInt(t))).map(t => ({ name: t, value: t })))
       .setRequired(false)
   )
   .addStringOption(

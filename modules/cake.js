@@ -102,7 +102,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
           const years = now.year() - join.year();
           // yell at devs if not
           if (tenureCache.has(years)) {
-            const roles = tenureCache.clone();
+            const roles = tenureCache.filter((r, y) => member.roles.cache.has(r) && y != years);
             roles.delete(years);
             await member.roles.remove([...roles.values()]).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
             await member.roles.add(tenureCache.get(years) ?? "").catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
@@ -187,11 +187,14 @@ const Module = new Augur.Module()
     testCakeDays(date, new Date(), new u.Collection().set(msg.author.id, msg.member));
   }
 })
-// @ts-ignore its an augur thing im too lazy to fix
 .setClockwork(() => {
-  try {
-    return setInterval(celebrate, 60 * 60 * 1000);
-  } catch (e) { u.errorHandler(e, "Birthday Clockwork Error"); }
+  return setInterval(() => {
+    try {
+      celebrate();
+    } catch (error) {
+      u.errorHandler(error, "Birthday Clockwork Error");
+    }
+  }, 60 * 60 * 1000);
 });
 
 module.exports = Module;
