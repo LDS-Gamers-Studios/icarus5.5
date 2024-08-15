@@ -1,7 +1,6 @@
 // @ts-check
 const Augur = require('augurbot-ts'),
   Discord = require('discord.js'),
-  config = require('../config/config.json'),
   u = require('../utils/utils');
 
 /** @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">}|Discord.Interaction<"cached">|false>} voice */
@@ -393,7 +392,6 @@ const Module = new Augur.Module()
   if (newState.channel.members.size == 1) newState.channel.send({ embeds: components.embeds, components: components.components });
 })
 .setInit(async () => {
-  if (!config.google.sheets.config) return console.log("No Sheets ID");
   try {
     // @ts-ignore sheets stuff
     const channels = await u.sheet("Voice Channel Names").getRows();

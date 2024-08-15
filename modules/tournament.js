@@ -48,10 +48,6 @@ async function bracket(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function champs(int) {
   await int.deferReply({ ephemeral: true });
-  if (!config.google.sheets.config) {
-    int.editReply("Looks like the bot isn't set up right to handle this. Please contact my developers.");
-    return console.log("No Sheets ID");
-  }
   const tName = int.options.getString('tournament');
   const user = (str) => int.options.getMember(str);
   const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr != null));
