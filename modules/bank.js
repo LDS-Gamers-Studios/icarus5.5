@@ -41,9 +41,9 @@ let games = [];
  * @returns {boolean}
  */
 function filterUnique(game, i, gameList) {
-  const ga = gameList.find(g => g.Title == game.Title && g.System == game.System);
-  if (ga) return gameList.indexOf(ga) == i;
-  else return false;
+  const ga = gameList.find(g => g.Title === game.Title && g.System === game.System);
+  if (ga) return gameList.indexOf(ga) === i;
+  return false;
 }
 
 /**
@@ -68,23 +68,23 @@ async function slashBankGive(interaction) {
     const giver = interaction.member;
     const recipient = interaction.options.getMember("user");
     const currency = interaction.options.getString("currency", true);
-    const { coin, MAX } = (currency == "gb" ? { coin: gb, MAX: limit.gb } : { coin: ember, MAX: limit.ember });
+    const { coin, MAX } = (currency === "gb" ? { coin: gb, MAX: limit.gb } : { coin: ember, MAX: limit.ember });
 
     const value = Math.min(MAX, interaction.options.getInteger("amount", true));
     let reason = interaction.options.getString("reason");
 
-    const toIcarus = recipient?.id == interaction.client.user.id;
+    const toIcarus = recipient?.id === interaction.client.user.id;
     let reply = "";
 
     if (!recipient) {
       return interaction.reply({ content: "You can't give to ***nobody***, silly.", ephemeral: true });
-    } else if (recipient?.id == giver.id) {
+    } else if (recipient?.id === giver.id) {
       reply = "You can't give to ***yourself***, silly.";
-    } else if (toIcarus && currency == "gb") {
+    } else if (toIcarus && currency === "gb") {
       reply = `I don't need any ${coin}! Keep em for yourself.`;
     } else if (!toIcarus && recipient?.user.bot) {
       reply = `Bots don't really have a use for ${coin}.`;
-    } else if (toIcarus && (!reason || reason.length == 0)) {
+    } else if (toIcarus && (!reason || reason.length === 0)) {
       reply = `You need to have a reason to give ${coin} to me!`;
     } else if (value === 0) {
       reply = "You can't give ***nothing***.";
@@ -175,7 +175,7 @@ async function slashBankGameList(interaction) {
 
     let gameList = games.sort((a, b) => a.Title.localeCompare(b.Title));
     // Filter Rated M, unless the member has the Rated M Role
-    if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.Rating.toUpperCase() != "M" && !g.Recipient);
+    if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.Rating.toUpperCase() !== "M" && !g.Recipient);
 
     const embed = u.embed()
       .setTitle("Games Available to Redeem")
@@ -184,8 +184,8 @@ async function slashBankGameList(interaction) {
     const embeds = [];
     for (const game of gameList) {
       let steamApp = null;
-      if (game.System?.toLowerCase() == "steam") {
-        steamApp = steamGameList.find(g => g.name.toLowerCase() == game.Title.toLowerCase());
+      if (game.System?.toLowerCase() === "steam") {
+        steamApp = steamGameList.find(g => g.name.toLowerCase() === game.Title.toLowerCase());
       }
       const content = `${steamApp ? "[" : ""}**${game.Title}** (${game.System})${steamApp ? `](https://store.steampowered.com/app/${steamApp.appid})` : ""}`
         + ` Rated ${game.Rating ?? ""} - ${gb}${game.Cost} | Code: **${game.Code}**\n\n`;
@@ -217,7 +217,7 @@ async function slashBankGameRedeem(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
     if (!games) throw new Error("Get Game List Error");
-    const game = games.find(g => (g.Code == interaction.options.getString("code", true).toUpperCase()) && !g.Recipient);
+    const game = games.find(g => (g.Code === interaction.options.getString("code", true).toUpperCase()) && !g.Recipient);
     if (!game) {
       return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);
     }
@@ -343,11 +343,11 @@ async function slashBankAward(interaction) {
 
     if (!u.perms.calc(giver, ["team", "volunteer", "mgr"])) {
       reply = `*Nice try!* This command is for Volunteers and Team+ only!`;
-    } else if (recipient.id == giver.id) {
+    } else if (recipient.id === giver.id) {
       reply = `You can't award ***yourself*** ${ember}, silly.`;
-    } else if (recipient.id == interaction.client.user.id) {
+    } else if (recipient.id === interaction.client.user.id) {
       reply = `You can't award ***me*** ${ember}, silly.`;
-    } else if (recipient.id != interaction.client.user.id && recipient.user.bot) {
+    } else if (recipient.id !== interaction.client.user.id && recipient.user.bot) {
       reply = `Bots don't really have a use for awarded ${ember}.`;
     } else if (value === 0) {
       reply = "You can't award ***nothing***.";
@@ -405,6 +405,7 @@ Module.addInteraction({ name: "bank",
       case "redeem": return slashBankGameRedeem(interaction);
       case "discount": return slashBankDiscount(interaction);
       case "award": return slashBankAward(interaction);
+      default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   }
 })

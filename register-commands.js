@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // @ts-check
 const config = require("./config/config.json"),
   path = require("path"),
@@ -51,15 +52,15 @@ function getCommandType(typeId) {
 /** @param {axios.AxiosError} error */
 function displayError(error) {
   if (error.response) {
-    if (error.response.status == 429) {
+    if (error.response.status === 429) {
       console.log("You're being rate limited! try again after " + error.response.data.retry_after + " seconds. Starting countdown...");
       setTimeout(() => {
         console.log("try now!");
         process.exit();
       }, error.response.data.retry_after * 1000);
-    } else if (error.response.status == 400) {
+    } else if (error.response.status === 400) {
       console.log("You've got a bad bit of code somewhere! Unfortunately it won't tell me where :(");
-    } else if (error.response.status == 401) {
+    } else if (error.response.status === 401) {
       console.log("It says you're unauthorized...");
     } else {
       // The request was made and the server responded with a status code

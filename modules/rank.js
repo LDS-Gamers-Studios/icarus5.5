@@ -47,7 +47,7 @@ async function slashRankTrack(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
     const track = interaction.options.getBoolean("choice");
-    if (track == null) {
+    if (track === null) {
       const status = await u.db.user.fetchUser(interaction.user.id);
       return interaction.editReply(`You are currently ${status?.excludeXP ? "not " : ""}tracking XP!`);
     }
@@ -60,7 +60,7 @@ async function slashRankTrack(interaction) {
 async function slashRankView(interaction) {
   try {
     // View member rankings
-    await interaction.deferReply({ ephemeral: interaction.channelId != u.sf.channels.botspam });
+    await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botspam });
     const members = interaction.guild.members.cache;
     const member = interaction.options.getMember("user") ?? interaction.member;
     const record = await u.db.user.getRank(member.id, members);
@@ -103,7 +103,7 @@ async function rankClockwork(client) {
         try {
           // Remind mods to trust people!
           const trustStatus = await u.db.user.fetchUser(member.id);
-          if ((user.posts % 25 == 0) && !member.roles.cache.has(u.sf.roles.trusted) && !trustStatus?.watching) {
+          if ((user.posts % 25 === 0) && !member.roles.cache.has(u.sf.roles.trusted) && !trustStatus?.watching) {
             const modLogs = client.getTextChannel(u.sf.channels.modlogs);
             modLogs?.send({
               content: `${member} has had ${user.posts} active minutes in chat without being trusted!`,
@@ -133,7 +133,7 @@ async function rankClockwork(client) {
             const lvl = Rank.level(user.totalXP);
             const oldLvl = Rank.level(user.totalXP - response.xp);
 
-            if (lvl != oldLvl) {
+            if (lvl !== oldLvl) {
               let message = `${u.rand(Rank.messages)} ${u.rand(Rank.levelPhrase).replace("%LEVEL%", lvl.toString())}`;
 
               if (rewards.has(lvl)) {
@@ -168,6 +168,7 @@ const Module = new Augur.Module()
         case "view": return slashRankView(interaction);
         case "leaderboard": return slashRankLeaderboard(interaction);
         case "track": return slashRankTrack(interaction);
+        default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
       }
     } catch (error) {
       u.errorHandler(error, interaction);
@@ -213,10 +214,10 @@ const Module = new Augur.Module()
     /** @type {any[]} */
     // @ts-ignore cuz google sheets be dumb
     const roles = await u.sheet("Roles").getRows();
-    const a = roles.filter(r => r["Type"] == "Rank").map(r => {
+    const a = roles.filter(r => r.Type === "Rank").map(r => {
       return {
         role: r["Base Role ID"],
-        level: parseInt(r["Level"])
+        level: parseInt(r.Level)
       };
     });
 
@@ -226,7 +227,7 @@ const Module = new Augur.Module()
 .setUnload(() => active)
 .addEvent("messageCreate", (msg) => {
   if (
-    msg.inGuild() && msg.guild.id == u.sf.ldsg && // only in LDSG
+    msg.inGuild() && msg.guild.id === u.sf.ldsg && // only in LDSG
     !active.has(msg.author.id) && // only if they're not already talking
     !(Rank.excludeChannels.includes(msg.channel.id) || Rank.excludeChannels.includes(msg.channel.parentId ?? "")) && // only if not in an excluded channel/category
     !msg.member?.roles.cache.hasAny(Rank.excludeRoles) && // only if they don't have an exclude role

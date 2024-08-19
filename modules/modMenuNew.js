@@ -32,7 +32,7 @@ function msgErr(int) {
  */
 function edit(int, payload) {
   const obj = { embeds: [], components: [], attachments: [], files: [], content: "" };
-  if (typeof payload == 'string') {
+  if (typeof payload === 'string') {
     obj.content = payload;
     payload = obj;
   } else {
@@ -104,7 +104,7 @@ async function flagReason(int, msg, usr) {
     return;
   });
   if (response && response.inCachedGuild()) return flag(response, msg, usr);
-  else return edit(int, noTime);
+  return edit(int, noTime);
 }
 /**
  * @type {both}
@@ -113,7 +113,7 @@ async function flagReason(int, msg, usr) {
 async function flag(int, msg, usr) {
   if (!usr) return usrErr(int);
   await int.deferUpdate();
-  const reason = int.values.map(v => menuFlagOptions.find(o => o.value == v)?.label).join(', ');
+  const reason = int.values.map(v => menuFlagOptions.find(o => o.value === v)?.label).join(', ');
   if (reason.includes("Mod Abuse") && !u.perms.calc(usr, ["mod", "mcMod", "mgr"])) return edit(int, "Only Moderators can be flagged for mod abuse.");
   if (msg) {
     // Don't let them know it was already flagged, but also don't create a duplicate
@@ -122,7 +122,7 @@ async function flag(int, msg, usr) {
   }
   const madeFlag = await c.createFlag({ msg: msg ?? undefined, member: usr, pingMods: false, snitch: int.member.toString(), flagReason: reason }, int);
   if (madeFlag) return edit(int, "Your report has been created! Moderators may reach out if they need more details.");
-  else return edit(int, "Sorry, I ran into an error while creating your report. Please let the moderators know about the issue.");
+  return edit(int, "Sorry, I ran into an error while creating your report. Please let the moderators know about the issue.");
 }
 /** @type {message} */
 async function pin(int, msg) {
@@ -135,19 +135,19 @@ async function pin(int, msg) {
     if ((messages?.size ?? 0) > 49) return edit(int, "I can't pin that message as this channel has reached it's pin limit of 50.");
     await msg.pin().catch((e) => u.errorHandler(e, int));
     return edit(int, "Message pinned!");
-  } else {
-    if (msg.author.id == int.user.id) return edit(int, "You can't request your own message to be pinned!");
-    const embed = u.embed({ author: int.member })
+  }
+  if (msg.author.id === int.user.id) return edit(int, "You can't request your own message to be pinned!");
+  const embed = u.embed({ author: int.member })
       .setTimestamp()
       .setDescription(msg.cleanContent)
       .addFields(
         { name: "Pin Requested By", value: int.member.toString() },
         { name: "Post", value: msg.url }
       );
-    if (msg.attachments.size > 0) embed.setImage(msg.attachments.first()?.url ?? null);
-    int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
-    return edit(int, "Pin request submitted!");
-  }
+  if (msg.attachments.size > 0) embed.setImage(msg.attachments.first()?.url ?? null);
+  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+  return edit(int, "Pin request submitted!");
+
 }
 /** @type {user} */
 async function userSummary(int, usr) {
@@ -207,11 +207,11 @@ async function renameUser(int, usr) {
   if (modalSubmit) {
     await modalSubmit.deferUpdate();
     const name = modalSubmit.fields.getTextInputValue("name") ?? "";
-    const named = await c.rename(modalSubmit, usr, name, name == "");
+    const named = await c.rename(modalSubmit, usr, name, name === "");
     return edit(modalSubmit, named);
-  } else {
-    return int.update(noTime);
   }
+  return int.update(noTime);
+
 }
 /** @type {user} */
 async function trustUser(int, usr, apply = true) {
@@ -240,9 +240,9 @@ async function warnUser(int, usr) {
     const r = reason.fields.getTextInputValue("reason");
     const warn = await c.warn(int, r, 1, usr);
     return edit(reason, warn);
-  } else {
-    return int.update(noTime);
   }
+  return int.update(noTime);
+
 }
 /** @type {message} */
 async function modDiscussion(int, msg) {
@@ -279,9 +279,9 @@ async function timeoutUser(int, usr) {
     const r = reason.fields.getTextInputValue("reason");
     const timeout = await c.timeout(int, usr, 10, r);
     return edit(reason, timeout);
-  } else {
-    return int.update(noTime);
   }
+  return int.update(noTime);
+
 }
 /** @type {user} */
 async function kickUser(int, usr) {
@@ -292,9 +292,9 @@ async function kickUser(int, usr) {
     const r = reason.fields.getTextInputValue("reason");
     const timeout = await c.kick(int, usr, r);
     return edit(reason, timeout);
-  } else {
-    return int.update(noTime);
   }
+  return int.update(noTime);
+
 }
 /** @type {user} */
 async function banUser(int, usr) {
@@ -305,9 +305,9 @@ async function banUser(int, usr) {
     const r = reason.fields.getTextInputValue("reason");
     const timeout = await c.ban(int, usr, r);
     return edit(reason, timeout);
-  } else {
-    return int.update(noTime);
   }
+  return int.update(noTime);
+
 }
 /** @type {message} */
 async function warnMessage(int, msg) {
@@ -321,9 +321,9 @@ async function warnMessage(int, msg) {
     const warn = await c.warn(int, r, 1, usr, msg);
     u.clean(msg, 0);
     return edit(reason, warn);
-  } else {
-    return int.update(noTime);
   }
+  return int.update(noTime);
+
 }
 /** @type {message} */
 async function purgeChannel(int, msg) {
@@ -381,7 +381,7 @@ async function announceMessage(int, msg) {
 */
 async function handleModMenu(submitted, oldInt) {
   const components = permComponents(oldInt);
-  const component = components.find(cmp => cmp.value == submitted.values[0]);
+  const component = components.find(cmp => cmp.value === submitted.values[0]);
   if (!component) return submitted.update({ content: "I couldn't find that command!", components: [] });
   const message = oldInt.isMessageContextMenuCommand() ? oldInt.targetMessage : null;
   const user = oldInt.isUserContextMenuCommand() ? oldInt.targetMember ?? oldInt.targetUser : message?.member ?? null;
@@ -396,6 +396,7 @@ async function handleModMenu(submitted, oldInt) {
     case "kickUser": return kickUser(submitted, user);
     case "banUser": return banUser(submitted, user);
     case "warnMessage": return warnMessage(submitted, message);
+    default: break;
   }
   // These ones don't require additional inputs,
   await submitted.deferUpdate();
@@ -425,9 +426,9 @@ function permComponents(int) {
   if (u.perms.calc(int.member, ['mod', 'mgr'])) components = components.concat(menuOptions.mod);
   if (u.perms.calc(int.member, ['mgr', 'mgmt'])) components = components.concat(menuOptions.mgmt);
   return components.filter(cmp => (
-    cmp.context == 'msg' && int.isMessageContextMenuCommand() ||
-    cmp.context == 'user' && int.isUserContextMenuCommand() ||
-    cmp.context == 'any'
+    cmp.context === 'msg' && int.isMessageContextMenuCommand() ||
+    cmp.context === 'user' && int.isUserContextMenuCommand() ||
+    cmp.context === 'any'
   ));
 }
 
@@ -453,7 +454,7 @@ async function sendModMenu(int) {
     );
 
   /** @param {Discord.StringSelectMenuInteraction} i*/
-  const filter = (i) => i.customId == id && i.user.id == int.user.id;
+  const filter = (i) => i.customId === id && i.user.id === int.user.id;
   const msg = await edit(int, { components: [actionRow] });
   const component = await msg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true, filter }).catch(() => {
     edit(int, noTime);

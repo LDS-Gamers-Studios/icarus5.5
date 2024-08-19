@@ -59,9 +59,9 @@ function parseInteraction(int) {
       command: `Modal ${int.customId}`,
       data: int.fields.fields.map(f => ({ name: f.data.label, value: f.value }))
     };
-  } else {
-    return { command: null, data: [] };
   }
+  return { command: null, data: [] };
+
 }
 
 const utils = {
@@ -78,9 +78,9 @@ const utils = {
       msg.reply(`I've placed your results in <#${utils.sf.channels.botspam}> to keep things nice and tidy in here. Hurry before they get cold!`)
         .then(utils.clean);
       return msg.client.getTextChannel(utils.sf.channels.botspam);
-    } else {
-      return msg.channel;
     }
+    return msg.channel;
+
   },
   /**
    * After the given amount of time, attempts to delete the message.
@@ -155,7 +155,7 @@ const utils = {
 
     if (confirm?.customId === confirmTrue) return true;
     else if (confirm?.customId === confirmFalse) return false;
-    else return null;
+    return null;
   },
   db: db,
   /**
@@ -213,13 +213,14 @@ const utils = {
    */
   errorHandler: function(error, message = null) {
     if (!error || (error.name === "AbortError")) return;
-
+    /* eslint-disable-next-line */
     console.error(Date());
 
     const embed = utils.embed().setTitle(error?.name?.toString() ?? "Error");
 
     if (message instanceof Discord.Message) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
+      /* eslint-disable-next-line */
       console.error(`${message.author.username} in ${loc}: ${message.cleanContent}`);
 
       message.channel.send("I've run into an error. I've let my devs know.")
@@ -231,6 +232,7 @@ const utils = {
       );
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
+      /* eslint-disable-next-line */
       console.error(`Interaction by ${message.user.username} in ${loc}`);
       if (message.isRepliable() && (message.deferred || message.replied)) message.editReply("I've run into an error. I've let my devs know.").catch(utils.noop).then(utils.clean);
       else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop).then(utils.clean);
@@ -246,10 +248,12 @@ const utils = {
       }
       embed.addFields({ name: "Interaction", value: descriptionLines.join("\n") });
     } else if (typeof message === "string") {
+      /* eslint-disable-next-line */
       console.error(message);
       embed.addFields({ name: "Message", value: message });
     }
 
+    /* eslint-disable-next-line */
     console.trace(error);
 
     let stack = (error.stack ? error.stack : error.toString());

@@ -22,7 +22,7 @@ function fieldMismatches(obj1, obj2) {
   const m2 = [];
   for (const key of keys1) {
     if (keys2.has(key)) {
-      if (obj1[key] != null && !Array.isArray(obj1[key]) && typeof obj1[key] === "object") {
+      if (obj1[key] !== null && !Array.isArray(obj1[key]) && typeof obj1[key] === "object") {
         const [m_1, m_2] = fieldMismatches(obj1[key], obj2[key]);
         for (const m of m_1) {
           m1.push(key + "." + m);
@@ -38,7 +38,7 @@ function fieldMismatches(obj1, obj2) {
   }
   for (const key of keys2) {
     if (keys1.has(key)) {
-      if (obj1[key] != null && typeof obj1[key] === "object") {
+      if (obj1[key] !== null && typeof obj1[key] === "object") {
         const [m_1, m_2] = fieldMismatches(obj1[key], obj2[key]);
         for (const m of m_1) {
           m1.push(key + "." + m);
@@ -89,7 +89,7 @@ async function pull(int) {
   });
 
   cmd.on("close", code => {
-    if (code == 0) {
+    if (code === 0) {
       int.editReply(stdout.join("\n") + "\n\nCompleted with code: " + code);
     } else {
       int.editReply(`ERROR CODE ${code}:\n${stderr.join("\n")}`);
@@ -157,7 +157,7 @@ async function register(int) {
     stderr.push(data);
   });
   cmd.on("close", code => {
-    if (code == 0) {
+    if (code === 0) {
       int.editReply("Commands registered! Restart the bot to finish.");
     } else {
       int.editReply(`ERROR CODE ${code}:\n${stderr.join("\n")}`);
@@ -169,7 +169,7 @@ async function status(int) {
   const stat = int.options.getString("status");
   if (stat) {
     // yes, i want to use an array. no, tscheck wont let me
-    if (stat == 'online' || stat == "idle" || stat == "invisible" || stat == "dnd") int.client.user.setActivity(stat);
+    if (stat === 'online' || stat === "idle" || stat === "invisible" || stat === "dnd") int.client.user.setActivity(stat);
   }
   const name = int.options.getString("activity", false);
   if (!name && !stat) {
@@ -194,9 +194,9 @@ const Module = new Augur.Module()
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
     const subcommand = int.options.getSubcommand(true);
-    const forThePing = await int.deferReply({ ephemeral: int.channelId != u.sf.channels.bottesting });
+    const forThePing = await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.bottesting });
     if (["gotobed", "reload", "register", "status"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
-    if (subcommand == "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
+    if (subcommand === "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
       case "gotobed": return goToBed(int);
       case "ping": return ping(int, forThePing);
@@ -207,17 +207,17 @@ const Module = new Augur.Module()
       case "register": return register(int);
       case "status": return status(int);
       case "reloadlib": return reloadlib(int);
+      default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },
   autocomplete: (int) => {
     const option = int.options.getFocused();
     let files;
-    if (int.options.getSubcommand() == 'reload') {
+    if (int.options.getSubcommand() === 'reload') {
       files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
     } else {
       const dir = fs.readdirSync(process.cwd(), { withFileTypes: true });
       files = [Object.keys(require('../package.json').dependencies)];
-      console.log(files);
       const fPath = (file) => `${file.parentPath}/${file.name}`;
       for (const file of dir) {
         if (file.isDirectory()) {

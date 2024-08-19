@@ -10,7 +10,7 @@ const u = require("./regUtils");
 const user = (num, req = false) => new u.user()
   .setName(`${num ?? "user"}`)
   .setDescription(`User ${num ?? ""}`)
-  .setRequired(num == 1 || req);
+  .setRequired(num === 1 || req);
 
 const list = new u.sub()
   .setName("list")

@@ -3,7 +3,8 @@
 const Augur = require("augurbot-ts"),
   axios = require('axios'),
   u = require("../utils/utils"),
-  config = require('../config/config.json');
+  config = require('../config/config.json'),
+  Module = new Augur.Module();
 
 
 /**
@@ -38,7 +39,7 @@ async function bracket(int) {
     displayTourneys.push(`${displayDate}: [${tournament.name}](${tournament.full_challonge_url})`);
   }
 
-  if (displayTourneys.length == 0) return int.editReply("Looks like there aren't any tourneys scheduled right now.");
+  if (displayTourneys.length === 0) return int.editReply("Looks like there aren't any tourneys scheduled right now.");
   const embed = u.embed()
     .setTitle("Upcoming and Current LDSG Tournaments")
     .setDescription(`\n\nCommunity Tournaments:\n${displayTourneys.join('\n')}`);
@@ -50,11 +51,13 @@ async function champs(int) {
   await int.deferReply({ ephemeral: true });
   const tName = int.options.getString('tournament');
   const user = (str) => int.options.getMember(str);
-  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr != null));
+  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].map(usr => usr?.id).filter(usr => usr !== null));
   const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
   // @ts-expect-error
   await u.sheet("Tourney Champions").addRows(users.map(usr => ({ "Tourney Name": tName, "User ID": usr?.id, "Take Role At": date })));
-  for (const member of users) {
+  for (const usr of users) {
+    const member = int.guild.members.cache.get(usr ?? "");
+    if (!member) continue;
     member?.roles.add(u.sf.roles.champion);
   }
   const s = users.length > 1 ? 's' : '';
@@ -89,29 +92,29 @@ async function participant(int) {
       let content = `I removed the ${role} role from ${user}`;
       await user.roles.remove(role.id).catch(() => content = `I couldn't remove the ${role} role from ${user}`);
       return int.editReply(content);
-    } else {
-      return int.editReply(`${user} doesn't have the ${role} role`);
     }
+    return int.editReply(`${user} doesn't have the ${role} role`);
+
   } else if (!user.roles.cache.has(role.id)) {
     let content = `I added the ${role} role to ${user}`;
     await user.roles.add(role.id).catch(() => content = `I couldn't add the ${role} role to ${user}`);
     return int.editReply({ content });
-  } else {
-    return int.editReply(`${user} already has the ${role} role`);
   }
+  return int.editReply(`${user} already has the ${role} role`);
+
 }
 
-const Module = new Augur.Module()
-.addInteraction({ name: "tournament",
+Module.addInteraction({ name: "tournament",
   id: u.sf.commands.slashTournament,
   onlyGuild: true,
   // Only /tournament list is publicly available
-  permissions: (int) => int.options.getSubcommand() == 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
+  permissions: (int) => int.options.getSubcommand() === 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
   process: async (int) => {
     switch (int.options.getSubcommand()) {
       case "list": return bracket(int);
       case "champion": return champs(int);
       case "participant": return participant(int);
+      default: return u.errorHandler(new Error("Unhandled Subcomand"), int);
     }
   }
 });

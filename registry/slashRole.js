@@ -2,7 +2,7 @@
 const u = require("./regUtils");
 
 const role = (action = "add") => new u.string()
-  .setName(action == 'equip' ? "color-role" : "role")
+  .setName(action === 'equip' ? "color-role" : "role")
   .setDescription(`The role to ${action}`)
   .setRequired(true)
   .setAutocomplete(true);

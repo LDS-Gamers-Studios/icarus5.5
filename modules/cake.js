@@ -2,10 +2,11 @@
 const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
-  u = require("../utils/utils");
+  u = require("../utils/utils"),
+  Module = new Augur.Module();
 
 function celebrate() {
-  if (u.moment().hours() == 15) {
+  if (u.moment().hours() === 15) {
     testBirthdays().catch(error => u.errorHandler(error, "Test Birthdays"));
     testCakeDays().catch(error => u.errorHandler(error, "Test Cake Days"));
   }
@@ -20,8 +21,8 @@ let tenureCache = new u.Collection();
  * @param {boolean} checkYear
 */
 function checkDate(date, today, checkYear) {
-  if (date.month() == 1 && date.date() == 29) date.subtract(1, "day");
-  return date.month() == today.month() && date.date() == today.date() && (checkYear ? date.year() < today.year() : true);
+  if (date.month() === 1 && date.date() === 29) date.subtract(1, "day");
+  return date.month() === today.month() && date.date() === today.date() && (checkYear ? date.year() < today.year() : true);
 }
 
 /**
@@ -96,13 +97,13 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
     const unapplied = [];
     for (const [memberId, member] of members.filter(m => m.roles.cache.has(u.sf.roles.trusted))) {
       try {
-        const offset = offsets.find(o => o.discordId == memberId);
+        const offset = offsets.find(o => o.discordId === memberId);
         const join = u.moment(testJoinDate ?? member.joinedAt ?? 0).subtract(offset?.priorTenure || 0, "days");
         if (checkDate(join, now, true)) {
           const years = now.year() - join.year();
           // yell at devs if not
           if (tenureCache.has(years)) {
-            const roles = tenureCache.filter((r, y) => member.roles.cache.has(r) && y != years);
+            const roles = tenureCache.filter((r, y) => member.roles.cache.has(r) && y !== years);
             roles.delete(years);
             await member.roles.remove([...roles.values()]).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
             await member.roles.add(tenureCache.get(years) ?? "").catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
@@ -132,8 +133,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
   } catch (e) { u.errorHandler(e, "Cake Days"); }
 }
 
-const Module = new Augur.Module()
-.addEvent("ready", () => {
+Module.addEvent("ready", () => {
   // Populate tenureCache
   const guild = Module.client.guilds.cache.get(u.sf.ldsg);
   if (!guild) return;
@@ -154,9 +154,9 @@ const Module = new Augur.Module()
     // @ts-ignore cuz google sheets be dumb
     const roles = await u.sheet("Roles").getRows();
 
-    const a = roles.filter(r => r["Type"] == "Year").map(r => {
+    const a = roles.filter(r => r.Type === "Year").map(r => {
       return {
-        year: parseInt(r["Level"]),
+        year: parseInt(r.Level),
         role: r["Base Role ID"],
       };
     });
@@ -168,8 +168,8 @@ const Module = new Augur.Module()
 })
 // Janky stuff, but it works!!! (for now lol)
 .setUnload((date, type) => {
-  if (type == "cake") testCakeDays(undefined, date);
-  else if (type == "bday") testBirthdays(undefined, date);
+  if (type === "cake") testCakeDays(undefined, date);
+  else if (type === "bday") testBirthdays(undefined, date);
 })
 .addCommand({ name: "bday",
   permissions: () => config.devMode,
