@@ -252,6 +252,7 @@ async function streamUnlock(int, channel, trying = false) {
     }
     return { msg: "Your voice channel isn't stream locked!", int };
   }
+  if (!channel.permissionsFor(int.member).has("Speak")) return { msg: "You can't unlock the channel if you can't speak!", int };
   // remove perms for people who could speak before
   const toRemove = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id).concat([u.sf.ldsg]);
   const newPerms = overwrite(channel, [{ users: toRemove, remove: ["Speak"] }]);
@@ -261,6 +262,7 @@ async function streamUnlock(int, channel, trying = false) {
 /** @type {voice} */
 async function streamAllow(int, channel) {
   if (!isStreamLocked(channel)) return { msg: "Your voice channel isn't stream locked!", int };
+  if (!channel.permissionsFor(int.member).has("Speak")) return { msg: "You can't allow people to talk if you can't!", int };
   const user = await getUser(int, "allow to talk");
   if (user == null) return false;
 
@@ -277,11 +279,13 @@ async function streamAllow(int, channel) {
 /** @type {voice} */
 async function streamDeny(int, channel) {
   if (!isStreamLocked(channel)) return { msg: "Your voice channel isn't stream locked!" + (isLocked(channel) ? " Try the button for kicking users." : ""), int };
+  if (!channel.permissionsFor(int.member).has("Speak")) return { msg: "You can't deny people from talking if you can't!", int };
   const user = await getUser(int, "prevent from talking");
   if (user == null) return false;
 
   const { member, newInt } = user;
   if (!member) return { msg: noUser, int: newInt };
+  if (member.id == user.id) return { msg: `You can't deny yourself from speaking!` };
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id);
   if (!allowedSpeak.includes(member.id)) return { msg: `${member} wasn't able to speak in the first place!`, int: newInt };
 
@@ -292,6 +296,7 @@ async function streamDeny(int, channel) {
 
 /** @type {voice} */
 async function kickUser(int, channel) {
+  if (!channel.permissionsFor(int.member).has("Speak")) return { msg: "You can't kick from the channel if you can't speak!", int };
   const user = await getUser(int, "kick from the channel");
   if (user == null) return false;
 
@@ -381,9 +386,9 @@ const Module = new Augur.Module()
     else int.editReply(result.msg ?? "I ran into an error.");
   }
 })
-.addEvent("voiceStateUpdate", (oldState, newState) => {
+.addEvent("voiceStateUpdate", async (oldState, newState) => {
   if (oldState.guild.id != u.sf.ldsg) return;
-  updateChannels(oldState, newState);
+  await updateChannels(oldState, newState);
   if (oldState.channel || !newState.channel || !newState.member || newState.channel.parentId != u.sf.channels.voiceCategory) return;
   const components = getComponents(newState.member.user, newState.channel);
   if (newState.channel.members.size == 1) newState.channel.send({ embeds: components.embeds, components: components.components });
