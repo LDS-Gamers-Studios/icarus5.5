@@ -1,25 +1,6 @@
 const Augur = require("augurbot"),
   u = require("../utils/utils");
 const emoji = require('../utils/emojiCharacters.js');
-
-function quickFile(msg, file, name = null, showName = true) {
-  if (Array.isArray(file))
-    file = u.rand(file);
-
-  u.clean(msg, 0);
-  msg.channel.send(
-    (showName ? ((msg.member ? msg.member.displayName : msg.author.username) + " right now:") : ""),
-    { files: [
-      (name ? {attachment: file, name: name} : file)
-    ]}
-  ).catch(e => u.errorHandler(e, msg));
-}
-
-function quickText(msg, text) {
-  u.clean(msg, 0);
-  msg.channel.send(text).catch(e => u.errorHandler(e, msg));
-}
-
 // const Module = new Augur.Module()
 // .addCommand({name: "acronym",
 //   description: "Get a random 3-5 letter acronym. For science.",
@@ -52,7 +33,7 @@ function quickText(msg, text) {
 //   category: "Silly",
 //   process: (msg, suffix) => {
 //     u.clean(msg, 0);
-//     if (suffix) msg.channel.send(`${(msg.member ? msg.member.displayName : msg.author.username)}:\nALL THE ${suffix.toUpperCase()}!`, {files: ["https://cdn.discordapp.com/emojis/250348426817044482.png"]});
+//     if (suffix) msg.channel.send(`${(msg.member ? msg.member.displayName : interaction.user.username)}:\nALL THE ${suffix.toUpperCase()}!`, {files: ["https://cdn.discordapp.com/emojis/250348426817044482.png"]});
 //   }
 // })
 // .addCommand({name: "color",
@@ -134,7 +115,7 @@ function quickText(msg, text) {
 //       for (const [id, user] of msg.mentions.users) {
 //         try {
 //           let hug = u.rand(hugs);
-//           user.send(`Incoming hug from **${msg.author.username}**!`, {files: [{"attachment": hug, "name": "hug.gif"}]})
+//           user.send(`Incoming hug from **${interaction.user.username}**!`, {files: [{"attachment": hug, "name": "hug.gif"}]})
 //           .catch(e => {
 //             msg.reply(`I couldn't send a hug to ${msg.guild.members.cache.get(user.id).displayName}. Maybe they blocked me? :shrug:`).then(u.clean);
 //           });
@@ -214,25 +195,127 @@ function quickText(msg, text) {
 //     msg.channel.send(`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
 //   }
 // })
-// .addCommand({name: "repost",
-//   description: "That's a repost.",
-//   category: "Silly",
-//   process: (msg) => {
-//     u.clean(msg, 0);
-//     const repost = msg.channel.messages.cache
-//       .filter(m => m.attachments.size > 0)
-//       .last()
-//       .attachments.first().url;
-//     msg.channel.send("reposting from "+repost.sender+" at the request of "+int.requester+":"+ {files: [repost]});
-//   }
-// })
+
+  
 // .addEvent("messageReactionAdd", (reaction, user) => {
 //   if ((reaction.message.channel.id == "121755900313731074") && (reaction.emoji.name == "♻️")) {
 //     reaction.remove();
 //     reaction.message.react("⭐").catch(u.noop);
 //   }
 // });
+/**
+ * function rollOldInt
+ * @param {Discord.ChatInputCommandInteraction} int a /fun rollOld interaction
+ */
+async function rollOldInt(int) {
+  const rollsolts = rollOld(int.options.getString('rollsInOldFormat'));
+  return await int.editReply(rollsolts.useroutput);
+}
+/**
+ * function rollOld
+ * @param string rolls roll formula in old !roll format
+ * @returns {int total, int[] rolls, string useroutput} Object with 3 key/value pairs. total, an int with the total of all of the rolls; rolls, an int[] with the result of each roll; and useroutput, output or error in human readable format
+ */
+async function rollOld(rollFormula) {
+  if (!rollFormula) rollFormula = "1d6";
+    rollFormula = rollFormula.toLowerCase().replace(/-/g, "+-").replace(/ /g, "");
+    let diceExp = /(\d+)?d\d+(\+-?(\d+)?d?\d+)*/;
+    let dice = diceExp.exec(rollFormula);
+    let fateExp = /(\d+)?df(\+-?\d+)?/i;
+    let fate = fateExp.exec(rollFormula);
+    if (dice) {
+      let exp = dice[0].replace(/\+-/g, "-");
+      dice = dice[0].split("+");
 
+      let rolls = [];
+      let total = 0;
+
+      dice.forEach((d, di) => {
+        rolls[di] = [];
+        if (d.includes("d")) {
+          let add = (d.startsWith("-") ? -1 : 1);
+          if (add == -1) d = d.substr(1);
+          if (d.startsWith("d")) d = `1${d}`;
+          let exp = d.split("d");
+          let num = parseInt(exp[0], 10);
+          if (num && num <= 100) {
+            for (var i = 0; i < num; i++) {
+              let val = Math.ceil(Math.random() * parseInt(exp[1], 10)) * add;
+              rolls[di].push((i == 0 ? `**${d}:** ` : "") + val);
+              total += val;
+            };
+          } else {
+            return {"total":0, "rolls":0, "useroutput":"I'm not going to roll *that* many dice... 🙄"};
+          }
+        } else {
+          total += parseInt(d, 10);
+          rolls[di].push(`**${d}**`);
+        }
+      });
+      if (rolls.length > 0) {
+        let response = `${interaction.user} rolled ${exp} and got:\n${total}`
+          + ((rolls.reduce((a, c) => a + c.length, 0) > 20) ? "" : ` ( ${rolls.reduce((a, c) => a + c.join(", ") + "; ", "")})`);
+          return {"total":total, "rolls":rolls, "useroutput":response};
+      } else
+      return {"total":0, "rolls":0, "useroutput":"you didn't give me anything to roll."};
+    } else if (fate) {
+      let exp = fate[0].replace(/\+-/g, "-");
+      dice = fate[0].split("+");
+
+      let rolls = [];
+      dice.forEach(d => {
+        if (d.includes("df")) {
+          let add = (d.startsWith("-") ? -1 : 1);
+          if (add == -1) d = d.substr(1);
+          if (d.startsWith("df")) d = `1${d}`;
+          let num = parseInt(d, 10);
+          if (num && num <= 100)
+            for (var i = 0; i < num; i++) rolls.push( (Math.floor(Math.random() * 3) - 1) * add );
+          else {
+            return {"total":0, "rolls":0, "useroutput":"I'm not going to roll *that* many dice... 🙄"};
+          }
+        } else rolls.push(parseInt(d, 10));
+        return {"total":total, "rolls":rolls, "useroutput":response};
+      });
+      if (rolls.length > 0) {
+        let response = `${interaction.user} rolled ${exp} and got:\n${rolls.reduce((c, d) => c + d, 0)}`
+          + ((rolls.length > 20) ? "" : ` (${rolls.join(", ")})`);
+      } else
+      return {"total":0, "rolls":0, "useroutput":"you didn't give me anything to roll."};
+    } else
+      return {"total":0, "rolls":0, "useroutput":"that wasn't a valid dice expression."};
+  }
+/**
+ * function rollFInt
+ * @param {Discord.ChatInputCommandInteraction} int a /fun rollF interaction
+ */
+async function rollFInt(int) {
+  const rollsolts = rollf(int.options.getInteger('dice'),options.getInteger('modifier'));
+  return await int.editReply(rollsolts.useroutput);
+}
+/**
+ * function rollf
+ * @param int dice number of dice to roll (defaults to 1)
+ * @param int modifier modifier to add to roll result (defaults to 0)
+ * @returns {int total, int[] rolls, string useroutput} Object with 3 key/value pairs. total, an int with the total of all of the rolls; rolls, an int[] with the result of each roll; and useroutput, output or error in human readable format
+ */
+async function rollf(dice, modifier) {
+  if (!dice) dice=1
+  if (!modifier) modifier=0
+  let rolls = [];
+  let num = dice;
+  if (num && num <= 100)
+    for (var i = 0; i < num; i++) rolls.push( (Math.floor(Math.random() * 3) - 1) * add );
+  else {
+    return {"total":0, "rolls":0, "useroutput":"I'm not going to roll *that* many dice... 🙄"};
+  }
+  if (rolls.length > 0) {
+    let response = `${interaction.user} rolled ${exp} and got:\n${rolls.reduce((c, d) => c + d, 0)}`
+    + ((rolls.length > 20) ? "" : ` (${rolls.join(", ")})`);
+    return {"total":total, "rolls":rolls, "useroutput":response};
+  } else
+    return {"total":0, "rolls":0, "useroutput":"you didn't give me anything to roll."}; 
+}
 /**
  * function rollInt
  * @param {Discord.ChatInputCommandInteraction} int a /fun roll interaction
@@ -245,7 +328,7 @@ async function rollInt(int) {
  * function roll
  * @param int dice number of dice to roll (defaults to 1)
  * @param int sides side count of dice (defaults to 6)
- * @param int modifier side count of dice (defaults to 0)
+ * @param int modifier modifier to add to roll result (defaults to 0)
  * @returns {int total, int[] rolls, string useroutput} Object with 3 key/value pairs. total, an int with the total of all of the rolls; rolls, an int[] with the result of each roll; and useroutput, output or error in human readable format
  */
   async function roll(dice, sides, modifier) {
@@ -276,19 +359,19 @@ async function rollInt(int) {
       rolls[di].push(`**${d}**`);
     }
     if (rolls.length > 0) {
-      let response = `${msg.author} rolled ${exp} and got:\n${total}`
+      let response = `${interaction.user} rolled ${exp} and got:\n${total}`
         + ((rolls.reduce((a, c) => a + c.length, 0) > 20) ? "" : ` ( ${rolls.reduce((a, c) => a + c.join(", ") + "; ", "")})`);
       return {"total":total, "rolls":rolls, "useroutput":response};
     } else
       return {"total":0, "rolls":0, "useroutput":"you didn't give me anything to roll."}; 
   }
   /**
- * function rollInt
+ * function ball8
  * @param {Discord.ChatInputCommandInteraction} int a /fun 8ball interaction
  */
   async function ball8(int) {
-    suffix = int.options.getString("question")
-    if (!suffix || !suffix.endsWith("?")) {
+    question = int.options.getString("question")
+    if (!question || !question.endsWith("?")) {
       return await int.editReply("you need to ask me a question, silly.")
     } else {
       const outcomes = [
@@ -313,10 +396,18 @@ async function rollInt(int) {
         "Outlook not so good.",
         "Very doubtful."
       ];
-      return await int.editReply("You asked "+suffix+".\nThe 8ball replies:\n"+u.rand(outcomes));
+      return await int.editReply("You asked "+question+".\nThe 8ball replies:\n"+u.rand(outcomes));
     }
   }
-
+  /**
+ * function repost
+ * @param {Discord.ChatInputCommandInteraction} int a /fun repost interaction
+ */
+  async function repost(int) {
+    const repost = int.channel.messages.cache.filter(m => m.attachments.size > 0)
+    .last();
+    return await int.editReply(repost);
+  }
 
 
 const Module = new Augur.Module()
@@ -328,8 +419,11 @@ const Module = new Augur.Module()
     const subcommand = int.options.getSubcommand(true);
     await int.deferReply({ ephemeral: true });
     switch (subcommand) {
-      case "roll": return roll(int);
+      case "roll": return rollInt(int);
+      case "rollf": return rollFInt(int);
+      case "rollOld": return rollOldInt(int);
       case "8ball": return ball8(int);
+      case "repost": return repost(int);
       // case "birthday": return runBirthday(int);
       // case "banner": {
       //   int.editReply("Setting banner...");
