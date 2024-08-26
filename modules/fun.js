@@ -419,7 +419,7 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashFun,
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
-    await int.deferReply({ ephemeral: true });
+    await int.deferReply();//{ ephemeral: true });
     switch (subcommand) {
       case "roll": return rollInt(int);
       case "rollf": return rollFInt(int);
