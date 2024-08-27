@@ -26,7 +26,7 @@ const roll = new u.sub()
     .setDescription("How much to change the roll by? (defaults to 0)")
     .setRequired(false)
   );
-  const rollF = new u.sub()
+const rollF = new u.sub()
   .setName("rollf")
   .setDescription("Roll Fate Dice")
   .addIntegerOption(
@@ -43,7 +43,7 @@ const roll = new u.sub()
     .setDescription("How much to change the roll by? (defaults to 0)")
     .setRequired(false)
   );
-  const rollOld = new u.sub()
+const rollOld = new u.sub()
   .setName("rollold")
   .setDescription("Roll Dice using the old formula format")
   .addStringOption(
@@ -60,11 +60,57 @@ const ball8 = new u.sub()
     .setDescription("What do you wish to ask the 8-ball today?")
     .setRequired(true)
   );
+const allthe = new u.sub()
+  .setName("allthe")
+  .setDescription("ALL THE _____!")
+  .addStringOption(
+    new u.string()
+    .setName("thing")
+    .setDescription("something")
+    .setRequired(true)
+  );
 const repost = new u.sub()
 .setName("repost")
 .setDescription("That's a repost.");
-
-
+const acronym = new u.sub()
+.setName("acronym")
+.setDescription("Get a random 3-5 letter acronym. For science.");
+const mines = new u.sub()
+  .setName("mines")
+  .setDescription("Play a game of Minesweeper!")
+  .addStringOption(
+    new u.string()
+    .setName("difficulty")
+    .setDescription("5 by 5 with 5 mines, 10 by 10 with 30 mines, or 14 by 14 with 60 mines")
+    .setRequired(true)
+    .setChoices(
+      { name: "Easy", value: "Easy" },
+      { name: "Medium", value: "Medium" },
+      { name: "Hard", value: "Hard" })
+  );
+const hbs = new u.sub()
+  .setName("hbs")
+  .setDescription("Play a game of Handicorn, Buttermelon, Sloth!")
+  .addStringOption(
+    new u.string()
+    .setName("choice")
+    .setDescription("your choice of Handicorn, Buttermelon, or Sloth!")
+    .setRequired(true)
+    .setChoices(
+      { name: "Handicorn", value: "Handicorn" },
+      { name: "Buttermelon", value: "Buttermelon" },
+      { name: "Sloth", value: "Sloth" })
+  )
+  .addStringOption(
+    new u.string()
+    .setName("vsmode")
+    .setDescription("vs icarus, vs stored, or set stored")
+    // .setRequired(false)
+    .setChoices(
+      { name: "vsicarus", value: "vsicarus" },
+      { name: "vsstored", value: "vsstored" },
+      { name: "setstored", value: "setstored" })
+  );
 module.exports = new u.cmd()
   .setName("fun")
   .setDescription("Its all fun and games till someone gets banned.")
@@ -73,4 +119,8 @@ module.exports = new u.cmd()
   .addSubcommand(rollOld)
   .addSubcommand(ball8)
   .addSubcommand(repost)
+  .addSubcommand(mines)
+  .addSubcommand(acronym)
+  .addSubcommand(allthe)
+  .addSubcommand(hbs)
   .toJSON();
