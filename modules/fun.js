@@ -64,9 +64,9 @@ const Augur = require("augurbot-ts"),
 //   }
 // })
 const hbsValues = {
-  "Buttermelon": { emoji: ":buttermelon:1277852466175676489", value: 0 },
-  "Handicorn": { emoji: ":handicorn:1277852541224488990", value: 1 },
-  "Sloth": { emoji: ":sloth:", value: 2 }
+  "Buttermelon": { emoji: "<:buttermelon:1277852466175676489>", value: 0 },//305039588014161921 for ldsg
+  "Handicorn": { emoji: "<:handicorn:>:handicorn:1277852541224488990", value: 1 },//305038099254083594 for ldsg
+  "Sloth": { emoji: "<:sloth:305037088200327168>", value: 2 }
 };
 function hbsChooseRandom() {
   return u.rand(Object.keys(hbsValues));
