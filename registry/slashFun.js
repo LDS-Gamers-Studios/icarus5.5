@@ -111,6 +111,24 @@ const hbs = new u.sub()
       { name: "vsstored", value: "vsstored" },
       { name: "setstored", value: "setstored" })
   );
+
+const color = new u.sub()
+  .setName("color")
+  .setDescription("Show what a color looks like.")
+  .addStringOption(
+    new u.string()
+    .setName("color")
+    .setDescription("color (e.g. `#003B6F` or `blue`)")
+  );
+const hug = new u.sub()
+  .setName("hug")
+  .setDescription("Send a much needed hug.")
+  .addUserOption(
+    new u.user()
+    .setName("hugee")
+    .setDescription("Who do you want to hug?")
+    .setRequired(true)
+  );
 module.exports = new u.cmd()
   .setName("fun")
   .setDescription("Its all fun and games till someone gets banned.")
@@ -123,4 +141,6 @@ module.exports = new u.cmd()
   .addSubcommand(acronym)
   .addSubcommand(allthe)
   .addSubcommand(hbs)
+  .addSubcommand(color)
+  .addSubcommand(hug)
   .toJSON();
