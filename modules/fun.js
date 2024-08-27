@@ -64,8 +64,8 @@ const Augur = require("augurbot-ts"),
 //   }
 // })
 const hbsValues = {
-  "Buttermelon": { emoji: ":buttermelon:", value: 0 },
-  "Handicorn": { emoji: ":handicorn:", value: 1 },
+  "Buttermelon": { emoji: ":buttermelon:1277852466175676489", value: 0 },
+  "Handicorn": { emoji: ":handicorn:1277852541224488990", value: 1 },
   "Sloth": { emoji: ":sloth:", value: 2 }
 };
 function hbsChooseRandom() {
