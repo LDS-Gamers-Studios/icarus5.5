@@ -3,6 +3,10 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   u = require("../utils/utils"),
   mineSweeperEmojis = { 0:'0⃣', 1:'1⃣', 2:'2⃣', 3:'3⃣', 4:'4⃣', 5:'5⃣', 6:'6⃣', 7:'7⃣', 8:'8⃣', 9:'9⃣', 10:'🔟', "bomb":`💣` };
+/**
+ * function hug
+ * @param {Discord.ChatInputCommandInteraction} int a /fun hug interaction
+ */
 async function hug(int) {
   const hugs = [
     "http://24.media.tumblr.com/72f1025bdbc219e38ea4a491639a216b/tumblr_mo6jla4wPo1qe89guo1_1280.gif",
@@ -12,11 +16,18 @@ async function hug(int) {
   try {
     const hugImg = u.rand(hugs);
     hugee.send({ content:`Incoming hug from **${int.user.username}**!`, files: [{ attachment:hugImg, name:"hug.gif" }] });
+    //alternatively:
+    // return int.editReply({ content:`**${int.user.username}** hugs **${hugee}**!`, files: [{ attachment:hugImg, name:"hug.gif" }] });
+    //or just remove the .addSubcommand(hug) line from slashFun.js.
   } catch (e) {
     return int.editReply(`I couldn't send a hug to ${hugee.displayName}. Maybe they blocked me? :shrug:`);
   }
   return int.editReply("Hug on the way!");
 }
+/**
+ * function color
+ * @param {Discord.ChatInputCommandInteraction} int a /fun color interaction
+ */
 async function color(int) {
   let colorCode = int.options.getString("color");
   if (!colorCode) {
@@ -48,16 +59,31 @@ const hbsValues = {
   "Handicorn": { emoji: "<:handicorn:305038099254083594>", value: 1 }, 
   "Sloth": { emoji: "<:sloth:305037088200327168>", value: 2 }
 };
+/**
+ * function hbsChooseRandom
+ * @return {string} a random choice for hbs
+ */
 function hbsChooseRandom() {
   return u.rand(Object.keys(hbsValues));
 }
 let cachedChooser = 'Icarus';
 let cachedChoice = hbsChooseRandom();
+/**
+ * function hbsInt
+ * @param {Discord.ChatInputCommandInteraction} int a /fun hbs interaction
+ */
 async function hbsInt(int) {
   const tosend = hbs(int.options.getString("vsmode"), int.options.getString("choice"), "<@" + int.user + ">");
   int.deleteReply();
   int.channel.send(tosend);
 }
+/**
+ * function hbs
+ * @param {string} mode whether to store the choice, use the choice against the stored choice, or use the choice against a random generated choice. defaults to vs ai
+ * @param {string} choice a "Handicorn", "Buttermelon", or "Sloth" choice
+ * @param {string} chooser string to refer to a user by, whether a ping or not.
+ * @return {string} a response, including a header, what happened, and if applicable who won.
+ */
 function hbs(mode, choice, chooser) {
   switch (mode) {
     case ("setstored"):
@@ -96,13 +122,25 @@ function hbs(mode, choice, chooser) {
   }
 }
 
+/**
+ * function allthe
+ * @param {Discord.ChatInputCommandInteraction} int a /fun allthe interaction
+ */
 async function allthe(int) {
   const thing = int.options.getString('thing');
   int.editReply({ content:`${int.user.username}:\nALL THE ${thing.toUpperCase()}!`, files: [{ attachment:"https://cdn.discordapp.com/emojis/250348426817044482.png", name:"allthe.png" }] });
 }
+/**
+ * function acronymInt
+ * @param {Discord.ChatInputCommandInteraction} int a /fun acronym interaction
+ */
 async function acronymInt(int) {
-  return int.editReply(acronym());
+  return int.editReply("I've always wondered what __**" + acronym() + "**__ stood for...");
 }
+/**
+ * function acronym
+ * @returns {string} a randomly generated, clean, acronym
+ */
 function acronym() {
   const alphabet = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "Y", "Z"];
   const len = Math.floor(Math.random() * 3) + 3;
@@ -110,19 +148,24 @@ function acronym() {
   const pf = new profanityFilter();
   let wordgen = [];
 
-  while (wordgen.length == 0) {
+  while (true) {
     for (let i = 0; i < len; i++) {
       wordgen.push(alphabet[Math.floor(Math.random() * alphabet.length)]);
     }
     const word = wordgen.join("");
 
     if (pf.scan(word.toLowerCase()).length == 0) {
-      return "I've always wondered what __**" + word + "**__ stood for...";
+      return word;
     } else {
       wordgen = [];
     }
   }
 }
+
+/**
+ * function minesweeperInt
+ * @param {Discord.ChatInputCommandInteraction} int a /fun minesweeper interaction
+ */
 async function minesweeperInt(int) {
   let size, mineCount;
   switch (int.options.getString("difficulty")) {
@@ -169,6 +212,13 @@ async function minesweeperInt(int) {
   }
   return int.channel.send(degradingField);
 }
+
+/**
+ * function minesweeper
+ * @param {number} size edge length of the minesweeper game to generate
+ * @param {number} mineCount the number of mines to put in the game
+ * @return {string} a textual minesweeper game with a header and using || spoilers.
+ */
 function minesweeper(size, mineCount) {
   // Getting all possible board spaces
   const possibleSpaces = Array.from({ length: size * size }, (v, k) => k);
