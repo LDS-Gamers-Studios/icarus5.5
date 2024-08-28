@@ -102,8 +102,6 @@ function hbs(mode, choice, chooser) {
     default:
     case ("vsicarus"): {
       const aiChoice = hbsChooseRandom();
-      // console.log("choice");
-      // console.log(choice);
       return "**Handicorn, Buttermelon, Sloth, Fight!**\n" +
       chooser + " challenged Icarus!\n" + hbsResult("Icarus", aiChoice, chooser, choice);
     }
@@ -204,12 +202,7 @@ async function minesweeperInt(int) {
   }
   while (countEmoji(degradingField) > 99) {
     let segment = "";
-    // console.log("addMessage");
-    // console.log("\"" + degradingField + "\"");
     while (countEmoji(segment + degradingField.substring(0, degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length)) <= 99) {
-      // console.log("addLineToMessage");
-      // console.log("\"" + segment + "\"");
-      // console.log("\"" + degradingField + "\"");
       segment += degradingField.substring(0, (degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length) + 1);
       degradingField = degradingField.substring((degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length) + 1);
     }
@@ -271,7 +264,6 @@ function minesweeper(size, mineCount) {
     }
   }
   const output = board.map(row => row.map(num => `||${num == 9 ? mineSweeperEmojis["bomb"] : mineSweeperEmojis[num]}||`).join("")).join("\n");
-  // console.log(output);
   return (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
 }
 
@@ -405,9 +397,6 @@ function rollf(dice, modifier) {
  */
 async function rollInt(int) {
   const rollsolts = rollDice(int.options.getInteger('dice'), int.options.getInteger('sides'), int.options.getInteger('modifier'));
-  // console.log("rollsolts")
-  // console.log(rollsolts)
-  // console.log(rollsolts.useroutput)
   return int.editReply(rollsolts.useroutput);
 }
 /**
@@ -524,7 +513,7 @@ function buttermelonEdit(msg) {
   if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent.toLowerCase() == "test")) {
     msg.channel.send((Math.random() < 0.8 ? "`pass`" : "`fail`"));
   }
-  const exclude = ['121033996439257092', '164784857296273408'];
+  const exclude = ['121033996439257092', '164784857296273408'];// IDK where these are so hardcoded they shall currently remain.
   const roll = Math.random();
   if (roll < 0.3 && !msg.author.bot && !exclude.includes(msg.channel.id)) {
     // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;
