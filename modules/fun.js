@@ -542,6 +542,6 @@ const Module = new Augur.Module()
 //       reaction.remove();
 //       reaction.message.react("⭐").catch(u.noop);
 //     }
-  });
+});
 
 module.exports = Module;
