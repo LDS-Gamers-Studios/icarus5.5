@@ -32,7 +32,7 @@ async function slashLdsgSuggest(int) {
     .setTitle("Suggestion")
     .setDescription(suggestion)
     .setFooter({ text: int.user.id });
-  await int.client.getForumChannel(u.sf.channels.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user}`, message: { content: suggestion ?? "", embeds: [embed], components: replyOption } });
+  await int.client.getForumChannel(u.sf.channels.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user}`, message: { content: suggestion, embeds: [embed], components: replyOption } });
   int.editReply("Sent!");
   return int.user.send({ content: "You have sent the following suggestion to the LDSG Team for review:", embeds: [embed] });
 }
@@ -97,8 +97,7 @@ async function processCardAction(int) {
         member.send({ embeds: [em] });
         return int.channel?.send({ content: "Replied to user:", embeds: [em] });
       } catch (e) {
-        u.errorHandler(e, int);
-        return int.channel?.send("Failed to message member, they may have me blocked. You will need to reach out to them on your own this time!");
+        return int.channel?.send(`Failed to message ${member}, they may have me blocked. You will need to reach out to them on your own this time!`);
       }
     } else if (int.customId == "suggestionManage") {
       if (!int.channel) return int.reply({ content: "Channel error", ephemeral: true });
@@ -107,28 +106,28 @@ async function processCardAction(int) {
       const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
         return null;
       });
-      if (!submitted) return int.channel?.send("I fell asleep waiting for your input...");
+      if (!submitted) return int.editReply("I fell asleep waiting for your input...");
       await submitted.deferUpdate();
       const title = submitted.fields.getTextInputValue("renameText");
       const issue = submitted.fields.getTextInputValue("issueText");
       const cause = submitted.fields.getTextInputValue("causeText");
-      if (!title && !issue && !cause) return int.followUp({ content: "I need some stuff to change!", ephemeral: true });
-      const fields = int.message.embeds[0].fields;
+      if (!title && !issue && !cause) return submitted.reply({ content: "I need some stuff to change!", ephemeral: true });
       const em = u.embed(int.message.embeds[0]);
+      const fields = em.data.fields;
       if (title) {
         try {
           const old = post?.name;
           await post?.setName(title);
-          em.setTitle(title);
+          em.setDescription(title);
           int.followUp({ content: `> Changed title from "${old}" to "${title}"`, ephemeral: true });
         } catch (e) {
           u.errorHandler(e, int);
           return int.channel.send("Failed to rename forum post");
         }
       }
-      if (issue) em.setFields([...fields.filter(f => f.name != "Issue"), { name: "Issue", value: issue }]);
-      if (cause) em.setFields([...fields.filter(f => f.name != "Root Cause"), { name: "Root Cause", value: cause }]);
-      return int.message.edit({ content: int.message.content, embeds: [em], components: replyOption });
+      if (issue) em.setFields([...(em.data.fields || []).filter(f => f.name != "Issue"), { name: "Issue", value: issue }]);
+      if (cause) em.setFields([...(em.data.fields || []).filter(f => f.name != "Root Cause"), { name: "Root Cause", value: cause }]);
+      return await int.message.edit({ content: int.message.content, embeds: [em], components: replyOption });
     }
   } catch (e) { u.noop; }
 }
@@ -147,10 +146,12 @@ const Module = new Augur.Module()
   })
   .addEvent("interactionCreate", (int) => {
     if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
-    if (!u.perms.calc(int.member, ["team", "mgr"])) {
-      return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
-    }
-    if (int.customId.startsWith("suggestion")) return processCardAction(int);
+    if (int.customId.startsWith("suggestion")){
+      if (!u.perms.calc(int.member, ["team", "mgr"])) {
+        return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
+      }
+      return processCardAction(int);
+    } 
   });
 
 module.exports = Module;
