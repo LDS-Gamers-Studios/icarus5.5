@@ -521,7 +521,7 @@ async function buttermelon(int) {
  * @param {Discord.Message} msg a message containing bannana(s)
  */
 function buttermelonEdit(msg) {
-  if ((msg.channel.id == "203518149809799168") && (msg.cleanContent.toLowerCase() == "test")) {
+  if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent.toLowerCase() == "test")) {
     msg.channel.send((Math.random() < 0.8 ? "`pass`" : "`fail`"));
   }
   const exclude = ['121033996439257092', '164784857296273408'];
@@ -530,17 +530,17 @@ function buttermelonEdit(msg) {
     // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;
     if (msg.content.toLowerCase().includes("bananas")) {
       if (roll < 0.1) {
-        msg.channel.send({ files: ["https://cdn.discordapp.com/attachments/154625360514777088/239045323522179073/buttermelons.jpg"] }).catch(u.noop);
+        msg.channel.send({ files: [new Discord.AttachmentBuilder('data/buttermelonsMan.jpeg')] }).catch(u.errorHandler);
       } else {
-        msg.channel.send("*buttermelons").catch(u.noop);
+        msg.channel.send("*buttermelons").catch(u.errorHandler);
       }
     } else if (msg.content.toLowerCase().includes("banana")) {
       if (roll < 0.06) {
-        msg.channel.send({ files: ["https://cdn.discordapp.com/attachments/136577505418018826/238764601951387648/buttermelon.jpg"] }).catch(u.noop);
+        msg.channel.send({ files: [new Discord.AttachmentBuilder('data/buttermelonPile.png')] }).catch(u.errorHandler);
       } else if (roll < 0.1) {
-        msg.channel.send({ files: ["https://cdn.discordapp.com/attachments/96335850576556032/374995339997872128/YigaButtermelon_web.png"] }).catch(u.noop);
+        msg.channel.send({ files: [new Discord.AttachmentBuilder('data/buttermelonMan.jpeg')] }).catch(u.errorHandler);
       } else {
-        msg.channel.send("*buttermelon").catch(u.noop);
+        msg.channel.send("*buttermelon").catch(u.errorHandler);
       }
     }
   }
