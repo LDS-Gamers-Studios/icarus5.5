@@ -11,7 +11,8 @@ const ldsg = require(`./config/snowflakes${config.devMode ? "-testing" : ""}.jso
  ************************/
 const globalCommandFiles = [
   "messageBookmark.js",
-  "slashAvatar.js"
+  "slashAvatar.js",
+  "slashFun.js"
 ];
 
 const guildCommandFiles = [
