@@ -404,20 +404,20 @@ function rollf(dice, modifier) {
  * @param {Discord.ChatInputCommandInteraction} int a /fun roll interaction
  */
 async function rollInt(int) {
-  const rollsolts = roll(int.options.getInteger('dice'), int.options.getInteger('sides'), int.options.getInteger('modifier'));
+  const rollsolts = rollDice(int.options.getInteger('dice'), int.options.getInteger('sides'), int.options.getInteger('modifier'));
   // console.log("rollsolts")
   // console.log(rollsolts)
   // console.log(rollsolts.useroutput)
   return int.editReply(rollsolts.useroutput);
 }
 /**
- * function roll
+ * function rollDice
  * @param int dice number of dice to roll (defaults to 1)
  * @param int sides side count of dice (defaults to 6)
  * @param int modifier modifier to add to roll result (defaults to 0)
  * @returns {{ total:number, rolls:string[][], useroutput:string }} Object with 3 key/value pairs. total, an int with the total of all of the rolls; rolls, an int[] with the result of each roll; and useroutput, output or error in human readable format
  */
-function roll(dice, sides, modifier) {
+function rollDice(dice, sides, modifier) {
   if (!dice) dice = 1;
   if (!sides) sides = 6;
   if (!modifier) modifier = 0;
@@ -508,6 +508,43 @@ async function repost(int) {
   const imgToRepost = latestsFirstAttatchment.url;
   return int.editReply(imgToRepost);
 }
+/**
+ * function buttermelon
+ * @param {Discord.ChatInputCommandInteraction} int a /fun buttermelon interaction
+ */
+async function buttermelon(int) {
+  const buttermelonFacts = require('../data/buttermelonFacts.json');
+  return int.editReply("🍌 " + u.rand(buttermelonFacts.facts));
+}
+/**
+ * function buttermelonEdit
+ * @param {Discord.Message} msg a message containing bannana(s)
+ */
+function buttermelonEdit(msg) {
+  if ((msg.channel.id == "203518149809799168") && (msg.cleanContent.toLowerCase() == "test")) {
+    msg.channel.send((Math.random() < 0.8 ? "`pass`" : "`fail`"));
+  }
+  const exclude = ['121033996439257092', '164784857296273408'];
+  const roll = Math.random();
+  if (roll < 0.3 && !msg.author.bot && !exclude.includes(msg.channel.id)) {
+    // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;
+    if (msg.content.toLowerCase().includes("bananas")) {
+      if (roll < 0.1) {
+        msg.channel.send({ files: ["https://cdn.discordapp.com/attachments/154625360514777088/239045323522179073/buttermelons.jpg"] }).catch(u.noop);
+      } else {
+        msg.channel.send("*buttermelons").catch(u.noop);
+      }
+    } else if (msg.content.toLowerCase().includes("banana")) {
+      if (roll < 0.06) {
+        msg.channel.send({ files: ["https://cdn.discordapp.com/attachments/136577505418018826/238764601951387648/buttermelon.jpg"] }).catch(u.noop);
+      } else if (roll < 0.1) {
+        msg.channel.send({ files: ["https://cdn.discordapp.com/attachments/96335850576556032/374995339997872128/YigaButtermelon_web.png"] }).catch(u.noop);
+      } else {
+        msg.channel.send("*buttermelon").catch(u.noop);
+      }
+    }
+  }
+}
 
 
 const Module = new Augur.Module()
@@ -529,11 +566,18 @@ const Module = new Augur.Module()
       case "hbs": return hbsInt(int);
       case "color": return color(int);
       case "hug": return hug(int);
+      case "buttermelon": return buttermelon(int);
       default:
         u.errorLog.send({ embeds: [ u.embed().setDescription("Error, command " + int + " isn't associated with anything in fun.js")] });
         return int.editReply("Thats an error, this command isn't registered properly. I've let my devs know.");
     }
   },
+})
+.addEvent("message", buttermelonEdit)
+.addEvent("messageUpdate", (oldMsg, msg) => {
+  if (oldMsg.partial || !(oldMsg.cleanContent.toLowerCase().includes("banana"))) {
+    buttermelonEdit(msg);
+  }
 // })
 // .addEvent(
 //   "messageReactionAdd",
