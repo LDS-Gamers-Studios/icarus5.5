@@ -145,12 +145,12 @@ const Module = new Augur.Module()
   })
   .addEvent("interactionCreate", (int) => {
     if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
-    if (int.customId.startsWith("suggestion")){
+    if (int.customId.startsWith("suggestion")) {
       if (!u.perms.calc(int.member, ["team", "mgr"])) {
         return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
       }
       return processCardAction(int);
-    } 
+    }
   });
 
 module.exports = Module;
