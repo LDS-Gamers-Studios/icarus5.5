@@ -56,7 +56,7 @@ async function color(int) {
 }
 const hbsValues = {
   "Buttermelon": { emoji: "<:buttermelon:" + u.sf.emoji.buttermelon + ">", value: 0 },
-  "Handicorn": { emoji: "<:handicorn:" + u.sf.emoji.buttermelon + ">", value: 1 },
+  "Handicorn": { emoji: "<:handicorn:" + u.sf.emoji.handicorn + ">", value: 1 },
   "Sloth": { emoji: "<:sloth:305037088200327168>", value: 2 } // this is global so it don't need to be in snowflakes
 };
 /**
