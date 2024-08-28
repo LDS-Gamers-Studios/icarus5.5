@@ -12,13 +12,13 @@ async function hug(int) {
     "http://24.media.tumblr.com/72f1025bdbc219e38ea4a491639a216b/tumblr_mo6jla4wPo1qe89guo1_1280.gif",
     "https://media.tenor.com/Uw927NM469EAAAAi/there-cheer.gif"
   ];
-  const hugee = int.options.getUser("hugee");
+  const hugee = int.options.getUser("hugee") || { send: function() {u.errorLog.send({ embeds: [ u.embed().setDescription("error, user argument on /hug didnt exist. someone messed up slashFun.js") ] });} };
   try {
     const hugImg = u.rand(hugs);
     hugee.send({ content:`Incoming hug from **${int.user.username}**!`, files: [{ attachment:hugImg, name:"hug.gif" }] });
-    //alternatively:
+    // alternatively:
     // return int.editReply({ content:`**${int.user.username}** hugs **${hugee}**!`, files: [{ attachment:hugImg, name:"hug.gif" }] });
-    //or just remove the .addSubcommand(hug) line from slashFun.js.
+    // or just remove the .addSubcommand(hug) line from slashFun.js.
   } catch (e) {
     return int.editReply(`I couldn't send a hug to ${hugee.displayName}. Maybe they blocked me? :shrug:`);
   }
@@ -55,9 +55,9 @@ async function color(int) {
   }
 }
 const hbsValues = {
-  "Buttermelon": { emoji: "<:buttermelon:305039588014161921>", value: 0 }, 
-  "Handicorn": { emoji: "<:handicorn:305038099254083594>", value: 1 }, 
-  "Sloth": { emoji: "<:sloth:305037088200327168>", value: 2 }
+  "Buttermelon": { emoji: "<:buttermelon:" + u.sf.emoji.buttermelon + ">", value: 0 },
+  "Handicorn": { emoji: "<:handicorn:" + u.sf.emoji.buttermelon + ">", value: 1 },
+  "Sloth": { emoji: "<:sloth:305037088200327168>", value: 2 } // this is global so it don't need to be in snowflakes
 };
 /**
  * function hbsChooseRandom
@@ -73,7 +73,7 @@ let cachedChoice = hbsChooseRandom();
  * @param {Discord.ChatInputCommandInteraction} int a /fun hbs interaction
  */
 async function hbsInt(int) {
-  const tosend = hbs(int.options.getString("vsmode"), int.options.getString("choice"), "<@" + int.user + ">");
+  const tosend = hbs(int.options.getString("vsmode") || "vsicarus", int.options.getString("choice") || "Handicorn", "<@" + int.user + ">");
   int.deleteReply();
   int.channel.send(tosend);
 }
@@ -108,6 +108,14 @@ function hbs(mode, choice, chooser) {
       chooser + " challenged Icarus!\n" + hbsResult("Icarus", aiChoice, chooser, choice);
     }
   }
+  /**
+ * function hbsResult
+ * @param {string} chooser1 a string to represent who made choice 1
+ * @param {string} choice1 a "Handicorn", "Buttermelon", or "Sloth" choice
+ * @param {string} chooser2 a string to represent who made choice 2
+ * @param {string} choice2 a "Handicorn", "Buttermelon", or "Sloth" choice
+ * @return {string} a summarry including who picked what and who won.
+ */
   function hbsResult(chooser1, choice1, chooser2, choice2) {
     let response = chooser1 + " picked " + hbsValues[choice1].emoji + ", " + chooser2 + " picked " + hbsValues[choice2].emoji + ".\n";
     const diff = hbsValues[choice2].value - hbsValues[choice1].value;
@@ -148,7 +156,7 @@ function acronym() {
   const pf = new profanityFilter();
   let wordgen = [];
 
-  while (true) {
+  for (let ignored = 0; ignored < len * len; ignored++) {// try a bunch of times
     for (let i = 0; i < len; i++) {
       wordgen.push(alphabet[Math.floor(Math.random() * alphabet.length)]);
     }
@@ -160,6 +168,7 @@ function acronym() {
       wordgen = [];
     }
   }
+  return "err";
 }
 
 /**
@@ -262,7 +271,7 @@ function minesweeper(size, mineCount) {
     }
   }
   const output = board.map(row => row.map(num => `||${num == 9 ? mineSweeperEmojis["bomb"] : mineSweeperEmojis[num]}||`).join("")).join("\n");
-  console.log(output);
+  // console.log(output);
   return (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
 }
 
@@ -488,10 +497,12 @@ async function repost(int) {
   }
   const latestsAttatchments = latest.attachments;
   if (!latestsAttatchments) {
+    u.errorLog.send({ embeds: [ u.embed().setDescription("impossible /repost error #1")] });
     return int.editReply("I'm going crazy, this error should be impossible.");
   }
   const latestsFirstAttatchment = latestsAttatchments.first();
   if (!latestsFirstAttatchment) {
+    u.errorLog.send({ embeds: [ u.embed().setDescription("impossible /repost error #2")] });
     return int.editReply("I'm going crazy, this error should be impossible.");
   }
   const imgToRepost = latestsFirstAttatchment.url;
@@ -518,7 +529,9 @@ const Module = new Augur.Module()
       case "hbs": return hbsInt(int);
       case "color": return color(int);
       case "hug": return hug(int);
-      default: return int.editReply("thats an error, this command isn't registered properly. ping a bot admin please.");
+      default:
+        u.errorLog.send({ embeds: [ u.embed().setDescription("Error, command " + int + " isn't associated with anything in fun.js")] });
+        return int.editReply("Thats an error, this command isn't registered properly. I've let my devs know.");
     }
   },
 // })
