@@ -507,7 +507,7 @@ async function buttermelon(int) {
 }
 /**
  * function buttermelonEdit
- * @param {Discord.Message} msg a message containing bannana(s)
+ * @param {Discord.Message} msg a message potentially containing bannana(s)
  */
 function buttermelonEdit(msg) {
   if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent.toLowerCase() == "test")) {
@@ -534,6 +534,60 @@ function buttermelonEdit(msg) {
     }
   }
 }
+/**
+ * function namegame
+ * @param {Discord.ChatInputCommandInteraction} int a /fun namegame interaction
+ */
+async function namegame(int) {
+  let nameArg = int.options.getString("name");
+  try {
+    if (!nameArg) nameArg = int.user.displayName;
+    console.log(nameArg);
+    nameArg = nameArg.replace(/[^a-zA-Z]/g, '_');// just ABCabc etc, numbers were causing problems.
+    nameArg = nameArg.split("_")[0];// and just one segment
+    const name = nameArg;
+    const cheerio = require("cheerio");
+    const request = require("request-promise-native");
+    // console.log("haserr1");
+    const body = await request(`https://thenamegame-generator.com/lyrics/${name}.html`).catch(
+      (err) => {
+        if (err.contains("statusCode: 404")) {
+          return int.editReply("Could not generate lyrics for " + name + ".\nPerhaps you can get it yourself from https://thenamegame-generator.com");
+        } else {
+          u.errorHandler(err);
+        }
+      }
+    );
+    // console.log("haserr2");
+    if (body) {
+      const profanityFilter = require("profanity-matcher");
+      const pf = new profanityFilter();
+      // console.log("haserr3");
+      const loadedbody = cheerio.load(body);
+      // console.log("haserr4");
+      // @ts-ignore
+      const results = loadedbody("blockquote").html().replace(/<br>/g, "\n");
+      // console.log("haserr5");
+      const pfresults = pf.scan(results.toLowerCase().replace(/[-\n]/g, " ").replace(/\s\s+/g, " "));
+      const ispf = (pfresults.length > 0 && pfresults[0]) || (pfresults.length > 1);
+      // console.log("results");
+      // console.log(results.toLowerCase());
+      // console.log(pfresults);
+      // console.log(!ispf);
+      // console.log((name.length <= 230));
+      // console.log((results.length + name.length <= 5750));
+      if (!ispf && (name.length <= 230) && (results.length + name.length <= 5750)) {
+        const embed = u.embed().setTitle(`🎶 **The Name Game! ${name}! 🎵`).setDescription(results);
+        // console.log({ content:"test", embeds:[embed] });
+        int.editReply({ embeds:[embed] });
+      } else {
+        int.editReply("😬");
+      }
+    } else {
+      int.editReply("❌");
+    }
+  } catch (error) { u.errorHandler(error, int); }
+}
 
 
 const Module = new Augur.Module()
@@ -556,6 +610,7 @@ const Module = new Augur.Module()
       case "color": return color(int);
       case "hug": return hug(int);
       case "buttermelon": return buttermelon(int);
+      case "namegame": return namegame(int);
       default:
         u.errorLog.send({ embeds: [ u.embed().setDescription("Error, command " + int + " isn't associated with anything in fun.js")] });
         return int.editReply("Thats an error, this command isn't registered properly. I've let my devs know.");
@@ -573,7 +628,7 @@ const Module = new Augur.Module()
 //   (reaction) => { // could have (reaction, user) as args but lint don't like unused var.
 //     if ((reaction.message.channel.id == "121755900313731074") && (reaction.emoji.name == "♻️")) {
 //       reaction.remove();
-//       reaction.message.react("⭐").catch(u.noop);
+//       reaction.message.react("⭐").catch(u.errorHandler);
 //     }
 });
 

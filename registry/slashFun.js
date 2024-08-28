@@ -129,6 +129,14 @@ const hug = new u.sub()
     .setDescription("Who do you want to hug?")
     .setRequired(true)
   );
+const nameGame = new u.sub()
+  .setName("namegame")
+  .setDescription("Play the Name Game! (lyric generator)")
+  .addStringOption(
+    new u.string()
+    .setName("name")
+    .setDescription("(One word only, no special chars)")
+  );
 const buttermelon = new u.sub()
   .setName("buttermelon")
   .setDescription("Buttermelon facts");
@@ -147,4 +155,5 @@ module.exports = new u.cmd()
   .addSubcommand(color)
   .addSubcommand(hug)
   .addSubcommand(buttermelon)
+  .addSubcommand(nameGame)
   .toJSON();
