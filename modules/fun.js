@@ -542,13 +542,11 @@ async function namegame(int) {
   let nameArg = int.options.getString("name");
   try {
     if (!nameArg) nameArg = int.user.displayName;
-    console.log(nameArg);
     nameArg = nameArg.replace(/[^a-zA-Z]/g, '_');// just ABCabc etc, numbers were causing problems.
     nameArg = nameArg.split("_")[0];// and just one segment
     const name = nameArg;
     const cheerio = require("cheerio");
     const request = require("request-promise-native");
-    // console.log("haserr1");
     const body = await request(`https://thenamegame-generator.com/lyrics/${name}.html`).catch(
       (err) => {
         if (err.contains("statusCode: 404")) {
@@ -558,27 +556,16 @@ async function namegame(int) {
         }
       }
     );
-    // console.log("haserr2");
     if (body) {
       const profanityFilter = require("profanity-matcher");
       const pf = new profanityFilter();
-      // console.log("haserr3");
       const loadedbody = cheerio.load(body);
-      // console.log("haserr4");
       // @ts-ignore
       const results = loadedbody("blockquote").html().replace(/<br>/g, "\n");
-      // console.log("haserr5");
       const pfresults = pf.scan(results.toLowerCase().replace(/[-\n]/g, " ").replace(/\s\s+/g, " "));
       const ispf = (pfresults.length > 0 && pfresults[0]) || (pfresults.length > 1);
-      // console.log("results");
-      // console.log(results.toLowerCase());
-      // console.log(pfresults);
-      // console.log(!ispf);
-      // console.log((name.length <= 230));
-      // console.log((results.length + name.length <= 5750));
       if (!ispf && (name.length <= 230) && (results.length + name.length <= 5750)) {
         const embed = u.embed().setTitle(`🎶 **The Name Game! ${name}! 🎵`).setDescription(results);
-        // console.log({ content:"test", embeds:[embed] });
         int.editReply({ embeds:[embed] });
       } else {
         int.editReply("😬");
