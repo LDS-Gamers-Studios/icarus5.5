@@ -129,6 +129,9 @@ const hug = new u.sub()
     .setDescription("Who do you want to hug?")
     .setRequired(true)
   );
+const buttermelon = new u.sub()
+  .setName("buttermelon")
+  .setDescription("Buttermelon facts");
 module.exports = new u.cmd()
   .setName("fun")
   .setDescription("Its all fun and games till someone gets banned.")
@@ -143,4 +146,5 @@ module.exports = new u.cmd()
   .addSubcommand(hbs)
   .addSubcommand(color)
   .addSubcommand(hug)
+  .addSubcommand(buttermelon)
   .toJSON();
