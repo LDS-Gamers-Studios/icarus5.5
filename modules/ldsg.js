@@ -113,7 +113,6 @@ async function processCardAction(int) {
       const cause = submitted.fields.getTextInputValue("causeText");
       if (!title && !issue && !cause) return submitted.reply({ content: "I need some stuff to change!", ephemeral: true });
       const em = u.embed(int.message.embeds[0]);
-      const fields = em.data.fields;
       if (title) {
         try {
           const old = post?.name;
