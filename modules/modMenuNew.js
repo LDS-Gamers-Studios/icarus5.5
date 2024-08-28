@@ -55,7 +55,7 @@ async function getReason(int, description) {
       .setRequired(true)
       .setStyle(Discord.TextInputStyle.Paragraph)
   ];
-  const modal = new u.modal()
+  const modal = new u.Modal()
     .setTitle("Reason")
     .setCustomId("modMenuReason")
     .addComponents(
@@ -159,7 +159,7 @@ async function userSummary(int, usr) {
 /** @type {user} */
 async function noteUser(int, usr) {
   if (!usr) return usrErr(int);
-  const modal = new u.modal()
+  const modal = new u.Modal()
     .setTitle("Note")
     .setCustomId("noteModal")
     .addComponents(
@@ -187,7 +187,7 @@ async function noteUser(int, usr) {
 /** @type {user} */
 async function renameUser(int, usr) {
   if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
-  const modal = new u.modal()
+  const modal = new u.Modal()
     .setTitle("Rename User")
     .setCustomId("modMenuRename")
     .addComponents(
@@ -332,8 +332,8 @@ async function purgeChannel(int, msg) {
   if (!channel) return edit(int, "Well that's awkward, I can't access the channel you're in!");
 
   u.clean(msg, 0);
-  const toDelete = await channel.messages.fetch({ after: msg.id, limit: 100 });
-
+  const toDelete = await channel.messages.fetch({ after: msg.id, limit: 100 }).catch(u.noop);
+  if (!toDelete) return edit(int, "I couldn't get those messages.");
   const deleted = await channel.bulkDelete(toDelete, true);
 
   int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [

@@ -52,8 +52,10 @@ async function spamming(client) {
     /** @type {Discord.Collection<string, {content: string, count: number}>} */
     const sameMessages = new u.Collection();
     for (const message of activeMember.messages) {
-      const prev = sameMessages.get(message.content.toLowerCase());
-      sameMessages.set(message.content.toLowerCase(), { content: message.content.toLowerCase(), count: (prev?.count ?? 0) + 1 });
+      const content = message.content.toLowerCase() || message.stickers.first()?.url;
+      if (!content) continue;
+      const prev = sameMessages.get(content);
+      sameMessages.set(content, { content, count: (prev?.count ?? 0) + 1 });
     }
 
     // See what channels they've been posting in
@@ -85,7 +87,7 @@ async function spamming(client) {
       `Posted too many messages (${member.count}/${limit('messages', member.id)}) too fast\nChannels:\n${channels.map(ch => `${ch.channel} (${ch.count})`).join('\n')}`,
       `Posted the same message too many times (${member.count}/${limit('same', member.id)})`,
     ];
-    if (member.verdict == 3) c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
+    if (member.verdict != 2) c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
     c.createFlag({ msg: message, member: message.member ?? message.author, snitch: client.user?.toString(), flagReason: verdictString[member.verdict ?? 1] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict == 3 });
     active.delete(member.id);
   }
@@ -142,6 +144,7 @@ async function processMessageLanguage(msg) {
   /** @type {Discord.Collection<string, {tld: string | undefined, url: string}>} */
   const matchedLinks = new u.Collection();
   let matchedWords = null;
+  let gif = false;
   while ((link = hasLink.exec(msg.cleanContent)) != null) {
     matchedLinks.set((link[3] ?? "") + link[4], { tld: link[3], url: link[4] });
   }
@@ -164,7 +167,8 @@ async function processMessageLanguage(msg) {
       u.clean(msg, 0);
       if (!warned) msg.reply({ content: "Looks like that link might have some harsh language. Please be careful!", failIfNotExists: false }).catch(u.noop);
       warned = true;
-      matchedContent = matchedContent.concat(matchedLinks.map(linkMap));
+      gif = true;
+      matchedContent = matchedContent.concat(matchedLinks.map(linkMap), bannedWords.exec(msg.cleanContent));
       reasons.push("Gif Link Language (Auto-Removed)");
     } else if (!msg.webhookId && !msg.author.bot && !msg.member?.roles.cache.has(u.sf.roles.trusted)) {
       // General untrusted link flag
@@ -174,7 +178,7 @@ async function processMessageLanguage(msg) {
   }
 
   // HARD LANGUAGE FILTER
-  if (matchedWords = msg.cleanContent.match(bannedWords)) {
+  if (matchedWords = msg.cleanContent.match(bannedWords) && !gif) {
     matchedContent = matchedContent.concat(matchedWords);
     reasons.push("Automute Word Detected");
     pingMods = true;
@@ -474,7 +478,8 @@ async function processCardAction(interaction) {
 const Module = new Augur.Module()
 .addEvent("messageCreate", processMessageLanguage)
 .addEvent("messageUpdate", async (old, newMsg) => {
-  if (newMsg.partial) newMsg = await newMsg.fetch();
+  if (newMsg.partial) newMsg = await newMsg.fetch().catch(() => newMsg);
+  if (newMsg.partial) return; // failed to fetch, likely unreadable or deleted
   processMessageLanguage(newMsg);
 })
 .addEvent("interactionCreate", (int) => {
