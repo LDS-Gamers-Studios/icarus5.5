@@ -550,8 +550,8 @@ async function quote() {
   const request = require("request-promise-native");
   await request("https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en", (error, response, body) => {
     if (error || response.statusCode != 200) {
-      ret = "sorry, I ran into an error";}
-    else {
+      ret = "sorry, I ran into an error";
+    } else {
       const randomQuote = JSON.parse(body.replace(/\\'/g, "'"));
       ret = `> ${randomQuote.quoteText}\n> - ${randomQuote.quoteAuthor}`;
     }
