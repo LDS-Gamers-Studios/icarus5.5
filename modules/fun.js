@@ -535,6 +535,30 @@ function buttermelonEdit(msg) {
   }
 }
 /**
+ * function quoteInt
+ * @param {Discord.ChatInputCommandInteraction} int a /fun quote interaction
+ */
+async function quoteInt(int) {
+  return int.editReply(await quote());
+}
+/**
+ * function quote
+ * @returns {Promise<string>} a random quote with a bit of reformatting.
+ */
+async function quote() {
+  let ret = "";
+  const request = require("request-promise-native");
+  await request("https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en", (error, response, body) => {
+    if (error || response.statusCode != 200) {
+      ret = "sorry, I ran into an error";}
+    else {
+      const randomQuote = JSON.parse(body.replace(/\\'/g, "'"));
+      ret = `> ${randomQuote.quoteText}\n> - ${randomQuote.quoteAuthor}`;
+    }
+  });
+  return ret;
+}
+/**
  * function namegame
  * @param {Discord.ChatInputCommandInteraction} int a /fun namegame interaction
  */
@@ -597,6 +621,7 @@ const Module = new Augur.Module()
       case "color": return color(int);
       case "hug": return hug(int);
       case "buttermelon": return buttermelon(int);
+      case "quote": return quoteInt(int);
       case "namegame": return namegame(int);
       default:
         u.errorLog.send({ embeds: [ u.embed().setDescription("Error, command " + int + " isn't associated with anything in fun.js")] });

@@ -137,6 +137,9 @@ const nameGame = new u.sub()
     .setName("name")
     .setDescription("(One word only, no special chars)")
   );
+const quote = new u.sub()
+  .setName("quote")
+  .setDescription("Buttermelon facts");
 const buttermelon = new u.sub()
   .setName("buttermelon")
   .setDescription("Buttermelon facts");
@@ -155,5 +158,6 @@ module.exports = new u.cmd()
   .addSubcommand(color)
   .addSubcommand(hug)
   .addSubcommand(buttermelon)
+  .addSubcommand(quote)
   .addSubcommand(nameGame)
   .toJSON();
