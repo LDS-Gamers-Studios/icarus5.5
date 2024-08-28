@@ -206,12 +206,12 @@ async function minesweeperInt(int) {
     let segment = "";
     // console.log("addMessage");
     // console.log("\"" + degradingField + "\"");
-    while (countEmoji(segment + degradingField.substring(0, degradingField.indexOf("\n"))) <= 99) {
+    while (countEmoji(segment + degradingField.substring(0, degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length)) <= 99) {
       // console.log("addLineToMessage");
       // console.log("\"" + segment + "\"");
       // console.log("\"" + degradingField + "\"");
-      segment += degradingField.substring(0, degradingField.indexOf("\n") + 1);
-      degradingField = degradingField.substring(degradingField.indexOf("\n") + 1);
+      segment += degradingField.substring(0, (degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length) + 1);
+      degradingField = degradingField.substring((degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length) + 1);
     }
     if (segment + degradingField == field) {
       await int.editReply(segment);
