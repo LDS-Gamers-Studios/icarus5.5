@@ -75,6 +75,9 @@ const repost = new u.sub()
 const acronym = new u.sub()
 .setName("acronym")
 .setDescription("Get a random 3-5 letter acronym. For science.");
+const chaos = new u.sub()
+.setName("chaos")
+.setDescription("You just walked into chaos.");
 const mines = new u.sub()
   .setName("mines")
   .setDescription("Play a game of Minesweeper!")
@@ -160,4 +163,5 @@ module.exports = new u.cmd()
   .addSubcommand(buttermelon)
   .addSubcommand(quote)
   .addSubcommand(nameGame)
+  .addSubcommand(chaos)
   .toJSON();
