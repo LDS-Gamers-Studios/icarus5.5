@@ -601,6 +601,13 @@ async function namegame(int) {
 }
 
 
+/**
+ * function chaos
+ * @param {Discord.CommandInteraction} int a /fun chaos interaction
+ */
+function chaos(int) {
+  int.editReply({ content:int.user.displayName+" right now:", files: [new Discord.AttachmentBuilder('data/chaos.gif')] }).catch(u.errorHandler);
+}
 const Module = new Augur.Module()
 .addInteraction({
   name: "fun",
@@ -623,6 +630,7 @@ const Module = new Augur.Module()
       case "buttermelon": return buttermelon(int);
       case "quote": return quoteInt(int);
       case "namegame": return namegame(int);
+      case "chaos": return chaos(int);
       default:
         u.errorLog.send({ embeds: [ u.embed().setDescription("Error, command " + int + " isn't associated with anything in fun.js")] });
         return int.editReply("Thats an error, this command isn't registered properly. I've let my devs know.");
