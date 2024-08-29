@@ -519,15 +519,15 @@ function buttermelonEdit(msg) {
     // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;
     if (msg.content.toLowerCase().includes("bananas")) {
       if (roll < 0.1) {
-        msg.channel.send({ files: [new Discord.AttachmentBuilder('data/buttermelonsMan.jpeg')] }).catch(u.errorHandler);
+        msg.channel.send({ files: [new Discord.AttachmentBuilder('media/buttermelonsMan.jpeg')] }).catch(u.errorHandler);
       } else {
         msg.channel.send("*buttermelons").catch(u.errorHandler);
       }
     } else if (msg.content.toLowerCase().includes("banana")) {
       if (roll < 0.06) {
-        msg.channel.send({ files: [new Discord.AttachmentBuilder('data/buttermelonPile.png')] }).catch(u.errorHandler);
+        msg.channel.send({ files: [new Discord.AttachmentBuilder('media/buttermelonPile.png')] }).catch(u.errorHandler);
       } else if (roll < 0.1) {
-        msg.channel.send({ files: [new Discord.AttachmentBuilder('data/buttermelonMan.jpeg')] }).catch(u.errorHandler);
+        msg.channel.send({ files: [new Discord.AttachmentBuilder('media/buttermelonMan.jpeg')] }).catch(u.errorHandler);
       } else {
         msg.channel.send("*buttermelon").catch(u.errorHandler);
       }
@@ -606,7 +606,7 @@ async function namegame(int) {
  * @param {Discord.CommandInteraction} int a /fun chaos interaction
  */
 function chaos(int) {
-  int.editReply({ content:int.user.displayName+" right now:", files: [new Discord.AttachmentBuilder('data/chaos.gif')] }).catch(u.errorHandler);
+  int.editReply({ content:int.user.displayName + " right now:", files: [new Discord.AttachmentBuilder('media/chaos.gif')] }).catch(u.errorHandler);
 }
 const Module = new Augur.Module()
 .addInteraction({
