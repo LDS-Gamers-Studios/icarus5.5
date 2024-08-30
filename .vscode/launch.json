@@ -4,11 +4,38 @@
     {
       "type": "pwa-node",
       "request": "launch",
-      "name": "Launch Program",
+      "name": "Launch Program(windows)",
       "skipFiles": [
         "<node_internals>/**"
       ],
       "program": "${workspaceFolder}\\icarus.js"
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "register commands(windows)",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}\\register-commands.js"
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Launch Program(linux)",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}/icarus.js"
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "register commands(linux)",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}/register-commands.js"
     }
   ]
 }
