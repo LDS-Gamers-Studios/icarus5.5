@@ -188,7 +188,6 @@ const utils = {
   escapeText: escapeMarkdown,
   /**
    * @param {{author?: Discord.GuildMember|Discord.User|Discord.APIEmbedAuthor|Discord.EmbedAuthorData|null} & Omit<(Discord.Embed | Discord.APIEmbed | Discord.EmbedData), "author">} [data] The data object to pass to the MessageEmbed constructor.
-   * @returns {Discord.MessageEmbed} a Discord.MessageEmbed with basic values preset, such as color and timestamp.
    *   You can override the color and timestamp here as well.
    */
   embed: function(data = {}) {
