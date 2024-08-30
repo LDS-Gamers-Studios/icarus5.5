@@ -142,7 +142,7 @@ const nameGame = new u.sub()
   );
 const quote = new u.sub()
   .setName("quote")
-  .setDescription("Buttermelon facts");
+  .setDescription("Get a random quote!");
 const buttermelon = new u.sub()
   .setName("buttermelon")
   .setDescription("Buttermelon facts");
