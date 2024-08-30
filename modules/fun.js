@@ -2,6 +2,7 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   u = require("../utils/utils"),
+  axios = require('axios'),
   mineSweeperEmojis = { 0:'0⃣', 1:'1⃣', 2:'2⃣', 3:'3⃣', 4:'4⃣', 5:'5⃣', 6:'6⃣', 7:'7⃣', 8:'8⃣', 9:'9⃣', 10:'🔟', "bomb":`💣` };
 /**
  * function hug
@@ -546,17 +547,22 @@ async function quoteInt(int) {
  * @returns {Promise<string>} a random quote with a bit of reformatting.
  */
 async function quote() {
-  let ret = "";
-  const request = require("request-promise-native");
-  await request("https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en", (error, response, body) => {
-    if (error || response.statusCode != 200) {
-      ret = "sorry, I ran into an error";
-    } else {
-      const randomQuote = JSON.parse(body.replace(/\\'/g, "'"));
-      ret = `> ${randomQuote.quoteText}\n> - ${randomQuote.quoteAuthor}`;
-    }
+  const url = "https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en";
+  const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
+    throw new Error("quote command error:" + e.status);
   });
-  return ret;
+  console.log(response);
+  const data = response.data;
+  console.log(data);
+  if (data) {
+    const randomQuote = data;
+    console.log(`> ${randomQuote.quoteText}\n> - ${randomQuote.quoteAuthor}`);
+    return `> ${randomQuote.quoteText}\n> - ${randomQuote.quoteAuthor}`;
+  } else {
+    return "> A developer uses dark mode because bugs are attracted to light, \n" +
+    "> but wouldn't that put the bugs in the code instead of the background?\n" +
+    "> - ChainSword20000";
+  }
 }
 /**
  * function namegame
@@ -569,23 +575,18 @@ async function namegame(int) {
     nameArg = nameArg.replace(/[^a-zA-Z]/g, '_');// just ABCabc etc, numbers were causing problems.
     nameArg = nameArg.split("_")[0];// and just one segment
     const name = nameArg;
-    const cheerio = require("cheerio");
-    const request = require("request-promise-native");
-    const body = await request(`https://thenamegame-generator.com/lyrics/${name}.html`).catch(
-      (err) => {
-        if (err.contains("statusCode: 404")) {
-          return int.editReply("Could not generate lyrics for " + name + ".\nPerhaps you can get it yourself from https://thenamegame-generator.com");
-        } else {
-          u.errorHandler(err);
-        }
-      }
-    );
-    if (body) {
+    const url = `https://thenamegame-generator.com/lyrics/${name}.html`;
+    const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
+      int.editReply("Could not generate lyrics for " + name + ".\nPerhaps you can get it yourself from https://thenamegame-generator.com.");
+      throw new Error("namegame command error:" + e.status);
+    });
+    const data = response.data;
+    if (data) {
       const profanityFilter = require("profanity-matcher");
       const pf = new profanityFilter();
-      const loadedbody = cheerio.load(body);
-      // @ts-ignore
-      const results = loadedbody("blockquote").html().replace(/<br>/g, "\n");
+      const lyricsUntrimmedEnd = data.substring(data.indexOf("<blockquote>") + 12);
+      const lyricsTrimmedWithHtml = lyricsUntrimmedEnd.substring(0, lyricsUntrimmedEnd.indexOf("</blockquote>"));
+      const results = lyricsTrimmedWithHtml.replace(/<br>/g, "\n").replace(/<br \/>/g, "\n");
       const pfresults = pf.scan(results.toLowerCase().replace(/[-\n]/g, " ").replace(/\s\s+/g, " "));
       const ispf = (pfresults.length > 0 && pfresults[0]) || (pfresults.length > 1);
       if (!ispf && (name.length <= 230) && (results.length + name.length <= 5750)) {
