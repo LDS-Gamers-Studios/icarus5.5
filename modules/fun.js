@@ -5,27 +5,6 @@ const Augur = require(`augurbot-ts`),
   axios = require('axios'),
   mineSweeperEmojis = { 0:'0⃣', 1:'1⃣', 2:'2⃣', 3:'3⃣', 4:'4⃣', 5:'5⃣', 6:'6⃣', 7:'7⃣', 8:'8⃣', 9:'9⃣', 10:'🔟', 'bomb':'💣' };
 /**
- * function hug
- * @param {Discord.ChatInputCommandInteraction} int a /fun hug interaction
- */
-async function slashFunHug(int) {
-  const hugs = [
-    `http://24.media.tumblr.com/72f1025bdbc219e38ea4a491639a216b/tumblr_mo6jla4wPo1qe89guo1_1280.gif`,
-    `https://media.tenor.com/Uw927NM469EAAAAi/there-cheer.gif`
-  ];
-  const hugee = int.options.getUser(`hugee`) || { displayName:"ERRNOUSR", send: function() {u.errorLog.send({ embeds: [ u.embed().setDescription(`error, user argument on /hug didnt exist. someone messed up slashFun.js`) ] });} };
-  try {
-    const hugImg = u.rand(hugs);
-    hugee.send({ content:`Incoming hug from **${int.user.username}**!`, files: [{ attachment:hugImg, name:`hug.gif` }] });
-    // alternatively:
-    // return int.editReply({ content:`**${int.user.username}** hugs **${hugee}**!`, files: [{ attachment:hugImg, name:`hug.gif` }] });
-    // or just remove the .addSubcommand(hug) line from slashFun.js.
-  } catch (e) {
-    return int.editReply(`I couldn't send a hug to ${hugee.displayName}. Maybe they blocked me? :shrug:`);
-  }
-  return int.editReply(`Hug on the way!`);
-}
-/**
  * function color
  * @param {Discord.ChatInputCommandInteraction} int a /fun color interaction
  */
@@ -116,15 +95,6 @@ async function slashFunHBS(int) {
     }
     return response;
   }
-}
-
-/**
- * function allthe
- * @param {Discord.ChatInputCommandInteraction} int a /fun allthe interaction
- */
-async function slashFunAllThe(int) {
-  const thing = int.options.getString('thing');
-  int.editReply({ content:`${int.user.username}:\nALL THE ${thing.toUpperCase()}!`, files: [{ attachment:`https://cdn.discordapp.com/emojis/250348426817044482.png`, name:`allthe.png` }] });
 }
 /**
  * function slashFunAcronym
@@ -541,15 +511,6 @@ async function slashFunNamegame(int) {
     }
   } catch (error) { u.errorHandler(error, int); }
 }
-
-
-/**
- * function chaos
- * @param {Discord.CommandInteraction} int a /fun chaos interaction
- */
-function slashFunChaos(int) {
-  int.editReply({ content:int.user.displayName + ` right now:`, files: [new Discord.AttachmentBuilder('media/chaos.gif')] }).catch(u.errorHandler);
-}
 const Module = new Augur.Module()
 .addInteraction({
   name: `fun`,
@@ -565,14 +526,11 @@ const Module = new Augur.Module()
       case `repost`: return slashFunRepost(int);
       case `mines`: return slashFunMinesweeper(int);
       case `acronym`: return slashFunAcronym(int);
-      case `allthe`: return slashFunAllThe(int);
       case `hbs`: return slashFunHBS(int);
       case `color`: return slashFunColor(int);
-      case `hug`: return slashFunHug(int);
       case `buttermelon`: return slashFunButtermelon(int);
       case `quote`: return slashFunQuote(int);
       case `namegame`: return slashFunNamegame(int);
-      case `chaos`: return slashFunChaos(int);
       default:
         u.errorLog.send({ embeds: [ u.embed().setDescription(`Error, command ${int} isn't associated with anything in fun.js`)] });
         return int.editReply(`Thats an error, this command isn't registered properly. I've let my devs know.`);
