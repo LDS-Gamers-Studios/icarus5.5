@@ -74,7 +74,15 @@ const repost = new u.sub()
 .setDescription("That's a repost.");
 const acronym = new u.sub()
 .setName("acronym")
-.setDescription("Get a random 3-5 letter acronym. For science.");
+.setDescription("Get a random acronym. For science.")
+.addIntegerOption(
+  new u.int()
+  .setName("length")
+  .setDescription("How long of an acronym? min/max of 1/10 (defaults to random 3/5)")
+  .setRequired(false)
+  .setMinValue(1)
+  .setMaxValue(10)
+);
 const chaos = new u.sub()
 .setName("chaos")
 .setDescription("You just walked into chaos.");
