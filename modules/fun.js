@@ -293,23 +293,11 @@ async function slashFunRepost(int) {
   if (!int.channel) {
     return int.editReply(`I don't know where here is, so I can't find anything to repost... try in a more normal channel.`);
   }
-  const messages = (await int.channel.messages.fetch({ limit: 100 }));
-  const filtered = messages.filter(m => m.attachments.size > 0);
-  const latest = filtered.last();
+  const latest = (await int.channel.messages.fetch({ limit: 100 })).filter(m => m.attachments.size > 0).last();
   if (!latest) {
     return int.editReply(`I couldn't find anything in the last 100 messages to repost.`);
   }
-  const latestsAttatchments = latest.attachments;
-  if (!latestsAttatchments) {
-    u.errorLog.send({ embeds: [ u.embed().setDescription(`impossible /repost error #1`)] });
-    return int.editReply(`I'm going crazy, this error should be impossible.`);
-  }
-  const latestsFirstAttatchment = latestsAttatchments.first();
-  if (!latestsFirstAttatchment) {
-    u.errorLog.send({ embeds: [ u.embed().setDescription(`impossible /repost error #2`)] });
-    return int.editReply(`I'm going crazy, this error should be impossible.`);
-  }
-  const imgToRepost = latestsFirstAttatchment.url;
+  const imgToRepost = latest.attachments.first().url;
   return int.editReply(imgToRepost);
 }
 /**
@@ -322,7 +310,7 @@ async function slashFunButtermelon(int) {
 }
 /**
  * function buttermelonEdit
- * @param {Discord.Message} msg a message potentially containing bannana(s), or test
+ * @param {Discord.Message | Discord.PartialMessage} msg a message potentially containing bannana(s), or test
  */
 function buttermelonEdit(msg) {
   if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent.toLowerCase() == `test`)) {
