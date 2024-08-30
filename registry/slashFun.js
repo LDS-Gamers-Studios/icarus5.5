@@ -107,12 +107,11 @@ const hbs = new u.sub()
   .addStringOption(
     new u.string()
     .setName("vsmode")
-    .setDescription("vs icarus, vs stored, or set stored")
+    .setDescription("vs icarus or vs another user")
     // .setRequired(false)
     .setChoices(
-      { name: "vsicarus", value: "vsicarus" },
-      { name: "vsstored", value: "vsstored" },
-      { name: "setstored", value: "setstored" })
+      { name: "icarus", value: "icarus" },
+      { name: "user", value: "user" })
   );
 
 const color = new u.sub()
