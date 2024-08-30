@@ -74,7 +74,7 @@ let storedChoice = '';
  * @param {Discord.ChatInputCommandInteraction} int a /fun hbs interaction
  */
 async function hbsInt(int) {
-  const tosend = hbs(int.options.getString("vsmode") || "vsicarus", int.options.getString("choice") || "Handicorn", "<@" + int.user + ">");
+  const tosend = hbs(int.options.getString("mode") || "vsicarus", int.options.getString("choice") || "Handicorn", "<@" + int.user + ">");
   int.deleteReply();
   int.channel.send(tosend);
 }

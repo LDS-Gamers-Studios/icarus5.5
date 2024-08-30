@@ -114,7 +114,7 @@ const hbs = new u.sub()
   )
   .addStringOption(
     new u.string()
-    .setName("vsmode")
+    .setName("mode")
     .setDescription("vs icarus or vs another user")
     // .setRequired(false)
     .setChoices(
