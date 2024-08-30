@@ -78,10 +78,10 @@ async function slashFunHBS(int) {
   /**
  * function hbsResult
  * @param {string} chooser1 a string to represent who made choice 1
- * @param {string} choice1 a `Handicorn`, `Buttermelon`, or `Sloth` choice
- * @param {string} chooser2 a string to represent who made choice 2
- * @param {string} choice2 a `Handicorn`, `Buttermelon`, or `Sloth` choice
- * @return {string} a summarry including who picked what and who won.
+ * @param {string} choice1 chooser1's `Handicorn`, `Buttermelon`, or `Sloth` choice
+ * @param {string} chooser2 ...
+ * @param {string} choice2 ...
+ * @return {string} a summary including who picked what and who won.
  */
   function hbsResult(chooser1, choice1, chooser2, choice2) {
     let response = `${chooser1} picked ${hbsValues[choice1].emoji}, ${chooser2} picked ${hbsValues[choice2].emoji}.\n`;
@@ -216,7 +216,6 @@ async function slashFunMinesweeper(int) {
 /**
  * function slashFunRoll
  * @param {Discord.ChatInputCommandInteraction} int a /fun roll interaction
- * @returns {Promise<Discord.Message<boolean>>}
  */
 async function slashFunRoll(int) {
   let dice = int.options.getInteger('dice');
@@ -323,7 +322,7 @@ async function slashFunButtermelon(int) {
 }
 /**
  * function buttermelonEdit
- * @param {Discord.Message} msg a message potentially containing bannana(s)
+ * @param {Discord.Message} msg a message potentially containing bannana(s), or test
  */
 function buttermelonEdit(msg) {
   if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent.toLowerCase() == `test`)) {
@@ -438,7 +437,7 @@ const Module = new Augur.Module()
 // .addEvent(
 //   `messageReactionAdd`,
 //   (reaction) => { // could have (reaction, user) as args but lint don't like unused var.
-//     if ((reaction.message.channel.id == u.sf.channels.memes) && (reaction.emoji.name == `♻️`)) { //memes channel id will have to be added if this is to be enabled.
+//     if ((reaction.message.channel.id == u.sf.channels.memes) && (reaction.emoji.name == `♻️`)) { //memes channel id will have to be added if this is to be enabled, I don't know if it is still needed or even used by anyone.
 //       reaction.remove();
 //       reaction.message.react(`⭐`).catch(u.errorHandler);
 //     }
