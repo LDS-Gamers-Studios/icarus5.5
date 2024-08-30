@@ -546,28 +546,18 @@ function buttermelonEdit(msg) {
  * @param {Discord.ChatInputCommandInteraction} int a /fun quote interaction
  */
 async function slashFunQuote(int) {
-  return int.editReply(await quote());
-}
-/**
- * function quote
- * @returns {Promise<string>} a random quote with a bit of reformatting.
- */
-async function quote() {
   const url = `https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en`;
   const response = await axios({ url, method: `get` }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error(`quote command error:${e.status}`);
   });
-  console.log(response);
   const data = response.data;
-  console.log(data);
   if (data) {
     const randomQuote = data;
-    console.log(`> ${randomQuote.quoteText}\n> - ${randomQuote.quoteAuthor}`);
-    return `> ${randomQuote.quoteText}\n> - ${randomQuote.quoteAuthor}`;
+    return int.editReply(`> ${randomQuote.quoteText}\n> - ${randomQuote.quoteAuthor}`);
   } else {
-    return `> A developer uses dark mode because bugs are attracted to light, \n` +
+    return int.editReply(`> A developer uses dark mode because bugs are attracted to light, \n` +
     `> but wouldn't that put the bugs in the code instead of the background?\n` +
-    `> - ChainSword20000`;
+    `> - ChainSword20000`);
   }
 }
 /**
