@@ -143,15 +143,16 @@ async function allthe(int) {
  * @param {Discord.ChatInputCommandInteraction} int a /fun acronym interaction
  */
 async function acronymInt(int) {
-  return int.editReply("I've always wondered what __**" + acronym() + "**__ stood for...");
+  return int.editReply("I've always wondered what __**" + acronym(int.options.getInteger("length")) + "**__ stood for...");
 }
 /**
  * function acronym
+ * @param {number|null} len length of acronym
  * @returns {string} a randomly generated, clean, acronym
  */
-function acronym() {
+function acronym(len) {
   const alphabet = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "Y", "Z"];
-  const len = Math.floor(Math.random() * 3) + 3;
+  if (!len) {len = Math.floor(Math.random() * 3) + 3;}
   const profanityFilter = require("profanity-matcher");
   const pf = new profanityFilter();
   let wordgen = [];
