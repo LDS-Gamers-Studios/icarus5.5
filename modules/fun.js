@@ -60,54 +60,40 @@ const hbsValues = {
   'Handicorn': { emoji: `<:handicorn:${u.sf.emoji.handicorn}>`, value: 1 },
   'Sloth': { emoji: `<:sloth:305037088200327168>`, value: 2 } // this is global so it don't need to be in snowflakes
 };
-/**
- * function hbsChooseRandom
- * @return {string} a random choice for hbs
- */
-function hbsChooseRandom() {
-  return u.rand(Object.keys(hbsValues));
-}
 let storedChooser = '';
 let storedChoice = '';
 /**
- * function hbsInt
+ * function slashFunHBS
  * @param {Discord.ChatInputCommandInteraction} int a /fun hbs interaction
  */
 async function slashFunHBS(int) {
-  const tosend = hbs(int.options.getString(`mode`) || `vsicarus`, int.options.getString(`choice`) || `Handicorn`, `<@${int.user}>`);
-  int.deleteReply();
-  int.channel.send(tosend);
-}
-/**
- * function hbs
- * @param {string} mode whether vs icarus or another user/stored choice
- * @param {string} choice a `Handicorn`, `Buttermelon`, or `Sloth` choice
- * @param {string} chooser string to refer to a user by, whether a ping or not.
- * @return {string} a response, including a header, what happened, and if applicable who won.
- */
-function hbs(mode, choice, chooser) {
+  const mode = int.options.getString(`mode`);
+  const choice = int.options.getString(`choice`) || `Handicorn`;
+  const chooser = `<@${int.user}>`;
   switch (mode) {
     case (`user`):
       if (!storedChoice) {
+        int.deleteReply();
         storedChooser = chooser;
         storedChoice = choice;
-        return `**Handicorn, Buttermelon, Sloth, Fight!**\n` +
-        `I have stored a choice by ${chooser}, awaiting a challenge.`;
+        int.channel.send(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
+        `I have stored a choice by ${chooser}, awaiting a challenge.`);
       } else {
         const oldstoredChooser = storedChooser;
         const olcstoredChoice = storedChoice;
         storedChooser = '';
         storedChoice = '';
-        return `**Handicorn, Buttermelon, Sloth, Fight!**\n` +
+        int.editReply(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
         chooser + ` challenged ${oldstoredChooser}!\n` +
-        hbsResult(chooser, choice, oldstoredChooser, olcstoredChoice);
+        hbsResult(chooser, choice, oldstoredChooser, olcstoredChoice));
       }
+      break;
     default:
     case (`icarus`): {
-      const aiChoice = hbsChooseRandom();
-      return `**Handicorn, Buttermelon, Sloth, Fight!**\n` +
+      const aiChoice = u.rand(Object.keys(hbsValues));
+      int.editReply(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
       chooser + ` challenged Icarus!\n` +
-      hbsResult(chooser, choice, `Icarus`, aiChoice);
+      hbsResult(chooser, choice, `Icarus`, aiChoice));
     }
   }
   /**
@@ -141,20 +127,12 @@ async function slashFunAllThe(int) {
   int.editReply({ content:`${int.user.username}:\nALL THE ${thing.toUpperCase()}!`, files: [{ attachment:`https://cdn.discordapp.com/emojis/250348426817044482.png`, name:`allthe.png` }] });
 }
 /**
- * function acronymInt
+ * function slashFunAcronym
  * @param {Discord.ChatInputCommandInteraction} int a /fun acronym interaction
  */
 async function slashFunAcronym(int) {
-  return int.editReply(`I've always wondered what __**${acronym(int.options.getInteger(`length`))}**__ stood for...`);
-}
-/**
- * function acronym
- * @param {number|null} len length of acronym
- * @returns {string} a randomly generated, clean, acronym
- */
-function acronym(len) {
   const alphabet = [`A`, `B`, `C`, `D`, `E`, `F`, `G`, `H`, `I`, `J`, `K`, `L`, `M`, `N`, `O`, `P`, `Q`, `R`, `S`, `T`, `U`, `V`, `W`, `Y`, `Z`];
-  if (!len) {len = Math.floor(Math.random() * 3) + 3;}
+  const len = int.options.getInteger(`length`) || Math.floor(Math.random() * 3) + 3;
   const profanityFilter = require(`profanity-matcher`);
   const pf = new profanityFilter();
   let wordgen = [];
@@ -166,20 +144,21 @@ function acronym(len) {
     const word = wordgen.join(``);
 
     if (pf.scan(word.toLowerCase()).length == 0) {
-      return word;
+      return int.editReply(`I've always wondered what __**${word}**__ stood for...`);
     } else {
       wordgen = [];
     }
   }
-  return `err`;
+  return int.editReply(`I ran into an error, try again and/or ping a botadmin.`);
 }
 
 /**
- * function minesweeperInt
+ * function slashFunMinesweeper
  * @param {Discord.ChatInputCommandInteraction} int a /fun minesweeper interaction
  */
 async function slashFunMinesweeper(int) {
   let size, mineCount;
+  // difficulty values
   switch (int.options.getString(`difficulty`)) {
     case `Hard`:
       size = 14;
@@ -195,38 +174,8 @@ async function slashFunMinesweeper(int) {
       mineCount = 5;
       break;
   }
-  const field = minesweeper(size, mineCount);
-  let degradingField = field;
-  function countEmoji(text) {
-    const emojiRegex = new RegExp(`(${Object.values(mineSweeperEmojis).map(emoji => emoji.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(`|`)})`, 'g');
-    const emoji = text.match(emojiRegex);
-    return emoji?.length || 0;
-  }
-  if (countEmoji(field) <= 99) {
-    return int.editReply(field); // No splitting needed
-  }
-  while (countEmoji(degradingField) > 99) {
-    let segment = ``;
-    while (countEmoji(segment + degradingField.substring(0, degradingField.indexOf(`\n`) >= 0 ? degradingField.indexOf(`\n`) : degradingField.length)) <= 99) {
-      segment += degradingField.substring(0, (degradingField.indexOf(`\n`) >= 0 ? degradingField.indexOf(`\n`) : degradingField.length) + 1);
-      degradingField = degradingField.substring((degradingField.indexOf(`\n`) >= 0 ? degradingField.indexOf(`\n`) : degradingField.length) + 1);
-    }
-    if (segment + degradingField == field) {
-      await int.editReply(segment);
-    } else {
-      await int.channel.send(segment);
-    }
-  }
-  return int.channel.send(degradingField);
-}
-
-/**
- * function minesweeper
- * @param {number} size edge length of the minesweeper game to generate
- * @param {number} mineCount the number of mines to put in the game
- * @return {string} a textual minesweeper game with a header and using || spoilers.
- */
-function minesweeper(size, mineCount) {
+  // generate the minefield
+  let field = "";
   // Getting all possible board spaces
   const possibleSpaces = Array.from({ length: size * size }, (v, k) => k);
   // Remove 4 corners, corners can't be mines
@@ -269,24 +218,38 @@ function minesweeper(size, mineCount) {
     }
   }
   const output = board.map(row => row.map(num => `||${num == 9 ? mineSweeperEmojis[`bomb`] : mineSweeperEmojis[num]}||`).join(``)).join(`\n`);
-  return (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
+  field = (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
+  // we need to split it up because only 99 emoji per message limit for some reason.
+  let degradingField = field;
+  function countEmoji(text) {
+    const emojiRegex = new RegExp(`(${Object.values(mineSweeperEmojis).map(emoji => emoji.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(`|`)})`, 'g');
+    const emoji = text.match(emojiRegex);
+    return emoji?.length || 0;
+  }
+  if (countEmoji(field) <= 99) {
+    return int.editReply(field); // No splitting needed
+  }
+  while (countEmoji(degradingField) > 99) {
+    let segment = ``;
+    while (countEmoji(segment + degradingField.substring(0, degradingField.indexOf(`\n`) >= 0 ? degradingField.indexOf(`\n`) : degradingField.length)) <= 99) {
+      segment += degradingField.substring(0, (degradingField.indexOf(`\n`) >= 0 ? degradingField.indexOf(`\n`) : degradingField.length) + 1);
+      degradingField = degradingField.substring((degradingField.indexOf(`\n`) >= 0 ? degradingField.indexOf(`\n`) : degradingField.length) + 1);
+    }
+    if (segment + degradingField == field) {
+      await int.editReply(segment);
+    } else {
+      await int.channel.send(segment);
+    }
+  }
+  return int.channel.send(degradingField);
 }
-
-
 /**
- * function rollOldInt
+ * function slashFunRollOld
  * @param {Discord.ChatInputCommandInteraction} int a /fun rollOld interaction
+ * @returns {Promise<Discord.Message<boolean>>}
  */
 async function slashFunRollOld(int) {
-  const rollsolts = rollOld(int.options.getString('rollformula'));
-  return int.editReply(rollsolts.useroutput);
-}
-/**
- * function rollOld
- * @param string rolls roll formula in old !roll format
- * @returns {{ total:number, rolls:string[], useroutput:string }} Object with 3 key/value pairs. total, an int with the total of all of the rolls; rolls, an int[] with the result of each roll; and useroutput, output or error in human readable format
- */
-function rollOld(rollFormula) {
+  let rollFormula = int.options.getString('rollformula');
   if (!rollFormula) rollFormula = `1d6`;
   rollFormula = rollFormula.toLowerCase().replace(/-/g, `+-`).replace(/ /g, ``);
   const diceExp = /(\d+)?d\d+(\+-?(\d+)?d?\d+)*/;
@@ -315,7 +278,7 @@ function rollOld(rollFormula) {
             total += val;
           }
         } else {
-          return { total:0, rolls:0, useroutput:`I'm not going to roll *that* many dice... 🙄` };
+          return int.editReply(`I'm not going to roll *that* many dice... 🙄`);
         }
       } else {
         total += parseInt(formula, 10);
@@ -323,11 +286,10 @@ function rollOld(rollFormula) {
       }
     });
     if (doneRolls.length > 0) {
-      const response = `You rolled ${exp} and got:${total}\n` +
-          ((doneRolls.reduce((a, c) => a + c.length, 0) > 20) ? `` : ` ( ${doneRolls.reduce((a, c) => a + c.join(`, `) + `; `, ``)})`);
-      return { total:total, rolls:doneRolls, useroutput:response };
+      return int.editReply(`You rolled ${exp} and got:${total}\n` +
+          ((doneRolls.reduce((a, c) => a + c.length, 0) > 20) ? `` : ` ( ${doneRolls.reduce((a, c) => a + c.join(`, `) + `; `, ``)})`));
     } else {
-      return { total:0, rolls:[], useroutput:`you didn't give me anything to roll.` };
+      return int.editReply(`you didn't give me anything to roll.`);
     }
   } else if (fate) {
     const exp = fate[0].replace(/\+-/g, `-`);
@@ -345,38 +307,30 @@ function rollOld(rollFormula) {
             rolls.push((Math.floor(Math.random() * 3) - 1) * add);
           }
         } else {
-          return { total:0, rolls:[], useroutput:`I'm not going to roll *that* many dice... 🙄` };
+          return int.editReply(`I'm not going to roll *that* many dice... 🙄`);
         }
       } else {
         rolls.push(parseInt(d, 10));
       }
     });
     if (rolls.length > 0) {
-      const response = `You rolled ${exp} and got:${rolls.reduce((c, d) => c + d, 0)}\n` +
-          ((rolls.length > 20) ? `` : ` (${rolls.join(`, `)})`);
-      return { total:rolls.reduce((c, d) => c + d, 0), rolls:rolls, useroutput:response };
+      return int.editReply(`You rolled ${exp} and got:${rolls.reduce((c, d) => c + d, 0)}\n` +
+          ((rolls.length > 20) ? `` : ` (${rolls.join(`, `)})`));
     } else {
-      return { total:0, rolls:[], useroutput:`you didn't give me anything to roll.` };
+      return int.editReply(`you didn't give me anything to roll.`);
     }
   } else {
-    return { total:0, rolls:[], useroutput:`that wasn't a valid dice expression.` };
+    return int.editReply(`that wasn't a valid dice expression.`);
   }
 }
 /**
- * function rollFInt
+ * function slashFunRollF
  * @param {Discord.ChatInputCommandInteraction} int a /fun rollF interaction
+ * @returns {Promise<Discord.Message<boolean>>}
  */
 async function slashFunRollF(int) {
-  const rollsolts = rollf(int.options.getInteger('dice'), int.options.getInteger('modifier'));
-  return int.editReply(rollsolts.useroutput);
-}
-/**
- * function rollf
- * @param int dice number of dice to roll (defaults to 1)
- * @param int modifier modifier to add to roll result (defaults to 0)
- * @returns {{ total:number, rolls:number[], useroutput:string }} Object with 3 key/value pairs. total, an int with the total of all of the rolls; rolls, an int[] with the result of each roll; and useroutput, output or error in human readable format
- */
-function rollf(dice, modifier) {
+  let dice = int.options.getInteger('dice');
+  let modifier = int.options.getInteger('modifier');
   if (!dice) dice = 1;
   if (!modifier) modifier = 0;
   const rolls = [];
@@ -386,32 +340,24 @@ function rollf(dice, modifier) {
       rolls.push((Math.floor(Math.random() * 3) - 1));
     }
   } else {
-    return { total:0, rolls:[], useroutput:`I'm not going to roll *that* many dice... 🙄` };
+    return int.editReply(`I'm not going to roll *that* many dice... 🙄`);
   }
   if (rolls.length > 0) {
-    const response = `You rolled ${dice}df and got:${rolls.reduce((c, d) => c + d, 0)}\n` +
-    ((rolls.length > 20) ? `` : ` (${rolls.join(`, `)})`);
-    return { total:rolls.reduce((c, d) => c + d, 0), rolls:rolls, useroutput:response };
+    return int.editReply(`You rolled ${dice}df and got:${rolls.reduce((c, d) => c + d, 0)}\n` +
+    ((rolls.length > 20) ? `` : ` (${rolls.join(`, `)})`));
   } else {
-    return { total:0, rolls:[], useroutput:`you didn't give me anything to roll.` };
+    return int.editReply(`you didn't give me anything to roll.`);
   }
 }
 /**
- * function rollInt
+ * function slashFunRoll
  * @param {Discord.ChatInputCommandInteraction} int a /fun roll interaction
+ * @returns {Promise<Discord.Message<boolean>>}
  */
 async function slashFunRoll(int) {
-  const rollsolts = rollDice(int.options.getInteger('dice'), int.options.getInteger('sides'), int.options.getInteger('modifier'));
-  return int.editReply(rollsolts.useroutput);
-}
-/**
- * function rollDice
- * @param int dice number of dice to roll (defaults to 1)
- * @param int sides side count of dice (defaults to 6)
- * @param int modifier modifier to add to roll result (defaults to 0)
- * @returns {{ total:number, rolls:string[][], useroutput:string }} Object with 3 key/value pairs. total, an int with the total of all of the rolls; rolls, an int[] with the result of each roll; and useroutput, output or error in human readable format
- */
-function rollDice(dice, sides, modifier) {
+  let dice = int.options.getInteger('dice');
+  let sides = int.options.getInteger('sides');
+  let modifier = int.options.getInteger('modifier');
   if (!dice) dice = 1;
   if (!sides) sides = 6;
   if (!modifier) modifier = 0;
@@ -422,23 +368,22 @@ function rollDice(dice, sides, modifier) {
   const num = dice;
   if (num && num <= 10000) {
     for (let i = 0; i < num; i++) {
-      const val = Math.ceil(Math.random() * parseInt(sides, 10));
+      const val = Math.ceil(Math.random() * sides);
       rolls[sides].push((i == 0 ? `**d${sides}:** ` : ``) + val);
       total += val;
     }
   } else {
-    return { total:0, rolls:[], useroutput:`I'm not going to roll *that* many dice... 🙄` };
+    return int.editReply(`I'm not going to roll *that* many dice... 🙄`);
   }
   if (modifier) {
-    total += parseInt(dice, 10);
+    total += dice;
     rolls[sides].push(`**${dice}**`);
   }
   if (rolls.length > 0) {
-    const response = `You rolled ${dice}d${sides} and got:${total}\n` +
-        ((rolls.reduce((a, c) => a + c.length, 0) > 20) ? `` : ` ( ${rolls.reduce((a, c) => a + c.join(`, `) + `; `, ``)})`);
-    return { total:total, rolls:rolls, useroutput:response };
+    return int.editReply(`You rolled ${dice}d${sides} and got:${total}\n` +
+        ((rolls.reduce((a, c) => a + c.length, 0) > 20) ? `` : ` ( ${rolls.reduce((a, c) => a + c.join(`, `) + `; `, ``)})`));
   } else {
-    return { total:0, rolls:[], useroutput:`you didn't give me anything to roll.` };
+    return int.editReply(`you didn't give me anything to roll.`);
   }
 }
 /**
@@ -542,7 +487,7 @@ function buttermelonEdit(msg) {
   }
 }
 /**
- * function quoteInt
+ * function slashFunQuote
  * @param {Discord.ChatInputCommandInteraction} int a /fun quote interaction
  */
 async function slashFunQuote(int) {
