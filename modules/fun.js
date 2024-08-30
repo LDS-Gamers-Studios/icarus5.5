@@ -67,8 +67,8 @@ const hbsValues = {
 function hbsChooseRandom() {
   return u.rand(Object.keys(hbsValues));
 }
-let cachedChooser = 'Icarus';
-let cachedChoice = hbsChooseRandom();
+let storedChooser = '';
+let storedChoice = '';
 /**
  * function hbsInt
  * @param {Discord.ChatInputCommandInteraction} int a /fun hbs interaction
@@ -80,31 +80,32 @@ async function hbsInt(int) {
 }
 /**
  * function hbs
- * @param {string} mode whether to store the choice, use the choice against the stored choice, or use the choice against a random generated choice. defaults to vs ai
+ * @param {string} mode whether vs icarus or another user/stored choice
  * @param {string} choice a "Handicorn", "Buttermelon", or "Sloth" choice
  * @param {string} chooser string to refer to a user by, whether a ping or not.
  * @return {string} a response, including a header, what happened, and if applicable who won.
  */
 function hbs(mode, choice, chooser) {
   switch (mode) {
-    case ("setstored"):
-      cachedChooser = chooser;
-      cachedChoice = choice;
-      return "**Handicorn, Buttermelon, Sloth, Fight!**\n" +
-      "I have cached a choice by " + chooser + ", awaiting a challenge.";
-    case ("vsstored"): {
-      const oldCachedChooser = cachedChooser;
-      const olcCachedChoice = cachedChoice;
-      cachedChooser = 'Icarus';
-      cachedChoice = hbsChooseRandom();
-      return "**Handicorn, Buttermelon, Sloth, Fight!**\n" +
-      chooser + " challenged " + oldCachedChooser + "!\n" + hbsResult(oldCachedChooser, olcCachedChoice, chooser, choice);
-    }
+    case ("user"):
+      if (!storedChoice) {
+        storedChooser = chooser;
+        storedChoice = choice;
+        return "**Handicorn, Buttermelon, Sloth, Fight!**\n" +
+        "I have stored a choice by " + chooser + ", awaiting a challenge.";
+      } else {
+        const oldstoredChooser = storedChooser;
+        const olcstoredChoice = storedChoice;
+        storedChooser = '';
+        storedChoice = '';
+        return "**Handicorn, Buttermelon, Sloth, Fight!**\n" +
+        chooser + " challenged " + oldstoredChooser + "!\n" + hbsResult(chooser, choice, oldstoredChooser, olcstoredChoice);
+      }
     default:
-    case ("vsicarus"): {
+    case ("icarus"): {
       const aiChoice = hbsChooseRandom();
       return "**Handicorn, Buttermelon, Sloth, Fight!**\n" +
-      chooser + " challenged Icarus!\n" + hbsResult("Icarus", aiChoice, chooser, choice);
+      chooser + " challenged Icarus!\n" + hbsResult(chooser, choice, "Icarus", aiChoice);
     }
   }
   /**
