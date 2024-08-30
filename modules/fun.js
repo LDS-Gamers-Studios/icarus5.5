@@ -214,112 +214,6 @@ async function slashFunMinesweeper(int) {
   return int.channel.send(degradingField);
 }
 /**
- * function slashFunRollOld
- * @param {Discord.ChatInputCommandInteraction} int a /fun rollOld interaction
- * @returns {Promise<Discord.Message<boolean>>}
- */
-async function slashFunRollOld(int) {
-  let rollFormula = int.options.getString('rollformula');
-  if (!rollFormula) rollFormula = `1d6`;
-  rollFormula = rollFormula.toLowerCase().replace(/-/g, `+-`).replace(/ /g, ``);
-  const diceExp = /(\d+)?d\d+(\+-?(\d+)?d?\d+)*/;
-  const roughDice = diceExp.exec(rollFormula);
-  const fateExp = /(\d+)?df(\+-?\d+)?/i;
-  const fate = fateExp.exec(rollFormula);
-  if (roughDice) {
-    const exp = roughDice[0].replace(/\+-/g, `-`);
-    const dice = roughDice[0].split(`+`);
-
-    const doneRolls = [];
-    let total = 0;
-
-    dice.forEach((formula, rollCount) => {
-      doneRolls[rollCount] = [];
-      if (formula.includes(`d`)) {
-        const add = (formula.startsWith(`-`) ? -1 : 1);
-        if (add == -1) formula = formula.substr(1);
-        if (formula.startsWith(`d`)) formula = `1${formula}`;
-        const formulaParts = formula.split(`d`);
-        const num = parseInt(formulaParts[0], 10);
-        if (num && num <= 10000) {
-          for (let i = 0; i < num; i++) {
-            const val = Math.ceil(Math.random() * parseInt(formulaParts[1], 10)) * add;
-            doneRolls[rollCount].push((i == 0 ? `**${formula}:** ` : ``) + val);
-            total += val;
-          }
-        } else {
-          return int.editReply(`I'm not going to roll *that* many dice... 🙄`);
-        }
-      } else {
-        total += parseInt(formula, 10);
-        rollCount[rollCount].push(`**${formula}**`);
-      }
-    });
-    if (doneRolls.length > 0) {
-      return int.editReply(`You rolled ${exp} and got:${total}\n` +
-          ((doneRolls.reduce((a, c) => a + c.length, 0) > 20) ? `` : ` ( ${doneRolls.reduce((a, c) => a + c.join(`, `) + `; `, ``)})`));
-    } else {
-      return int.editReply(`you didn't give me anything to roll.`);
-    }
-  } else if (fate) {
-    const exp = fate[0].replace(/\+-/g, `-`);
-    const dice = fate[0].split(`+`);
-
-    const rolls = [];
-    dice.forEach(d => {
-      if (d.includes(`df`)) {
-        const add = (d.startsWith(`-`) ? -1 : 1);
-        if (add == -1) d = d.substr(1);
-        if (d.startsWith(`df`)) d = `1${d}`;
-        const num = parseInt(d, 10);
-        if (num && num <= 10000) {
-          for (let i = 0; i < num; i++) {
-            rolls.push((Math.floor(Math.random() * 3) - 1) * add);
-          }
-        } else {
-          return int.editReply(`I'm not going to roll *that* many dice... 🙄`);
-        }
-      } else {
-        rolls.push(parseInt(d, 10));
-      }
-    });
-    if (rolls.length > 0) {
-      return int.editReply(`You rolled ${exp} and got:${rolls.reduce((c, d) => c + d, 0)}\n` +
-          ((rolls.length > 20) ? `` : ` (${rolls.join(`, `)})`));
-    } else {
-      return int.editReply(`you didn't give me anything to roll.`);
-    }
-  } else {
-    return int.editReply(`that wasn't a valid dice expression.`);
-  }
-}
-/**
- * function slashFunRollF
- * @param {Discord.ChatInputCommandInteraction} int a /fun rollF interaction
- * @returns {Promise<Discord.Message<boolean>>}
- */
-async function slashFunRollF(int) {
-  let dice = int.options.getInteger('dice');
-  let modifier = int.options.getInteger('modifier');
-  if (!dice) dice = 1;
-  if (!modifier) modifier = 0;
-  const rolls = [];
-  const num = dice;
-  if (num && num <= 10000) {
-    for (let i = 0; i < num; i++) {
-      rolls.push((Math.floor(Math.random() * 3) - 1));
-    }
-  } else {
-    return int.editReply(`I'm not going to roll *that* many dice... 🙄`);
-  }
-  if (rolls.length > 0) {
-    return int.editReply(`You rolled ${dice}df and got:${rolls.reduce((c, d) => c + d, 0)}\n` +
-    ((rolls.length > 20) ? `` : ` (${rolls.join(`, `)})`));
-  } else {
-    return int.editReply(`you didn't give me anything to roll.`);
-  }
-}
-/**
  * function slashFunRoll
  * @param {Discord.ChatInputCommandInteraction} int a /fun roll interaction
  * @returns {Promise<Discord.Message<boolean>>}
@@ -520,8 +414,6 @@ const Module = new Augur.Module()
     await int.deferReply(); // { ephemeral: true });
     switch (subcommand) {
       case `roll`: return slashFunRoll(int);
-      case `rollf`: return slashFunRollF(int);
-      case `rollold`: return slashFunRollOld(int);
       case `8ball`: return slashFun8ball(int);
       case `repost`: return slashFunRepost(int);
       case `mines`: return slashFunMinesweeper(int);
