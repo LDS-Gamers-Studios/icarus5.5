@@ -78,11 +78,11 @@ const hbs = new u.sub()
   .addStringOption(
     new u.string()
     .setName("mode")
-    .setDescription("vs icarus or vs another user")
+    .setDescription("Who do you want to play against?")
     // .setRequired(false)
     .setChoices(
-      { name: "icarus", value: "icarus" },
-      { name: "user", value: "user" })
+      { name: "Icarus", value: "icarus" },
+      { name: "Other Users", value: "user" })
   );
 
 const color = new u.sub()
