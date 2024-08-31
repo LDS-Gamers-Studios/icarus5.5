@@ -15,7 +15,7 @@ const roll = new u.sub()
   .addIntegerOption(
     new u.int()
     .setName("sides")
-    .setDescription("How many sides on the dice to roll? (defaults to 6)")
+    .setDescription("How many sides on the dice? (Default: 6)")
     .setRequired(false)
     .setMinValue(1)
     .setMaxValue(2147483647)
