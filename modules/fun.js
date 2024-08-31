@@ -392,6 +392,21 @@ async function slashFunNamegame(int) {
     }
   } catch (error) { u.errorHandler(error, int); }
 }
+
+/**
+ * function slashFunChoose
+ * @param {Discord.ChatInputCommandInteraction} int a /fun choose interaction
+ */
+async function slashFunChoose(int) {
+  const optionsArg = int.options.getString(`options`);
+  if (optionsArg && optionsArg.includes("|")) {
+    const options = optionsArg.split("|");
+    const prefixes = ["I choose", "I pick", "I decided"];
+    return int.editReply(`${u.rand(prefixes)} **${u.rand(options)}**`);
+  } else {
+    return int.editReply("you need to give me two or more choices! `a | b`");
+  }
+}
 const Module = new Augur.Module()
 .addInteraction({
   name: `fun`,
@@ -410,6 +425,7 @@ const Module = new Augur.Module()
       case `buttermelon`: return slashFunButtermelon(int);
       case `quote`: return slashFunQuote(int);
       case `namegame`: return slashFunNamegame(int);
+      case `choose`: return slashFunChoose(int);
       default:
         u.errorLog.send({ embeds: [ u.embed().setDescription(`Error, command ${int} isn't associated with anything in fun.js`)] });
         return int.editReply(`Thats an error, this command isn't registered properly. I've let my devs know.`);
