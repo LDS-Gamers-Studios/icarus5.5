@@ -106,7 +106,7 @@ const quote = new u.sub()
   .setDescription("Get a random quote!");
 const buttermelon = new u.sub()
   .setName("buttermelon")
-  .setDescription("Buttermelon facts");
+  .setDescription("Get a random buttermelon fact");
 module.exports = new u.cmd()
   .setName("fun")
   .setDescription("Its all fun and games till someone gets banned.")
