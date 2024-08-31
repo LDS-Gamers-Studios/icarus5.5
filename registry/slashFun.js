@@ -99,7 +99,7 @@ const nameGame = new u.sub()
   .addStringOption(
     new u.string()
     .setName("name")
-    .setDescription("(One word only, no special chars, defaults to your global displayname)")
+    .setDescription("The name to play with (Default: your username)")
   );
 const quote = new u.sub()
   .setName("quote")
