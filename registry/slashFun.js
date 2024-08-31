@@ -95,7 +95,7 @@ const color = new u.sub()
   );
 const nameGame = new u.sub()
   .setName("namegame")
-  .setDescription("Play the Name Game! (lyric generator)")
+  .setDescription("Sing the Name Game!")
   .addStringOption(
     new u.string()
     .setName("name")
