@@ -68,7 +68,7 @@ const hbs = new u.sub()
   .addStringOption(
     new u.string()
     .setName("choice")
-    .setDescription("your choice of Handicorn, Buttermelon, or Sloth!")
+    .setDescription("Your choice of Handicorn, Buttermelon, or Sloth!")
     .setRequired(true)
     .setChoices(
       { name: "Handicorn", value: "Handicorn" },
