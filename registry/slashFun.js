@@ -35,6 +35,15 @@ const ball8 = new u.sub()
     .setDescription("What do you wish to ask the 8-ball today?")
     .setRequired(true)
   );
+const choose = new u.sub()
+  .setName("choose")
+  .setDescription("Helps make a choice!")
+  .addStringOption(
+    new u.string()
+    .setName("options")
+    .setDescription("options to choose from seperated by \"|\"")
+    .setRequired(true)
+  );
 const repost = new u.sub()
 .setName("repost")
 .setDescription("That's a repost.");
@@ -120,4 +129,5 @@ module.exports = new u.cmd()
   .addSubcommand(buttermelon)
   .addSubcommand(quote)
   .addSubcommand(nameGame)
+  .addSubcommand(choose)
   .toJSON();
