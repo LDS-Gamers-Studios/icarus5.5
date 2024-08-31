@@ -1,10 +1,10 @@
-const Jimp = require('jimp');
-
 // @ts-check
 const Augur = require(`augurbot-ts`),
   Discord = require(`discord.js`),
   u = require(`../utils/utils`),
   axios = require('axios'),
+  jimp = require('jimp'),
+  profanityFilter = require(`profanity-matcher`),
   mineSweeperEmojis = { 0:'0⃣', 1:'1⃣', 2:'2⃣', 3:'3⃣', 4:'4⃣', 5:'5⃣', 6:'6⃣', 7:'7⃣', 8:'8⃣', 9:'9⃣', 10:'🔟', 'bomb':'💣' };
 /**
  * function color
@@ -16,19 +16,17 @@ async function slashFunColor(int) {
     colorCode = `#${Math.floor(Math.random() * 16777216).toString(16).padStart(6, '0')}`;// generate random hex color
   }
   try {
-    const Jimp = require(`jimp`);
-
     let colorCSS;
     if (colorCode.startsWith('0x')) {
       // In the case that we have a string in 0xABCDEF format
       colorCSS = `#${colorCode.substring(2)}`;
     } else {colorCSS = colorCode;}
     if (![`#000000`, `black`, `#000000FF`].includes(colorCSS)) {
-      colorCSS = Jimp.cssColorToHex(colorCSS);
+      colorCSS = jimp.cssColorToHex(colorCSS);
     }
     if (colorCSS != 255) {
-      const img = new Jimp(256, 256, colorCSS);
-      int.editReply({ files: [await img.getBufferAsync(Jimp.MIME_PNG)] });
+      const img = new jimp(256, 256, colorCSS);
+      int.editReply({ files: [await img.getBufferAsync(jimp.MIME_PNG)] });
     } else {
       int.editReply(`sorry, I couldn't understand the color ${colorCode}`);
     }
@@ -105,7 +103,6 @@ async function slashFunHBS(int) {
 async function slashFunAcronym(int) {
   const alphabet = [`A`, `B`, `C`, `D`, `E`, `F`, `G`, `H`, `I`, `J`, `K`, `L`, `M`, `N`, `O`, `P`, `Q`, `R`, `S`, `T`, `U`, `V`, `W`, `Y`, `Z`];
   const len = int.options.getInteger(`length`) || Math.floor(Math.random() * 3) + 3;
-  const profanityFilter = require(`profanity-matcher`);
   const pf = new profanityFilter();
   let wordgen = [];
 
@@ -302,12 +299,12 @@ async function slashFunRepost(int) {
   const imgToRepost = latest.attachments.first().url;
   return int.editReply(imgToRepost);
 }
+const buttermelonFacts = require('../data/buttermelonFacts.json');
 /**
  * function buttermelon
  * @param {Discord.ChatInputCommandInteraction} int a /fun buttermelon interaction
  */
 async function slashFunButtermelon(int) {
-  const buttermelonFacts = require('../data/buttermelonFacts.json');
   return int.editReply(`🍌 ${u.rand(buttermelonFacts.facts)}`);
 }
 /**
@@ -376,7 +373,6 @@ async function slashFunNamegame(int) {
     });
     const data = response.data;
     if (data) {
-      const profanityFilter = require(`profanity-matcher`);
       const pf = new profanityFilter();
       const lyricsUntrimmedEnd = data.substring(data.indexOf(`<blockquote>`) + 12);
       const lyricsTrimmedWithHtml = lyricsUntrimmedEnd.substring(0, lyricsUntrimmedEnd.indexOf(`</blockquote>`));
@@ -417,60 +413,29 @@ async function slashFunChoose(int) {
  */
 async function slashFunEmoji(int) {
   try {
-    const emojiUnsplit = int.options.getString("emoji");
-    const emoji = emojiUnsplit.split('|');
-    const test = /<(a?):\w+:(\d+)>/i;
-    const rows = [];
-    let cols = 1;
-
-    for (const row of emoji) {
-      const characters = [];
-      for (const character of row.split(' ')) {
-        if (character != '' && character != ' ') characters.push(character);
-      }
-      rows.push(characters);
+    const unicode = require("../data/emojiUnicode.json");
+    const emoji1 = int.options.getString("emoji1")?.trim();
+    const emoji2 = int.options.getString("emoji2")?.trim();
+    let emoji1JustName, emoji2JustName;
+    let emoji1unicode, emoji2unicode;
+    if (emoji1?.includes(":")) {
+      emoji1JustName = emoji1?.substring(emoji1.indexOf(":") + 1);
+      emoji1JustName = emoji1JustName?.substring(0, emoji1JustName.indexOf(":"));
+      emoji1unicode = unicode[emoji1JustName];
+    } else {
+      emoji1unicode = emoji1;
     }
-    for (const row of rows) {
-      if (row.length > cols) cols = row.length;
+    if (emoji2?.includes(":")) {
+      emoji2JustName = emoji2?.substring(emoji2.indexOf(":") + 1);
+      emoji2JustName = emoji2JustName?.substring(0, emoji2JustName.indexOf(":"));
+      emoji2unicode = unicode[emoji2JustName];
+    } else {
+      emoji2unicode = emoji2;
     }
-    if (rows.length == 1 && cols == 1) {
-      const id = test.exec(emojiUnsplit);
-      if (id) return int.editReply({ files: [`https://cdn.discordapp.com/emojis/${id[2]}.${id[1] ? 'gif' : 'png'}`] });
-    }
-    if (rows.length * cols > 25) return int.editReply("That's too many emojis! The limit is 25.");
-    const canvas = new Jimp(72 * cols, 72 * rows.length, 0x00000000);
-    for (let y = 0; y < rows.length; y++) {
-      for (let x = 0; x < rows[y].length; x++) {
-        const character = rows[y][x];
-        const id = test.exec(character);
-        let image;
-        if (character == '[]') {
-          image = new Jimp(72, 72, 0x00000000);
-          canvas.blit(image, 72 * x, 72 * y);
-        } else if (id) {
-          try {
-            image = await Jimp.read(`https://cdn.discordapp.com/emojis/${id[2]}.${(id[1] ? "gif" : "png")}`);
-          } catch (error) {
-            return int.editReply(`I couldn't enlarge the emoji ${character}.`);
-          }
-          image.resize(72, 72);
-          canvas.blit(image, 72 * x, 72 * y);
-        } else {
-          try {
-            image = await Jimp.read(`https://twemoji.maxcdn.com/v/latest/72x72/${emojiUnicode(character).replace(/ fe0f/g, '').replace(/ /g, '-')}.png`);
-          } catch (error) {
-            try {
-              image = await Jimp.read(`https://twemoji.maxcdn.com/v/latest/72x72/${emojiUnicode(character).replace(/ /g, '-')}.png`);
-            } catch (error2) {
-              return int.editReply(`I couldn't enlarge the emoij ${character}.`);
-            }
-          }
-          image.resize(72, 72);
-          canvas.blit(image, 72 * x, 72 * y);
-        }
-      }
-    }
-    return int.editReply({ files: [await canvas.getBufferAsync(Jimp.MIME_PNG)] });
+    console.log(emoji1);
+    console.log(emoji1JustName);
+    console.log(emoji1unicode);
+    return int.editReply({ files: [{ attachment:`https://emojik.vercel.app/s/${emoji1unicode}_${emoji2unicode}?size=128`, name:"combined.png" }] });
   } catch (error) { u.errorHandler(error);return int.editReply("error:" + error); }
 }
 const Module = new Augur.Module()
