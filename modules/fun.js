@@ -1,3 +1,5 @@
+const Jimp = require('jimp');
+
 // @ts-check
 const Augur = require(`augurbot-ts`),
   Discord = require(`discord.js`),
@@ -407,6 +409,70 @@ async function slashFunChoose(int) {
     return int.editReply("you need to give me two or more choices! `a | b`");
   }
 }
+
+/**
+ * function slashFunEmoji
+ * @param {Discord.ChatInputCommandInteraction} int a /fun emoji interaction
+ * @returns {Promise<Discord.Message<boolean>>}
+ */
+async function slashFunEmoji(int) {
+  try {
+    const emojiUnsplit = int.options.getString("emoji");
+    const emoji = emojiUnsplit.split('|');
+    const test = /<(a?):\w+:(\d+)>/i;
+    const rows = [];
+    let cols = 1;
+
+    for (const row of emoji) {
+      const characters = [];
+      for (const character of row.split(' ')) {
+        if (character != '' && character != ' ') characters.push(character);
+      }
+      rows.push(characters);
+    }
+    for (const row of rows) {
+      if (row.length > cols) cols = row.length;
+    }
+    if (rows.length == 1 && cols == 1) {
+      const id = test.exec(emojiUnsplit);
+      if (id) return int.editReply({ files: [`https://cdn.discordapp.com/emojis/${id[2]}.${id[1] ? 'gif' : 'png'}`] });
+    }
+    if (rows.length * cols > 25) return int.editReply("That's too many emojis! The limit is 25.");
+    const canvas = new Jimp(72 * cols, 72 * rows.length, 0x00000000);
+    for (let y = 0; y < rows.length; y++) {
+      for (let x = 0; x < rows[y].length; x++) {
+        const character = rows[y][x];
+        const id = test.exec(character);
+        let image;
+        if (character == '[]') {
+          image = new Jimp(72, 72, 0x00000000);
+          canvas.blit(image, 72 * x, 72 * y);
+        } else if (id) {
+          try {
+            image = await Jimp.read(`https://cdn.discordapp.com/emojis/${id[2]}.${(id[1] ? "gif" : "png")}`);
+          } catch (error) {
+            return int.editReply(`I couldn't enlarge the emoji ${character}.`);
+          }
+          image.resize(72, 72);
+          canvas.blit(image, 72 * x, 72 * y);
+        } else {
+          try {
+            image = await Jimp.read(`https://twemoji.maxcdn.com/v/latest/72x72/${emojiUnicode(character).replace(/ fe0f/g, '').replace(/ /g, '-')}.png`);
+          } catch (error) {
+            try {
+              image = await Jimp.read(`https://twemoji.maxcdn.com/v/latest/72x72/${emojiUnicode(character).replace(/ /g, '-')}.png`);
+            } catch (error2) {
+              return int.editReply(`I couldn't enlarge the emoij ${character}.`);
+            }
+          }
+          image.resize(72, 72);
+          canvas.blit(image, 72 * x, 72 * y);
+        }
+      }
+    }
+    return int.editReply({ files: [await canvas.getBufferAsync(Jimp.MIME_PNG)] });
+  } catch (error) { u.errorHandler(error);return int.editReply("error:" + error); }
+}
 const Module = new Augur.Module()
 .addInteraction({
   name: `fun`,
@@ -426,6 +492,7 @@ const Module = new Augur.Module()
       case `quote`: return slashFunQuote(int);
       case `namegame`: return slashFunNamegame(int);
       case `choose`: return slashFunChoose(int);
+      case `emoji`: return slashFunEmoji(int);
       default:
         u.errorLog.send({ embeds: [ u.embed().setDescription(`Error, command ${int} isn't associated with anything in fun.js`)] });
         return int.editReply(`Thats an error, this command isn't registered properly. I've let my devs know.`);

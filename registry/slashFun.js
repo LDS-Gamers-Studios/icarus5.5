@@ -44,6 +44,15 @@ const choose = new u.sub()
     .setDescription("options to choose from seperated by \"|\"")
     .setRequired(true)
   );
+const emoji = new u.sub()
+  .setName("emoji")
+  .setDescription("combines emoji")
+  .addStringOption(
+    new u.string()
+    .setName("emoji")
+    .setDescription("emoji to combine seperated by \"|\"")
+    .setRequired(true)
+  );
 const repost = new u.sub()
 .setName("repost")
 .setDescription("That's a repost.");
@@ -130,4 +139,5 @@ module.exports = new u.cmd()
   .addSubcommand(quote)
   .addSubcommand(nameGame)
   .addSubcommand(choose)
+  .addSubcommand(emoji)
   .toJSON();
