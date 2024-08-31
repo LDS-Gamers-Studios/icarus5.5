@@ -41,7 +41,7 @@ const choose = new u.sub()
   .addStringOption(
     new u.string()
     .setName("options")
-    .setDescription("options to choose from seperated by \"|\"")
+    .setDescription('options to choose from separated by "|"')
     .setRequired(true)
   );
 const repost = new u.sub()
