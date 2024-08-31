@@ -388,7 +388,7 @@ async function slashFunNamegame(int) {
         int.editReply(`😬`);
       }
     } else {
-      int.editReply(`❌`);
+      int.editReply(`I uh... broke my voice box. Try a different name?`);
     }
   } catch (error) { u.errorHandler(error, int); }
 }
