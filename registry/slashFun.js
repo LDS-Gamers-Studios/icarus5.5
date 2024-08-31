@@ -44,7 +44,7 @@ const acronym = new u.sub()
 .addIntegerOption(
   new u.int()
   .setName("length")
-  .setDescription("How long of an acronym? min/max of 1/10 (defaults to random 3/5)")
+  .setDescription("How long of an acronym?")
   .setRequired(false)
   .setMinValue(1)
   .setMaxValue(10)
