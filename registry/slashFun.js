@@ -23,7 +23,7 @@ const roll = new u.sub()
   .addIntegerOption(
     new u.int()
     .setName("modifier")
-    .setDescription("How much to change the roll by? (defaults to 0)")
+    .setDescription("How much to change the roll by. (Default: 0)")
     .setRequired(false)
   );
 const ball8 = new u.sub()
