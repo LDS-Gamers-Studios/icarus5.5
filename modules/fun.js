@@ -9,13 +9,14 @@ const Augur = require("augurbot-ts"),
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunColor(int) {
   let colorCode = int.options.getString("color");
-  if (!colorCode) {
-    colorCode = `#${Math.floor(Math.random() * 16777216).toString(16).padStart(6, '0')}`;// generate random hex color
-  }
-  let colorCSS = colorCode.startsWith('0x') ? `#${colorCode.substring(2)}` : colorCode;// In the case that we have a string in 0xABCDEF format
+  // generate random hex color
+  colorCode = colorCode || "#" + Math.floor(Math.random() * 16777216).toString(16).padStart(6, '0');
+  // In the case that we have a string in 0xABCDEF format
+  let colorCSS = colorCode.replace('0x', "#");
   try {
     if (!["#000000", "black", "#000000FF"].includes(colorCSS)) colorCSS = jimp.cssColorToHex(colorCSS).toString();
-    if (colorCSS == "255") {// make sure it is a valid color, and not just defaulting to black
+    // make sure it is a valid color, and not just defaulting to black
+    if (colorCSS == "255") {
       return int.editReply(`sorry, I couldn't understand the color ${colorCode}`);
     }
     const img = new jimp(256, 256, colorCSS);
@@ -294,6 +295,7 @@ function buttermelonEdit(msg) {
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunQuote(int) {
   const url = "https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en";
+  // @ts-ignore
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error(`quote command error:${e.status}`);
   });
@@ -316,6 +318,7 @@ async function slashFunNamegame(int) {
     nameArg = nameArg.split("_")[0];// and just one segment
     const name = nameArg;
     const url = `https://thenamegame-generator.com/lyrics/${name}.html`;
+    // @ts-ignore
     const response = await axios({ url, method: "get" }).catch(() => {
       return int.editReply(`Could not generate lyrics for ${name}.\nPerhaps you can get it yourself from https://thenamegame-generator.com.`);
     });
@@ -403,7 +406,7 @@ const Module = new Augur.Module()
     }
   },
 })
-.addEvent("message", buttermelonEdit)
+.addEvent("messageCreate", buttermelonEdit)
 .addEvent("messageUpdate", (oldMsg, msg) => {
   if (oldMsg.partial || !(oldMsg.cleanContent.toLowerCase().includes("banana"))) {
     buttermelonEdit(msg);
