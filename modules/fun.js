@@ -144,20 +144,6 @@ async function slashFunMinesweeper(int) {
     mineSpaces.push(possibleSpaces[random]);
     possibleSpaces.splice(random, 1);
   }
-
-  function getMineCount(x, y) {
-    let count = 0;
-    for (let i = -1; i <= 1; i++) {
-      if ((x + i) < 0 || (x + i) >= size) continue;
-      for (let j = -1; j <= 1; j++) {
-        if ((y + j) < 0 || (y + j) >= size) continue;
-        if (mineSpaces.includes((y + j) * size + x + i)) count++;
-      }
-    }
-
-    return count;
-  }
-
   // Creating the final board
   /** @type {number[][]} */
   const board = [];
@@ -168,7 +154,16 @@ async function slashFunMinesweeper(int) {
         board[x].push(9);
         continue;
       }
-      board[x].push(getMineCount(x, y));
+      // count adjacent mines
+      let count = 0;
+      for (let i = -1; i <= 1; i++) {
+        if ((x + i) < 0 || (x + i) >= size) continue;
+        for (let j = -1; j <= 1; j++) {
+          if ((y + j) < 0 || (y + j) >= size) continue;
+          if (mineSpaces.includes((y + j) * size + x + i)) count++;
+        }
+      }
+      board[x].push(count);
     }
   }
   const output = board.map(row => row.map(num => `||${mineSweeperEmojis[num]}||`).join("")).join("\n");
