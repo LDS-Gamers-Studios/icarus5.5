@@ -26,17 +26,17 @@ async function slashFunColor(int) {
   }
 }
 const hbsValues = {
-  'Buttermelon': { emoji: `<:buttermelon:${u.sf.emoji.buttermelon}>`, value: 0 },
-  'Handicorn': { emoji: `<:handicorn:${u.sf.emoji.handicorn}>`, value: 1 },
-  'Sloth': { emoji: "<:sloth:305037088200327168>", value: 2 } // this is global so it don't need to be in snowflakes
+  'Buttermelon': { emoji: `<:buttermelon:${u.sf.emoji.buttermelon}>`, beats: "Handicorn", looses: "Sloth" },
+  'Handicorn': { emoji: `<:handicorn:${u.sf.emoji.handicorn}>`, beats: "Sloth", looses: "Buttermelon" },
+  'Sloth': { emoji: "<:sloth:305037088200327168>", beats: "Buttermelon", looses: "Handicorn" } // this is global so it don't need to be in snowflakes
 };
 let storedChooser = '';
 let storedChoice = '';
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunHBS(int) {
   const mode = int.options.getString("mode");
-  const choice = int.options.getString("choice") || "Handicorn";
-  const chooser = `<@${int.user}>`;
+  const choice = int.options.getString("choice", true);
+  const chooser = int.user.toString();
   switch (mode) {
     case ("user"):
       if (!storedChoice) {
@@ -76,13 +76,12 @@ async function slashFunHBS(int) {
  */
   function hbsResult(chooser1, choice1, chooser2, choice2) {
     let response = `${chooser1} picked ${hbsValues[choice1].emoji}, ${chooser2} picked ${hbsValues[choice2].emoji}.\n`;
-    const diff = hbsValues[choice2].value - hbsValues[choice1].value;
-    if (diff == 0) {
-      response += "It's a tie!";// TIE
-    } else if ((diff == -1) || (diff == 2)) {
-      response += `${chooser2} wins!`;
-    } else {
+    if (choice1 == choice2) {
+      response += "It's a tie!";
+    } else if (hbsValues[choice1].beats == choice2) {
       response += `${chooser1} wins!`;
+    } else {
+      response += `${chooser2} wins!`;
     }
     return response;
   }
@@ -112,7 +111,7 @@ async function slashFunAcronym(int) {
 async function slashFunMinesweeper(int) {
   let size, mineCount;
   // difficulty values
-  switch (int.options.getString("difficulty")) {
+  switch (int.options.getString("difficulty", true)) {
     case "Hard":
       size = 14;
       mineCount = 60;
@@ -214,8 +213,8 @@ async function slashFunRoll(int) {
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFun8ball(int) {
-  const question = int.options.getString("question");
-  if (!question || !question.endsWith("?")) {
+  const question = int.options.getString("question", true);
+  if (!question.endsWith("?")) {
     return int.editReply("you need to ask me a question, silly.");
   } else {
     const outcomes = [
@@ -343,7 +342,7 @@ async function slashFunNamegame(int) {
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunChoose(int) {
-  const optionsArg = int.options.getString("options");
+  const optionsArg = int.options.getString("options", true);
   if (optionsArg && optionsArg.includes("|")) {
     const options = optionsArg.split("|");
     const prefixes = ["I choose", "I pick", "I decided"];
@@ -356,8 +355,8 @@ async function slashFunChoose(int) {
 async function slashFunEmoji(int) {
   try {
     const unicode = require("../data/emojiUnicode.json");
-    const emoji1 = int.options.getString("emoji1")?.trim();
-    const emoji2 = int.options.getString("emoji2")?.trim();
+    const emoji1 = int.options.getString("emoji1", true).trim();
+    const emoji2 = int.options.getString("emoji2", true).trim();
     let emoji1JustName, emoji2JustName;
     let emoji1unicode, emoji2unicode;
     if (emoji1?.includes(":")) {
