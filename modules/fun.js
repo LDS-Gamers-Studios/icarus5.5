@@ -5,6 +5,8 @@ const Augur = require("augurbot-ts"),
   axios = require('axios'),
   jimp = require('jimp'),
   profanityFilter = require("profanity-matcher"),
+  buttermelonFacts = require('../data/buttermelonFacts.json').facts,
+  emojiUnicode = require("../data/emojiUnicode.json"),
   mineSweeperEmojis = ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '7⃣', '8⃣', '💣'];
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunColor(int) {
@@ -88,7 +90,7 @@ async function slashFunHBS(int) {
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunAcronym(int) {
-  const alphabet = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "Y", "Z"];
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const len = int.options.getInteger("length") || Math.floor(Math.random() * 3) + 3;
   const pf = new profanityFilter();
   let wordgen = [];
@@ -105,7 +107,7 @@ async function slashFunAcronym(int) {
       wordgen = [];
     }
   }
-  return int.editReply("I ran into an error, try again and/or ping a botadmin.");
+  return int.editReply("I've always wondered what __**IDUTR**__ stood for...");// cannonically it hearby stands for "IDiUT eRror"
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunMinesweeper(int) {
@@ -201,12 +203,11 @@ async function slashFunRoll(int) {
   let total = modifier;
   if (dice > 10000) {
     return int.editReply("I'm not going to roll *that* many dice... 🙄");
-  } else {
-    for (let i = 0; i < dice; i++) {
-      const val = Math.ceil(Math.random() * sides);
-      rolls.push((i == 0 ? `**d${sides}:** ` : "") + val);
-      total += val;
-    }
+  }
+  for (let i = 0; i < dice; i++) {
+    const val = Math.ceil(Math.random() * sides);
+    rolls.push((i == 0 ? `**d${sides}:** ` : "") + val);
+    total += val;
   }
   return int.editReply(`You rolled ${dice}d${sides}${modifier ? `+${modifier}` : ""} and got:\n` +
     total + (rolls.length <= 20 ? ` ( ${rolls.join(", ")}${modifier ? `; **${modifier}**` : ""} )` : ""));
@@ -260,31 +261,30 @@ async function slashFunRepost(int) {
     embeds: latest.embeds.filter(embed => embed.image || embed.video)
   });
 }
-const buttermelonFacts = require('../data/buttermelonFacts.json');
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunButtermelon(int) {
-  return int.editReply(`🍌 ${u.rand(buttermelonFacts.facts)}`);
+  return int.editReply(`🍌 ${u.rand(buttermelonFacts)}`);
 }
 /** @param {Discord.Message|Discord.PartialMessage} msg */
 function buttermelonEdit(msg) {
   if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent?.toLowerCase() == "test")) {
     msg.reply((Math.random() < 0.8 ? "pass" : "fail"));
   }
-  const exclude = ['121033996439257092', '164784857296273408'];// IDK where these are so hardcoded they shall currently remain.
+  const exclude = [u.sf.channels.minecraftcategory];
   const roll = Math.random();
   if (roll < 0.3 && !msg.author?.bot && !exclude.includes(msg.channel.id)) {
     // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;
     if (msg.content?.toLowerCase().includes("bananas")) {
       if (roll < 0.1) {
-        msg.reply({ files: [new Discord.AttachmentBuilder('media/buttermelonsMan.jpeg')] }).catch(u.errorHandler);
+        msg.reply({ files: ['media/buttermelonsMan.jpeg'] }).catch(u.errorHandler);
       } else {
         msg.reply("*buttermelons").catch(u.errorHandler);
       }
     } else if (msg.content?.toLowerCase().includes("banana")) {
       if (roll < 0.06) {
-        msg.reply({ files: [new Discord.AttachmentBuilder('media/buttermelonPile.png')] }).catch(u.errorHandler);
+        msg.reply({ files: ['media/buttermelonPile.png'] }).catch(u.errorHandler);
       } else if (roll < 0.1) {
-        msg.reply({ files: [new Discord.AttachmentBuilder('media/buttermelonMan.jpeg')] }).catch(u.errorHandler);
+        msg.reply({ files: ['media/buttermelonMan.jpeg'] }).catch(u.errorHandler);
       } else {
         msg.reply("*buttermelon").catch(u.errorHandler);
       }
@@ -354,7 +354,6 @@ async function slashFunChoose(int) {
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunEmoji(int) {
   try {
-    const unicode = require("../data/emojiUnicode.json");
     const emoji1 = int.options.getString("emoji1", true).trim();
     const emoji2 = int.options.getString("emoji2", true).trim();
     let emoji1JustName, emoji2JustName;
@@ -362,14 +361,14 @@ async function slashFunEmoji(int) {
     if (emoji1?.includes(":")) {
       emoji1JustName = emoji1?.substring(emoji1.indexOf(":") + 1);
       emoji1JustName = emoji1JustName?.substring(0, emoji1JustName.indexOf(":"));
-      emoji1unicode = unicode[emoji1JustName];
+      emoji1unicode = emojiUnicode[emoji1JustName];
     } else {
       emoji1unicode = emoji1;
     }
     if (emoji2?.includes(":")) {
       emoji2JustName = emoji2?.substring(emoji2.indexOf(":") + 1);
       emoji2JustName = emoji2JustName?.substring(0, emoji2JustName.indexOf(":"));
-      emoji2unicode = unicode[emoji2JustName];
+      emoji2unicode = emojiUnicode[emoji2JustName];
     } else {
       emoji2unicode = emoji2;
     }
