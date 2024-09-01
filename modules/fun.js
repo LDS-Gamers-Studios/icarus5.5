@@ -211,36 +211,23 @@ async function slashFunMinesweeper(int) {
  * @param {Discord.ChatInputCommandInteraction} int a /fun roll interaction
  */
 async function slashFunRoll(int) {
-  let dice = int.options.getInteger('dice');
-  let sides = int.options.getInteger('sides');
-  let modifier = int.options.getInteger('modifier');
-  if (!dice) dice = 1;
-  if (!sides) sides = 6;
-  if (!modifier) modifier = 0;
-  /** @type {string[][]} */
+  const dice = int.options.getInteger('dice') || 1;
+  const sides = int.options.getInteger('sides') || 6;
+  const modifier = int.options.getInteger('modifier') || 0;
+  /** @type {string[]} */
   const rolls = [];
-  let total = 0;
-  rolls[sides] = [];
-  const num = dice;
-  if (num && num <= 10000) {
-    for (let i = 0; i < num; i++) {
+  let total = modifier;
+  if (dice > 10000) {
+    return int.editReply("I'm not going to roll *that* many dice... 🙄");
+  } else {
+    for (let i = 0; i < dice; i++) {
       const val = Math.ceil(Math.random() * sides);
-      rolls[sides].push((i == 0 ? `**d${sides}:** ` : "") + val);
+      rolls.push((i == 0 ? `**d${sides}:** ` : "") + val);
       total += val;
     }
-  } else {
-    return int.editReply("I'm not going to roll *that* many dice... 🙄");
   }
-  if (modifier) {
-    total += dice;
-    rolls[sides].push(`**${dice}**`);
-  }
-  if (rolls.length > 0) {
-    return int.editReply(`You rolled ${dice}d${sides} and got:${total}\n` +
-        ((rolls.reduce((a, c) => a + c.length, 0) > 20) ? "" : ` ( ${rolls.reduce((a, c) => a + c.join(", ") + "; ", "")})`));
-  } else {
-    return int.editReply("you didn't give me anything to roll.");
-  }
+  return int.editReply(`You rolled ${dice}d${sides}${modifier ? `+${modifier}` : ""} and got:\n` +
+    total + (rolls.length <= 20 ? ` ( ${rolls.join(", ")}${modifier ? `; **${modifier}**` : ""} )` : ""));
 }
 /**
  * function ball8
@@ -395,7 +382,7 @@ async function slashFunChoose(int) {
     const prefixes = ["I choose", "I pick", "I decided"];
     return int.editReply(`${u.rand(prefixes)} **${u.rand(options)}**`);
   } else {
-    return int.editReply("you need to give me two or more choices! "a | b"");
+    return int.editReply('you need to give me two or more choices! "a | b"');
   }
 }
 
