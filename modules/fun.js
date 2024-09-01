@@ -6,10 +6,7 @@ const Augur = require("augurbot-ts"),
   jimp = require('jimp'),
   profanityFilter = require("profanity-matcher"),
   mineSweeperEmojis = ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '7⃣', '8⃣', '💣'];
-/**
- * function color
- * @param {Discord.ChatInputCommandInteraction} int a /fun color interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunColor(int) {
   let colorCode = int.options.getString("color");
   if (!colorCode) {
@@ -36,10 +33,7 @@ const hbsValues = {
 };
 let storedChooser = '';
 let storedChoice = '';
-/**
- * function slashFunHBS
- * @param {Discord.ChatInputCommandInteraction} int a /fun hbs interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunHBS(int) {
   const mode = int.options.getString("mode");
   const choice = int.options.getString("choice") || "Handicorn";
@@ -90,10 +84,7 @@ async function slashFunHBS(int) {
     return response;
   }
 }
-/**
- * function slashFunAcronym
- * @param {Discord.ChatInputCommandInteraction} int a /fun acronym interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunAcronym(int) {
   const alphabet = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "Y", "Z"];
   const len = int.options.getInteger("length") || Math.floor(Math.random() * 3) + 3;
@@ -114,11 +105,7 @@ async function slashFunAcronym(int) {
   }
   return int.editReply("I ran into an error, try again and/or ping a botadmin.");
 }
-
-/**
- * function slashFunMinesweeper
- * @param {Discord.ChatInputCommandInteraction} int a /fun minesweeper interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunMinesweeper(int) {
   let size, mineCount;
   // difficulty values
@@ -192,6 +179,9 @@ async function slashFunMinesweeper(int) {
   if (countEmoji(field) <= 99) {
     return int.editReply(field); // No splitting needed
   }
+  if (!int.channel) {
+    return int.editReply(`I can't fit the entire minefield in here, try #<${u.sf.channels.botspam}>`);
+  }
   while (countEmoji(degradingField) > 99) {
     let segment = "";
     while (countEmoji(segment + degradingField.substring(0, degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length)) <= 99) {
@@ -206,10 +196,7 @@ async function slashFunMinesweeper(int) {
   }
   return int.channel.send(degradingField);
 }
-/**
- * function slashFunRoll
- * @param {Discord.ChatInputCommandInteraction} int a /fun roll interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunRoll(int) {
   const dice = int.options.getInteger('dice') || 1;
   const sides = int.options.getInteger('sides') || 6;
@@ -229,10 +216,7 @@ async function slashFunRoll(int) {
   return int.editReply(`You rolled ${dice}d${sides}${modifier ? `+${modifier}` : ""} and got:\n` +
     total + (rolls.length <= 20 ? ` ( ${rolls.join(", ")}${modifier ? `; **${modifier}**` : ""} )` : ""));
 }
-/**
- * function ball8
- * @param {Discord.ChatInputCommandInteraction} int a /fun 8ball interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFun8ball(int) {
   const question = int.options.getString("question");
   if (!question || !question.endsWith("?")) {
@@ -265,10 +249,7 @@ async function slashFun8ball(int) {
       u.rand(outcomes));
   }
 }
-/**
- * function repost
- * @param {Discord.ChatInputCommandInteraction} int a /fun repost interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunRepost(int) {
   if (!int.channel) {
     return int.editReply("I don't know where here is, so I can't find anything to repost... try in a more normal channel.");
@@ -281,17 +262,11 @@ async function slashFunRepost(int) {
   return int.editReply(imgToRepost);
 }
 const buttermelonFacts = require('../data/buttermelonFacts.json');
-/**
- * function buttermelon
- * @param {Discord.ChatInputCommandInteraction} int a /fun buttermelon interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunButtermelon(int) {
   return int.editReply(`🍌 ${u.rand(buttermelonFacts.facts)}`);
 }
-/**
- * function buttermelonEdit
- * @param {Discord.Message | Discord.PartialMessage} msg a message potentially containing bannana(s), or test
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 function buttermelonEdit(msg) {
   if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent.toLowerCase() == "test")) {
     msg.channel.send((Math.random() < 0.8 ? "pass" : "fail"));
@@ -317,10 +292,7 @@ function buttermelonEdit(msg) {
     }
   }
 }
-/**
- * function slashFunQuote
- * @param {Discord.ChatInputCommandInteraction} int a /fun quote interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunQuote(int) {
   const url = "https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en";
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
@@ -336,10 +308,7 @@ async function slashFunQuote(int) {
     "> - ChainSword20000");
   }
 }
-/**
- * function namegame
- * @param {Discord.ChatInputCommandInteraction} int a /fun namegame interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunNamegame(int) {
   let nameArg = int.options.getString("name");
   try {
@@ -370,11 +339,7 @@ async function slashFunNamegame(int) {
     }
   } catch (error) { u.errorHandler(error, int); }
 }
-
-/**
- * function slashFunChoose
- * @param {Discord.ChatInputCommandInteraction} int a /fun choose interaction
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunChoose(int) {
   const optionsArg = int.options.getString("options");
   if (optionsArg && optionsArg.includes("|")) {
@@ -385,12 +350,7 @@ async function slashFunChoose(int) {
     return int.editReply('you need to give me two or more choices! "a | b"');
   }
 }
-
-/**
- * function slashFunEmoji
- * @param {Discord.ChatInputCommandInteraction} int a /fun emoji interaction
- * @returns {Promise<Discord.Message<boolean>>}
- */
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunEmoji(int) {
   try {
     const unicode = require("../data/emojiUnicode.json");
