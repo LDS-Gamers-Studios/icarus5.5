@@ -150,20 +150,18 @@ async function slashFunMinesweeper(int) {
   for (let x = 0; x < size; x++) {
     board.push([]);
     for (let y = 0; y < size; y++) {
-      if (mineSpaces.includes(x + (y * size))) {
-        board[x].push(9);
-        continue;
-      }
-      // count adjacent mines
-      let count = 0;
-      for (let i = -1; i <= 1; i++) {
-        if ((x + i) < 0 || (x + i) >= size) continue;
-        for (let j = -1; j <= 1; j++) {
-          if ((y + j) < 0 || (y + j) >= size) continue;
-          if (mineSpaces.includes((y + j) * size + x + i)) count++;
+      let spaceNum = 0;
+      if (mineSpaces.includes(x + (y * size))) {spaceNum = 9;} else {// if this spot is/isn't a mine
+        // count adjacent mines
+        for (let i = -1; i <= 1; i++) {
+          if ((x + i) < 0 || (x + i) >= size) continue;
+          for (let j = -1; j <= 1; j++) {
+            if ((y + j) < 0 || (y + j) >= size) continue;
+            if (mineSpaces.includes((y + j) * size + x + i)) spaceNum++;
+          }
         }
       }
-      board[x].push(count);
+      board[x].push(spaceNum);
     }
   }
   const output = board.map(row => row.map(num => `||${mineSweeperEmojis[num]}||`).join("")).join("\n");
@@ -272,7 +270,7 @@ async function slashFunButtermelon(int) {
 /** @param {Discord.ChatInputCommandInteraction} int */
 function buttermelonEdit(msg) {
   if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent.toLowerCase() == "test")) {
-    msg.channel.send((Math.random() < 0.8 ? "pass" : "fail"));
+    msg.reply((Math.random() < 0.8 ? "pass" : "fail"));
   }
   const exclude = ['121033996439257092', '164784857296273408'];// IDK where these are so hardcoded they shall currently remain.
   const roll = Math.random();
@@ -280,17 +278,17 @@ function buttermelonEdit(msg) {
     // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;
     if (msg.content.toLowerCase().includes("bananas")) {
       if (roll < 0.1) {
-        msg.channel.send({ files: [new Discord.AttachmentBuilder('media/buttermelonsMan.jpeg')] }).catch(u.errorHandler);
+        msg.reply({ files: [new Discord.AttachmentBuilder('media/buttermelonsMan.jpeg')] }).catch(u.errorHandler);
       } else {
-        msg.channel.send("*buttermelons").catch(u.errorHandler);
+        msg.reply("*buttermelons").catch(u.errorHandler);
       }
     } else if (msg.content.toLowerCase().includes("banana")) {
       if (roll < 0.06) {
-        msg.channel.send({ files: [new Discord.AttachmentBuilder('media/buttermelonPile.png')] }).catch(u.errorHandler);
+        msg.reply({ files: [new Discord.AttachmentBuilder('media/buttermelonPile.png')] }).catch(u.errorHandler);
       } else if (roll < 0.1) {
-        msg.channel.send({ files: [new Discord.AttachmentBuilder('media/buttermelonMan.jpeg')] }).catch(u.errorHandler);
+        msg.reply({ files: [new Discord.AttachmentBuilder('media/buttermelonMan.jpeg')] }).catch(u.errorHandler);
       } else {
-        msg.channel.send("*buttermelon").catch(u.errorHandler);
+        msg.reply("*buttermelon").catch(u.errorHandler);
       }
     }
   }
