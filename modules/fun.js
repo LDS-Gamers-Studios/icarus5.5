@@ -44,7 +44,11 @@ async function slashFunHBS(int) {
         int.deleteReply();
         storedChooser = chooser;
         storedChoice = choice;
-        return int.channel.send("**Handicorn, Buttermelon, Sloth, Fight!**\n" +
+        if (!int.channel) {
+          u.wait(5000).then(() => {int.deleteReply();});
+          return int.editReply(`I can't securely store this without everyone being able to see what it is in here. Try in #<${u.sf.channels.botspam}.`);
+        }
+        return int.channel?.send("**Handicorn, Buttermelon, Sloth, Fight!**\n" +
         `I have stored a choice by ${chooser}, awaiting a challenge.`);
       } else {
         const oldstoredChooser = storedChooser;
