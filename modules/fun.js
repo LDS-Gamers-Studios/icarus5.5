@@ -12,9 +12,10 @@ async function slashFunColor(int) {
   if (!colorCode) {
     colorCode = `#${Math.floor(Math.random() * 16777216).toString(16).padStart(6, '0')}`;// generate random hex color
   }
-  const colorCSS = colorCode.startsWith('0x') ? `#${colorCode.substring(2)}` : colorCode;// In the case that we have a string in 0xABCDEF format
+  let colorCSS = colorCode.startsWith('0x') ? `#${colorCode.substring(2)}` : colorCode;// In the case that we have a string in 0xABCDEF format
   try {
-    if (jimp.cssColorToHex(colorCSS) == 255 && !["#000000", "black", "#000000FF"].includes(colorCSS)) {// make sure it is a valid color, and not just defaulting to black
+    if (!["#000000", "black", "#000000FF"].includes(colorCSS)) colorCSS = jimp.cssColorToHex(colorCSS).toString();
+    if (colorCSS == "255") {// make sure it is a valid color, and not just defaulting to black
       return int.editReply(`sorry, I couldn't understand the color ${colorCode}`);
     }
     const img = new jimp(256, 256, colorCSS);
