@@ -260,29 +260,29 @@ async function slashFunRepost(int) {
     content: 'You have been charged with reposting this:',
     files: latest.attachments.map(a => a.url),
     embeds: latest.embeds.filter(embed => embed.image || embed.video)
-});
+  });
 }
 const buttermelonFacts = require('../data/buttermelonFacts.json');
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunButtermelon(int) {
   return int.editReply(`🍌 ${u.rand(buttermelonFacts.facts)}`);
 }
-/** @param {Discord.ChatInputCommandInteraction} int */
+/** @param {Discord.Message|Discord.PartialMessage} msg */
 function buttermelonEdit(msg) {
-  if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent.toLowerCase() == "test")) {
+  if ((msg.channel.id == u.sf.channels.botspam || msg.channel.id == u.sf.channels.bottesting) && (msg.cleanContent?.toLowerCase() == "test")) {
     msg.reply((Math.random() < 0.8 ? "pass" : "fail"));
   }
   const exclude = ['121033996439257092', '164784857296273408'];// IDK where these are so hardcoded they shall currently remain.
   const roll = Math.random();
-  if (roll < 0.3 && !msg.author.bot && !exclude.includes(msg.channel.id)) {
+  if (roll < 0.3 && !msg.author?.bot && !exclude.includes(msg.channel.id)) {
     // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;
-    if (msg.content.toLowerCase().includes("bananas")) {
+    if (msg.content?.toLowerCase().includes("bananas")) {
       if (roll < 0.1) {
         msg.reply({ files: [new Discord.AttachmentBuilder('media/buttermelonsMan.jpeg')] }).catch(u.errorHandler);
       } else {
         msg.reply("*buttermelons").catch(u.errorHandler);
       }
-    } else if (msg.content.toLowerCase().includes("banana")) {
+    } else if (msg.content?.toLowerCase().includes("banana")) {
       if (roll < 0.06) {
         msg.reply({ files: [new Discord.AttachmentBuilder('media/buttermelonPile.png')] }).catch(u.errorHandler);
       } else if (roll < 0.1) {
@@ -318,7 +318,7 @@ async function slashFunNamegame(int) {
     nameArg = nameArg.split("_")[0];// and just one segment
     const name = nameArg;
     const url = `https://thenamegame-generator.com/lyrics/${name}.html`;
-    const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
+    const response = await axios({ url, method: "get" }).catch(() => {
       return int.editReply(`Could not generate lyrics for ${name}.\nPerhaps you can get it yourself from https://thenamegame-generator.com.`);
     });
     const data = response.data;
@@ -400,8 +400,8 @@ const Module = new Augur.Module()
       case "choose": return slashFunChoose(int);
       case "emoji": return slashFunEmoji(int);
       default:
-        u.errorLog.send({ embeds: [ u.embed().setDescription(`Error, command ${int} isn't associated with anything in fun.js`)] });
-        return int.editReply("Thats an error, this command isn't registered properly. I've let my devs know.");
+        int.editReply("Thats an error, this command isn't registered properly. I've let my devs know.");
+        throw new Error("Unhandled Subcommand");
     }
   },
 })
