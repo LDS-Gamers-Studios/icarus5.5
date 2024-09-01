@@ -5,7 +5,7 @@ const Augur = require(`augurbot-ts`),
   axios = require('axios'),
   jimp = require('jimp'),
   profanityFilter = require(`profanity-matcher`),
-  mineSweeperEmojis = { 0:'0⃣', 1:'1⃣', 2:'2⃣', 3:'3⃣', 4:'4⃣', 5:'5⃣', 6:'6⃣', 7:'7⃣', 8:'8⃣', 9:'9⃣', 10:'🔟', 'bomb':'💣' };
+  mineSweeperEmojis = ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '7⃣', '8⃣', '💣'];
 /**
  * function color
  * @param {Discord.ChatInputCommandInteraction} int a /fun color interaction
@@ -186,12 +186,12 @@ async function slashFunMinesweeper(int) {
       board[x].push(getMineCount(x, y));
     }
   }
-  const output = board.map(row => row.map(num => `||${num == 9 ? mineSweeperEmojis[`bomb`] : mineSweeperEmojis[num]}||`).join(``)).join(`\n`);
+  const output = board.map(row => row.map(num => `||${mineSweeperEmojis[num]}||`).join(``)).join(`\n`);
   field = (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
   // we need to split it up because only 99 emoji per message limit for some reason.
   let degradingField = field;
   function countEmoji(text) {
-    const emojiRegex = new RegExp(`(${Object.values(mineSweeperEmojis).map(emoji => emoji.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(`|`)})`, 'g');
+    const emojiRegex = new RegExp(`(${mineSweeperEmojis.map(emoji => emoji.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(`|`)})`, 'g');
     const emoji = text.match(emojiRegex);
     return emoji?.length || 0;
   }
