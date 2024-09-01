@@ -17,21 +17,16 @@ async function slashFunColor(int) {
   }
   try {
     let colorCSS;
-    if (colorCode.startsWith('0x')) {
-      // In the case that we have a string in 0xABCDEF format
-      colorCSS = `#${colorCode.substring(2)}`;
-    } else {colorCSS = colorCode;}
+    colorCSS = colorCode.startsWith('0x') ? `#${colorCode.substring(2)}` : colorCode;// In the case that we have a string in 0xABCDEF format
     if (![`#000000`, `black`, `#000000FF`].includes(colorCSS)) {
       colorCSS = jimp.cssColorToHex(colorCSS);
     }
     if (colorCSS != 255) {
       const img = new jimp(256, 256, colorCSS);
-      int.editReply({ files: [await img.getBufferAsync(jimp.MIME_PNG)] });
-    } else {
-      int.editReply(`sorry, I couldn't understand the color ${colorCode}`);
+      return int.editReply({ files: [await img.getBufferAsync(jimp.MIME_PNG)] });
     }
   } catch (error) {
-    int.editReply(`sorry, I couldn't understand the color ${colorCode}`);
+    return int.editReply(`sorry, I couldn't understand the color ${colorCode}`);
   }
 }
 const hbsValues = {
@@ -55,22 +50,21 @@ async function slashFunHBS(int) {
         int.deleteReply();
         storedChooser = chooser;
         storedChoice = choice;
-        int.channel.send(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
+        return int.channel.send(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
         `I have stored a choice by ${chooser}, awaiting a challenge.`);
       } else {
         const oldstoredChooser = storedChooser;
         const olcstoredChoice = storedChoice;
         storedChooser = '';
         storedChoice = '';
-        int.editReply(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
+        return int.editReply(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
         chooser + ` challenged ${oldstoredChooser}!\n` +
         hbsResult(chooser, choice, oldstoredChooser, olcstoredChoice));
       }
-      break;
     default:
     case (`icarus`): {
       const aiChoice = u.rand(Object.keys(hbsValues));
-      int.editReply(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
+      return int.editReply(`**Handicorn, Buttermelon, Sloth, Fight!**\n` +
       chooser + ` challenged Icarus!\n` +
       hbsResult(chooser, choice, `Icarus`, aiChoice));
     }
@@ -368,8 +362,7 @@ async function slashFunNamegame(int) {
     const name = nameArg;
     const url = `https://thenamegame-generator.com/lyrics/${name}.html`;
     const response = await axios({ url, method: `get` }).catch((/** @type {axios.AxiosError} */ e) => {
-      int.editReply(`Could not generate lyrics for ${name}.\nPerhaps you can get it yourself from https://thenamegame-generator.com.`);
-      throw new Error(`namegame command error:${e.status}`);
+      return int.editReply(`Could not generate lyrics for ${name}.\nPerhaps you can get it yourself from https://thenamegame-generator.com.`);
     });
     const data = response.data;
     if (data) {
@@ -381,12 +374,12 @@ async function slashFunNamegame(int) {
       const ispf = (pfresults.length > 0 && pfresults[0]) || (pfresults.length > 1);
       if (!ispf && (name.length <= 230) && (results.length + name.length <= 5750)) {
         const embed = u.embed().setTitle(`🎶 **The Name Game! ${name}! 🎵`).setDescription(results);
-        int.editReply({ embeds:[embed] });
+        return int.editReply({ embeds:[embed] });
       } else {
-        int.editReply(`😬`);
+        return int.editReply("Let's try a different one...");
       }
     } else {
-      int.editReply(`I uh... broke my voice box. Try a different name?`);
+      return int.editReply("I uh... broke my voice box. Try a different name?");
     }
   } catch (error) { u.errorHandler(error, int); }
 }
