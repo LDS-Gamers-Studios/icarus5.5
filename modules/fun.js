@@ -258,12 +258,16 @@ async function slashFunRepost(int) {
   if (!int.channel) {
     return int.editReply("I don't know where here is, so I can't find anything to repost... try in a more normal channel.");
   }
-  const latest = (await int.channel.messages.fetch({ limit: 100 })).filter(m => m.attachments.size > 0).last();
+  const latest = (await int.channel.messages.fetch({ limit: 100 })).filter(m => m.attachments.size > 0 || m.embeds.some(embed => embed.image || embed.video)).first();
   if (!latest) {
     return int.editReply("I couldn't find anything in the last 100 messages to repost.");
   }
-  const imgToRepost = latest.attachments.first().url;
-  return int.editReply(imgToRepost);
+  // const imgToRepost = latest.attachments;
+  return int.editReply({
+    content: 'You have been charged with reposting this:',
+    files: latest.attachments.map(a => a.url),
+    embeds: latest.embeds.filter(embed => embed.image || embed.video)
+});
 }
 const buttermelonFacts = require('../data/buttermelonFacts.json');
 /** @param {Discord.ChatInputCommandInteraction} int */
