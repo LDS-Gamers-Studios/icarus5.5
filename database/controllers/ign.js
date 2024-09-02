@@ -18,7 +18,7 @@ module.exports = {
    * Find an IGN
    * @function find
    * @param {string|Discord.User|Discord.GuildMember} discordId Which user's IGN to find
-   * @param {(string)} system Which system IGN to find
+   * @param {(string)} [system] Which system IGN to find
    * @returns {Promise<Array<ign>|ign>}
    */
   find: function(discordId, system) {

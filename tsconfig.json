@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowUmdGlobalAccess": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./site/types"
+    ],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "files": ["site/types/global.d.ts"],
+  
+}

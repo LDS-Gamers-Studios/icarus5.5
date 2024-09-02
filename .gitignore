@@ -3,6 +3,7 @@ storage/*
 tmp
 config/config.json
 config/snowflakes-commands.json
+config/siteConfig.json
 test.js
 *-.js
 *-.json
