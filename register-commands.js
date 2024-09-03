@@ -29,7 +29,8 @@ const guildCommandFiles = [
   "userMod.js"
 ];
 
-if (!config.devMode) guildCommandFiles.push("slashBotHidden-.js"); // secret commands >:)
+// haven't made this yet
+// if (!config.devMode) guildCommandFiles.push("slashBotHidden-.js"); // secret commands >:)
 
 /**********************
  * END "CONFIG" BLOCK *

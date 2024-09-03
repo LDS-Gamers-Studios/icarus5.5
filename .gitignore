@@ -7,7 +7,7 @@ test.js
 *-.js
 *-.json
 data/banned.json
-site/*
+site
 .DS_Store
 media/banners/*
 naughty.csv

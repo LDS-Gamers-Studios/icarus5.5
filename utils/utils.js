@@ -227,7 +227,7 @@ const utils = {
       const desc = descriptions[i];
       if (!desc) return;
       const e = utils.embed(embed.toJSON()).setDescription(desc);
-      if (i == 0) {
+      if (i === 0) {
         if (int.deferred || int.replied) await int.editReply({ embeds: [e] });
         else await int.reply({ embeds: [e], ephemeral });
       } else {
@@ -236,6 +236,7 @@ const utils = {
       i++;
     } while (i < descriptions.length);
   },
+  parseInteraction,
   /**
    * Handles a command exception/error. Most likely called from a catch.
    * Reports the error and lets the user know.
