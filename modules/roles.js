@@ -30,7 +30,7 @@ const hasRole = (member, id) => member.roles.cache.has(id);
 async function slashRoleAdd(int, give = true) {
   await int.deferReply({ ephemeral: true });
   const input = int.options.getString("role", true);
-  const admin = u.perms.calc(int.member, ["mgr"]);
+  const admin = u.perms.calc(int.member, ["mgr", "botAdmin"]);
   const role = (admin ? int.guild.roles.cache.filter(r => !r.name.match(/[-^~]{2}/)) : optRoles).find(r => r.name.toLowerCase() == input.toLowerCase());
   if (!role) return admin ? int.editReply(`I couldn't find the ${input} role.`) : int.editReply(`You didn't give me a valid role!`);
   try {
@@ -45,14 +45,17 @@ async function slashRoleAdd(int, give = true) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashRoleList(int) {
-  const ephemeral = int.channel?.id == u.sf.channels.general;
+  const ephemeral = int.channel?.id != u.sf.channels.botspam;
   const has = int.member.roles.cache.intersect(optRoles);
   const without = optRoles.difference(has);
   const embed = u.embed().setTitle("Opt-In Roles")
     .setDescription(`You can add these roles with </role add:${u.sf.commands.slashRole}> to recieve pings and access to certain channels`);
-  if (has.size > 0) embed.addFields({ name: "Already Have", value: [...has.values()].join("\n") });
-  embed.addFields({ name: "Available to Add", value: [...without.values()].join("\n") || "You have all the opt-in roles already!" });
-  return int.reply({ embeds: [embed], ephemeral });
+  let lines = [];
+  if (has.size > 0) lines = [ "**Already Have**\n", ...has.values()];
+  lines.push("\n**Available to Add**");
+  if (without.size > 0) lines = lines.concat([...without.values()]);
+  else lines.push("You already have all the opt-in roles!");
+  return u.pagedEmbeds(int, embed, lines, ephemeral);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -87,8 +90,9 @@ async function slashRoleGive(int, give = true) {
   } catch (error) { u.errorHandler(error, int); }
 }
 /** @param {Discord.GuildMember} member */
-function getInventory(member) {
-  return u.perms.calc(member, ["mgr"]) ? equipRoles : equipRoles.filter(r => member.roles.cache.hasAny(r.baseId, ...r.inherited));
+function getInventory(member, override = true) {
+  if (override && u.perms.calc(member, ["mgr", "botAdmin"])) return equipRoles;
+  return equipRoles.filter(r => member.roles.cache.hasAny(r.baseId, ...r.inherited));
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -156,7 +160,7 @@ async function setRoles() {
     });
     const mappedEquips = eRoles
       .filter(r => r != null && r != undefined && r["Base Role ID"] && r["Color Role ID"])
-      .map(r => ({ colorId: r["Color Role ID"], baseId: r["Base Role ID"], inherited: r["Lower Roles"]?.split(" ").filter(filterBlank) ?? [] }));
+      .map(r => ({ colorId: r["Color Role ID"], baseId: r["Base Role ID"], inherited: r["Parent Roles"]?.split(" ").filter(filterBlank) ?? [] }));
     equipRoles = new u.Collection(mappedEquips.map(e => [e.colorId, e]));
   } catch (e) { u.errorHandler(e, "Load Color & Equip Roles"); }
 }
@@ -197,7 +201,7 @@ Module.addInteraction({
         return interaction.respond(withPerms.map(r => ({ name: r, value: r })));
       }
       const adding = sub == "add";
-      const values = (u.perms.calc(interaction.member, ["mgr"]) ? interaction.guild.roles.cache : optRoles)
+      const values = (u.perms.calc(interaction.member, ["mgr", "botAdmin"]) ? interaction.guild.roles.cache : optRoles)
         .filter(r => r.name.toLowerCase().includes(option.value.toLowerCase()) && // relevant
           r.comparePositionTo(u.sf.roles.icarus) < 0 && // able to be given
           !r.managed && r.id != u.sf.ldsg && // not managed or @everyone
@@ -224,6 +228,40 @@ Module.addInteraction({
 .setUnload(() => true)
 .addEvent("ready", async () => {
   await setRoles();
+})
+.addEvent("guildMemberUpdate", async (oldMember, newMember) => {
+  if (newMember.guild.id == u.sf.ldsg) {
+    if (newMember.roles.cache.size > oldMember.roles.cache.size) {
+      // Notify about new available color
+      try {
+        if ((Date.now() - (newMember.joinedTimestamp || 0)) > 45000) {
+          if (oldMember.partial) return;
+          // Check equippables if they're not auto-applying on rejoin
+          const newInventory = getInventory(newMember, false);
+          const oldInventory = getInventory(oldMember, false);
+          const diff = newInventory.filter(r => !oldInventory.has(r.colorId));
+          if (diff.size > 0) {
+            newMember.send(`You have ${diff.size > 1 ? "a new color role" : "new color roles"}!\n${diff.map(r => `- ${newMember.guild.roles.cache.get(r.colorId)?.name}`).join("\n")}!\nYou can equip the colors with the \`/role equip\` command. Check \`/role inventory\` command to see what colors you can equip.`).catch(u.noop);
+          }
+        }
+        await u.db.user.updateRoles(newMember);
+      } catch (error) {
+        u.errorHandler(error, "Update Roles on Role Add");
+      }
+    } else if (newMember.roles.cache.size < oldMember.roles.cache.size) {
+      // Remove color role when base role removed
+      try {
+        if (oldMember.partial) return;
+        const newInventory = getInventory(newMember, false);
+        const oldInventory = getInventory(oldMember, false);
+        const diff = oldInventory.filter(r => !newInventory.has(r.colorId));
+        if (diff.size > 0) await newMember.roles.remove([...diff.keys()]);
+        await u.db.user.updateRoles(newMember);
+      } catch (error) {
+        u.errorHandler(error, "Update Roles on Role Remove");
+      }
+    }
+  }
 });
 
 module.exports = Module;
