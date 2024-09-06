@@ -167,10 +167,14 @@ async function slashFunMinesweeper(int) {
   const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[num]}||`).join(""));
   // const output = rowStrings.join("\n");
   // field = (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
-  rowStrings.unshift(`**Mines: ${mineCount}** (Tip: Corners are never mines)`);
+  // rowStrings.unshift(`**Mines: ${mineCount}** (Tip: Corners are never mines)`);
   const field = rowStrings.join("\n");
-  // we need to split it up because only ?99 emoji per message? limit for some reason.
-  return u.splitReply(int, field);
+  // we need to split it up because only 199 tag pair per message limit for some reason... perhaps an embed will work?
+  const embed = u.embed()
+  .setTitle(`**Mines: ${mineCount}** (Tip: Corners are never mines)`)
+  .setDescription(field);
+  return int.editReply({ embeds: [embed] });
+  // return u.splitReply(int, field);
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunRoll(int) {

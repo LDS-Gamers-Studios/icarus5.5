@@ -82,32 +82,6 @@ const utils = {
     }
   },
   /**
-   * If a command can potentially overflow the 2000 character limit, this sends it as multiple follow up messages split by line... (if one line is too long then you need to rework your code, and this will fail to send it)
-   * @param {Discord.CommandInteraction} int The interaction to editReply and followUp on.
-   * @param {string} msg The message to split and send.
-   * @returns {Promise<Discord.Message<boolean>>}
-   */
-  splitReply: function(int, msg) {
-    const lines = msg.split("\n");
-    const msgs = [];
-    let currntmsg = "";
-    lines.forEach((str) => {
-      if (currntmsg.length + str.length > 2000) {
-        msgs.push(currntmsg);
-        currntmsg = "";
-      }
-      currntmsg += str + "\n";
-    });
-    msgs.push(currntmsg);
-    let ret = int.editReply(msgs[0]);
-    if (msgs.length > 1) {
-      for (let msgNum = 1; msgNum < msgs.length; msgNum++) {
-        ret = int.followUp(msgs[msgNum]);
-      }
-    }
-    return ret;
-  },
-  /**
    * After the given amount of time, attempts to delete the message.
    * @param {Discord.Message|Discord.APIMessage|Discord.Interaction|Discord.InteractionResponse|null|void} [msg] The message to delete.
    * @param {number} t The length of time to wait before deletion, in milliseconds.
