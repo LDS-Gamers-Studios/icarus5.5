@@ -98,6 +98,7 @@ const utils = {
       }
       currntmsg += str + "\n";
     });
+    msgs.push(currntmsg);
     let ret = int.editReply(msgs[0]);
     if (msgs.length > 1) {
       for (let msgNum = 1; msgNum < msgs.length; msgNum++) {
