@@ -14,3 +14,6 @@ naughty.csv
 
 # For Visual Studio's temp directory
 .vs/
+
+# For Intellij Configs until some good ones are made and decided upon
+.idea/
