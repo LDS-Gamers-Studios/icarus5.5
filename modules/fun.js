@@ -129,7 +129,7 @@ async function slashFunMinesweeper(int) {
       break;
   }
   // generate the minefield
-  let field = "";
+  // let field = "";
   // Getting all possible board spaces
   const possibleSpaces = Array.from({ length: size * size }, (v, k) => k);
   // Remove 4 corners, corners can't be mines
@@ -164,34 +164,13 @@ async function slashFunMinesweeper(int) {
       board[x].push(spaceNum);
     }
   }
-  const output = board.map(row => row.map(num => `||${mineSweeperEmojis[num]}||`).join("")).join("\n");
-  field = (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
-  // we need to split it up because only 99 emoji per message limit for some reason.
-  let degradingField = field;
-  function countEmoji(text) {
-    const emojiRegex = new RegExp(`(${mineSweeperEmojis.map(emoji => emoji.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join("|")})`, 'g');
-    const emoji = text.match(emojiRegex);
-    return emoji?.length || 0;
-  }
-  if (countEmoji(field) <= 99) {
-    return int.editReply(field); // No splitting needed
-  }
-  if (!int.channel) {
-    return int.editReply(`I can't fit the entire minefield in here, try #<${u.sf.channels.botspam}>`);
-  }
-  while (countEmoji(degradingField) > 99) {
-    let segment = "";
-    while (countEmoji(segment + degradingField.substring(0, degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length)) <= 99) {
-      segment += degradingField.substring(0, (degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length) + 1);
-      degradingField = degradingField.substring((degradingField.indexOf("\n") >= 0 ? degradingField.indexOf("\n") : degradingField.length) + 1);
-    }
-    if (segment + degradingField == field) {
-      await int.editReply(segment);
-    } else {
-      await int.channel.send(segment);
-    }
-  }
-  return int.channel.send(degradingField);
+  const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[num]}||`).join(""));
+  // const output = rowStrings.join("\n");
+  // field = (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
+  rowStrings.unshift(`**Mines: ${mineCount}** (Tip: Corners are never mines)`);
+  const field = rowStrings.join("\n");
+  // we need to split it up because only ?99 emoji per message? limit for some reason.
+  return u.splitReply(int, field);
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunRoll(int) {
