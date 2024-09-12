@@ -111,31 +111,31 @@ async function slashFunAcronym(int) {
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunMinesweeper(int) {
-  let size, mineCount;
+  let edgesize, mineCount;
   // difficulty values
   switch (int.options.getString("difficulty", true)) {
     case "Hard":
-      size = 14;
+      edgesize = 14;
       mineCount = 60;
       break;
     case "Medium":
-      size = 10;
+      edgesize = 10;
       mineCount = 30;
       break;
     default:
     case "Easy":
-      size = 5;
+      edgesize = 5;
       mineCount = 5;
       break;
   }
   // generate the minefield
   // let field = "";
   // Getting all possible board spaces
-  const possibleSpaces = Array.from({ length: size * size }, (v, k) => k);
+  const possibleSpaces = Array.from({ length: edgesize * edgesize }, (v, k) => k);
   // Remove 4 corners, corners can't be mines
-  possibleSpaces.splice((size * size) - 1, 1);
-  possibleSpaces.splice((size - 1) * size, 1);
-  possibleSpaces.splice(size - 1, 1);
+  possibleSpaces.splice((edgesize * edgesize) - 1, 1);
+  possibleSpaces.splice((edgesize - 1) * edgesize, 1);
+  possibleSpaces.splice(edgesize - 1, 1);
   possibleSpaces.splice(0, 1);
   // Finding out where the mines will be
   const mineSpaces = [];
@@ -147,17 +147,17 @@ async function slashFunMinesweeper(int) {
   // Creating the final board
   /** @type {number[][]} */
   const board = [];
-  for (let x = 0; x < size; x++) {
+  for (let x = 0; x < edgesize; x++) {
     board.push([]);
-    for (let y = 0; y < size; y++) {
+    for (let y = 0; y < edgesize; y++) {
       let spaceNum = 0;
-      if (mineSpaces.includes(x + (y * size))) {spaceNum = 9;} else {// if this spot is/isn't a mine
+      if (mineSpaces.includes(x + (y * edgesize))) {spaceNum = 9;} else {// if this spot is/isn't a mine
         // count adjacent mines
         for (let i = -1; i <= 1; i++) {
-          if ((x + i) < 0 || (x + i) >= size) continue;
+          if ((x + i) < 0 || (x + i) >= edgesize) continue;
           for (let j = -1; j <= 1; j++) {
-            if ((y + j) < 0 || (y + j) >= size) continue;
-            if (mineSpaces.includes((y + j) * size + x + i)) spaceNum++;
+            if ((y + j) < 0 || (y + j) >= edgesize) continue;
+            if (mineSpaces.includes((y + j) * edgesize + x + i)) spaceNum++;
           }
         }
       }
@@ -165,15 +165,36 @@ async function slashFunMinesweeper(int) {
     }
   }
   const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[num]}||`).join(""));
+  if (!int.channel) {
+    return int.editReply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
+  }
+  int.editReply(`**Mines: ${mineCount}** (Tip: Corners are never mines)`);
+  const messages = [""];
+  let messageCount = 0;
+  let tagpairs = 0;
+  rowStrings.forEach((row) => {
+    if (tagpairs + (edgesize * 2) > 199) {
+      tagpairs = 0;
+      messageCount++;
+      messages[messageCount] = "";
+    }
+    tagpairs += edgesize * 2;
+    messages[messageCount] += row + "\n";
+  });
+  let ret;
+  messages.forEach((content) => {
+    ret = int.channel?.send(content);
+  });
+  return ret;
   // const output = rowStrings.join("\n");
   // field = (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
   // rowStrings.unshift(`**Mines: ${mineCount}** (Tip: Corners are never mines)`);
-  const field = rowStrings.join("\n");
+  // const field = rowStrings.join("\n");
   // we need to split it up because only 199 tag pair per message limit for some reason... perhaps an embed will work?
-  const embed = u.embed()
-  .setTitle(`**Mines: ${mineCount}** (Tip: Corners are never mines)`)
-  .setDescription(field);
-  return int.editReply({ embeds: [embed] });
+  // const embed = u.embed()
+  // .setTitle(`**Mines: ${mineCount}** (Tip: Corners are never mines)`)
+  // .setDescription(field);
+  // return int.editReply({ embeds: [embed] });
   // return u.splitReply(int, field);
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
