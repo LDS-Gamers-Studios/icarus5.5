@@ -3,12 +3,19 @@
     "allowUmdGlobalAccess": true,
     "typeRoots": [
       "./node_modules/@types",
-      "./site/types"
+      "./site/backend/types"
     ],
+    "noEmit": true,
+    "checkJs": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
   },
-  "files": ["site/types/global.d.ts"],
-  
+  "include": ["./*"],
+  "exclude": [
+    "site/frontend",
+    "node_modules"
+  ]
 }
