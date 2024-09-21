@@ -143,21 +143,21 @@ async function slashFunMinesweeper(int) {
   // Setting where the mines will be
 
   // make the board all 0's
-  const board = new Array(width).fill(new Array(height).fill(0));
+  const board = new Array(width).fill([]).map(() => {return new Array(height).fill(0);});
   const mineSpaces = [];
   while (mineSpaces.length < mineCount) {
     const mineX = Math.floor(Math.random() * width);
     const mineY = Math.floor(Math.random() * height);
     if (((mineX == 0 || mineX == width - 1) &&
     (mineY == 0 || mineY == height - 1)) ||
-    (mineSpaces.includes([mineX, mineY]))) {
+    (board[mineX][mineY] >= 9)) {
       // corner or already a mine, abort
     } else {
       mineSpaces.push([mineX, mineY]);
       for (let setx = mineX - 1; setx <= mineX + 1; setx++) {
-        if (setx >= 0 || setx < width) {
+        if (setx >= 0 && setx < width) {
           for (let sety = mineY - 1; sety <= mineY + 1; sety++) {
-            if (sety >= 0 || sety < height) {
+            if (sety >= 0 && sety < height) {
               board[setx][sety]++;
             }
           }
@@ -186,7 +186,8 @@ async function slashFunMinesweeper(int) {
   //     board[x].push(spaceNum);
   //   }
   // }
-  const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[Math.max(num, 9)]}||`).join(""));
+  console.log(board);
+  const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
   if (!int.channel) {
     return int.editReply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
   }
@@ -195,12 +196,12 @@ async function slashFunMinesweeper(int) {
   let messageCount = 0;
   let tagpairs = 0;
   rowStrings.forEach((row) => {
-    if (tagpairs + (edgesize * 2) > 199) {
+    if (tagpairs + (width * 2) > 199) {
       tagpairs = 0;
       messageCount++;
       messages[messageCount] = "";
     }
-    tagpairs += edgesize * 2;
+    tagpairs += width * 2;
     messages[messageCount] += row + "\n";
   });
   let ret;
