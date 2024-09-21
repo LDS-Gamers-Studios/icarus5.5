@@ -163,6 +163,7 @@ async function slashFunMinesweeper(int) {
           }
         }
       }
+      board[mineX][mineY] = 9;
     }
   }
   // // Creating the final board
