@@ -111,60 +111,81 @@ async function slashFunAcronym(int) {
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunMinesweeper(int) {
-  let edgesize, mineCount;
+  let height, width, mineCount;
   // difficulty values
   switch (int.options.getString("difficulty", true)) {
     case "Hard":
-      edgesize = 14;
+      height = 14;
+      width = 14;
       mineCount = 60;
       break;
     case "Medium":
-      edgesize = 10;
+      height = 10;
+      width = 10;
       mineCount = 30;
       break;
     default:
     case "Easy":
-      edgesize = 5;
+      height = 5;
+      width = 5;
       mineCount = 5;
       break;
   }
   // generate the minefield
   // let field = "";
-  // Getting all possible board spaces
-  const possibleSpaces = Array.from({ length: edgesize * edgesize }, (v, k) => k);
-  // Remove 4 corners, corners can't be mines
-  possibleSpaces.splice((edgesize * edgesize) - 1, 1);
-  possibleSpaces.splice((edgesize - 1) * edgesize, 1);
-  possibleSpaces.splice(edgesize - 1, 1);
-  possibleSpaces.splice(0, 1);
-  // Finding out where the mines will be
+  // // Getting all possible board spaces
+  // const possibleMineSpaces = Array.from({ length: edgesize * edgesize }, (v, k) => k);
+  // // Remove 4 corners, corners can't be mines (br,bl,tr,tl)
+  // possibleMineSpaces.splice((edgesize * edgesize) - 1, 1)
+  // .splice((edgesize - 1) * edgesize, 1)
+  // .splice(edgesize - 1, 1)
+  // .splice(0, 1);
+  // Setting where the mines will be
+
+  // make the board all 0's
+  const board = new Array(width).fill(new Array(height).fill(0));
   const mineSpaces = [];
-  for (let i = 0; i < mineCount; i++) {
-    const random = Math.floor(Math.random() * possibleSpaces.length);
-    mineSpaces.push(possibleSpaces[random]);
-    possibleSpaces.splice(random, 1);
-  }
-  // Creating the final board
-  /** @type {number[][]} */
-  const board = [];
-  for (let x = 0; x < edgesize; x++) {
-    board.push([]);
-    for (let y = 0; y < edgesize; y++) {
-      let spaceNum = 0;
-      if (mineSpaces.includes(x + (y * edgesize))) {spaceNum = 9;} else {// if this spot is/isn't a mine
-        // count adjacent mines
-        for (let i = -1; i <= 1; i++) {
-          if ((x + i) < 0 || (x + i) >= edgesize) continue;
-          for (let j = -1; j <= 1; j++) {
-            if ((y + j) < 0 || (y + j) >= edgesize) continue;
-            if (mineSpaces.includes((y + j) * edgesize + x + i)) spaceNum++;
+  while (mineSpaces.length < mineCount) {
+    const mineX = Math.floor(Math.random() * width);
+    const mineY = Math.floor(Math.random() * height);
+    if (((mineX == 0 || mineX == width - 1) &&
+    (mineY == 0 || mineY == height - 1)) ||
+    (mineSpaces.includes([mineX, mineY]))) {
+      // corner or already a mine, abort
+    } else {
+      mineSpaces.push([mineX, mineY]);
+      for (let setx = mineX - 1; setx <= mineX + 1; setx++) {
+        if (setx >= 0 || setx < width) {
+          for (let sety = mineY - 1; sety <= mineY + 1; sety++) {
+            if (sety >= 0 || sety < height) {
+              board[setx][sety]++;
+            }
           }
         }
       }
-      board[x].push(spaceNum);
     }
   }
-  const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[num]}||`).join(""));
+  // // Creating the final board
+  // /** @type {number[][]} */
+  // const board = [];
+  // for (let x = 0; x < edgesize; x++) {
+  //   board.push([]);
+  //   for (let y = 0; y < edgesize; y++) {
+  //     let spaceNum = 0;
+  //     if (mineSpaces.includes([x, y])) {spaceNum = 9;} else {// if this spot is/isn't a mine
+  //       // count adjacent mines
+  //       for (let i = -1; i <= 1; i++) {
+  //         if ((x + i) < 0 || (x + i) >= edgesize) continue;
+  //         for (let j = -1; j <= 1; j++) {
+  //           if ((y + j) < 0 || (y + j) >= edgesize) continue;
+  //           if (mineSpaces.includes([x + i, y + j])) spaceNum++;
+  //         }
+  //       }
+  //     }
+  //     board[x].push(spaceNum);
+  //   }
+  // }
+  const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[Math.max(num, 9)]}||`).join(""));
   if (!int.channel) {
     return int.editReply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
   }
