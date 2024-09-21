@@ -131,19 +131,9 @@ async function slashFunMinesweeper(int) {
       mineCount = 5;
       break;
   }
-  // generate the minefield
-  // let field = "";
-  // // Getting all possible board spaces
-  // const possibleMineSpaces = Array.from({ length: edgesize * edgesize }, (v, k) => k);
-  // // Remove 4 corners, corners can't be mines (br,bl,tr,tl)
-  // possibleMineSpaces.splice((edgesize * edgesize) - 1, 1)
-  // .splice((edgesize - 1) * edgesize, 1)
-  // .splice(edgesize - 1, 1)
-  // .splice(0, 1);
-  // Setting where the mines will be
-
   // make the board all 0's
   const board = new Array(width).fill([]).map(() => {return new Array(height).fill(0);});
+  // set each mine
   const mineSpaces = [];
   while (mineSpaces.length < mineCount) {
     const mineX = Math.floor(Math.random() * width);
@@ -153,7 +143,7 @@ async function slashFunMinesweeper(int) {
     (board[mineX][mineY] >= 9)) {
       // corner or already a mine, abort
     } else {
-      mineSpaces.push([mineX, mineY]);
+      // increment adjacent spaces
       for (let setx = mineX - 1; setx <= mineX + 1; setx++) {
         if (setx >= 0 && setx < width) {
           for (let sety = mineY - 1; sety <= mineY + 1; sety++) {
@@ -163,30 +153,12 @@ async function slashFunMinesweeper(int) {
           }
         }
       }
+      // set the mine
+      mineSpaces.push([mineX, mineY]);
       board[mineX][mineY] = 9;
     }
   }
-  // // Creating the final board
-  // /** @type {number[][]} */
-  // const board = [];
-  // for (let x = 0; x < edgesize; x++) {
-  //   board.push([]);
-  //   for (let y = 0; y < edgesize; y++) {
-  //     let spaceNum = 0;
-  //     if (mineSpaces.includes([x, y])) {spaceNum = 9;} else {// if this spot is/isn't a mine
-  //       // count adjacent mines
-  //       for (let i = -1; i <= 1; i++) {
-  //         if ((x + i) < 0 || (x + i) >= edgesize) continue;
-  //         for (let j = -1; j <= 1; j++) {
-  //           if ((y + j) < 0 || (y + j) >= edgesize) continue;
-  //           if (mineSpaces.includes([x + i, y + j])) spaceNum++;
-  //         }
-  //       }
-  //     }
-  //     board[x].push(spaceNum);
-  //   }
-  // }
-  console.log(board);
+  // seperate into rows and emojify
   const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
   if (!int.channel) {
     return int.editReply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
@@ -209,16 +181,6 @@ async function slashFunMinesweeper(int) {
     ret = int.channel?.send(content);
   });
   return ret;
-  // const output = rowStrings.join("\n");
-  // field = (`**Mines: ${mineCount}** (Tip: Corners are never mines)\n${output}`);
-  // rowStrings.unshift(`**Mines: ${mineCount}** (Tip: Corners are never mines)`);
-  // const field = rowStrings.join("\n");
-  // we need to split it up because only 199 tag pair per message limit for some reason... perhaps an embed will work?
-  // const embed = u.embed()
-  // .setTitle(`**Mines: ${mineCount}** (Tip: Corners are never mines)`)
-  // .setDescription(field);
-  // return int.editReply({ embeds: [embed] });
-  // return u.splitReply(int, field);
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunRoll(int) {
