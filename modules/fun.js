@@ -111,51 +111,42 @@ async function slashFunAcronym(int) {
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunMinesweeper(int) {
-  let height, width, mineCount;
-  // difficulty values
+  let edgesize, mineCount;
   switch (int.options.getString("difficulty", true)) {
     case "Hard":
-      height = 14;
-      width = 14;
+      edgesize = [10, 18];
       mineCount = 60;
       break;
     case "Medium":
-      height = 10;
-      width = 10;
+      edgesize = [10, 10];
       mineCount = 30;
       break;
     default:
-    case "Easy":
-      height = 5;
-      width = 5;
+      edgesize = [5, 5];
       mineCount = 5;
       break;
   }
-  // make the board all 0's
-  const board = new Array(width).fill([]).map(() => {return new Array(height).fill(0);});
-  // set each mine
-  const mineSpaces = [];
-  while (mineSpaces.length < mineCount) {
-    const mineX = Math.floor(Math.random() * width);
-    const mineY = Math.floor(Math.random() * height);
-    if (((mineX == 0 || mineX == width - 1) &&
-    (mineY == 0 || mineY == height - 1)) ||
-    (board[mineX][mineY] >= 9)) {
-      // corner or already a mine, abort
-    } else {
-      // increment adjacent spaces
-      for (let setx = mineX - 1; setx <= mineX + 1; setx++) {
-        if (setx >= 0 && setx < width) {
-          for (let sety = mineY - 1; sety <= mineY + 1; sety++) {
-            if (sety >= 0 && sety < height) {
-              board[setx][sety]++;
-            }
-          }
-        }
+  // x and y lengths (for mobile users)
+  const [xl, yl] = edgesize;
+  // Create a 2d array for the board  
+  const board = new Array(yl).fill([]).map(() => {return new Array(xl).fill(0);});
+  // Convert the 2d array to a 2d index array. Filter corner spots.
+  const spaces = board.map((r, y) => r.map((c, x) => x).filter((c, x) => (![0, yl - 1].includes(y) && ![0, xl - 1].includes(x))));
+  for (let i = 0; i < mineCount; i++) {
+    // Get a random position
+    const y = Math.floor(Math.random() * spaces.length);
+    const x = Math.floor(Math.random() * spaces[y].length);
+    // Set the value to a mine
+    board[y][x] = 9;
+    // Remove from possible mine spaces
+    spaces[y].slice(x, 1);
+    if (spaces[y].length == 0) spaces.slice(y, 1);
+    // Increment all spots around it
+    for (let nx = -1; nx < 2; nx++) {
+      for (let ny = -1; ny < 2; ny++) {
+        if (nx == xl || nx < 0 || ny == yl || ny < 0 || board[ny][nx] > 8) continue;
+        board[ny][nx]++;
       }
-      // set the mine
-      mineSpaces.push([mineX, mineY]);
-      board[mineX][mineY] = 9;
     }
   }
   // seperate into rows and emojify
