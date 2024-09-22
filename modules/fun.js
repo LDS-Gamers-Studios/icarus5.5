@@ -134,7 +134,6 @@ async function slashFunMinesweeper(int) {
   const rows = board.map((c, y) => y);
   const spaces = board.map((r, y) => r.map((c, x) => x).filter((c, x) => (!([0, height - 1].includes(y) && [0, width - 1].includes(x)))));
   for (let i = 0; i < mineCount; i++) {
-    console.log(spaces);
     // Get a random position
     const rowsy = Math.floor(Math.random() * rows.length);
     const spacesx = Math.floor(Math.random() * spaces[rowsy].length);
@@ -156,8 +155,6 @@ async function slashFunMinesweeper(int) {
       }
     }
   }
-  console.log(spaces);
-  console.log(board);
   // seperate into rows and emojify
   const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
   if (!int.channel) {
