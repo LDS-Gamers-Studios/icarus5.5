@@ -115,7 +115,7 @@ async function slashFunMinesweeper(int) {
   switch (int.options.getString("difficulty", true)) {
     case "Hard":
       edgesize = [10, 18];
-      mineCount = 60;
+      mineCount = 176;
       break;
     case "Medium":
       edgesize = [10, 10];
@@ -128,27 +128,36 @@ async function slashFunMinesweeper(int) {
   }
   // x and y lengths (for mobile users)
   const [xl, yl] = edgesize;
-  // Create a 2d array for the board  
+  // Create a 2d array for the board
   const board = new Array(yl).fill([]).map(() => {return new Array(xl).fill(0);});
   // Convert the 2d array to a 2d index array. Filter corner spots.
-  const spaces = board.map((r, y) => r.map((c, x) => x).filter((c, x) => (![0, yl - 1].includes(y) && ![0, xl - 1].includes(x))));
+  const rows = board.map((c, y) => y);
+  const spaces = board.map((r, y) => r.map((c, x) => x).filter((c, x) => (!([0, yl - 1].includes(y) && [0, xl - 1].includes(x)))));
   for (let i = 0; i < mineCount; i++) {
+    console.log(spaces);
     // Get a random position
-    const y = Math.floor(Math.random() * spaces.length);
-    const x = Math.floor(Math.random() * spaces[y].length);
+    const rowsy = Math.floor(Math.random() * rows.length);
+    const spacesx = Math.floor(Math.random() * spaces[rowsy].length);
+    const y = rows[rowsy];
+    const x = spaces[rowsy][spacesx];
     // Set the value to a mine
     board[y][x] = 9;
     // Remove from possible mine spaces
-    spaces[y].slice(x, 1);
-    if (spaces[y].length == 0) spaces.slice(y, 1);
+    spaces[rowsy].splice(spacesx, 1);
+    if (spaces[rowsy].length == 0) {
+      spaces.splice(rowsy, 1);
+      rows.splice(rowsy, 1);
+    }
     // Increment all spots around it
-    for (let nx = -1; nx < 2; nx++) {
-      for (let ny = -1; ny < 2; ny++) {
-        if (nx == xl || nx < 0 || ny == yl || ny < 0 || board[ny][nx] > 8) continue;
+    for (let nx = x - 1; nx < x + 2; nx++) {
+      for (let ny = y - 1; ny < y + 2; ny++) {
+        if (nx >= xl || nx < 0 || ny >= yl || ny < 0 || board[ny][nx] > 8) continue;
         board[ny][nx]++;
       }
     }
   }
+  console.log(spaces);
+  console.log(board);
   // seperate into rows and emojify
   const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
   if (!int.channel) {
@@ -159,12 +168,12 @@ async function slashFunMinesweeper(int) {
   let messageCount = 0;
   let tagpairs = 0;
   rowStrings.forEach((row) => {
-    if (tagpairs + (width * 2) > 199) {
+    if (tagpairs + (xl * 2) > 199) {
       tagpairs = 0;
       messageCount++;
       messages[messageCount] = "";
     }
-    tagpairs += width * 2;
+    tagpairs += xl * 2;
     messages[messageCount] += row + "\n";
   });
   let ret;
