@@ -79,12 +79,32 @@ const mines = new u.sub()
   .addStringOption(
     new u.string()
     .setName("difficulty")
-    .setDescription("5 by 5 with 5 mines, 10 by 10 with 30 mines, or 14 by 14 with 60 mines")
+    .setDescription("5 by 5 with 5 mines, 10 by 10 with 30 mines, or 10 by 18 with 60 mines")
     .setRequired(true)
     .setChoices(
       { name: "Easy", value: "Easy" },
       { name: "Medium", value: "Medium" },
       { name: "Hard", value: "Hard" })
+  )
+  .addIntegerOption(
+    new u.int()
+    .setName("width")
+    .setDescription("override the width of the minefeild.")
+    .setMinValue(3)
+    .setMaxValue(99)
+  )
+  .addIntegerOption(
+    new u.int()
+    .setName("height")
+    .setDescription("override the height of the minefeild.")
+    .setMinValue(1)
+    .setMaxValue(99)
+  )
+  .addIntegerOption(
+    new u.int()
+    .setName("minecount")
+    .setDescription("override the number of mines in the minefeild. (max of 4 less than the number of spaces)")
+    .setMinValue(0)
   );
 const hbs = new u.sub()
   .setName("hbs")

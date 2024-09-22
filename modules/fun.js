@@ -126,8 +126,14 @@ async function slashFunMinesweeper(int) {
       mineCount = 5;
       break;
   }
+  // override with manual numbers if given
+  edgesize[0] = int.options.getInteger("width") || edgesize[0];
+  edgesize[1] = int.options.getInteger("height") || edgesize[1];
+  mineCount = int.options.getInteger("minecount") || mineCount;
   // x and y lengths (for mobile users)
   const [width, height] = edgesize;
+  // ensure theres always enough room for all of the mines
+  mineCount = Math.min(width * height - (2 * (height > 1 ? 2 : 1)), mineCount);
   // Create a 2d array for the board
   const board = new Array(height).fill([]).map(() => {return new Array(width).fill(0);});
   // Convert the 2d array to a 2d index array. Filter corner spots.
