@@ -115,7 +115,7 @@ async function slashFunMinesweeper(int) {
   switch (int.options.getString("difficulty", true)) {
     case "Hard":
       edgesize = [10, 18];
-      mineCount = 176;
+      mineCount = 60;
       break;
     case "Medium":
       edgesize = [10, 10];
