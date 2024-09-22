@@ -127,12 +127,12 @@ async function slashFunMinesweeper(int) {
       break;
   }
   // x and y lengths (for mobile users)
-  const [xl, yl] = edgesize;
+  const [width, height] = edgesize;
   // Create a 2d array for the board
-  const board = new Array(yl).fill([]).map(() => {return new Array(xl).fill(0);});
+  const board = new Array(height).fill([]).map(() => {return new Array(width).fill(0);});
   // Convert the 2d array to a 2d index array. Filter corner spots.
   const rows = board.map((c, y) => y);
-  const spaces = board.map((r, y) => r.map((c, x) => x).filter((c, x) => (!([0, yl - 1].includes(y) && [0, xl - 1].includes(x)))));
+  const spaces = board.map((r, y) => r.map((c, x) => x).filter((c, x) => (!([0, height - 1].includes(y) && [0, width - 1].includes(x)))));
   for (let i = 0; i < mineCount; i++) {
     console.log(spaces);
     // Get a random position
@@ -149,10 +149,10 @@ async function slashFunMinesweeper(int) {
       rows.splice(rowsy, 1);
     }
     // Increment all spots around it
-    for (let nx = x - 1; nx < x + 2; nx++) {
-      for (let ny = y - 1; ny < y + 2; ny++) {
-        if (nx >= xl || nx < 0 || ny >= yl || ny < 0 || board[ny][nx] > 8) continue;
-        board[ny][nx]++;
+    for (let incrementx = x - 1; incrementx < x + 2; incrementx++) {
+      for (let incrementy = y - 1; incrementy < y + 2; incrementy++) {
+        if (incrementx >= width || incrementx < 0 || incrementy >= height || incrementy < 0) continue;
+        board[incrementy][incrementx]++;
       }
     }
   }
@@ -168,12 +168,12 @@ async function slashFunMinesweeper(int) {
   let messageCount = 0;
   let tagpairs = 0;
   rowStrings.forEach((row) => {
-    if (tagpairs + (xl * 2) > 199) {
+    if (tagpairs + (width * 2) > 199) {
       tagpairs = 0;
       messageCount++;
       messages[messageCount] = "";
     }
-    tagpairs += xl * 2;
+    tagpairs += width * 2;
     messages[messageCount] += row + "\n";
   });
   let ret;
