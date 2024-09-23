@@ -137,21 +137,27 @@ async function slashFunMinesweeper(int) {
   // Create a 2d array for the board
   const board = new Array(height).fill([]).map(() => {return new Array(width).fill(0);});
   // Convert the 2d array to a 2d index array. Filter corner spots.
-  const rows = board.map((c, y) => y);
-  const spaces = board.map((r, y) => r.map((c, x) => x).filter((c, x) => (!([0, height - 1].includes(y) && [0, width - 1].includes(x)))));
+  // const rows = board.map((c, y) => y);
+  const spaces = {};// board.map((r, y) => r.map((c, x) => x).filter((c, x) => (!([0, height - 1].includes(y) && [0, width - 1].includes(x)))));
+  board.forEach((r, y) => {
+    spaces[y] = {};
+    r.forEach((space, x) => {
+      if (!([0, height - 1].includes(y) && [0, width - 1].includes(x))) {
+        spaces[y][x] = [y, x];
+      }
+    });
+  });
   for (let i = 0; i < mineCount; i++) {
     // Get a random position
-    const rowsy = Math.floor(Math.random() * rows.length);
-    const spacesx = Math.floor(Math.random() * spaces[rowsy].length);
-    const y = rows[rowsy];
-    const x = spaces[rowsy][spacesx];
+    const row = u.rand(Object.values(spaces));
+    const coords = u.rand(Object.values(row));
+    const [y, x] = coords;
     // Set the value to a mine
     board[y][x] = 9;
     // Remove from possible mine spaces
-    spaces[rowsy].splice(spacesx, 1);
-    if (spaces[rowsy].length == 0) {
-      spaces.splice(rowsy, 1);
-      rows.splice(rowsy, 1);
+    delete spaces[y][x];
+    if (spaces[y].length == 0) {
+      delete spaces[y];
     }
     // Increment all spots around it
     for (let incrementx = x - 1; incrementx < x + 2; incrementx++) {
