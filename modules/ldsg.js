@@ -4,6 +4,18 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   Discord = require("discord.js");
 
+// suggestion modals
+const replyModal = new u.Modal().addComponents(
+  u.ModalActionRow().addComponents([
+    new u.TextInput()
+      .setCustomId("update")
+      .setLabel("Message")
+      .setStyle(Discord.TextInputStyle.Short)
+      .setRequired(true)
+      .setPlaceholder("Send an update to the user")
+  ])
+).setCustomId("suggestionReplyModal").setTitle("Suggestion Reply");
+
 /**
  * Responds with the number of guild members, and how many are online.
  * @param {Discord.ChatInputCommandInteraction} interaction The interaction that the user submits.
@@ -32,103 +44,106 @@ async function slashLdsgSuggest(int) {
     .setTitle("Suggestion")
     .setDescription(suggestion)
     .setFooter({ text: int.user.id });
-  await int.client.getForumChannel(u.sf.channels.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user}`, message: { content: suggestion, embeds: [embed], components: replyOption } });
+  await int.client.getForumChannel(u.sf.channels.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user.displayName}`, message: { content: suggestion, embeds: [embed], components: replyOption } });
   int.editReply("Sent!");
   return int.user.send({ content: "You have sent the following suggestion to the LDSG Team for review:", embeds: [embed] });
 }
 
 /** @param {Discord.ButtonInteraction<"cached">} int */
-async function processCardAction(int) {
+async function suggestReply(int) {
+  const embed = u.embed(int.message.embeds[0]);
+  // get user input
+  await int.showModal(replyModal);
+  const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId == "suggestionReplyModal" }).catch(u.noop);
+  if (!submitted) return int.channel?.send("I fell asleep waiting for your input...");
+  await submitted.deferUpdate();
+
+  // generate reply embed
+  const reply = submitted.fields.getTextInputValue("update");
+  const em = u.embed({ author: int.user })
+    .setTitle("Suggestion Update")
+    .setDescription(embed.data.description ?? "")
+    .addFields({ name: "Update:", value: reply })
+    .setFooter({ text: `-LDSG Team` });
+
+  // send the reply
+  const member = int.guild.members.cache.get(embed.data.footer?.text ?? "");
+  if (!member) return int.channel?.send("I could not find that member");
   try {
-    const suggestion = int.message;
-    const embed = u.embed(suggestion.embeds[0]);
-    const replyModal = new u.Modal().addComponents(
-      u.ModalActionRow().addComponents([
-        new u.TextInput()
-          .setCustomId("replyText")
-          .setLabel("Reply")
-          .setStyle(Discord.TextInputStyle.Short)
-          .setRequired(true)
-          .setPlaceholder("Your reply to the user")
-      ])
-    ).setCustomId("reply").setTitle("Suggestion Reply");
-    const manageModal = new u.Modal().addComponents(
-      u.ModalActionRow().addComponents([
-        new u.TextInput()
-          .setCustomId("renameText")
-          .setLabel("Rename")
-          .setStyle(Discord.TextInputStyle.Short)
-          .setRequired(false)
-          .setPlaceholder("New title for the forum post"),
-      ]),
-      u.ModalActionRow().addComponents([
-        new u.TextInput()
-          .setCustomId("issueText")
-          .setLabel("Set Issue")
-          .setStyle(Discord.TextInputStyle.Short)
-          .setRequired(false)
-          .setPlaceholder("New issue text")
-      ]),
-      u.ModalActionRow().addComponents([
-        new u.TextInput()
-          .setCustomId("causeText")
-          .setLabel("Set Cause")
-          .setStyle(Discord.TextInputStyle.Short)
-          .setRequired(false)
-          .setPlaceholder("New root cause text")
-      ])
-    ).setCustomId("manageModal").setTitle("Manage Ticket");
-    if (int.customId == "suggestionReply") {
-      await int.showModal(replyModal);
-      const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
-        return null;
-      });
-      if (!submitted) return int.channel?.send("I fell asleep waiting for your input...");
-      await submitted.deferUpdate();
-      const reply = submitted.fields.getTextInputValue("replyText");
-      const em = u.embed({ author: int.user })
-          .setTitle("Suggestion Feedback")
-          .setDescription(embed.data.description ?? "")
-          .addFields({ name: "Reply:", value: reply })
-          .setFooter({ text: `-LDSG Team` });
-      const member = int.guild.members.cache.get(suggestion.embeds[0].footer?.text ?? "");
-      if (!member) return int.channel?.send("I could not find that member");
-      try {
-        member.send({ embeds: [em] });
-        return int.channel?.send({ content: "Replied to user:", embeds: [em] });
-      } catch (e) {
-        return int.channel?.send(`Failed to message ${member}, they may have me blocked. You will need to reach out to them on your own this time!`);
-      }
-    } else if (int.customId == "suggestionManage") {
-      if (!int.channel) return int.reply({ content: "Channel error", ephemeral: true });
-      const post = int.guild.channels.cache.get(int.channel.id);
-      await int.showModal(manageModal);
-      const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => {
-        return null;
-      });
-      if (!submitted) return int.editReply("I fell asleep waiting for your input...");
-      await submitted.deferUpdate();
-      const title = submitted.fields.getTextInputValue("renameText");
-      const issue = submitted.fields.getTextInputValue("issueText");
-      const cause = submitted.fields.getTextInputValue("causeText");
-      if (!title && !issue && !cause) return submitted.reply({ content: "I need some stuff to change!", ephemeral: true });
-      const em = u.embed(int.message.embeds[0]);
-      if (title) {
-        try {
-          const old = post?.name;
-          await post?.setName(title);
-          em.setDescription(title);
-          int.followUp({ content: `> Changed title from "${old}" to "${title}"`, ephemeral: true });
-        } catch (e) {
-          u.errorHandler(e, int);
-          return int.channel.send("Failed to rename forum post");
-        }
-      }
-      if (issue) em.setFields([...(em.data.fields || []).filter(f => f.name != "Issue"), { name: "Issue", value: issue }]);
-      if (cause) em.setFields([...(em.data.fields || []).filter(f => f.name != "Root Cause"), { name: "Root Cause", value: cause }]);
-      return await int.message.edit({ content: int.message.content, embeds: [em], components: replyOption });
+    member.send({ embeds: [em] });
+    return int.channel?.send({ content: `Message sent to ${member.displayName}:\n${int.message.url}`, embeds: [em] });
+  } catch (e) {
+    return int.channel?.send(`Failed to message ${member}, they may have me blocked. You will need to reach out to them on your own this time!`);
+  }
+}
+
+/** @param {Discord.ButtonInteraction<"cached">} int */
+async function suggestManage(int) {
+  // make sure everything is good
+  if (!int.channel) return int.reply({ content: "I couldn't access the channel you're in!", ephemeral: true });
+  if (int.channel.parentId != u.sf.channels.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.suggestionBox}>!`, ephemeral: true });
+
+  // create modal
+  const oldFields = (int.message.embeds[0]?.fields || []);
+  const manageModal = new u.Modal().addComponents(
+    u.ModalActionRow().addComponents([
+      new u.TextInput()
+        .setCustomId("title")
+        .setLabel("Title")
+        .setStyle(Discord.TextInputStyle.Short)
+        .setRequired(false)
+        .setPlaceholder("New title for the forum post")
+        .setValue(int.channel.name)
+    ]),
+    u.ModalActionRow().addComponents([
+      new u.TextInput()
+        .setCustomId("issue")
+        .setLabel("Set Issue")
+        .setStyle(Discord.TextInputStyle.Short)
+        .setRequired(false)
+        .setPlaceholder("What issue is the user facing?")
+        .setValue(oldFields.find(f => f.name == "Issue")?.value ?? "")
+    ]),
+    u.ModalActionRow().addComponents([
+      new u.TextInput()
+        .setCustomId("plans")
+        .setLabel("Plans")
+        .setStyle(Discord.TextInputStyle.Paragraph)
+        .setRequired(false)
+        .setPlaceholder("Plans and actions to take")
+        .setValue(oldFields.find(f => f.name == "Plans")?.value ?? "")
+    ])
+  ).setCustomId("suggestionManageModal").setTitle("Manage Suggestion");
+
+  // get user input
+  await int.showModal(manageModal);
+  const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId == "suggestionManageModal" }).catch(u.noop);
+  if (!submitted) return int.editReply("I fell asleep waiting for your input...");
+  await submitted.deferReply({ ephemeral: true });
+  const title = submitted.fields.getTextInputValue("title");
+  const issue = submitted.fields.getTextInputValue("issue");
+  const plans = submitted.fields.getTextInputValue("plans");
+
+  // change the embed
+  const em = u.embed(int.message.embeds[0]);
+  if (title && title != int.channel.name) {
+    try {
+      await int.channel.setName(title);
+      em.setTitle(title);
+    } catch (e) {
+      u.errorHandler(e, int);
     }
-  } catch (e) { u.noop; }
+  } else if (!title) {
+    const user = int.guild.members.cache.get(em.data.footer?.text ?? "")?.displayName ?? em.data.footer?.text;
+    await int.channel.setName(`Suggestion from ${user}`);
+  }
+  const fields = [];
+  if (issue) fields.push({ name: "Issue", value: issue });
+  if (plans) fields.push({ name: "Plans", value: plans });
+  em.setFields(fields);
+  await submitted.editReply("Suggestion updated!");
+  int.channel.send({ content: `Suggestion updated:\n${int.message.url}`, embeds: [em] });
+  return await int.message.edit({ content: int.message.content, embeds: [em] });
 }
 
 const Module = new Augur.Module()
@@ -145,11 +160,14 @@ const Module = new Augur.Module()
   })
   .addEvent("interactionCreate", (int) => {
     if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
-    if (int.customId.startsWith("suggestion")) {
-      if (!u.perms.calc(int.member, ["team", "mgr"])) {
-        return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
-      }
-      return processCardAction(int);
+    if (!int.customId.startsWith("suggestion")) return;
+    if (!u.perms.calc(int.member, ["team", "mgr"])) {
+      return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
+    }
+    switch (int.customId) {
+      case "suggestionReply": return suggestReply(int);
+      case "suggestionManage": return suggestManage(int);
+      default: return;
     }
   });
 

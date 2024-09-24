@@ -5,11 +5,13 @@ const Augur = require("augurbot-ts"),
   c = require("../utils/modCommon"),
   Discord = require("discord.js"),
   config = require("../config/config.json"),
-  badgeData = require("../utils/badges"),
+  badgeUtils = require("../utils/badges"),
   RankInfo = require("../utils/rankInfo"),
   Jimp = require("jimp");
 
-let font, cardBackground;
+let font,
+  /** @type {Jimp} */
+  cardBackground;
 
 /**
  * Creates a profile card - a PNG that contains some user information in a fun format!
@@ -22,7 +24,6 @@ async function makeProfileCard(member) {
 
     const members = member.guild.members.cache;
     const rank = await u.db.user.getRank(member.id, members);
-    const badges = await badgeData(member.roles.cache);
 
     const avatar = await Jimp.read(member.displayAvatarURL({ size: 64, extension: "png" }));
 
@@ -40,6 +41,7 @@ async function makeProfileCard(member) {
         .print(font, 154, 128, `Lifetime Rank: ${rank.rank.lifetime}/${member.guild.memberCount}`, 138);
     }
 
+    const badges = badgeUtils.getBadges(member.roles.cache);
     const promises = badges.map(async (b, i) => {
       const badge = await Jimp.read(`./media/badges/${b.image}`);
       card.blit(badge.resize(61, 61), 10 + (73 * (i % 4)), rankOffset + (73 * Math.floor(i / 4)));
@@ -85,6 +87,7 @@ const Module = new Augur.Module()
   .setInit(async () => {
     font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
     cardBackground = await Jimp.read("./media/background.jpg");
+    await badgeUtils.getBadgeData();
   })
   .addInteraction({
     name: "user",
