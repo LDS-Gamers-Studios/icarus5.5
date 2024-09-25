@@ -132,37 +132,38 @@ async function slashFunMinesweeper(int) {
   mineCount = int.options.getInteger("minecount") || mineCount;
   // x and y lengths (for mobile users)
   const [width, height] = edgesize;
-  // ensure theres always enough room for all of the mines
-  mineCount = Math.min(width * height - (2 * (height > 1 ? 2 : 1)), mineCount);
   // Create a 2d array for the board
   const board = new Array(height).fill([]).map(() => {return new Array(width).fill(0);});
   // Convert the 2d array to a 2d index array. Filter corner spots.
   // const rows = board.map((c, y) => y);
-  const spaces = {};// board.map((r, y) => r.map((c, x) => x).filter((c, x) => (!([0, height - 1].includes(y) && [0, width - 1].includes(x)))));
-  board.forEach((r, y) => {
-    spaces[y] = {};
+  const spaces = board.map((r, y) => {
+    const row = [y];
     r.forEach((space, x) => {
       if (!([0, height - 1].includes(y) && [0, width - 1].includes(x))) {
-        spaces[y][x] = [y, x];
+        row.push(x);
       }
     });
+    return row;
   });
   for (let i = 0; i < mineCount; i++) {
+    // console.log(spaces);
     // Get a random position
-    const row = u.rand(Object.values(spaces));
-    const coords = u.rand(Object.values(row));
-    const [y, x] = coords;
+    const rownum = Math.floor(Math.random() * spaces.length);
+    const row = spaces[rownum];
+    const y = row[0];
+    const slotnum = Math.floor(Math.random() * row.length - 1) + 1;
+    const x = row[slotnum];
     // Set the value to a mine
     board[y][x] = 9;
     // Remove from possible mine spaces
-    delete spaces[y][x];
-    if (spaces[y].length == 0) {
-      delete spaces[y];
+    row.splice(slotnum, 1);
+    if (row.length == 1) {
+      spaces.splice(rownum, 1);
     }
     // Increment all spots around it
-    for (let incrementx = x - 1; incrementx < x + 2; incrementx++) {
-      for (let incrementy = y - 1; incrementy < y + 2; incrementy++) {
-        if (incrementx >= width || incrementx < 0 || incrementy >= height || incrementy < 0) continue;
+    for (let incrementx = Math.max(0, x - 1); incrementx < Math.min(width, x + 2); incrementx++) {
+      for (let incrementy = Math.max(0, y - 1); incrementy < Math.min(height, y + 2); incrementy++) {
+        // if (incrementx >= width || incrementx < 0 || incrementy >= height || incrementy < 0) continue;
         board[incrementy][incrementx]++;
       }
     }
