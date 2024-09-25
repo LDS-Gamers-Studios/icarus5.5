@@ -111,20 +111,6 @@ async function slashFunAcronym(int) {
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunMinesweeper(int) {
-  const lastembedmsg = (await int.channel.messages.fetch({ limit: 100 })).filter(m => m.embeds.length > 0).first();
-  const linkbedmsg = await int.channel?.messages.fetch("1288304953869340683");
-  const secndbedmsg = await int.channel?.messages.fetch("1288306629627871283");
-  const lastbed = lastembedmsg?.embeds;
-  const linkbed = secndbedmsg?.embeds;
-  const secndbed = secndbedmsg?.embeds;
-  // linkbedmsg?.reply("this:\n```" + JSON.stringify(linkbed[0].toJSON()) + "``` is this embed");
-  // secndbedmsg?.reply("this:\n```" + JSON.stringify(secndbed[0].toJSON()) + "``` is this embed");
-  int.editReply("the first embed on the last embedding message has the following data:\n```" + JSON.stringify(lastbed[0].toJSON())+"```");
-  // int.editReply({
-  //   "embeds": linkbed
-  // });
-}
-async function actualMinesweeper(int) {
   let edgesize, mineCount;
   switch (int.options.getString("difficulty", true)) {
     case "Hard":
