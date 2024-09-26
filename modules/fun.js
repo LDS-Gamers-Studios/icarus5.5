@@ -111,47 +111,55 @@ async function slashFunAcronym(int) {
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunMinesweeper(int) {
-  let edgesize, mineCount;
+  let edgesize, mineCount, preclickCount;
   switch (int.options.getString("difficulty", true)) {
     case "Hard":
       edgesize = [10, 18];
       mineCount = 60;
+      preclickCount = 6;
       break;
     case "Medium":
       edgesize = [10, 10];
       mineCount = 30;
+      preclickCount = 4;
       break;
     default:
       edgesize = [5, 5];
       mineCount = 5;
+      preclickCount = 4;
       break;
   }
   // override with manual numbers if given
   edgesize[0] = int.options.getInteger("width") || edgesize[0];
   edgesize[1] = int.options.getInteger("height") || edgesize[1];
   mineCount = int.options.getInteger("minecount") || mineCount;
+  preclickCount = int.options.getInteger("preclickcount") || preclickCount;
   // x and y lengths (for mobile users)
   const [width, height] = edgesize;
+  preclickCount = Math.min(width * height, preclickCount);
+  mineCount = Math.min(width * height - preclickCount, mineCount);
   // Create a 2d array for the board
   const board = new Array(height).fill([]).map(() => {return new Array(width).fill(0);});
   // Convert the 2d array to a 2d index array. Filter corner spots.
   // const rows = board.map((c, y) => y);
   const spaces = board.map((r, y) => {
-    const row = [y];
-    r.forEach((space, x) => {
-      if (!([0, height - 1].includes(y) && [0, width - 1].includes(x))) {
-        row.push(x);
-      }
-    });
+    const row = new Array(width + 1);
+    row[0] = y;
+    r.forEach((space, x) => {row[x + 1] = x;});
     return row;
   });
+  // console.log(mineCount);
+  // console.log(preclickCount);
+  // console.log(board);
+  // console.log(spaces);
   for (let i = 0; i < mineCount; i++) {
+    // console.log("mine");
     // console.log(spaces);
     // Get a random position
     const rownum = Math.floor(Math.random() * spaces.length);
     const row = spaces[rownum];
     const y = row[0];
-    const slotnum = Math.floor(Math.random() * row.length - 1) + 1;
+    const slotnum = Math.floor(Math.random() * (row.length - 1)) + 1;
     const x = row[slotnum];
     // Set the value to a mine
     board[y][x] = 9;
@@ -168,12 +176,37 @@ async function slashFunMinesweeper(int) {
       }
     }
   }
-  // seperate into rows and emojify
-  const rowStrings = board.map(row => row.map(num => `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
+  // console.log(mineCount);
+  // console.log(preclickCount);
+  // console.log(board);
+  // console.log(spaces);
+  for (let i = 0; i < preclickCount; i++) {
+    // console.log("click");
+    // console.log(spaces);
+    // Get a random position
+    const rownum = Math.floor(Math.random() * spaces.length);
+    const row = spaces[rownum];
+    const y = row[0];
+    const slotnum = Math.floor(Math.random() * (row.length - 1)) + 1;
+    const x = row[slotnum];
+    // expose it
+    board[y][x] = -1 - board[y][x];
+    // Remove from non-special-spaces
+    row.splice(slotnum, 1);
+    if (row.length == 1) {
+      spaces.splice(rownum, 1);
+    }
+  }
+  // console.log(mineCount);
+  // console.log(preclickCount);
+  // console.log(board);
+  // console.log(spaces);
+  // seperate into rows and emojify and hide if not exposed
+  const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
   if (!int.channel) {
     return int.editReply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
   }
-  int.editReply(`**Mines: ${mineCount}** (Tip: Corners are never mines)`);
+  int.editReply(`**Mines: ${mineCount}**`);
   const messages = [""];
   let messageCount = 0;
   let tagpairs = 0;
