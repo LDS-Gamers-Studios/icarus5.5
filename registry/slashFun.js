@@ -103,7 +103,13 @@ const mines = new u.sub()
   .addIntegerOption(
     new u.int()
     .setName("minecount")
-    .setDescription("override the number of mines in the minefeild. (max of 4 less than the number of spaces)")
+    .setDescription("override the number of mines in the minefeild. (spaces get freed first)")
+    .setMinValue(0)
+  )
+  .addIntegerOption(
+    new u.int()
+    .setName("preclickcount")
+    .setDescription("override the preopened spaces in the minefeild.")
     .setMinValue(0)
   );
 const hbs = new u.sub()
