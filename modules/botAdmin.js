@@ -55,9 +55,8 @@ function fieldMismatches(obj1, obj2) {
   return [m1, m2];
 }
 
-
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function goToBed(int) {
+async function slashBotGtb(int) {
   try {
     await int.editReply("Good night! 🛏");
     await int.client.destroy();
@@ -66,16 +65,18 @@ async function goToBed(int) {
     u.errorHandler(error, int);
   }
 }
+
 /**
  * @param {Augur.GuildInteraction<"CommandSlash">} int
  * @param {Discord.InteractionResponse} msg
  */
-async function ping(int, msg) {
+async function slashBotPing(int, msg) {
   const sent = await int.editReply("Pinging...");
   return int.editReply(`Pong! Took ${sent.createdTimestamp - msg.createdTimestamp}ms`);
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function pull(int) {
+async function slashBotPull(int) {
   const spawn = require("child_process").spawn;
   const cmd = spawn("git", ["pull"], { cwd: process.cwd() });
   const stdout = [];
@@ -96,8 +97,9 @@ async function pull(int) {
     }
   });
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function pulse(int) {
+async function slashBotPulse(int) {
   const client = int.client;
   const uptime = process.uptime();
 
@@ -112,8 +114,9 @@ async function pulse(int) {
     ]);
   return int.editReply({ embeds: [embed] });
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function reload(int) {
+async function slashBotReload(int) {
   let files = int.options.getString("module")?.split(" ") ?? [];
 
   if (!files) files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
@@ -126,15 +129,9 @@ async function reload(int) {
   }
   return int.editReply("Reloaded!");
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function reloadlib(int) {
-  const file = int.options.getString("file", true);
-  delete require.cache[require.resolve(`../${file}`)];
-  require(`../${file}`);
-  return int.editReply(`\`${file}\` has been reloaded!`);
-}
-/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function getId(int) {
+async function slashBotGetId(int) {
   const mentionable = int.options.getMentionable("mentionable");
   const channel = int.options.getChannel("channel");
   const emoji = int.options.getString("emoji");
@@ -148,8 +145,9 @@ async function getId(int) {
   }
   return int.editReply(`I got the following results:\n${results.map(r => `${r.str}: ${r.id}`).join("\n")}`);
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function register(int) {
+async function slashBotRegister(int) {
   const spawn = require("child_process").spawn;
   const cmd = spawn("node", ["register-commands"], { cwd: process.cwd() });
   const stderr = [];
@@ -164,8 +162,9 @@ async function register(int) {
     }
   });
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function status(int) {
+async function slashBotStatus(int) {
   const stat = int.options.getString("status");
   if (stat) {
     // yes, i want to use an array. no, tscheck wont let me
@@ -198,39 +197,20 @@ const Module = new Augur.Module()
     if (["gotobed", "reload", "register", "status"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
     if (subcommand === "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
-      case "gotobed": return goToBed(int);
-      case "ping": return ping(int, forThePing);
-      case "pull": return pull(int);
-      case "pulse": return pulse(int);
-      case "reload": return reload(int);
-      case "getid": return getId(int);
-      case "register": return register(int);
-      case "status": return status(int);
-      case "reloadlib": return reloadlib(int);
+      case "gotobed": return slashBotGtb(int);
+      case "ping": return slashBotPing(int, forThePing);
+      case "pull": return slashBotPull(int);
+      case "pulse": return slashBotPulse(int);
+      case "reload": return slashBotReload(int);
+      case "getid": return slashBotGetId(int);
+      case "register": return slashBotRegister(int);
+      case "status": return slashBotStatus(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },
   autocomplete: (int) => {
     const option = int.options.getFocused();
-    let files;
-    if (int.options.getSubcommand() === 'reload') {
-      files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
-    } else {
-      const dir = fs.readdirSync(process.cwd(), { withFileTypes: true });
-      files = [Object.keys(require('../package.json').dependencies)];
-      const fPath = (file) => `${file.parentPath}/${file.name}`;
-      for (const file of dir) {
-        if (file.isDirectory()) {
-          if (["modules", "node_modules"].includes(file.name)) continue;
-          const entries = fs.readdirSync(fPath(file), { recursive: true, encoding: "utf-8" }).filter(f => f.match(/\.js(on)?$/));
-          files.push(entries.map(e => `${file.name}/${e}`));
-        } else if (file.name.match(/\.js(on)?$/)) {
-          files.push([`./${file.name}`]);
-        }
-      }
-      files = files.flat();
-      // files = fs.readdirSync(process.cwd(), { recursive: true, encoding: 'utf-8' }).filter(file => file.endsWith(".js") || file.endsWith(".json"));
-    }
+    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
     int.respond(files.filter(file => file.includes(option)).slice(0, 24).map(f => ({ name: f, value: f })));
   }
 })
