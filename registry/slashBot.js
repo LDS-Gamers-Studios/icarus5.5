@@ -29,17 +29,6 @@ const reload = new u.sub()
       .setAutocomplete(true)
   );
 
-const reloadlib = new u.sub()
-    .setName("reloadlib")
-    .setDescription("[ADMIN] Reloads a file. Good for loading in small fixes.")
-    .addStringOption(
-      new u.string()
-        .setName("file")
-        .setDescription("What file should be reloaded?")
-        .setRequired(true)
-        .setAutocomplete(true)
-    );
-
 const getid = new u.sub()
   .setName("getid")
   .setDescription("Get the ID of anything in the server.")
@@ -108,7 +97,6 @@ module.exports = new u.cmd()
   .addSubcommand(pull)
   .addSubcommand(pulse)
   .addSubcommand(reload)
-  .addSubcommand(reloadlib)
   .addSubcommand(getid)
   .addSubcommand(register)
   .addSubcommand(status)
