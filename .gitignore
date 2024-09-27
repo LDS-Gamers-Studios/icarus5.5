@@ -9,6 +9,7 @@ test.js
 data/banned.json
 site
 .DS_Store
+media/badges/*
 media/banners/*
 naughty.csv
 

@@ -283,3 +283,4 @@ const Module = new Augur.Module()
 .setUnload(() => true);
 
 module.exports = Module;
+
