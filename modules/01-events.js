@@ -75,6 +75,7 @@ async function update(oldUser, newUser) {
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.displayName)} (${newUser.id})`); }
 }
 
+/** @type {(string[])[]} */
 let emojis = [];
 const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
@@ -233,10 +234,7 @@ const Module = new Augur.Module()
 .addEvent("userUpdate", update)
 .setInit(async () => {
   try {
-    /** @type {Sponsor[]} */
-    // @ts-ignore sheets stuff
-    const channels = await u.sheet("Sponsor Channels").getRows();
-    emojis = Array.from(channels.map(x => [x.Sponsor, x.Emoji]))
+    emojis = u.db.sheets.sponsors.map(x => [x.userId, x.emojiId])
       .concat([
         ["buttermelon", u.sf.emoji.buttermelon],
         ["noice", u.sf.emoji.noice],
@@ -249,7 +247,7 @@ const Module = new Augur.Module()
     for (const [sponsor, emoji] of emojis) {
       if (msg.mentions.members?.has(sponsor)) await msg.react(emoji).catch(u.noop);
       // Filter out sponsors and test for trigger words
-      else if (!msg.guild.members.cache.has(sponsor) && isNaN(sponsor) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
+      else if (!msg.guild.members.cache.has(sponsor) && isNaN(parseInt(sponsor)) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
     }
   }
 });

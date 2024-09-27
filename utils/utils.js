@@ -1,4 +1,5 @@
 // @ts-check
+const { AxiosError } = require("axios");
 const Discord = require("discord.js"),
   { escapeMarkdown, ComponentType } = require('discord.js'),
   sf = require("../config/snowflakes.json"),
@@ -7,12 +8,10 @@ const Discord = require("discord.js"),
   db = require("../database/dbControllers.js"),
   p = require('./perms.js'),
   moment = require('moment-timezone'),
-  { GoogleSpreadsheet } = require("google-spreadsheet"),
   config = require("../config/config.json");
 
 const errorLog = new Discord.WebhookClient({ url: config.webhooks.error });
 const { nanoid } = require("nanoid");
-const doc = new GoogleSpreadsheet(config.google.sheets.config);
 /**
  * @typedef ParsedInteraction
  * @property {String | null} command - The command issued, represented as a string.
@@ -27,18 +26,24 @@ const doc = new GoogleSpreadsheet(config.google.sheets.config);
 function parseInteraction(int) {
   if (int.isCommand() || int.isAutocomplete()) {
     let command = "";
+    let data = [];
     if (int.isAutocomplete()) command += "Autocomplete for ";
     if (int.isChatInputCommand()) {
       command += `/${int.commandName}`;
       const sg = int.options.getSubcommandGroup(false);
       const sc = int.options.getSubcommand(false);
-      command += int.commandName;
-      if (sg) command += ` ${sg}`;
+      if (sg) {
+        command += ` ${sg}`;
+        data = int.options.data[0]?.options?.[0]?.options ?? [];
+      }
       if (sc) command += ` ${sc}`;
+    } else {
+      command = int.commandName;
+      data = [...int.options.data];
     }
     return {
       command,
-      data: int.options.data.map(a => ({ name: a.name, value: a.value }))
+      data: data.map(a => ({ name: a.name, value: a.value }))
     };
   } else if (int.isMessageComponent()) {
     const data = [
@@ -245,14 +250,14 @@ const utils = {
    */
   errorHandler: function(error, message = null) {
     if (!error || (error.name === "AbortError")) return;
-    /* eslint-disable-next-line */
+    /* eslint-disable-next-line no-console*/
     console.error(Date());
 
     const embed = utils.embed().setTitle(error?.name?.toString() ?? "Error");
 
     if (message instanceof Discord.Message) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
-      /* eslint-disable-next-line */
+      /* eslint-disable-next-line no-console*/
       console.error(`${message.author.username} in ${loc}: ${message.cleanContent}`);
 
       message.channel.send("I've run into an error. I've let my devs know.")
@@ -264,7 +269,7 @@ const utils = {
       );
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
-      /* eslint-disable-next-line */
+      /* eslint-disable-next-line no-console*/
       console.error(`Interaction by ${message.user.username} in ${loc}`);
       if (message.isRepliable() && (message.deferred || message.replied)) message.editReply("I've run into an error. I've let my devs know.").catch(utils.noop).then(utils.clean);
       else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop).then(utils.clean);
@@ -280,13 +285,19 @@ const utils = {
       }
       embed.addFields({ name: "Interaction", value: descriptionLines.join("\n") });
     } else if (typeof message === "string") {
-      /* eslint-disable-next-line */
+      /* eslint-disable-next-line no-console*/
       console.error(message);
       embed.addFields({ name: "Message", value: message });
     }
 
-    /* eslint-disable-next-line */
-    console.trace(error);
+    if (error instanceof AxiosError) {
+      /* eslint-disable-next-line no-console*/
+      console.trace({ name: error.name, code: error.code, message: error.message, cause: error.cause });
+    } else {
+      /* eslint-disable-next-line no-console*/
+      console.trace(error);
+    }
+
 
     let stack = (error.stack ? error.stack : error.toString());
     if (stack.length > 4096) stack = stack.slice(0, 4000);
@@ -402,14 +413,6 @@ const utils = {
    */
   unique: function(items) {
     return [...new Set(items)];
-  },
-  loadSheets: async function(loggedIn = true) {
-    if (!loggedIn) await doc.useServiceAccountAuth(config.google.creds);
-    await doc.loadInfo();
-  },
-  /** @param {string} sheet */
-  sheet: function(sheet) {
-    return doc.sheetsByTitle[sheet];
   }
 };
 

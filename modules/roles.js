@@ -9,7 +9,7 @@ const Module = new Augur.Module();
 /** @type {Discord.Collection<string, Discord.Role>} */
 let optRoles = new u.Collection();
 
-/** @type {Discord.Collection<string, {colorId: string, baseId: string, inherited: string[]}>} */
+/** @type {Discord.Collection<string, {color: string, base: string, parents: string[]}>} */
 let equipRoles = new u.Collection();
 
 /**
@@ -92,7 +92,7 @@ async function slashRoleGive(int, give = true) {
 /** @param {Discord.GuildMember} member */
 function getInventory(member, override = true) {
   if (override && u.perms.calc(member, ["mgr", "botAdmin"])) return equipRoles;
-  return equipRoles.filter(r => member.roles.cache.hasAny(r.baseId, ...r.inherited));
+  return equipRoles.filter(r => member.roles.cache.hasAny(r.base, ...r.parents));
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -116,7 +116,7 @@ async function slashRoleInventory(int) {
 async function slashRoleEquip(int) {
   try {
     await int.deferReply({ ephemeral: int.channel?.id !== u.sf.channels.botspam });
-    const allColors = equipRoles.map(r => r.colorId);
+    const allColors = equipRoles.map(r => r.color);
     const available = getInventory(int.member);
     const input = int.options.getString("color");
     if (!input) {
@@ -124,7 +124,7 @@ async function slashRoleEquip(int) {
       return int.editReply("Color removed!");
     }
     const real = int.guild.roles.cache.find(r => r.name.toLowerCase() === input.toLowerCase());
-    const role = int.guild.roles.cache.find(r => r.id === equipRoles.find(a => a.baseId === real?.id || a.colorId === real?.id)?.colorId);
+    const role = int.guild.roles.cache.find(r => r.id === equipRoles.find(a => a.base === real?.id || a.color === real?.id)?.color);
     if (!role) {
       return int.editReply(`Sorry, that's not a color role on this server. Check </role inventory:${u.sf.commands.slashRole}> to see what you can equip.`);
     } else if (!available.has(role.id)) {
@@ -142,25 +142,21 @@ async function setRoles() {
     const filterBlank = (input) => input !== "" && input !== null && input !== undefined;
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     if (!ldsg) throw new Error("LDSG is unavailable");
-    /** @type {{RoleID: string}[]} */
-    // @ts-expect-error
     // Get the opt in roles data
-    const rows = await u.sheet("Opt-In Roles").getRows();
-    const ids = rows.map(r => r.RoleID).filter(filterBlank);
+    const ids = u.db.sheets.optRoles.map(r => r.id).filter(filterBlank);
     optRoles = ldsg.roles.cache.filter(r => ids.includes(r.id));
-    /** @type {{"Color Role ID": string, "Base Role ID": string, "Lower Roles": string, Type: string, Level: perms}[]} */
-    // @ts-expect-error
     // Get the add and remove roles data
-    const eRoles = await u.sheet("Roles").getRows();
-    teamAddRoles = eRoles.filter(f => f.Type === 'Team Assign').map(r => {
-      const role = ldsg.roles.cache.get(r["Base Role ID"]);
-      if (!role) throw new Error(`Missing Role for Team Assign`);
-      return { role, permissions: r.Level };
+    const eRoles = u.db.sheets.roles;
+    // @ts-expect-error trust. (as long as its right in the sheet lol)
+    teamAddRoles = eRoles.filter(f => f.type === 'Team Assign').map(r => {
+      const role = ldsg.roles.cache.get(r.base);
+      if (!role) throw new Error(`Missing Role for Team Assign ID ${r.base}`);
+      return {
+        role,
+        permissions: r.level
+      };
     });
-    const mappedEquips = eRoles
-      .filter(r => r !== null && r !== undefined && r["Base Role ID"] && r["Color Role ID"])
-      .map(r => ({ colorId: r["Color Role ID"], baseId: r["Base Role ID"], inherited: r["Parent Roles"]?.split(" ").filter(filterBlank) ?? [] }));
-    equipRoles = new u.Collection(mappedEquips.map(e => [e.colorId, e]));
+    equipRoles = new u.Collection(eRoles.map(e => [e.color, e]));
   } catch (e) {
     u.errorHandler(e, "Load Color & Equip Roles");
   }
@@ -239,9 +235,9 @@ Module.addInteraction({
           // Check equippables if they're not auto-applying on rejoin
           const newInventory = getInventory(newMember, false);
           const oldInventory = getInventory(oldMember, false);
-          const diff = newInventory.filter(r => !oldInventory.has(r.colorId));
+          const diff = newInventory.filter(r => !oldInventory.has(r.color));
           if (diff.size > 0) {
-            newMember.send(`You have ${diff.size > 1 ? "a new color role" : "new color roles"}!\n${diff.map(r => `- ${newMember.guild.roles.cache.get(r.colorId)?.name}`).join("\n")}!\nYou can equip the colors with the \`/role equip\` command. Check \`/role inventory\` command to see what colors you can equip.`).catch(u.noop);
+            newMember.send(`You have ${diff.size > 1 ? "a new color role" : "new color roles"}!\n${diff.map(r => `- ${newMember.guild.roles.cache.get(r.color)?.name}`).join("\n")}!\nYou can equip the colors with the \`/role equip\` command. Check \`/role inventory\` command to see what colors you can equip.`).catch(u.noop);
           }
         }
         await u.db.user.updateRoles(newMember);
@@ -254,7 +250,7 @@ Module.addInteraction({
         if (oldMember.partial) return;
         const newInventory = getInventory(newMember, false);
         const oldInventory = getInventory(oldMember, false);
-        const diff = oldInventory.filter(r => !newInventory.has(r.colorId));
+        const diff = oldInventory.filter(r => !newInventory.has(r.color));
         if (diff.size > 0) await newMember.roles.remove([...diff.keys()]);
         await u.db.user.updateRoles(newMember);
       } catch (error) {

@@ -396,13 +396,7 @@ Module.addEvent("interactionCreate", async (int) => {
   if (newState.channel.members.size === 1) newState.channel.send({ embeds: components.embeds, components: components.components });
 })
 .setInit(async () => {
-  try {
-    // @ts-ignore sheets stuff
-    const channels = await u.sheet("Voice Channel Names").getRows();
-    channelNames = channels.map(x => x.Name);
-  } catch (e) {
-    u.errorHandler(e, "Voice Channel Init");
-  }
+  channelNames = u.db.sheets.vcNames;
 })
 .addEvent("ready", () => {
   updateChannels();

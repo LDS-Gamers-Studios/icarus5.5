@@ -150,18 +150,13 @@ Module.addEvent("ready", () => {
 })
 .setInit(async () => {
   try {
-    /** @type {any[]} */
-    // @ts-ignore cuz google sheets be dumb
-    const roles = await u.sheet("Roles").getRows();
-
-    const a = roles.filter(r => r.Type === "Year").map(r => {
+    const years = u.db.sheets.roles.filter(r => r.type === "Year").map(r => {
       return {
-        year: parseInt(r.Level),
-        role: r["Base Role ID"],
+        year: parseInt(r.level),
+        role: r.base,
       };
     });
-
-    tenureCache = new u.Collection(a.map(r => [r.year, r.role]));
+    tenureCache = new u.Collection(years.map(r => [r.year, r.role]));
   } catch (e) {
     u.errorHandler(e, "Cakeday Init");
   }

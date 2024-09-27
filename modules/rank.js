@@ -210,19 +210,13 @@ const Module = new Augur.Module()
   if (talking) {
     for (const user of talking) active.add(user);
   }
-  try {
-    /** @type {any[]} */
-    // @ts-ignore cuz google sheets be dumb
-    const roles = await u.sheet("Roles").getRows();
-    const a = roles.filter(r => r.Type === "Rank").map(r => {
-      return {
-        role: r["Base Role ID"],
-        level: parseInt(r.Level)
-      };
-    });
-
-    rewards = new u.Collection(a.map(r => [r.level, r]));
-  } catch (e) { u.errorHandler(e, "Load Rank Roles"); }
+  const roles = u.db.sheets.roles.filter(r => r.type === "Rank").map(r => {
+    return {
+      role: r.base,
+      level: parseInt(r.level)
+    };
+  });
+  rewards = new u.Collection(roles.map(r => [r.level, r]));
 })
 .setUnload(() => active)
 .addEvent("messageCreate", (msg) => {

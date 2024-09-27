@@ -1,7 +1,8 @@
 const { AugurClient } = require("augurbot-ts"),
   config = require("./config/config.json"),
   { AllowedMentionsTypes, Partials } = require("discord.js"),
-  u = require("./utils/utils");
+  u = require("./utils/utils"),
+  s = require("./database/sheets");
 
 const client = new AugurClient(config, {
   clientOptions: {
@@ -15,7 +16,7 @@ const client = new AugurClient(config, {
   errorHandler: u.errorHandler,
   parse: u.parse,
   delayStart: () => {
-    return u.loadSheets(false);
+    return s.loadData(false);
   }
 });
 
