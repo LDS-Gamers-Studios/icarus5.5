@@ -178,7 +178,7 @@ async function processMessageLanguage(msg) {
   }
 
   // HARD LANGUAGE FILTER
-  if (matchedWords = msg.cleanContent.match(bannedWords) && !gif) {
+  if ((matchedWords = msg.cleanContent.match(bannedWords)) && !gif) {
     matchedContent = matchedContent.concat(matchedWords);
     reasons.push("Automute Word Detected");
     pingMods = true;
