@@ -398,9 +398,9 @@ async function slashFunChoose(int) {
   if (optionsArg && optionsArg.includes("|")) {
     const options = optionsArg.split("|");
     const prefixes = ["I choose", "I pick", "I decided"];
-    return int.editReply(`${u.rand(prefixes)} **${u.rand(options).trim()}**`);
+    return int.reply(`${u.rand(prefixes)} **${u.rand(options).trim()}**`);
   } else {
-    return int.editReply('you need to give me two or more choices! "a | b"');
+    return int.reply({ content: 'you need to give me two or more choices! "a | b"', ephemeral: true });
   }
 }
 
