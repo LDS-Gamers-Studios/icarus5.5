@@ -5,8 +5,9 @@ const Augur = require("augurbot-ts"),
   axios = require('axios'),
   jimp = require('jimp'),
   profanityFilter = require("profanity-matcher"),
-  buttermelonFacts = require('../data/buttermelonFacts.json').facts,
-  emojiUnicode = require("../data/emojiUnicode.json"),
+  buttermelonFacts = require('../data/buttermelonFacts.json').facts,  
+  emojiKitchenSpecialCodes = require("../data/emojiKitchenSpecialCodes.json"),
+  emojilib = require('node-emoji'),
   mineSweeperEmojis = ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '7⃣', '8⃣', '💣'];
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunColor(int) {
@@ -383,31 +384,54 @@ async function slashFunChoose(int) {
     return int.editReply('you need to give me two or more choices! "a | b"');
   }
 }
+/** @param {String} emoji unsanitized/irregular emoji input */
+/** @returns {String} unicode code point with appended u */
+function unicodeify(emoji) {
+  let ucode = 'u' + emojilib.find(emoji).emoji.codePointAt(0)?.toString(16);
+  return emojiKitchenSpecialCodes[ucode] ?? ucode;
+  // return ucode;
+  // let unicode;
+  // if (/^[0-9A-Fa-f]+$/.test(emoji)) {
+  //   unicode = emoji;
+  // } else if (emoji.includes(":")) {
+  //   let emojiName = emoji.substring(emoji.indexOf(":") + 1);
+  //   emojiName = emojiName.substring(0, emojiName.indexOf(":"));
+  //   unicode = emojiUnicode[emojiName];
+  // } else {
+  //   unicode = emoji.codePointAt(0)?.toString(16);
+  // }
+  // if (!unicode.startsWith('u')) {unicode = 'u' + unicode;}
+  // return unicode;
+}
+
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunEmoji(int) {
+  const emojiURLPrefixes = [20231113, 20220506, 20220406, 20220203, 20220110, 20211115, 20210831, 20210521, 20210218, 20201001];
   try {
     const emoji1 = int.options.getString("emoji1", true).trim();
     const emoji2 = int.options.getString("emoji2", true).trim();
-    let emoji1JustName, emoji2JustName;
-    let emoji1unicode, emoji2unicode;
-    if (emoji1?.includes(":")) {
-      emoji1JustName = emoji1?.substring(emoji1.indexOf(":") + 1);
-      emoji1JustName = emoji1JustName?.substring(0, emoji1JustName.indexOf(":"));
-      emoji1unicode = emojiUnicode[emoji1JustName];
-    } else {
-      emoji1unicode = emoji1;
+    const emoji1unicode = unicodeify(emoji1);
+    const emoji2unicode = unicodeify(emoji2);
+    for (const pindex in emojiURLPrefixes) {
+      const prefix = emojiURLPrefixes[pindex];
+      // console.log("prefix");
+      const urls = [
+        `https://www.gstatic.com/android/keyboard/emojikitchen/${prefix}/${emoji1unicode}/${emoji1unicode}_${emoji2unicode}.png`,
+        `https://www.gstatic.com/android/keyboard/emojikitchen/${prefix}/${emoji1unicode}/${emoji2unicode}_${emoji1unicode}.png`,
+        `https://www.gstatic.com/android/keyboard/emojikitchen/${prefix}/${emoji2unicode}/${emoji1unicode}_${emoji2unicode}.png`,
+        `https://www.gstatic.com/android/keyboard/emojikitchen/${prefix}/${emoji2unicode}/${emoji2unicode}_${emoji1unicode}.png`];
+      // console.log(urls);
+      for (const uindex in urls) {
+        const url = urls[uindex];
+        console.log(url);
+        // @ts-ignore
+        const response = await axios({ url, method: "get" });
+        if (response.status != 404) {
+          return int.editReply({ files: [{ attachment:url, name:"combined.png" }] });
+        }
+      }
     }
-    if (emoji2?.includes(":")) {
-      emoji2JustName = emoji2?.substring(emoji2.indexOf(":") + 1);
-      emoji2JustName = emoji2JustName?.substring(0, emoji2JustName.indexOf(":"));
-      emoji2unicode = emojiUnicode[emoji2JustName];
-    } else {
-      emoji2unicode = emoji2;
-    }
-    console.log(emoji1);
-    console.log(emoji1JustName);
-    console.log(emoji1unicode);
-    return int.editReply({ files: [{ attachment:`https://emojik.vercel.app/s/${emoji1unicode}_${emoji2unicode}?size=128`, name:"combined.png" }] });
+    return int.editReply(`I could not find an emojiKitchen combonation of ${emoji1} and ${emoji2}.`);
   } catch (error) { u.errorHandler(error);return int.editReply("error:" + error); }
 }
 const Module = new Augur.Module()
