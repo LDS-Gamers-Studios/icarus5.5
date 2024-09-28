@@ -4,6 +4,15 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "test part",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}/tmp/test.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch Program(windows)",
       "skipFiles": [
         "<node_internals>/**"
