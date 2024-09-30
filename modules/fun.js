@@ -433,8 +433,8 @@ async function slashFunEmoji(int) {
         const url = urls[uindex];
         console.log(url);
         // @ts-ignore
-        const response = await axios({ url, method: "get" });
-        if (response.status != 404) {
+        const response = await axios({ url, method: "get" }).catch(u.noop);
+        if (response?.status == 200) {
           return int.editReply({ files: [{ attachment:url, name:"combined.png" }] });
         }
       }
