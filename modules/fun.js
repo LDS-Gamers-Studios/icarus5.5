@@ -387,7 +387,7 @@ async function slashFunChoose(int) {
 /** @param {String} emoji unsanitized/irregular emoji input */
 /** @returns {String} unicode code point with appended u */
 function unicodeify(emoji) {
-  let ucode = 'u' + emojilib.find(emoji).emoji.codePointAt(0)?.toString(16);
+  const ucode = 'u' + emojilib.find(emoji)?.emoji.codePointAt(0)?.toString(16);
   return emojiKitchenSpecialCodes[ucode] ?? ucode;
   // return ucode;
   // let unicode;
@@ -406,7 +406,15 @@ function unicodeify(emoji) {
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunEmoji(int) {
-  const emojiURLPrefixes = [20231113, 20220506, 20220406, 20220203, 20220110, 20211115, 20210831, 20210521, 20210218, 20201001];
+  const emojiURLPrefixes = [
+    20240715, 20240610, 20240530, 20240214, 20240206,
+    20231128, 20231113, 20230821, 20230818, 20230803,
+    20230426, 20230421, 20230418, 20230405, 20230301,
+    20230221, 20230216, 20230127, 20230126, 20230118,
+    20221107, 20221101, 20220823, 20220815, 20220506,
+    20220406, 20220203, 20220110, 20211115, 20210831,
+    20210521, 20210218, 20201001
+  ];
   try {
     const emoji1 = int.options.getString("emoji1", true).trim();
     const emoji2 = int.options.getString("emoji2", true).trim();
