@@ -33,7 +33,7 @@ async function jimpRead(url) {
     if (img.getWidth() > 256 || img.getHeight() > 256) {
       const w = img.getWidth(), h = img.getHeight();
       const largest = Math.max(w, h);
-      img.resize(w == largest ? 256 : Jimp.AUTO, w == largest ? Jimp.AUTO : 256);
+      img.resize(w === largest ? 256 : Jimp.AUTO, w === largest ? Jimp.AUTO : 256);
     }
     return img;
   } catch (e) {
@@ -188,8 +188,8 @@ async function petpet(int) {
 async function popart(int, image) {
   const { name, img } = image;
   const output = await fourCorners(img, 12, (x, y, c, i) => {
-    if (i == 0) img.color([{ apply: ColorActionName.DESATURATE, params: [100] }, { apply: ColorActionName.SATURATE, params: [50] }]);
-    else img.color([{ apply: ColorActionName.SPIN, params: [i == 3 ? 120 : 60] }]);
+    if (i === 0) img.color([{ apply: ColorActionName.DESATURATE, params: [100] }, { apply: ColorActionName.SATURATE, params: [50] }]);
+    else img.color([{ apply: ColorActionName.SPIN, params: [i === 3 ? 120 : 60] }]);
     c.blit(img, x, y);
   }).getBufferAsync(Jimp.MIME_PNG);
   return await sendImg(int, output, `Popart ${name}`);
@@ -230,9 +230,6 @@ const Module = new Augur.Module()
       case "fisheye": return basicFilter(interaction, i, 'Fisheye', null);
       case "invert": return basicFilter(interaction, i, 'Invert', null);
       case "blur": return basicFilter(interaction, i, 'Blur', [5]);
-      case "flipx": return basicFilter(interaction, i, 'Flip', [true, false]);
-      case "flipy": return basicFilter(interaction, i, 'Flip', [false, true]);
-      case "flipxy": return basicFilter(interaction, i, 'Flip', [true, true]);
       case "blurple": return basicFilter(interaction, i, 'Color', [[{ apply: "desaturate", params: [100] }, { apply: "saturate", params: [47.7] }, { apply: "hue", params: [227] }]]);
       case "grayscale": return basicFilter(interaction, i, 'Color', [[{ apply: "desaturate", params: [100] }]]);
 

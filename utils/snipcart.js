@@ -8,7 +8,7 @@ const SnipCart = function(auth) {
 
     call = encodeURI(call);
 
-    if (method == "GET") {
+    if (method === "GET") {
       const urlParams = Object.keys(data).map((key) =>
         encodeURIComponent(key) + "=" + encodeURIComponent(data[key])
       ).join("&");
@@ -35,7 +35,7 @@ const SnipCart = function(auth) {
   // DISCOUNTS
 
   this.deleteDiscount = function(discount) {
-    const id = ((typeof discount == "string") ? discount : discount.id);
+    const id = ((typeof discount === "string") ? discount : discount.id);
     return this.callApi(`/discounts/${id}`, null, "DELETE");
   };
 
@@ -46,7 +46,7 @@ const SnipCart = function(auth) {
   this.getDiscountCode = function(code) {
     return new Promise((fulfill, reject) => {
       this.callApi("/discounts").then(discounts =>
-        fulfill(discounts.find(d => d.code == code))
+        fulfill(discounts.find(d => d.code === code))
       ).catch(reject);
     });
   };
