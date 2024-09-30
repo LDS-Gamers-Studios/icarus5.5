@@ -1,5 +1,6 @@
 // @ts-check
 const u = require('./regUtils');
+const Discord = require("discord.js");
 
 const gotobed = new u.sub()
   .setName("gotobed")
@@ -19,7 +20,7 @@ const pulse = new u.sub()
 
 const reload = new u.sub()
   .setName("reload")
-  .setDescription("[ADMIN] Reloads one or more modules. Good for loading in small fixes.")
+  .setDescription("[ADMIN] Reloads a module. Good for loading in small fixes.")
   .addStringOption(
     new u.string()
       .setName("module")
@@ -50,6 +51,44 @@ const getid = new u.sub()
       .setRequired(false)
   );
 
+const register = new u.sub()
+  .setName("register")
+  .setDescription("Register slash commands");
+
+const status = new u.sub()
+  .setName("status")
+  .setDescription("Set the bot status/activity")
+  .addStringOption(
+    new u.string()
+      .setName("status")
+      .setDescription("Set the online status")
+      .setChoices(
+        { name: "Online", value: "online" },
+        { name: "Idle", value: "idle" },
+        { name: "Invisible (offline)", value: "invisible" },
+        { name: "Do Not Disturb", value: "dnd" }
+      )
+      .setRequired(false)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("activity")
+      .setDescription("The name of the bot's activity")
+      .setRequired(false)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("type")
+      .setDescription("The activity type")
+      .setChoices(...Object.keys(Discord.ActivityType).filter(t => Number.isNaN(parseInt(t))).map(t => ({ name: t, value: t })))
+      .setRequired(false)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("url")
+      .setDescription("The URL for the activity")
+      .setRequired(false)
+  );
 module.exports = new u.cmd()
   .setName("bot")
   .setDescription("Control the bot! Some actions are limited based on role.")
@@ -59,6 +98,8 @@ module.exports = new u.cmd()
   .addSubcommand(pulse)
   .addSubcommand(reload)
   .addSubcommand(getid)
+  .addSubcommand(register)
+  .addSubcommand(status)
   .setDMPermission(false)
   .setDefaultMemberPermissions(u.devMode)
   .toJSON();

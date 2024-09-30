@@ -2,9 +2,9 @@
 const u = require("./regUtils");
 
 const role = (action = "add") => new u.string()
-  .setName(action == 'equip' ? "color" : "role")
+  .setName(action === 'equip' ? "color" : "role")
   .setDescription(`The role to ${action}`)
-  .setRequired(action == 'equip' ? false : true)
+  .setRequired(action === 'equip' ? false : true)
   .setAutocomplete(true);
 
 const add = new u.sub()
