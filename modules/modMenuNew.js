@@ -120,7 +120,7 @@ async function flag(int, msg, usr) {
     const existing = await u.db.infraction.getByMsg(msg.id);
     if (existing) return edit(int, "Your report has been created! Moderators may reach out if they need more details.");
   }
-  const madeFlag = await c.createFlag({ msg: msg ?? undefined, member: usr, pingMods: false, snitch: int.member.toString(), flagReason: reason }, int);
+  const madeFlag = await c.createFlag({ msg: msg ?? undefined, member: usr, pingMods: false, snitch: int.member, flagReason: reason }, int);
   if (madeFlag) return edit(int, "Your report has been created! Moderators may reach out if they need more details.");
   return edit(int, "Sorry, I ran into an error while creating your report. Please let the moderators know about the issue.");
 }

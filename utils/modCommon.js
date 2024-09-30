@@ -25,8 +25,8 @@ const modActions = [
     new u.Button().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle(ButtonStyle.Secondary)
   ])
 ];
-/** @param {Discord.GuildMember|Discord.User} person */
-const userBackup = (person) => `${person} (${u.escapeText(person.displayName)})`;
+/** @param {Discord.GuildMember|Discord.User|Discord.Webhook} person */
+const userBackup = (person) => `${person} (${u.escapeText("displayName" in person ? person.displayName : person.name)})`;
 
 const retract = u.MessageActionRow().setComponents([
   new u.Button().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
@@ -161,10 +161,10 @@ const modCommon = {
    * Generate and send a warning card in #mod-logs
    * @param {object} flagInfo
    * @param {Discord.Message} [flagInfo.msg] The message for the warning.
-   * @param {Discord.GuildMember|Discord.User} flagInfo.member The member for the warning.
+   * @param {Discord.GuildMember|Discord.User|Discord.Webhook} flagInfo.member The member for the warning.
    * @param {String|String[]} [flagInfo.matches] If automatic, the reason for the flag.
    * @param {Boolean} [flagInfo.pingMods] Whether to ping the mods.
-   * @param {String} [flagInfo.snitch] The user bringing up the message.
+   * @param {Discord.GuildMember|Discord.User} [flagInfo.snitch] The user bringing up the message.
    * @param {String} flagInfo.flagReason The reason the user is bringing it up.
    * @param {String} [flagInfo.furtherInfo] Where required, further information.
    * @param {Discord.CommandInteraction|Discord.AnySelectMenuInteraction} [interaction] Optional interaction property to provide missing details
@@ -174,12 +174,12 @@ const modCommon = {
     const { msg, member, pingMods, snitch, flagReason, furtherInfo } = flagInfo;
     const client = msg?.client ?? member?.client;
     const isMember = member instanceof Discord.GuildMember;
-    const bot = () => isMember ? member.user.bot : member.bot;
-
+    const bot = isMember ? member.user.bot : member instanceof Discord.Webhook ? member : member.bot;
+    const user = msg?.webhookId ? await msg.fetchWebhook().catch(u.noop) ?? member : member;
     if (msg && !msg.inGuild()) return null;
 
-    const infractionSummary = await u.db.infraction.getSummary(member.id);
-    const embed = u.embed({ color: embedColors.action, author: member });
+    const infractionSummary = await u.db.infraction.getSummary(user.id);
+    const embed = u.embed({ color: embedColors.action, author: user });
 
     if (Array.isArray(matches)) matches = matches.join(", ");
     if (matches) embed.addFields({ name: "Matched", value: matches });
@@ -189,7 +189,7 @@ const modCommon = {
         .addFields(
           { name: "Channel", value: msg.channel.name, inline: true },
           { name: "Jump to Post", value: msg.url, inline: true },
-          { name: "User", value: (msg.webhookId ? userBackup(msg.author) ?? (await msg.fetchWebhook().catch(u.noop))?.name : userBackup(msg.author)) ?? "Unknown User" }
+          { name: "User", value: userBackup(user) }
         );
       if (msg.channel.parentId === u.sf.channels.minecraftcategory) {
         msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({
@@ -211,7 +211,7 @@ const modCommon = {
     }
     if (snitch) {
       embed.addFields(
-        { name: "Flagged By", value: snitch, inline: true },
+        { name: "Flagged By", value: userBackup(snitch), inline: true },
         { name: "Reason", value: flagReason, inline: true }
       );
       embed.setImage(msg?.attachments.at(0)?.url ?? null);
@@ -221,7 +221,7 @@ const modCommon = {
     }
 
     embed.addFields({ name: `Infraction Summary (${infractionSummary.time} Days)`, value: `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}` });
-    if (bot()) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
+    if (bot) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
 
     const content = [];
     if (pingMods) {
@@ -230,7 +230,7 @@ const modCommon = {
       if (isMember ? !member.roles.cache.has(u.sf.roles.muted) : true) {
         content.push(ldsg?.roles.cache.get(u.sf.roles.mod)?.toString());
       }
-      if (bot()) {
+      if (bot) {
         content.push("The message has been deleted. The member was *not* muted, on account of being a bot.");
       } else {
         if (isMember && !member.roles?.cache.has(u.sf.roles.muted)) {
@@ -251,20 +251,20 @@ const modCommon = {
       content: content.join('\n'),
       embeds: [embed],
 
-      components: ((bot() || !msg) ? undefined : modActions),
+      components: ((bot || !msg) ? undefined : modActions),
       allowedMentions: { roles: [u.sf.roles.mod] }
     });
 
     if (!card) throw new Error("Card creation failed!");
 
-    if (!bot() && msg) {
+    if (!bot && msg) {
       const infraction = {
         discordId: member.id,
         channel: msg.channel.id,
         message: msg.id,
         flag: card.id,
         description: msg.cleanContent,
-        mod: client.user.id,
+        mod: client.user?.id ?? "Icarus",
         value: 0
       };
       await u.db.infraction.save(infraction);

@@ -176,10 +176,11 @@ async function slashBotStatus(int) {
     return int.editReply("Status reset");
   }
   if (name) {
-    const type = Discord.ActivityType[int.options.getString("type", true)];
+    const t = int.options.getString("type");
+    const type = t ? Discord.ActivityType[t] : undefined;
     const url = int.options.getString("url") ?? undefined;
     int.client.user.setActivity({ name, type, url });
-    return int.editReply(`Status set to ${int.options.getString("type", true)} ${name}`);
+    return int.editReply(`Status set to ${t ?? ""} ${name}`);
   }
   return int.editReply("Status updated!");
 }

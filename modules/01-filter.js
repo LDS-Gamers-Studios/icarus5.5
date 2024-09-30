@@ -88,7 +88,7 @@ async function spamming(client) {
       `Posted the same message too many times (${member.count}/${limit('same', member.id)})`,
     ];
     if (member.verdict !== 2) c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
-    c.createFlag({ msg: message, member: message.member ?? message.author, snitch: client.user?.toString(), flagReason: verdictString[member.verdict ?? 1] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict === 3 });
+    c.createFlag({ msg: message, member: message.member ?? message.author, flagReason: verdictString[member.verdict ?? 1] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict === 3 });
     active.delete(member.id);
   }
 }
