@@ -116,7 +116,7 @@ async function slashRoleInventory(int) {
 async function slashRoleEquip(int) {
   try {
     await int.deferReply({ ephemeral: int.channel?.id !== u.sf.channels.botspam });
-    const allColors = equipRoles.map(r => r.color);
+    const allColors = equipRoles.filter(r => r.color !== "").map(r => r.color);
     const available = getInventory(int.member);
     const input = int.options.getString("color");
     if (!input) {
