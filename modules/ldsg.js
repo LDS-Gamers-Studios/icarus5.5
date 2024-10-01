@@ -1,4 +1,8 @@
 // @ts-check
+const bannedFromSuggesting = [
+  // "123456" // a fake account
+  // "602887436300714013", // ohgo
+];
 
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
@@ -38,6 +42,7 @@ const replyOption = [
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashLdsgSuggest(int) {
+  if (bannedFromSuggesting.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
   const suggestion = int.options.getString("suggestion", true);
   await int.deferReply({ ephemeral: true });
   const embed = u.embed({ author: int.user })
@@ -55,7 +60,7 @@ async function suggestReply(int) {
   // get user input
   await int.showModal(replyModal);
   const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionReplyModal" }).catch(u.noop);
-  if (!submitted) return int.channel?.send("I fell asleep waiting for your input...");
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
   await submitted.deferUpdate();
 
   // generate reply embed
@@ -118,7 +123,7 @@ async function suggestManage(int) {
   // get user input
   await int.showModal(manageModal);
   const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionManageModal" }).catch(u.noop);
-  if (!submitted) return int.editReply("I fell asleep waiting for your input...");
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
   await submitted.deferReply({ ephemeral: true });
   const title = submitted.fields.getTextInputValue("title");
   const issue = submitted.fields.getTextInputValue("issue");

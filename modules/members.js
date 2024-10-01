@@ -27,7 +27,7 @@ async function makeProfileCard(member) {
 
     const avatar = await Jimp.read(member.displayAvatarURL({ size: 64, extension: "png" }));
 
-    card.blit(avatar, 8, 8)
+    card.blit(avatar.resize(64, 64), 8, 8)
       // eslint-disable-next-line no-control-regex
       .print(font, 80, 8, member.displayName.replace(/[^\x00-\x7F]/g, ""), 212)
       .print(font, 80, 28, "Joined: " + (member.joinedAt ? u.moment(member.joinedAt).format("MMMM D, YYYY") : "???"), 212);
