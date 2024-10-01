@@ -21,7 +21,7 @@ module.exports = {
    * @return {Promise<{discordId: string, gb: number, em: number}>} Object with `discordId` and `balance` properties.
    */
   getBalance: async function(discordId) {
-    if (typeof discordId != "string") throw new TypeError(outdated);
+    if (typeof discordId !== "string") throw new TypeError(outdated);
     const record = await Bank.aggregate([
       { $match: { discordId } },
       { $group: {
@@ -38,7 +38,7 @@ module.exports = {
      * @return {Promise<CurrencyRecord>} A record of the addition.
      */
   addCurrency: function(data) {
-    if (typeof data.discordId != 'string' || typeof data.giver != 'string') throw new TypeError(outdated);
+    if (typeof data.discordId !== 'string' || typeof data.giver !== 'string') throw new TypeError(outdated);
     return new Bank(data).save();
   }
 };
