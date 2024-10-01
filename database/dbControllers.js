@@ -7,11 +7,14 @@ const bank = require("./controllers/bank"),
   infraction = require("./controllers/infraction"),
   user = require("./controllers/user");
 
+const sheets = require("./sheets").data;
+
 mongoose.connect(config.db.db, config.db.settings);
 
 module.exports = {
   bank,
   ign,
   infraction,
-  user
+  user,
+  sheets
 };

@@ -61,7 +61,7 @@ const models = {
    * @returns {Promise<UserRecord | null>}
    */
   fetchUser: async function(discordId, createIfNotFound = true) {
-    if (typeof discordId != "string") throw new TypeError(outdated);
+    if (typeof discordId !== "string") throw new TypeError(outdated);
     return User.findOne({ discordId }, undefined, { lean: true, upsert: createIfNotFound }).exec();
   },
   /**
@@ -91,7 +91,7 @@ const models = {
     });
 
     // Get requested user
-    const hasMember = ranked.some(r => r.discordId == member);
+    const hasMember = ranked.some(r => r.discordId === member);
     if (member && !hasMember) {
       const record = await models.getRank(member, members);
       if (record) {
@@ -139,7 +139,7 @@ const models = {
    * @returns {Promise<UserRecord|null>}
    */
   newUser: async function(discordId) {
-    if (typeof discordId != "string") throw new TypeError(outdated);
+    if (typeof discordId !== "string") throw new TypeError(outdated);
     return User.findOne({ discordId }, undefined, { upsert: true, lean: true }).exec();
   },
   /**
@@ -149,7 +149,7 @@ const models = {
    * @returns {Promise<UserRecord | null>}
    */
   trackXP: function(discordId, track = true) {
-    if (typeof discordId != 'string') throw new Error(outdated);
+    if (typeof discordId !== 'string') throw new Error(outdated);
     return User.findOneAndUpdate(
       { discordId },
       { $set: { excludeXP: !track } },
@@ -165,7 +165,7 @@ const models = {
    */
   updateRoles: function(member, roles, backupId) {
     if (member && !(member instanceof Discord.GuildMember)) throw new Error("Expected a GuildMember");
-    if (backupId && typeof backupId != 'string') throw new Error(outdated);
+    if (backupId && typeof backupId !== 'string') throw new Error(outdated);
     return User.findOneAndUpdate(
       { discordId: backupId ?? member?.id },
       { $set: { roles: Array.from(roles ?? member?.roles.cache.keys() ?? []) } },
@@ -192,7 +192,7 @@ const models = {
    * @returns {Promise<UserRecord | null>}
    */
   updateWatch: function(discordId, status = true) {
-    if (typeof discordId != "string") throw new Error(outdated);
+    if (typeof discordId !== "string") throw new Error(outdated);
     return User.findOneAndUpdate(
       { discordId },
       { $set: { watching: status } },

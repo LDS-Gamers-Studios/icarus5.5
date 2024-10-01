@@ -102,6 +102,8 @@ module.exports = new u.cmd()
   .addSubcommand(give)
   .addSubcommand(balance)
   .addSubcommandGroup(game)
-  .addSubcommand(discount)
+  // .addSubcommand(discount) no store rn
   .addSubcommand(award)
   .toJSON();
+
+discount;
