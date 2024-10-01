@@ -408,10 +408,11 @@ async function slashFunChoose(int) {
 }
 /** @param {String} emoji unsanitized/irregular emoji input */
 /** @returns {String} unicode code point with appended u */
-function unicodeify(emoji) {
+function emojiSanitize(emoji) {
   let ucode = emojilib.find(emoji)?.emoji ?? emoji;
-  ucode = 'u' + ucode.codePointAt(0)?.toString(16);
-  return emojiKitchenSpecialCodes[ucode] ?? ucode;
+  // ucode = 'u' + ucode.codePointAt(0)?.toString(16);
+  ucode = emojiKitchenSpecialCodes[ucode] ?? ucode;
+  return ucode;
   // return ucode;
   // let unicode;
   // if (/^[0-9A-Fa-f]+$/.test(emoji)) {
@@ -426,44 +427,29 @@ function unicodeify(emoji) {
   // if (!unicode.startsWith('u')) {unicode = 'u' + unicode;}
   // return unicode;
 }
+async function getEmoKitchenUrl(emoji1,emoji2) {
+  const apiKey = "AIzaSyD-3oRv3tVzgWUXn6n0ErY0T9Rg0MXzMi0";// AIzaSyACvEq5cnT7AcHpDdj64SE3TJZRhW-iHuo
+  const results = await fetch(`https://tenor.googleapis.com/v2/featured?key=${apiKey}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`, {
+    mode: "cors"
+  });
+  const json = await results.json();
+  // console.log(emoji1 + "_" + emoji2);
+  // console.log(json);
+  return json.results[0]?.url;
+}
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunEmoji(int) {
-  const emojiURLPrefixes = [
-    20240715, 20240610, 20240530, 20240214, 20240206,
-    20231128, 20231113, 20230821, 20230818, 20230803,
-    20230426, 20230421, 20230418, 20230405, 20230301,
-    20230221, 20230216, 20230127, 20230126, 20230118,
-    20221107, 20221101, 20220823, 20220815, 20220506,
-    20220406, 20220203, 20220110, 20211115, 20210831,
-    20210521, 20210218, 20201001
-  ];
   try {
-    const emoji1 = int.options.getString("emoji1", true).trim();
-    const emoji2 = int.options.getString("emoji2", true).trim();
-    const emoji1unicode = unicodeify(emoji1);
-    const emoji2unicode = unicodeify(emoji2);
-    int.deferReply();
-    for (const pindex in emojiURLPrefixes) {
-      const prefix = emojiURLPrefixes[pindex];
-      // console.log("prefix");
-      const urls = [
-        `https://www.gstatic.com/android/keyboard/emojikitchen/${prefix}/${emoji1unicode}/${emoji1unicode}_${emoji2unicode}.png`,
-        `https://www.gstatic.com/android/keyboard/emojikitchen/${prefix}/${emoji1unicode}/${emoji2unicode}_${emoji1unicode}.png`,
-        `https://www.gstatic.com/android/keyboard/emojikitchen/${prefix}/${emoji2unicode}/${emoji1unicode}_${emoji2unicode}.png`,
-        `https://www.gstatic.com/android/keyboard/emojikitchen/${prefix}/${emoji2unicode}/${emoji2unicode}_${emoji1unicode}.png`];
-      // console.log(urls);
-      for (const uindex in urls) {
-        const url = urls[uindex];
-        // console.log(url);
-        // @ts-ignore
-        const response = await axios({ url, method: "get" }).catch(u.noop);
-        if (response?.status === 200) {
-          return int.editReply({ files: [{ attachment:url, name:"combined.png" }] });
-        }
-      }
+    const emoji1input = int.options.getString("emoji1", true).trim();
+    const emoji2input = int.options.getString("emoji2", true).trim();
+    const emoji1 = emojiSanitize(emoji1input);
+    const emoji2 = emojiSanitize(emoji2input);
+    const url = await getEmoKitchenUrl(emoji1, emoji2);// .catch(u.noop);
+    if (url) {
+      return int.reply({ files: [{ attachment:url, name:"combined.png" }] });
     }
-    return int.editReply(`I could not find an emojiKitchen combonation of ${emoji1} and ${emoji2}.`);
-  } catch (error) { u.errorHandler(error);return int.editReply("error:" + error); }
+    return int.reply(`I could not find an emojiKitchen combonation of ${emoji1} and ${emoji2}.`);
+  } catch (error) { u.errorHandler(error);return int.reply("error:" + error); }
 }
 
 const Module = new Augur.Module()
