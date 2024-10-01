@@ -409,7 +409,8 @@ async function slashFunChoose(int) {
 /** @param {String} emoji unsanitized/irregular emoji input */
 /** @returns {String} unicode code point with appended u */
 function unicodeify(emoji) {
-  const ucode = 'u' + emojilib.find(emoji)?.emoji.codePointAt(0)?.toString(16);
+  let ucode = emojilib.find(emoji)?.emoji ?? emoji;
+  ucode = 'u' + ucode.codePointAt(0)?.toString(16);
   return emojiKitchenSpecialCodes[ucode] ?? ucode;
   // return ucode;
   // let unicode;
@@ -425,7 +426,6 @@ function unicodeify(emoji) {
   // if (!unicode.startsWith('u')) {unicode = 'u' + unicode;}
   // return unicode;
 }
-
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunEmoji(int) {
   const emojiURLPrefixes = [
@@ -442,6 +442,7 @@ async function slashFunEmoji(int) {
     const emoji2 = int.options.getString("emoji2", true).trim();
     const emoji1unicode = unicodeify(emoji1);
     const emoji2unicode = unicodeify(emoji2);
+    int.deferReply();
     for (const pindex in emojiURLPrefixes) {
       const prefix = emojiURLPrefixes[pindex];
       // console.log("prefix");
@@ -461,7 +462,7 @@ async function slashFunEmoji(int) {
         }
       }
     }
-    return int.reply(`I could not find an emojiKitchen combonation of ${emoji1} and ${emoji2}.`);
+    return int.editReply(`I could not find an emojiKitchen combonation of ${emoji1} and ${emoji2}.`);
   } catch (error) { u.errorHandler(error);return int.editReply("error:" + error); }
 }
 
