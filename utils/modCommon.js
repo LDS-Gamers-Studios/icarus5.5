@@ -25,8 +25,8 @@ const modActions = [
     new u.Button().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle(ButtonStyle.Secondary)
   ])
 ];
-/** @param {Discord.GuildMember|Discord.User} person */
-const userBackup = (person) => `${person} (${u.escapeText(person.displayName)})`;
+/** @param {Discord.GuildMember|Discord.User|Discord.Webhook} person */
+const userBackup = (person) => `${person} (${u.escapeText("displayName" in person ? person.displayName : person.name)})`;
 
 const retract = u.MessageActionRow().setComponents([
   new u.Button().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
@@ -65,9 +65,9 @@ function blocked(user) {
  * @param {Discord.GuildMember} target
  */
 function compareRoles(mod, target) {
-  const modHigh = mod.roles.cache.filter(r => r.id != u.sf.roles.live)
+  const modHigh = mod.roles.cache.filter(r => r.id !== u.sf.roles.live)
     .sort((a, b) => b.comparePositionTo(a)).first();
-  const targetHigh = target.roles.cache.filter(r => r.id != u.sf.roles.live)
+  const targetHigh = target.roles.cache.filter(r => r.id !== u.sf.roles.live)
     .sort((a, b) => b.comparePositionTo(a)).first();
   if (!modHigh || !targetHigh) return false;
   return (modHigh.comparePositionTo(targetHigh) > 0);
@@ -161,10 +161,10 @@ const modCommon = {
    * Generate and send a warning card in #mod-logs
    * @param {object} flagInfo
    * @param {Discord.Message} [flagInfo.msg] The message for the warning.
-   * @param {Discord.GuildMember|Discord.User} flagInfo.member The member for the warning.
+   * @param {Discord.GuildMember|Discord.User|Discord.Webhook} flagInfo.member The member for the warning.
    * @param {String|String[]} [flagInfo.matches] If automatic, the reason for the flag.
    * @param {Boolean} [flagInfo.pingMods] Whether to ping the mods.
-   * @param {String} [flagInfo.snitch] The user bringing up the message.
+   * @param {Discord.GuildMember|Discord.User} [flagInfo.snitch] The user bringing up the message.
    * @param {String} flagInfo.flagReason The reason the user is bringing it up.
    * @param {String} [flagInfo.furtherInfo] Where required, further information.
    * @param {Discord.CommandInteraction|Discord.AnySelectMenuInteraction} [interaction] Optional interaction property to provide missing details
@@ -174,12 +174,12 @@ const modCommon = {
     const { msg, member, pingMods, snitch, flagReason, furtherInfo } = flagInfo;
     const client = msg?.client ?? member?.client;
     const isMember = member instanceof Discord.GuildMember;
-    const bot = () => isMember ? member.user.bot : member.bot;
-
+    const bot = isMember ? member.user.bot : member instanceof Discord.Webhook ? member : member.bot;
+    const user = msg?.webhookId ? await msg.fetchWebhook().catch(u.noop) ?? member : member;
     if (msg && !msg.inGuild()) return null;
 
-    const infractionSummary = await u.db.infraction.getSummary(member.id);
-    const embed = u.embed({ color: embedColors.action, author: member });
+    const infractionSummary = await u.db.infraction.getSummary(user.id);
+    const embed = u.embed({ color: embedColors.action, author: user });
 
     if (Array.isArray(matches)) matches = matches.join(", ");
     if (matches) embed.addFields({ name: "Matched", value: matches });
@@ -189,9 +189,9 @@ const modCommon = {
         .addFields(
           { name: "Channel", value: msg.channel.name, inline: true },
           { name: "Jump to Post", value: msg.url, inline: true },
-          { name: "User", value: (msg.webhookId ? userBackup(msg.author) ?? (await msg.fetchWebhook().catch(u.noop))?.name : userBackup(msg.author)) ?? "Unknown User" }
+          { name: "User", value: userBackup(user) }
         );
-      if (msg.channel.parentId == u.sf.channels.minecraftcategory) {
+      if (msg.channel.parentId === u.sf.channels.minecraftcategory) {
         msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({
           embeds: [embed],
           components: [
@@ -211,7 +211,7 @@ const modCommon = {
     }
     if (snitch) {
       embed.addFields(
-        { name: "Flagged By", value: snitch, inline: true },
+        { name: "Flagged By", value: userBackup(snitch), inline: true },
         { name: "Reason", value: flagReason, inline: true }
       );
       embed.setImage(msg?.attachments.at(0)?.url ?? null);
@@ -221,7 +221,7 @@ const modCommon = {
     }
 
     embed.addFields({ name: `Infraction Summary (${infractionSummary.time} Days)`, value: `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}` });
-    if (bot()) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
+    if (bot) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
 
     const content = [];
     if (pingMods) {
@@ -230,7 +230,7 @@ const modCommon = {
       if (isMember ? !member.roles.cache.has(u.sf.roles.muted) : true) {
         content.push(ldsg?.roles.cache.get(u.sf.roles.mod)?.toString());
       }
-      if (bot()) {
+      if (bot) {
         content.push("The message has been deleted. The member was *not* muted, on account of being a bot.");
       } else {
         if (isMember && !member.roles?.cache.has(u.sf.roles.muted)) {
@@ -251,20 +251,20 @@ const modCommon = {
       content: content.join('\n'),
       embeds: [embed],
 
-      components: ((bot() || !msg) ? undefined : modActions),
+      components: ((bot || !msg) ? undefined : modActions),
       allowedMentions: { roles: [u.sf.roles.mod] }
     });
 
     if (!card) throw new Error("Card creation failed!");
 
-    if (!bot() && msg) {
+    if (!bot && msg) {
       const infraction = {
         discordId: member.id,
         channel: msg.channel.id,
         message: msg.id,
         flag: card.id,
         description: msg.cleanContent,
-        mod: client.user.id,
+        mod: client.user?.id ?? "Icarus",
         value: 0
       };
       await u.db.infraction.save(infraction);
@@ -287,7 +287,7 @@ const modCommon = {
         const g = isMember ? member.guild : guild;
         const mod = g?.members.cache.get(record.mod);
         const handler = g?.members.cache.get(record.handler ?? "");
-        const pointsPart = record.value === 0 && (mod?.id != member.client.user.id) ? "Note" : `${record.value} pts`;
+        const pointsPart = record.value === 0 && (mod?.id !== member.client.user.id) ? "Note" : `${record.value} pts`;
         response.push(`\`${record.timestamp.toLocaleDateString()}\` (${pointsPart}, Mod: ${mod || `Unknown Mod (<@${record.mod }>)`}${handler ? `, Handler: ${handler}` : ""}): ${record.description}`);
       }
     }
@@ -394,7 +394,7 @@ const modCommon = {
       if (!target.manageable) return `I have insufficient permissions to ${m} ${target}!`;
 
       // Don't mute if muted or vice versa
-      if (target.roles.cache.has(u.sf.roles.muted) == apply) return `${target} is already ${m}d.`;
+      if (target.roles.cache.has(u.sf.roles.muted) === apply) return `${target} is already ${m}d.`;
 
       // Impose Mute or Unmute
       if (apply) await target.roles.add(u.sf.roles.muted);
@@ -484,7 +484,7 @@ const modCommon = {
       if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
 
       // don't do it if it wont do anything
-      if (target.roles.cache.has(u.sf.roles.ducttape) == apply) return `${target} is ${apply ? "already" : "not"} in the office.`;
+      if (target.roles.cache.has(u.sf.roles.ducttape) === apply) return `${target} is ${apply ? "already" : "not"} in the office.`;
 
       // do it
       if (apply) await target.roles.add(u.sf.roles.ducttape);
@@ -534,7 +534,7 @@ const modCommon = {
 
       if (!reset) {
         await target.send(
-          messageFromMods + `We have found that your ${oldNick == target.user.displayName ? "username" : "server nickname"} is in violation of our ${code}.\n`
+          messageFromMods + `We have found that your ${oldNick === target.user.displayName ? "username" : "server nickname"} is in violation of our ${code}.\n`
           + `We've taken the liberty of setting a new server nickname (**${newNick}**) for you. Please reach out if you have any questions.`
         ).catch(() => blocked(target));
         await u.db.infraction.save({
@@ -584,7 +584,7 @@ const modCommon = {
       const messages = fetched.filter(m =>
         m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
         m.createdTimestamp >= (message.createdTimestamp - timeDiff) &&
-        m.author.id == message.author.id &&
+        m.author.id === message.author.id &&
         contents.includes(m.content.toLowerCase())
       );
       if (messages.size > 0) promises.push(channel.bulkDelete(messages, true));
@@ -594,9 +594,9 @@ const modCommon = {
       const deleted = resolved.flatMap(a => a.size).reduce((p, c) => p + c, 0);
       const channels = u.unique(resolved.flatMap(a => a.map(b => b?.channel.toString())));
       return { deleted, channels };
-    } else {
-      return null;
     }
+    return null;
+
   },
 
   /**
@@ -649,7 +649,7 @@ const modCommon = {
   trust: async function(interaction, target, apply = true) {
     let success = false;
     try {
-      if (target.roles.cache.has(u.sf.roles.trusted) == apply) return `${target} is ${apply ? "already trusted" : "not trusted yet"}!`;
+      if (target.roles.cache.has(u.sf.roles.trusted) === apply) return `${target} is ${apply ? "already trusted" : "not trusted yet"}!`;
       const embed = logEmbed(interaction, target).setColor(embedColors.info);
       if (apply) {
         await target.roles.add(u.sf.roles.trusted);
@@ -694,10 +694,10 @@ const modCommon = {
       const pres = give ? "give" : "take";
       const past = give ? "gave" : "took";
       try {
-        if (recipient.roles.cache.has(role.id) == give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${role} role`;
+        if (recipient.roles.cache.has(role.id) === give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${role} role`;
         give ? await recipient?.roles.add(role.id) : await recipient?.roles.remove(role.id);
         const returnStr = `Successfully ${past} the ${role} role ${give ? "to" : "from"} ${recipient}`;
-        if (role.id == u.sf.roles.bookworm) return returnStr;
+        if (role.id === u.sf.roles.bookworm) return returnStr;
         const embed = u.embed({ author: recipient, color: 0x00ffff })
             .setTitle(`User ${give ? "added to" : "removed from"} ${role.name}`)
             .setDescription(`${int.member} ${past} the ${role} role ${give ? "to" : "from"} ${recipient}.`);
@@ -716,7 +716,7 @@ const modCommon = {
   trustPlus: async function(interaction, target, apply = true) {
     let success = false;
     try {
-      if (target.roles.cache.has(u.sf.roles.trustedplus) == apply) return `${target} ${apply ? "already has" : "doesn't have"} the Trusted+ role!`;
+      if (target.roles.cache.has(u.sf.roles.trustedplus) === apply) return `${target} ${apply ? "already has" : "doesn't have"} the Trusted+ role!`;
       if (apply && !target.roles.cache.has(u.sf.roles.trusted)) return `${target} needs the Trusted role before they can get the Trusted+ role!`;
       const embed = logEmbed(interaction, target).setColor(embedColors.info);
 
@@ -758,8 +758,8 @@ const modCommon = {
   watch: async function(interaction, target, apply = true) {
     let success = true;
     try {
-      if (typeof target != 'string' && (target.user.bot)) return `${target} is a bot and shouldn't be watched.`;
-      const id = typeof target == "string" ? target : target.id;
+      if (typeof target !== 'string' && (target.user.bot)) return `${target} is a bot and shouldn't be watched.`;
+      const id = typeof target === "string" ? target : target.id;
       const watchStatus = await u.db.user.fetchUser(id);
       if (apply && (watchStatus?.watching || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
       if (!apply && watchStatus && !watchStatus.watching && !modCommon.watchlist.has(id)) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
@@ -769,7 +769,7 @@ const modCommon = {
       else modCommon.watchlist.delete(id);
       success = true;
 
-      if (typeof target != 'string') {
+      if (typeof target !== 'string') {
         const watchLog = interaction.client.getTextChannel(u.sf.channels.modWatchList);
         const notifDesc = [
           `Use </mod watch:${u.sf.commands.slashMod}> to remove them.`,
