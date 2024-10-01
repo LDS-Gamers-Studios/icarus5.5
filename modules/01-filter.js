@@ -110,6 +110,7 @@ function filter(text) {
  * @param {Discord.Message} msg Message
  */
 async function processMessageLanguage(msg) {
+  if (!msg.member) return;
   let matchedContent = [];
   const reasons = [];
   let warned = false;
@@ -481,9 +482,7 @@ async function processCardAction(interaction) {
 ********************/
 const Module = new Augur.Module()
 .addEvent("messageCreate", processMessageLanguage)
-.addEvent("messageUpdate", async (old, newMsg) => {
-  if (newMsg.partial) newMsg = await newMsg.fetch().catch(() => newMsg);
-  if (newMsg.partial) return; // failed to fetch, likely unreadable or deleted
+.addEvent("messageEdit", async (old, newMsg) => {
   processMessageLanguage(newMsg);
 })
 .addEvent("interactionCreate", (int) => {
@@ -498,7 +497,8 @@ const Module = new Augur.Module()
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
 .addEvent("ready", () => {
-  setInterval(() => {
+  // eslint-disable-next-line no-unused-vars
+  const forWhenSpamWorks = () => setInterval(() => {
     spamming(Module.client);
     for (const [id, member] of active) {
       const newMsgs = member.messages.filter(m => m.createdTimestamp + (thresh.time * 1000) >= Date.now());
@@ -507,6 +507,7 @@ const Module = new Augur.Module()
       else active.set(id, Object.assign(member, { messages: newMsgs }));
     }
   }, thresh.time * 1000);
+  return;
 })
 .setUnload(() => c.grownups)
 .setInit((grown) => grown ? c.grownups = grown : null);

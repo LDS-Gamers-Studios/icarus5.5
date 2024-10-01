@@ -182,35 +182,14 @@ async function slashBankGameList(interaction) {
     const embed = u.embed()
       .setTitle("Games Available to Redeem")
       .setDescription(`Redeem ${gb} for game codes with the </bank game redeem:${u.sf.commands.slashBank}> command.\n\n`);
-    let e = embed;
-    const embeds = [];
-    for (const game of gameList) {
+    u.pagedEmbeds(interaction, embed, gameList.map(game => {
       let steamApp = null;
       if (game.get("System")?.toLowerCase() === "steam") {
-        steamApp = steamGameList.find(g => g.name.toLowerCase() === game.get("Title").toLowerCase());
+        steamApp = steamGameList.find(g => g.name.toLowerCase() === game.get("Title")?.toLowerCase());
       }
-      const content = `${steamApp ? "[" : ""}**${game.get("Title")}** (${game.get("System")})${steamApp ? `](https://store.steampowered.com/app/${steamApp.appid})` : ""}`
-        + ` Rated ${game.get("Rating") ?? ""} - ${gb}${game.get("Cost")} | Code: **${game.get("Code")}**\n\n`;
-      if ((e.data.description?.length || 0) + content.length > 2000) {
-        embeds.push(e);
-        e = embed;
-      }
-      e.setDescription(e.data.description + content);
-    }
-    embeds.push(e);
-
-    let embed2 = embeds.shift();
-    if (!embed2) return;
-    interaction.editReply({ embeds: [embed2] });
-    while (embeds.length > 0) {
-      embed2 = embeds.shift();
-      if (!embed2) break;
-      try {
-        await interaction.followUp({ embeds: [embed2], ephemeral: true }).catch(u.noop);
-      } catch (err) {
-        break;
-      }
-    }
+      return `${steamApp ? "[" : ""}**${game.get("Title")}** (${game.get("System")})${steamApp ? `](https://store.steampowered.com/app/${steamApp.appid})` : ""}`
+        + ` Rated ${game.get("Rating") ?? ""} - ${gb}${game.get("Cost")} | Code: **${game.get("Code")}**\n`;
+    }));
   } catch (e) { u.errorHandler(e, interaction); }
 }
 

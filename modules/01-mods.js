@@ -370,9 +370,7 @@ Module.addEvent("guildMemberAdd", async (member) => {
   c.watchlist = new Set(list.map(l => l.discordId));
 })
 .addEvent("messageCreate", watch)
-.addEvent("messageUpdate", async (msg, newMsg) => {
-  if (newMsg.partial) newMsg = await newMsg.fetch().catch(() => newMsg);
-  if (newMsg.partial) return; // failed to fetch
+.addEvent("messageEdit", async (msg, newMsg) => {
   watch(newMsg);
 })
 .addEvent("voiceStateUpdate", (oldS, newS) => {

@@ -103,10 +103,9 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
           const years = now.year() - join.year();
           // yell at devs if not
           if (tenureCache.has(years)) {
-            const roles = tenureCache.filter((r, y) => member.roles.cache.has(r) && y !== years);
-            roles.delete(years);
-            await member.roles.remove([...roles.values()]).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
+            const role = tenureCache.find(r => member.roles.cache.has(r));
             await member.roles.add(tenureCache.get(years) ?? "").catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
+            if (role) await member.roles.remove(role).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
           } else {
             unknownYears.add(years);
             unapplied.push(member);

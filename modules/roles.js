@@ -91,7 +91,7 @@ async function slashRoleGive(int, give = true) {
 }
 /** @param {Discord.GuildMember} member */
 function getInventory(member, override = true) {
-  if (override && u.perms.calc(member, ["mgr", "botAdmin"])) return equipRoles;
+  if (override && u.perms.calc(member, ["mgr"])) return equipRoles;
   return equipRoles.filter(r => member.roles.cache.hasAny(r.base, ...r.parents));
 }
 
@@ -156,7 +156,7 @@ async function setRoles() {
         permissions: r.level
       };
     });
-    equipRoles = new u.Collection(eRoles.map(e => [e.color, e]));
+    equipRoles = new u.Collection(eRoles.filter(e => e.color).map(e => [e.color, e]));
   } catch (e) {
     u.errorHandler(e, "Load Color & Equip Roles");
   }
@@ -217,13 +217,8 @@ Module.addInteraction({
     }
   }
 })
-.setInit((reloaded) => {
-  if (!reloaded) return;
+.setInit(() => {
   setRoles();
-})
-.setUnload(() => true)
-.addEvent("ready", async () => {
-  await setRoles();
 })
 .addEvent("guildMemberUpdate", async (oldMember, newMember) => {
   if (newMember.guild.id === u.sf.ldsg) {
@@ -237,7 +232,7 @@ Module.addInteraction({
           const oldInventory = getInventory(oldMember, false);
           const diff = newInventory.filter(r => !oldInventory.has(r.color));
           if (diff.size > 0) {
-            newMember.send(`You have ${diff.size > 1 ? "a new color role" : "new color roles"}!\n${diff.map(r => `- ${newMember.guild.roles.cache.get(r.color)?.name}`).join("\n")}!\nYou can equip the colors with the \`/role equip\` command. Check \`/role inventory\` command to see what colors you can equip.`).catch(u.noop);
+            newMember.send(`You have ${diff.size > 1 ? "a new color role" : "new color roles"}!\n${diff.map(r => `**${newMember.guild.roles.cache.get(r.color)?.name}**`).join(", ")}\nYou can equip the colors with the \`/role equip\` command. Check \`/role inventory\` command to see what colors you can equip.`).catch(u.noop);
           }
         }
         await u.db.user.updateRoles(newMember);
