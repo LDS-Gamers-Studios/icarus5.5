@@ -63,9 +63,9 @@ function refAbbrBuild(book) {
 function getScriptureMastery(book, chapter) {
   const scriptureMasteries = require("../data/gospel/scripture-mastery-reference.json");
   let m = scriptureMasteries;
-  if (book) m = scriptureMasteries.filter(s => s.book == book);
-  else if (chapter) m = scriptureMasteries.filter(s => s.chapter == chapter);
-  const reference = u.rand(m.length == 0 ? scriptureMasteries : m);
+  if (book) m = scriptureMasteries.filter(s => s.book === book);
+  else if (chapter) m = scriptureMasteries.filter(s => s.chapter === chapter);
+  const reference = u.rand(m.length === 0 ? scriptureMasteries : m);
   return {
     book: reference.book,
     chapter: reference.chapter,
@@ -141,7 +141,7 @@ function parseVerseRange(verses) {
   /** @type {string[]} */
   let textVerses = [];
   if (verses) {
-    if (verses.charAt(0) == "-") return { versesNums: [], text: "" }; // catch people giving negative verse to be silly
+    if (verses.charAt(0) === "-") return { versesNums: [], text: "" }; // catch people giving negative verse to be silly
     verses = verses.replace(/ /g, "");
     const versesList = verses.split(/[,;]/);
     // const rangeRegex = /(\d+)(?:-(\d+))?/;
@@ -173,9 +173,9 @@ function calculateDate(inputDate, debug = false) {
   const date = u.moment(inputDate);
   // Set the day to Monday. If the day is Sunday (0), set it to subtract a week
   const monday = date;
-  monday.day(monday.day() == 0 ? -6 : 1);
+  monday.day(monday.day() === 0 ? -6 : 1);
   // Account for the end of the year;
-  if (monday.month() == 11 && monday.date() > 25) monday.day(-6);
+  if (monday.month() === 11 && monday.date() > 25) monday.day(-6);
   const str = `${u.moment(monday).format("MMMM Do YYYY")}`;
   const week = u.moment(monday).format("ww");
 
@@ -186,9 +186,9 @@ function calculateDate(inputDate, debug = false) {
     const link = `https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-home-and-church-${manual}/${week.padStart(2, "0")}`;
     if (debug) return `${u.moment(date).format("MM/DD (ddd)")}: Week ${week.padStart(2, "0")}`;
     return { link, str };
-  } else {
-    return null;
   }
+  return null;
+
 }
 
 /**
@@ -196,7 +196,7 @@ function calculateDate(inputDate, debug = false) {
  */
 function slashGospelComeFollowMe(interaction) {
   const date = calculateDate(new Date());
-  if (date && typeof date != 'string') {
+  if (date && typeof date !== 'string') {
     interaction.reply(`## Come, Follow Me Lesson for the week of ${date.str}:\n${date.link}`);
   } else {
     interaction.reply({ content:`Sorry, I don't have information for the ${new Date().getFullYear()} manual yet.`, ephemeral: true });
@@ -231,12 +231,13 @@ const Module = new Augur.Module()
       case "comefollowme": return slashGospelComeFollowMe(interaction);
       case "news": return slashGospelNews(interaction);
       case "verse": return slashGospelVerse(interaction);
+      default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   },
   autocomplete: (int) => {
     const option = int.options.getFocused(true);
     // Supply book names
-    if (option.name == 'book') {
+    if (option.name === 'book') {
       const values = u.autocompleteSort(option.value, abbreviationTable)
         .map(b => b.bookName).slice(0, 24);
 

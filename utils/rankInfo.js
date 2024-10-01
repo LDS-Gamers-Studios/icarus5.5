@@ -51,12 +51,12 @@ const Rank = {
   ],
   /** @param {number | string} xp */
   level: function(xp) {
-    if (typeof xp == 'string') xp = parseInt(xp, 10);
+    if (typeof xp === 'string') xp = parseInt(xp, 10);
     return Math.floor((1 + Math.sqrt(1 + (8 * xp) / xpScale)) / 2);
   },
   /** @param {number | string} level */
   minXp: function(level) {
-    if (typeof level == 'string') level = parseInt(level, 10);
+    if (typeof level === 'string') level = parseInt(level, 10);
     return xpScale * (Math.pow(2 * level - 1, 2) - 1) / 8;
   }
 };

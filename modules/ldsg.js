@@ -1,4 +1,8 @@
 // @ts-check
+const bannedFromSuggesting = [
+  // "123456" // a fake account
+  // "602887436300714013", // ohgo
+];
 
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
@@ -24,7 +28,7 @@ async function slashLdsgMembers(interaction) {
   try {
     const ldsg = interaction.client.guilds.cache.get(u.sf.ldsg);
     if (!ldsg) throw new Error("Couldn't find LDSG");
-    const online = ldsg.members.cache.filter((member) => member?.presence && member.presence.status != "offline");
+    const online = ldsg.members.cache.filter((member) => member?.presence && member.presence.status !== "offline");
     interaction.reply(`📈 **Members:**\n${ldsg.memberCount} Members\n${online.size} Online`);
   } catch (error) { u.errorHandler(error, interaction); }
 }
@@ -38,6 +42,7 @@ const replyOption = [
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashLdsgSuggest(int) {
+  if (bannedFromSuggesting.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
   const suggestion = int.options.getString("suggestion", true);
   await int.deferReply({ ephemeral: true });
   const embed = u.embed({ author: int.user })
@@ -54,8 +59,8 @@ async function suggestReply(int) {
   const embed = u.embed(int.message.embeds[0]);
   // get user input
   await int.showModal(replyModal);
-  const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId == "suggestionReplyModal" }).catch(u.noop);
-  if (!submitted) return int.channel?.send("I fell asleep waiting for your input...");
+  const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionReplyModal" }).catch(u.noop);
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
   await submitted.deferUpdate();
 
   // generate reply embed
@@ -81,7 +86,7 @@ async function suggestReply(int) {
 async function suggestManage(int) {
   // make sure everything is good
   if (!int.channel) return int.reply({ content: "I couldn't access the channel you're in!", ephemeral: true });
-  if (int.channel.parentId != u.sf.channels.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.suggestionBox}>!`, ephemeral: true });
+  if (int.channel.parentId !== u.sf.channels.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.suggestionBox}>!`, ephemeral: true });
 
   // create modal
   const oldFields = (int.message.embeds[0]?.fields || []);
@@ -102,7 +107,7 @@ async function suggestManage(int) {
         .setStyle(Discord.TextInputStyle.Short)
         .setRequired(false)
         .setPlaceholder("What issue is the user facing?")
-        .setValue(oldFields.find(f => f.name == "Issue")?.value ?? "")
+        .setValue(oldFields.find(f => f.name === "Issue")?.value ?? "")
     ]),
     u.ModalActionRow().addComponents([
       new u.TextInput()
@@ -111,14 +116,14 @@ async function suggestManage(int) {
         .setStyle(Discord.TextInputStyle.Paragraph)
         .setRequired(false)
         .setPlaceholder("Plans and actions to take")
-        .setValue(oldFields.find(f => f.name == "Plans")?.value ?? "")
+        .setValue(oldFields.find(f => f.name === "Plans")?.value ?? "")
     ])
   ).setCustomId("suggestionManageModal").setTitle("Manage Suggestion");
 
   // get user input
   await int.showModal(manageModal);
-  const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId == "suggestionManageModal" }).catch(u.noop);
-  if (!submitted) return int.editReply("I fell asleep waiting for your input...");
+  const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionManageModal" }).catch(u.noop);
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
   await submitted.deferReply({ ephemeral: true });
   const title = submitted.fields.getTextInputValue("title");
   const issue = submitted.fields.getTextInputValue("issue");
@@ -126,7 +131,7 @@ async function suggestManage(int) {
 
   // change the embed
   const em = u.embed(int.message.embeds[0]);
-  if (title && title != int.channel.name) {
+  if (title && title !== int.channel.name) {
     try {
       await int.channel.setName(title);
       em.setTitle(title);
@@ -155,11 +160,12 @@ const Module = new Augur.Module()
       switch (subcommand) {
         case "members": return slashLdsgMembers(interaction);
         case "suggest": return slashLdsgSuggest(interaction);
+        default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
       }
     }
   })
   .addEvent("interactionCreate", (int) => {
-    if (!int.inCachedGuild() || !int.isButton() || int.guild.id != u.sf.ldsg) return;
+    if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
     if (!int.customId.startsWith("suggestion")) return;
     if (!u.perms.calc(int.member, ["team", "mgr"])) {
       return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
