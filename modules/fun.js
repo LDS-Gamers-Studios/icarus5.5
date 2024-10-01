@@ -5,7 +5,7 @@ const Augur = require("augurbot-ts"),
   axios = require('axios'),
   Jimp = require('jimp'),
   profanityFilter = require("profanity-matcher"),
-  buttermelonFacts = require('../data/buttermelonFacts.json').facts,  
+  buttermelonFacts = require('../data/buttermelonFacts.json').facts,
   emojiKitchenSpecialCodes = require("../data/emojiKitchenSpecialCodes.json"),
   emojilib = require('node-emoji'),
   mineSweeperEmojis = ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '7⃣', '8⃣', '💣'];
@@ -19,7 +19,7 @@ async function slashFunColor(int) {
   try {
     if (!["#000000", "black", "#000000FF"].includes(colorCSS)) colorCSS = Jimp.cssColorToHex(colorCSS).toString();
     // make sure it is a valid color, and not just defaulting to black
-    if (colorCSS == "255") {
+    if (colorCSS === "255") {
       return int.editReply(`sorry, I couldn't understand the color ${colorCode}`);
     }
     // make and send the image
@@ -50,25 +50,27 @@ async function slashFunHBS(int) {
       if (!storedChoice) {
         storedChooser = chooser;
         storedChoice = choice;
-        int.reply({ content: `Your fighter has been picked! ${int.channelId != u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+        int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
         return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
         `${chooser} has chosen their fighter and is awaiting a challenger.`);
-      } else if (storedChooser == chooser) {
+      } else if (storedChooser === chooser) {
         storedChoice = choice;
-        int.reply({ content: `Your fighter has been updated! ${int.channelId != u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+        int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
         return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
         `${chooser} has changed their fighter and is awaiting a challenger.`
         );
-      } else {
-        const oldstoredChooser = storedChooser;
-        const olcstoredChoice = storedChoice;
-        storedChooser = '';
-        storedChoice = '';
-        return int.reply({ content:"## Handicorn, Buttermelon, Sloth, Fight!\n" +
-          `🥊 ${chooser} challenged ${oldstoredChooser}!\n` +
-          hbsResult(chooser, choice, oldstoredChooser, olcstoredChoice),
-        allowedMentions: { parse: ["users"] } });
       }
+      // eslint-disable-next-line no-case-declarations
+      const oldstoredChooser = storedChooser;
+      // eslint-disable-next-line no-case-declarations
+      const oldstoredChoice = storedChoice;
+      storedChooser = '';
+      storedChoice = '';
+      return int.reply({ content:"## Handicorn, Buttermelon, Sloth, Fight!\n" +
+          `🥊 ${chooser} challenged ${oldstoredChooser}!\n` +
+          hbsResult(chooser, choice, oldstoredChooser, oldstoredChoice),
+      allowedMentions: { parse: ["users"] } });
+
     default: {
       const aiChoice = u.rand(Object.keys(hbsValues));
       return int.reply("## Handicorn, Buttermelon, Sloth, Fight!\n" +
@@ -86,9 +88,9 @@ async function slashFunHBS(int) {
  */
   function hbsResult(chooser1, choice1, chooser2, choice2) {
     let response = `🤼 ${chooser1} picked ${hbsValues[choice1].emoji}, ${chooser2} picked ${hbsValues[choice2].emoji}.\n### `;
-    if (choice1 == choice2) {
+    if (choice1 === choice2) {
       response += "🤝 It's a tie!";
-    } else if (hbsValues[choice1].beats == choice2) {
+    } else if (hbsValues[choice1].beats === choice2) {
       response += `🏆 ${chooser1} wins!`;
     } else {
       response += `😵‍💫 ${chooser1} looses!`;
@@ -109,11 +111,11 @@ async function slashFunAcronym(int) {
     }
     const word = wordgen.join("");
 
-    if (pf.scan(word.toLowerCase()).length == 0) {
+    if (pf.scan(word.toLowerCase()).length === 0) {
       return int.editReply(`I've always wondered what __**${word}**__ stood for...`);
-    } else {
-      wordgen = [];
     }
+    wordgen = [];
+
   }
   return int.editReply("I've always wondered what __**IDUTR**__ stood for...");// cannonically it hearby stands for "IDiUT eRror"
 }
@@ -174,7 +176,7 @@ async function slashFunMinesweeper(int) {
     board[y][x] = 9;
     // Remove from possible mine spaces
     row.splice(slotnum, 1);
-    if (row.length == 1) {
+    if (row.length === 1) {
       spaces.splice(rownum, 1);
     }
     // Increment all spots around it
@@ -202,7 +204,7 @@ async function slashFunMinesweeper(int) {
     board[y][x] = -1 - board[y][x];
     // Remove from non-special-spaces
     row.splice(slotnum, 1);
-    if (row.length == 1) {
+    if (row.length === 1) {
       spaces.splice(rownum, 1);
     }
   }
@@ -322,7 +324,7 @@ async function slashFunButtermelon(int) {
 
 /** @param {Discord.Message|Discord.PartialMessage} msg */
 function buttermelonEdit(msg) {
-  if (msg.channel.isDMBased() && (msg.cleanContent?.toLowerCase() == "test")) {
+  if (msg.channel.isDMBased() && (msg.cleanContent?.toLowerCase() === "test")) {
     msg.reply((Math.random() < 0.8 ? "pass" : "fail"));
   }
   const exclude = [u.sf.channels.minecraftcategory];
@@ -400,9 +402,9 @@ async function slashFunChoose(int) {
     const options = optionsArg.split("|");
     const prefixes = ["I choose", "I pick", "I decided"];
     return int.reply(`${u.rand(prefixes)} **${u.rand(options).trim()}**`);
-  } else {
-    return int.reply({ content: 'you need to give me two or more choices! "a | b"', ephemeral: true });
   }
+  return int.reply({ content: 'you need to give me two or more choices! "a | b"', ephemeral: true });
+
 }
 /** @param {String} emoji unsanitized/irregular emoji input */
 /** @returns {String} unicode code point with appended u */
@@ -451,10 +453,10 @@ async function slashFunEmoji(int) {
       // console.log(urls);
       for (const uindex in urls) {
         const url = urls[uindex];
-        console.log(url);
+        // console.log(url);
         // @ts-ignore
         const response = await axios({ url, method: "get" }).catch(u.noop);
-        if (response?.status == 200) {
+        if (response?.status === 200) {
           return int.editReply({ files: [{ attachment:url, name:"combined.png" }] });
         }
       }
