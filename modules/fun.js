@@ -414,13 +414,6 @@ function emojiSanitize(emoji) {
   ucode = emojiKitchenSpecialCodes[ucode] ?? ucode;
   return ucode;
 }
-async function getEmoKitchenUrl(emoji1, emoji2) {
-  const results = await fetch(`https://tenor.googleapis.com/v2/featured?key=${config.tenor.apiKey}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`, {
-    mode: "cors"
-  });
-  const json = await results.json();
-  return json.results[0]?.url;
-}
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunEmoji(int) {
   try {
@@ -428,7 +421,11 @@ async function slashFunEmoji(int) {
     const emoji2input = int.options.getString("emoji2", true).trim();
     const emoji1 = emojiSanitize(emoji1input);
     const emoji2 = emojiSanitize(emoji2input);
-    const url = await getEmoKitchenUrl(emoji1, emoji2);
+    const results = await fetch(`https://tenor.googleapis.com/v2/featured?key=${config.tenor.apiKey}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`, {
+      mode: "cors"
+    });
+    const resjson = await results.json();
+    const url = resjson.results[0]?.url;
     if (url) {
       return int.reply({ files: [{ attachment:url, name:"combined.png" }] });
     }
