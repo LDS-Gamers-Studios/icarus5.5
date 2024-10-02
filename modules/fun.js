@@ -1,6 +1,7 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
+  config = require("../config/config.json"),
   u = require("../utils/utils"),
   axios = require('axios'),
   Jimp = require('jimp'),
@@ -410,31 +411,14 @@ async function slashFunChoose(int) {
 /** @returns {String} unicode code point with appended u */
 function emojiSanitize(emoji) {
   let ucode = emojilib.find(emoji)?.emoji ?? emoji;
-  // ucode = 'u' + ucode.codePointAt(0)?.toString(16);
   ucode = emojiKitchenSpecialCodes[ucode] ?? ucode;
   return ucode;
-  // return ucode;
-  // let unicode;
-  // if (/^[0-9A-Fa-f]+$/.test(emoji)) {
-  //   unicode = emoji;
-  // } else if (emoji.includes(":")) {
-  //   let emojiName = emoji.substring(emoji.indexOf(":") + 1);
-  //   emojiName = emojiName.substring(0, emojiName.indexOf(":"));
-  //   unicode = emojiUnicode[emojiName];
-  // } else {
-  //   unicode = emoji.codePointAt(0)?.toString(16);
-  // }
-  // if (!unicode.startsWith('u')) {unicode = 'u' + unicode;}
-  // return unicode;
 }
-async function getEmoKitchenUrl(emoji1,emoji2) {
-  const apiKey = "AIzaSyD-3oRv3tVzgWUXn6n0ErY0T9Rg0MXzMi0";// AIzaSyACvEq5cnT7AcHpDdj64SE3TJZRhW-iHuo
-  const results = await fetch(`https://tenor.googleapis.com/v2/featured?key=${apiKey}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`, {
+async function getEmoKitchenUrl(emoji1, emoji2) {
+  const results = await fetch(`https://tenor.googleapis.com/v2/featured?key=${config.tenor.apiKey}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`, {
     mode: "cors"
   });
   const json = await results.json();
-  // console.log(emoji1 + "_" + emoji2);
-  // console.log(json);
   return json.results[0]?.url;
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -444,7 +428,7 @@ async function slashFunEmoji(int) {
     const emoji2input = int.options.getString("emoji2", true).trim();
     const emoji1 = emojiSanitize(emoji1input);
     const emoji2 = emojiSanitize(emoji2input);
-    const url = await getEmoKitchenUrl(emoji1, emoji2);// .catch(u.noop);
+    const url = await getEmoKitchenUrl(emoji1, emoji2);
     if (url) {
       return int.reply({ files: [{ attachment:url, name:"combined.png" }] });
     }
