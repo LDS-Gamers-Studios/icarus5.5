@@ -21,13 +21,13 @@ async function slashFunColor(int) {
     if (!["#000000", "black", "#000000FF"].includes(colorCSS)) colorCSS = Jimp.cssColorToHex(colorCSS).toString();
     // make sure it is a valid color, and not just defaulting to black
     if (colorCSS === "255") {
-      return int.editReply(`sorry, I couldn't understand the color ${colorCode}`);
+      return int.reply(`sorry, I couldn't understand the color ${colorCode}`);
     }
     // make and send the image
     const img = new Jimp(256, 256, colorCSS);
-    return int.editReply({ files: [await img.getBufferAsync(Jimp.MIME_JPEG)] });
+    return int.reply({ files: [await img.getBufferAsync(Jimp.MIME_JPEG)] });
   } catch (error) {
-    return int.editReply(`Sorry, I couldn't understand the color \`${colorCode}\``);
+    return int.reply(`Sorry, I couldn't understand the color \`${colorCode}\``);
   }
 }
 
@@ -113,12 +113,12 @@ async function slashFunAcronym(int) {
     const word = wordgen.join("");
 
     if (pf.scan(word.toLowerCase()).length === 0) {
-      return int.editReply(`I've always wondered what __**${word}**__ stood for...`);
+      return int.reply(`I've always wondered what __**${word}**__ stood for...`);
     }
     wordgen = [];
 
   }
-  return int.editReply("I've always wondered what __**IDUTR**__ stood for...");// cannonically it hearby stands for "IDiUT eRror"
+  return int.reply("I've always wondered what __**IDUTR**__ stood for...");// cannonically it hearby stands for "IDiUT eRror"
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -216,9 +216,9 @@ async function slashFunMinesweeper(int) {
   // seperate into rows and emojify and hide if not exposed
   const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
   if (!int.channel) {
-    return int.editReply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
+    return int.reply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
   }
-  int.editReply(`**Mines: ${mineCount}**`);
+  int.reply(`**Mines: ${mineCount}**`);
   const messages = [""];
   let messageCount = 0;
   let tagpairs = 0;
