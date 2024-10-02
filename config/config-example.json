@@ -48,6 +48,9 @@
     "userUpdate",
     "voiceStateUpdate"
   ],
+  "tenor": {
+    "apiKey": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/tenor.googleapis.com"
+  },
   "google": {
     "api": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
     "creds": {
