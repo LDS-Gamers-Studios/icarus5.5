@@ -169,4 +169,7 @@ Module.addEvent("ready", () => {
   }, 60 * 60 * 1000);
 });
 
-module.exports = { ...Module, doBirthdays, doCakeDays, doCelebrate };
+module.exports = Module;
+module.exports.doBirthdays = doBirthdays;
+module.exports.doCakeDays = doCakeDays;
+module.exports.doCelebrate = doCelebrate;
