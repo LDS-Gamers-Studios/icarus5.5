@@ -83,7 +83,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
   // Add tenure roles on member cake days
 
   try {
-    const guild = Module.client.guilds.cache.get(u.sf.ldsg);
+    const guild = await Module.client.guilds.fetch(u.sf.ldsg);
     const now = u.moment(testDate);
     if (!guild) return u.errorHandler(new Error("LDSG is unavailable???"));
 
