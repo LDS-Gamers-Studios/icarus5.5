@@ -30,7 +30,6 @@ function runBirthday(int) {
     const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-    // @ts-expect-error we're doing janky stuff here :)
     cake.doBirthdays([int.member], date);
   } else {
     cake.doBirthdays();
