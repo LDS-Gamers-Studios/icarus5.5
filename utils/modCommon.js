@@ -32,18 +32,21 @@ const retract = u.MessageActionRow().setComponents([
   new u.Button().setCustomId("modCardRetract").setEmoji("⏪").setLabel("Retract").setStyle(ButtonStyle.Danger)
 ]);
 
+const unmute = new u.Button().setCustomId("modCardUnmute").setEmoji("🔊").setLabel("Unmute").setStyle(ButtonStyle.Success);
+const unwatch = new u.Button().setCustomId("modCardUnwatch").setEmoji("💤").setLabel("Unwatch").setStyle(ButtonStyle.Success);
+
 const messageFromMods = "## 🚨 Message from the LDSG Mods:\n";
 const code = "[Code of Conduct](http://ldsgamers.com/code-of-conduct)";
 
 /**
- * @param {Augur.GuildInteraction<"Any">|Discord.Message} int The interaction (gets the mod from this)
+ * @param {Augur.GuildInteraction<"Any">|Discord.Message|null} int The interaction (gets the mod from this)
  * @param {Discord.GuildMember | Discord.User} tg The target of the command
  */
-const logEmbed = (int, tg) => u.embed({ author: tg })
-.addFields(
-  { name: "User", value: userBackup(tg) },
-  { name: "Mod", value: userBackup(int.member ?? (int instanceof Discord.Message ? int.author : int.user)) }
-);
+const logEmbed = (int, tg) => {
+  const embed = u.embed({ author: tg }).addFields({ name: "User", value: userBackup(tg) });
+  if (int) embed.addFields({ name: "Mod", value: userBackup(int.member ?? (int instanceof Discord.Message ? int.author : int.user)) });
+  return embed;
+};
 
 /**
   * Give the mods a heads up that someone isn't getting their DMs.
@@ -88,7 +91,10 @@ const modCommon = {
   logEmbed,
   modActions,
   revert: retract,
+  unmute,
+  unwatch,
   colors: embedColors,
+  userBackup,
   /**
    * BAN HAMMER!!!
    * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
@@ -574,7 +580,6 @@ const modCommon = {
    */
   spamCleanup: async function(searchContent, guild, message, auto = false) {
     const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2) * 1000;
-    const contents = u.unique(searchContent);
     const promises = [];
     for (const [, channel] of guild.channels.cache) {
       const perms = channel.permissionsFor(message.client.user);
@@ -582,10 +587,10 @@ const modCommon = {
       const fetched = await channel.messages.fetch({ around: message.id, limit: 30 }).catch(u.noop);
       if (!fetched) return { deleted: 0, channels: [] };
       const messages = fetched.filter(m =>
-        m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
-        m.createdTimestamp >= (message.createdTimestamp - timeDiff) &&
         m.author.id === message.author.id &&
-        contents.includes(m.content.toLowerCase())
+        searchContent.includes(m.content.toLowerCase()) &&
+        m.createdTimestamp <= (message.createdTimestamp + timeDiff) &&
+        m.createdTimestamp >= (message.createdTimestamp - timeDiff)
       );
       if (messages.size > 0) promises.push(channel.bulkDelete(messages, true));
     }
@@ -595,13 +600,13 @@ const modCommon = {
       const channels = u.unique(resolved.flatMap(a => a.map(b => b?.channel.toString())));
       return { deleted, channels };
     }
-    return null;
+    return { deleted: 0, channels: [] };
 
   },
 
   /**
    * Briefly prevent someone from talking
-   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString"> | null} interaction
    * @param {Discord.GuildMember} target
    * @param {number} time Minutes, default is 10
    * @param {string} [reason]
@@ -624,15 +629,12 @@ const modCommon = {
 
       const embed = logEmbed(interaction, target)
         .setTitle(`${apply ? "⛔" : "✅"} User ${T}`)
-        .addFields(
-          { name: "Reason", value: reason ?? "[Not Provided]" },
-          { name: "Time", value: `${time} minutes` }
-        )
+        .addFields({ name: "Reason", value: reason ?? "[Not Provided]" },)
         .setColor(embedColors.info);
 
       if (apply) embed.addFields({ name: "Time", value: `${time} minutes` });
 
-      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+      await (interaction ?? target).client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
 
       return `${target} has been ${td}${apply ? ` for ${time} minutes` : ""}.`;
     } catch (error) {

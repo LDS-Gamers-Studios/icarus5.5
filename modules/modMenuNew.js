@@ -351,6 +351,7 @@ async function purgeChannel(int, msg) {
 /** @type {message} */
 async function spamCleanup(int, msg) {
   if (!msg) return msgErr(int);
+  if (!msg.content) return edit(int, `I can't clean up messages without text!`);
   await edit(int, "Searching for and cleaning spam...");
   const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false);
   if (!cleaned) return edit(int, "I couldn't find any recent messages that matched this one.");

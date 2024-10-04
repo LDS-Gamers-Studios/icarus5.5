@@ -70,9 +70,9 @@
   },
   "prefix": "! (change this to something unique)",
   "spamThreshold":  {
-    "channels": [10, 8],
-    "messages": [10, 8],
-    "same": [5, 5],
+    "channels": 10,
+    "messages": 10,
+    "same": 5,
     "time": 7,
     "cleanupLimit": 90
   },

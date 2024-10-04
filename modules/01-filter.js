@@ -20,77 +20,83 @@ const processing = new Set();
 const thresh = config.spamThreshold;
 
 /**
- * @typedef activeMember
+ * @typedef message
+ * @prop {string} content
+ * @prop {number} createdTimestamp
+ * @prop {string} channelId
  * @prop {string} id
- * @prop {Discord.Message<true>[]} messages
+ *
+ * @typedef activeMember
+ * @prop {string} author
+ * @prop {message[]} messages
  * @prop {number} [verdict]
  * @prop {number} [count]
+ * @prop {boolean} handling
  */
 /** @type {Discord.Collection<string, activeMember> } */
 const active = new u.Collection();
 
-/** @param {Discord.Client} client*/
-async function spamming(client) {
-  // no point in doing it if nobodys posting
-  if (active.size === 0) return;
+/** @param {Discord.Message<true>} msg*/
+async function spamming(msg) {
+  if (!msg.member || msg.author.bot) return;
+  // update message cache
+  const history = active.get(msg.author.id) ?? {
+    author: msg.author.id,
+    /** @type {message[]} */
+    messages: [],
+    handling: false
+  };
 
-  // get resources
-  const ldsg = client.guilds.cache.get(u.sf.ldsg);
-  if (!ldsg) return;
+  if (history.handling) return;
 
-  const trusted = ldsg.roles.cache.get(u.sf.roles.trusted)?.members;
+  const newMessage = {
+    content: msg.content,
+    createdTimestamp: msg.createdTimestamp,
+    channelId: msg.channelId,
+    id: msg.id
+  };
+  history.messages.push(newMessage);
 
-  // Get the limit for the type of verdict
-  /** @param {string} type @param {string} id */
-  const limit = (/** @type {"channels"|"messages"|"same"} */ type, id) => thresh[type][trusted?.has(id) ? 0 : 1];
-
-  // Get verdicts for all active users and filter out unactioned ones
-  const offending = active.map(activeMember => {
-    let verdict = 0;
-
-    // Count how many of the same messages they've sent
-    /** @type {Discord.Collection<string, {content: string, count: number}>} */
-    const sameMessages = new u.Collection();
-    for (const message of activeMember.messages) {
-      const content = message.content.toLowerCase() || message.stickers.first()?.url;
-      if (!content) continue;
-      const prev = sameMessages.get(content);
-      sameMessages.set(content, { content, count: (prev?.count ?? 0) + 1 });
-    }
-
-    // See what channels they've been posting in
-    const channels = u.unique(activeMember.messages.map(m => m.channelId)).length;
-
-    // Decide verdict
-    if (limit('same', activeMember.id) <= Math.max(...sameMessages.map(m => m.count))) verdict = 3;
-    else if (limit('channels', activeMember.id) <= channels) verdict = 1;
-    else if (limit('messages', activeMember.id) <= activeMember.messages.length) verdict = 2;
-
-    // Set verdict
-    activeMember.verdict = verdict;
-    activeMember.count = [null, channels, activeMember.messages.length, sameMessages.reduce((a, b) => a + b.count, 0)][verdict] ?? undefined;
-    return activeMember;
-  }).filter(a => a.verdict && a.verdict !== 0);
-
-  for (const member of offending) {
-    const message = member.messages[0];
-    /** @type {Discord.Collection<string, {channel: string, count: number}>} */
-    const channels = new u.Collection();
-    for (const msg of member.messages) {
-      const prev = channels.get(msg.channelId);
-      channels.set(msg.channelId, { channel: msg.channel.toString(), count: (prev?.count ?? 0) + 1 });
-    }
-
-    const verdictString = [
-      null,
-      `Posted in too many channels (${member.count}/${limit('channels', member.id)}) too fast\nChannels:\n${channels.map(ch => `${ch.channel} (${ch.count})`).join('\n')}`,
-      `Posted too many messages (${member.count}/${limit('messages', member.id)}) too fast\nChannels:\n${channels.map(ch => `${ch.channel} (${ch.count})`).join('\n')}`,
-      `Posted the same message too many times (${member.count}/${limit('same', member.id)})`,
-    ];
-    if (member.verdict !== 2) c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
-    c.createFlag({ msg: message, member: message.member ?? message.author, flagReason: verdictString[member.verdict ?? 1] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict === 3 });
-    active.delete(member.id);
+  active.set(msg.author.id, history);
+  // get relavent messages
+  const messages = history.messages.filter(m => m.createdTimestamp >= msg.createdTimestamp - (thresh.time * 1000));
+  const channels = u.unique(messages.map(m => m.channelId));
+  /** @type {Discord.Collection<string, number>} */
+  const contents = new u.Collection();
+  for (const message of messages) {
+    if (!message.content) continue;
+    const content = message.content.toLowerCase();
+    const prev = contents.get(content) ?? 0;
+    contents.set(content, prev + 1);
   }
+  const filteredContents = contents.filter(m => m > thresh.same);
+  // determine outcome
+  let verdict = 0;
+  if (filteredContents.size > 0) verdict = 2;
+  else if (channels.length > thresh.channels) verdict = 0;
+  else if (messages.length > thresh.messages) verdict = 1;
+  else return;
+
+  const verdictString = [
+    `Posted in too many channels (${channels.length}/${thresh.channels}) too fast`,
+    `Posted too many messages (${messages.length}/${thresh.messages})`,
+    `Posted the same message too many times (${filteredContents.reduce((p, v) => p + v, 0)}/${thresh.same})`,
+  ];
+  if (verdict < 2) {
+    c.timeout(null, msg.member, 0.2, verdict === 0 ? "Channel Spam" : "Message Spam");
+  } else {
+    history.handling = true;
+    active.set(msg.author.id, history);
+    c.spamCleanup([...filteredContents.keys()], msg.guild, msg, true).then((results) => {
+      const embed = u.embed({ author: msg.member })
+        .setColor(c.colors.info)
+        .setTitle("Spam Cleanup Results")
+        .setDescription(`${results.deleted} messages deleted in the following channels:\n${results.channels.join("\n")}`);
+
+      msg.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+    });
+  }
+  c.createFlag({ msg, member: msg.member, flagReason: verdictString[verdict] + "\nThere may be additional spammage that I didn't catch.", pingMods: verdict === 2 });
 }
 
 /**
@@ -109,7 +115,7 @@ function filter(text) {
  * Process discord message language
  * @param {Discord.Message} msg Message
  */
-async function processMessageLanguage(msg) {
+async function processMessageLanguage(msg, edit = false) {
   if (!msg.member) return;
   let matchedContent = [];
   const reasons = [];
@@ -117,12 +123,7 @@ async function processMessageLanguage(msg) {
   let pingMods = false;
   if (!msg.inGuild() || msg.guild.id !== u.sf.ldsg || msg.channel.id === u.sf.channels.modWatchList) return;
 
-  // catch spam
-  if (!msg.author.bot && !msg.webhookId && !c.grownups.has(msg.channel.id)) {
-    const messages = active.get(msg.author.id)?.messages ?? [];
-    messages.push(msg);
-    active.set(msg.author.id, { id: msg.author.id, messages: messages });
-  }
+  if (!edit) spamming(msg);
 
   const invites = await processDiscordInvites(msg);
   if (invites) {
@@ -363,6 +364,8 @@ async function processCardAction(interaction) {
       return processing.delete(flag.id);
     }
 
+    const member = interaction.guild.members.cache.get(infraction.discordId);
+
     if (interaction.customId === "modCardClear") {
       // IGNORE FLAG
       await interaction.deferUpdate();
@@ -371,8 +374,10 @@ async function processCardAction(interaction) {
       await u.db.infraction.update(infraction);
       embed.setColor(c.colors.success)
         .addFields({ name: "Resolved", value: `${mod.toString()} cleared the flag.` });
+      const comps = c.revert.toJSON();
+      if (flag.mentions.roles.has(u.sf.roles.mod)) comps.components.push(c.unmute.toJSON()); // give option to unmute if mods are pinged
       embed.data.fields = embed.data.fields?.filter(f => !f.name.startsWith("Reverted"));
-      await interaction.editReply({ embeds: [embed], components: [c.revert] });
+      await interaction.editReply({ embeds: [embed], components: [comps] });
     } else if (interaction.customId === "modCardRetract") {
       // Only the person who acted on the card (or someone in management) can retract an action
       if (infraction.handler !== mod.id && !u.perms.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", ephemeral: true });
@@ -394,11 +399,33 @@ async function processCardAction(interaction) {
       infraction.value = 0;
       infraction.handler = undefined;
       await u.db.infraction.update(infraction);
+    } else if (interaction.customId === "modCardUnmute") {
+      const comps = c.revert.toJSON();
+      comps.components.push(c.unwatch.toJSON());
+      if (!member) {
+        interaction.reply({ content: "I couldn't find that user!", ephemeral: true });
+      } else if (!interaction.member.roles.cache.has(u.sf.roles.muted)) {
+        interaction.reply({ content: "That user isn't muted!", ephemeral: true });
+        interaction.message.edit({ components: [comps] });
+      } else {
+        embed.addFields({ name: "Unmuted", value: `${c.userBackup(interaction.member)} unmuted the user.` });
+        await interaction.deferUpdate();
+        await member.roles.remove(u.sf.roles.muted);
+        interaction.editReply({ embeds: [embed], components: [comps] });
+      }
+    } else if (interaction.customId === "modCardUnwatch") {
+      if (!member) {
+        interaction.reply({ content: "I couldn't find that user!", ephemeral: true });
+      } else {
+        embed.addFields({ name: "Unwatched", value: `${c.userBackup(interaction.member)} unwatched the user.` });
+        await interaction.deferUpdate();
+        await c.watch(interaction, member, false);
+        interaction.editReply({ embeds: [embed], components: [c.revert] });
+      }
     } else {
       await interaction.deferUpdate();
       embed.setColor(c.colors.handled);
       infraction.handler = mod.id;
-      const member = interaction.guild.members.cache.get(infraction.discordId);
 
       switch (interaction.customId) {
         case "modCardVerbal":
@@ -483,32 +510,29 @@ async function processCardAction(interaction) {
 const Module = new Augur.Module()
 .addEvent("messageCreate", processMessageLanguage)
 .addEvent("messageEdit", async (old, newMsg) => {
-  processMessageLanguage(newMsg);
+  processMessageLanguage(newMsg, true);
 })
 .addEvent("interactionCreate", (int) => {
   if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
-  if (!['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
+  if (!['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'unmute', 'unwatch', 'censor'] // mod card actions minus the modCard part
     .includes(int.customId.replace("modCard", "").toLowerCase())) return;
   if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
     return int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
   }
   processCardAction(int);
 })
-// @ts-ignore it does exist...
-.addEvent("filterUpdate", () => pf = new profanityFilter())
-.addEvent("ready", () => {
-  // eslint-disable-next-line no-unused-vars
-  const forWhenSpamWorks = () => setInterval(() => {
-    spamming(Module.client);
+.setClockwork(() => {
+  return setInterval(() => {
     for (const [id, member] of active) {
       const newMsgs = member.messages.filter(m => m.createdTimestamp + (thresh.time * 1000) >= Date.now());
       if (newMsgs.length === member.messages.length) continue;
       if (newMsgs.length === 0) active.delete(id);
       else active.set(id, Object.assign(member, { messages: newMsgs }));
     }
-  }, thresh.time * 1000);
-  return;
+  }, 5 * 60 * 1000);
 })
+// @ts-ignore it does exist...
+.addEvent("filterUpdate", () => pf = new profanityFilter())
 .setUnload(() => c.grownups)
 .setInit((grown) => grown ? c.grownups = grown : null);
 
