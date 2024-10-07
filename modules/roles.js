@@ -217,7 +217,7 @@ Module.addInteraction({
     }
   }
 })
-.setInit(() => {
+.addEvent("ready", () => {
   setRoles();
 })
 .addEvent("guildMemberUpdate", async (oldMember, newMember) => {
