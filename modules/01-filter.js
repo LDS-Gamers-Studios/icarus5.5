@@ -416,6 +416,9 @@ async function processCardAction(interaction) {
     } else if (interaction.customId === "modCardUnwatch") {
       if (!member) {
         interaction.reply({ content: "I couldn't find that user!", ephemeral: true });
+      } else if (!c.watchlist.has(member.id)) {
+        interaction.reply({ content: "That user isn't being watched!", ephemeral: true });
+        interaction.message.edit({ components: [c.revert] });
       } else {
         embed.addFields({ name: "Unwatched", value: `${c.userBackup(interaction.member)} unwatched the user.` });
         await interaction.deferUpdate();
