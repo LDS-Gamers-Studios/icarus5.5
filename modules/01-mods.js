@@ -4,41 +4,52 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
-  c = require("../utils/modCommon");
+  c = require("../utils/modCommon"),
+  Module = new Augur.Module();
 
 const noTarget = "The user you provided was invalid. They may have left the server.";
 
 /** @type {Map<string, any>} */
 const molasses = new Map();
 
-/** @param {Discord.Message} msg */
-async function watch(msg) {
-  if (!msg.inGuild()) return;
+/**
+ * @param {Discord.Message} [msg]
+ * @param {Discord.VoiceState} [oldState]
+ * @param {Discord.VoiceState} [newState]
+ */
+async function watch(msg, oldState, newState) {
+  const guild = msg?.guild || oldState?.guild || newState?.guild;
+  const member = msg?.member || oldState?.member || newState?.member;
+  if (!guild || !member) return; // make sure vars are defined and in a server;
+  if (msg && (msg.system || msg.webhookId)) return; // no bot messages
+  if (member.user.bot || (member.roles.cache.has(u.sf.roles.trusted) && !c.watchlist.has(member.id))) return; // filter not in the watchlist
 
-  if (
-    msg.guild.id == u.sf.ldsg && // only LDSG
-    !msg.system && !msg.webhookId && !msg.author.bot && // no bots
-    msg.member && (!msg.member.roles.cache.has(u.sf.roles.trusted) || c.watchlist.has(msg.author.id)) // only untrusted, watched, and in the server
-  ) {
-    const files = msg.attachments.map(attachment => attachment.url)
-      .concat(msg.stickers.map(s => s.url));
-    const webhook = new Discord.WebhookClient({ url: config.webhooks.watchlist });
-    const decorator = !msg.member?.roles.cache.has(u.sf.roles.trusted) ? "🚪" : "👀";
-    webhook.send({
-      content: `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`,
-      files,
-      username: `${decorator} - ${msg.member?.displayName ?? msg.author.displayName}`.substring(0, 31),
-      avatarURL: msg.member?.displayAvatarURL() ?? msg.author.displayAvatarURL(),
-      allowedMentions: { parse: [] }
-    });
+  const decorator = !member.roles.cache.has(u.sf.roles.trusted) ? "🚪" : "👀";
+  const payload = {
+    username: `${decorator} - ${member.displayName}`.substring(0, 31),
+    avatarURL: member.displayAvatarURL(),
+    allowedMentions: { parse: [] }
+  };
+  if (msg) {
+    payload.files = msg.attachments.map(attachment => attachment.url).concat(msg.stickers.map(s => s.url));
+    payload.content = `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`;
+  } else if (oldState?.channelId !== newState?.channelId) {
+    if (newState?.channel) payload.content = `🎙️ Joined ${newState.channel.name}`;
+    else if (oldState?.channel) payload.content = `🔇 Left ${oldState.channel.name}`;
+    else return;
+  } else {
+    return;
   }
+  const webhook = new Discord.WebhookClient({ url: config.webhooks.watchlist });
+
+  webhook.send(payload);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
 async function slashModWatch(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const target = interaction.options.getMember("user");
-  const apply = (interaction.options.getString("action") ?? "true") == "true";
+  const apply = (interaction.options.getString("action") ?? "true") === "true";
   if (!target) return interaction.editReply(noTarget);
 
   const watching = await c.watch(interaction, target, apply);
@@ -65,7 +76,7 @@ async function slashModFilter(interaction) {
   const word = interaction.options.getString("word", true).toLowerCase().trim();
   const mod = interaction.member;
   const modLogs = interaction.client.getTextChannel(u.sf.channels.modlogs);
-  const apply = (interaction.options.getString("action") ?? "true") == "true";
+  const apply = (interaction.options.getString("action") ?? "true") === "true";
 
   const filtered = pf.scan(word);
   if (!u.perms.calc(interaction.member, ["mgr"])) {
@@ -97,7 +108,7 @@ async function slashModFilter(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModSummary(interaction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.moddiscussion });
   const member = interaction.options.getMember("user") ?? interaction.member;
   const time = interaction.options.getInteger("history") ?? 28;
 
@@ -121,7 +132,7 @@ async function slashModMute(interaction) {
   try {
     await interaction.deferReply({ ephemeral: true });
     const target = interaction.options.getMember("user");
-    const apply = (interaction.options.getString("action") ?? "true") == "true";
+    const apply = (interaction.options.getString("action") ?? "true") === "true";
     const reason = interaction.options.getString("reason") || (apply ? "Violating the Code of Conduct" : "Case Closed");
     if (!target) return interaction.editReply(noTarget);
 
@@ -152,7 +163,7 @@ async function slashModOffice(interaction) {
     await interaction.deferReply({ ephemeral: true });
     const target = interaction.options.getMember("user");
     const reason = interaction.options.getString("reason") || "No reason provided";
-    const apply = (interaction.options.getString("action") ?? "true") == "true";
+    const apply = (interaction.options.getString("action") ?? "true") === "true";
     if (!target) return interaction.editReply(noTarget);
 
     const office = await c.office(interaction, target, reason, apply);
@@ -170,7 +181,10 @@ async function slashModPurge(interaction) {
   const channel = interaction.channel;
   if (!channel) return interaction.editReply("Well that's awkward, I can't access the channel you're in!");
   if (number < 1) return interaction.editReply("You need to provide a number greater than 0.");
-  const toDelete = await interaction.channel?.messages.fetch({ limit: Math.min(number, 100) });
+  const toDelete = await interaction.channel?.messages.fetch({ limit: Math.min(number, 100) }).catch(() => {
+    interaction.editReply("I couldn't get the messages in that channel. Sorry!");
+  });
+  if (!toDelete) return;
 
   const deleted = await channel.bulkDelete(toDelete, true);
   // Log it
@@ -199,7 +213,7 @@ async function slashModRename(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModWatchlist(interaction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.moddiscussion });
   c.watchlist = new Set((await u.db.user.getUsers({ watching: true })).map(usr => usr.discordId));
 
   const e = u.embed({ author: interaction.member })
@@ -213,11 +227,8 @@ async function slashModWatchlist(interaction) {
     if (!user) continue;
     wlStr += `${user}\n`;
   }
-  if (wlStr.length == 0) {
-    wlStr = "Nobody is on the list!";
-  }
 
-  e.addFields({ name: 'Members', value: wlStr });
+  e.addFields({ name: 'Members', value: wlStr || "Nobody is on the list!" });
 
   return await interaction.editReply({ embeds: [e] });
 }
@@ -232,7 +243,7 @@ async function slashModSlowmode(interaction) {
   const ch = interaction.channel;
   if (!ch) return interaction.editReply("I can't access the channel you're in!");
 
-  if (duration == 0 || delay == 0) {
+  if (duration === 0 || delay === 0) {
     await ch.setRateLimitPerUser(0).catch(e => u.errorHandler(e, interaction));
     const old = molasses.get(ch.id);
     if (old) {
@@ -284,12 +295,12 @@ async function slashModTrust(interaction) {
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.options.getMember("user");
   const type = interaction.options.getString("type", true);
-  const apply = (interaction.options.getString("action") ?? "true") == "true";
+  const apply = (interaction.options.getString("action") ?? "true") === "true";
   if (!member) return interaction.editReply(noTarget);
 
   // evaluate and give appropriate trust level
   let trust = "";
-  if (type == 'initial') trust = await c.trust(interaction, member, apply);
+  if (type === 'initial') trust = await c.trust(interaction, member, apply);
   else trust = await c.trustPlus(interaction, member, apply);
   return interaction.editReply(trust);
 }
@@ -323,13 +334,13 @@ async function slashModWarn(interaction) {
 async function slashModGrownups(interaction) {
   const time = Math.min(30, interaction.options.getInteger("time") ?? 15);
   if (!interaction.channel) return interaction.reply({ content: "Well that's awkward, I can't access the channel you're in!", ephemeral: true });
-  if (interaction.channel.parent?.id != u.sf.channels.staffCategory) return interaction.reply({ content: "This command can only be used in the LDSG-Staff Category!", ephemeral: true });
-  interaction.reply(time == 0 ? `*Whistles and wanders back in*` : `*Whistles and wanders off for ${time} minutes...*`);
+  if (interaction.channel.parent?.id !== u.sf.channels.staffCategory) return interaction.reply({ content: "This command can only be used in the LDSG-Staff Category!", ephemeral: true });
+  interaction.reply(time === 0 ? `*Whistles and wanders back in*` : `*Whistles and wanders off for ${time} minutes...*`);
 
   if (c.grownups.has(interaction.channel.id)) {
     clearTimeout(c.grownups.get(interaction.channel.id));
   }
-  if (time == 0) {
+  if (time === 0) {
     c.grownups.delete(interaction.channel.id);
   } else {
     c.grownups.set(interaction.channel.id, setTimeout((channel) => {
@@ -340,9 +351,8 @@ async function slashModGrownups(interaction) {
 }
 
 
-const Module = new Augur.Module()
-.addEvent("guildMemberAdd", async (member) => {
-  if (member.guild.id == u.sf.ldsg) {
+Module.addEvent("guildMemberAdd", async (member) => {
+  if (member.guild.id === u.sf.ldsg) {
     try {
       const user = await u.db.user.fetchUser(member.id);
       if (!user || user.roles.includes(u.sf.roles.trusted)) return;
@@ -360,9 +370,11 @@ const Module = new Augur.Module()
   c.watchlist = new Set(list.map(l => l.discordId));
 })
 .addEvent("messageCreate", watch)
-.addEvent("messageUpdate", async (msg, newMsg) => {
-  if (newMsg.partial) newMsg = await newMsg.fetch();
+.addEvent("messageEdit", async (msg, newMsg) => {
   watch(newMsg);
+})
+.addEvent("voiceStateUpdate", (oldS, newS) => {
+  watch(undefined, oldS, newS);
 })
 .addInteraction({
   name: "mod",

@@ -6,12 +6,14 @@
     "slashBank": "",
     "slashBot": "",
     "slashGospel": "",
-    "slashHelp": "",
+    "slashLdsg": "",
     "slashManagement": "",
     "slashMod": "",
     "slashRank": "",
+    "slashRole": "",
     "slashTag": "",
     "slashTournament": "",
+    "slashUser": "",
     "slashVoice": "",
     "userModeration": ""
   }

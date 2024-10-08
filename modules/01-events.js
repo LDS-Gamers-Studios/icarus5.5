@@ -3,7 +3,6 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  { GoogleSpreadsheet } = require("google-spreadsheet"),
   config = require('../config/config.json');
 
 const mutedPerms = {
@@ -39,13 +38,13 @@ async function update(oldUser, newUser) {
   try {
     const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
     const newMember = ldsg?.members.cache.get(newUser.id);
-    if (oldUser.partial) oldUser = await oldUser.fetch();
+    if (oldUser.partial) oldUser = await oldUser.fetch().catch(() => oldUser);
+    if (oldUser.partial) return; // failed to fetch
     const user = await u.db.user.fetchUser(newUser.id);
     if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setDescription(newUser.toString())
-        .addFields({ name: "Activity", value: `${user?.posts ?? 0} active minutes ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` })
         .setFooter({ text: newUser.id });
 
       const usernames = [
@@ -54,7 +53,7 @@ async function update(oldUser, newUser) {
       ];
       if (oldUser.displayName !== newUser.displayName || usernames[0] !== usernames[1]) {
         /** @param {string} a @param {string} b */
-        const same = (a, b) => u.escapeText(a == b ? a : `${a} (${b})`);
+        const same = (a, b) => u.escapeText(a === b ? a : `${a} (${b})`);
 
         embed.addFields(
           { name: "Old Username", value: same(usernames[0], oldUser.displayName) },
@@ -67,6 +66,7 @@ async function update(oldUser, newUser) {
         embed.setThumbnail(newUser.displayAvatarURL());
       }
       if ((embed.data.fields?.length || 0) > 0) {
+        embed.addFields({ name: "Activity", value: `${user?.posts ?? 0} active minutes in ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
         ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed], components: [
           u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
         ] });
@@ -75,11 +75,12 @@ async function update(oldUser, newUser) {
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.displayName)} (${newUser.id})`); }
 }
 
+/** @type {(string[])[]} */
 let emojis = [];
 const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
   try {
-    if (channel.guild?.id == u.sf.ldsg) {
+    if (channel.guild?.id === u.sf.ldsg) {
       if (channel.permissionsFor(channel.client.user)?.has(["ViewChannel", "ManageChannels"])) {
         // muted role
         channel.permissionOverwrites.create(u.sf.roles.muted, mutedPerms, { reason: "New channel permissions update" })
@@ -104,7 +105,7 @@ const Module = new Augur.Module()
 .addEvent("guildBanAdd", (guildBan) => {
   const guild = guildBan.guild;
   const user = guildBan.user;
-  if (guild.id == u.sf.ldsg) {
+  if (guild.id === u.sf.ldsg) {
     guild.client.getTextChannel(u.sf.channels.modlogs)?.send({
       embeds: [
         u.embed({
@@ -123,7 +124,7 @@ const Module = new Augur.Module()
 })
 .addEvent("guildMemberAdd", async (member) => {
   try {
-    if (member.guild.id == u.sf.ldsg) {
+    if (member.guild.id === u.sf.ldsg) {
       const guild = member.guild;
 
       const user = await u.db.user.fetchUser(member.id, false);
@@ -197,7 +198,7 @@ const Module = new Augur.Module()
 
       if (enabled && (guild.memberCount < count)) welcomeString += `\n*${count - guild.memberCount} more members until we have a pizza party!*`;
       if (!member.roles.cache.has(u.sf.roles.muted) && !member.user.bot) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
-      if (guild.memberCount == count) {
+      if (guild.memberCount === count) {
         await general?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:`);
         await modLogs?.send({ content: `:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: <@${u.sf.other.ghost}> <@${config.ownerId}> <@&${u.sf.roles.management}*`, allowedMentions: { parse: ['roles', 'users'] } });
       }
@@ -206,8 +207,9 @@ const Module = new Augur.Module()
 })
 .addEvent("guildMemberRemove", async (member) => {
   try {
-    if (member.guild.id == u.sf.ldsg) {
-      if (member.partial) member = await member.fetch();
+    if (member.guild.id === u.sf.ldsg) {
+      if (member.partial) member = await member.fetch().catch(() => member);
+      if (member.partial) return; // failed to fetch
       await u.db.user.updateTenure(member);
       await u.db.user.updateRoles(member);
       const user = await u.db.user.fetchUser(member.id);
@@ -231,15 +233,8 @@ const Module = new Augur.Module()
 .addEvent("guildMemberUpdate", update)
 .addEvent("userUpdate", update)
 .setInit(async () => {
-  if (!config.google.sheets.config) return console.log("No Sheets ID");
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
   try {
-    await doc.useServiceAccountAuth(config.google.creds);
-    await doc.loadInfo();
-    /** @type {Sponsor[]} */
-    // @ts-ignore sheets stuff
-    const channels = await doc.sheetsByTitle["Sponsor Channels"].getRows();
-    emojis = Array.from(channels.map(x => [x.Sponsor, x.Emoji]))
+    emojis = u.db.sheets.sponsors.map(x => [x.userId, x.emojiId])
       .concat([
         ["buttermelon", u.sf.emoji.buttermelon],
         ["noice", u.sf.emoji.noice],
@@ -248,11 +243,11 @@ const Module = new Augur.Module()
   } catch (e) { u.errorHandler(e, "Load Sponsor Reactions"); }
 })
 .addEvent("messageCreate", async (msg) => {
-  if (!msg.author.bot && msg.guild?.id == u.sf.ldsg) {
+  if (!msg.author.bot && msg.guild?.id === u.sf.ldsg) {
     for (const [sponsor, emoji] of emojis) {
       if (msg.mentions.members?.has(sponsor)) await msg.react(emoji).catch(u.noop);
       // Filter out sponsors and test for trigger words
-      else if (!msg.guild.members.cache.has(sponsor) && isNaN(sponsor) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
+      else if (!msg.guild.members.cache.has(sponsor) && isNaN(parseInt(sponsor)) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
     }
   }
 });
