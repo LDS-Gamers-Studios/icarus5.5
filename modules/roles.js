@@ -1,8 +1,7 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
-  u = require("../utils/utils"),
-  c = require("../utils/modCommon");
+  u = require("../utils/utils");
 
 const Module = new Augur.Module();
 
@@ -12,11 +11,6 @@ let optRoles = new u.Collection();
 /** @type {Discord.Collection<string, {color: string, base: string, parents: string[]}>} */
 let equipRoles = new u.Collection();
 
-/**
- * @typedef {"team"|"mod"|"mgr"|"mgmt"} perms
- * @type {{role: Discord.Role, permissions: perms}[]}
- * */
-let teamAddRoles;
 /**
  * @param {Discord.GuildMember} member
  * @param {string} id
@@ -71,24 +65,6 @@ async function slashRoleWhoHas(int) {
   } catch (error) { u.errorHandler(error, int); }
 }
 
-/**
- * @param {Augur.GuildInteraction<"CommandSlash">} int
- * @param {Boolean} give
-*/
-async function slashRoleGive(int, give = true) {
-  try {
-    await int.deferReply({ ephemeral: true });
-    const recipient = int.options.getMember("user");
-    if (!u.perms.calc(int.member, ["team", "mod", "mgr"])) return int.editReply("*Nice try!* This command is for Team+ only.");
-    if (!recipient) return int.editReply("I couldn't find that user!");
-    const input = int.options.getString("role", true);
-    const role = teamAddRoles.find(r => r.role.name.toLowerCase() === input.toLowerCase());
-    if (!role) return int.editReply("I couldn't find that role!");
-    if (!u.perms.calc(int.member, [role.permissions])) return int.editReply(`You don't have the right permissions to ${give ? "give" : "take"} this role.`);
-    const response = await c.assignRole(int, recipient, role.role, give);
-    return int.editReply(response);
-  } catch (error) { u.errorHandler(error, int); }
-}
 /** @param {Discord.GuildMember} member */
 function getInventory(member, override = true) {
   if (override && u.perms.calc(member, ["mgr"])) return equipRoles;
@@ -145,18 +121,8 @@ async function setRoles() {
     // Get the opt in roles data
     const ids = u.db.sheets.optRoles.map(r => r.id).filter(filterBlank);
     optRoles = ldsg.roles.cache.filter(r => ids.includes(r.id));
-    // Get the add and remove roles data
-    const eRoles = u.db.sheets.roles;
-    // @ts-expect-error trust. (as long as its right in the sheet lol)
-    teamAddRoles = eRoles.filter(f => f.type === 'Team Assign').map(r => {
-      const role = ldsg.roles.cache.get(r.base);
-      if (!role) throw new Error(`Missing Role for Team Assign ID ${r.base}`);
-      return {
-        role,
-        permissions: r.level
-      };
-    });
-    equipRoles = new u.Collection(eRoles.filter(e => e.color).map(e => [e.color, e]));
+    // Get the equip role data
+    equipRoles = new u.Collection(u.db.sheets.roles.filter(e => e.color).map(e => [e.color, e]));
   } catch (e) {
     u.errorHandler(e, "Load Color & Equip Roles");
   }
@@ -172,8 +138,6 @@ Module.addInteraction({
       case "add": return slashRoleAdd(interaction);
       case "remove": return slashRoleAdd(interaction, false);
       case "list": return slashRoleList(interaction);
-      case "give": return slashRoleGive(interaction);
-      case "take": return slashRoleGive(interaction, false);
       case "inventory": return slashRoleInventory(interaction);
       case "equip": return slashRoleEquip(interaction);
       case "whohas": return slashRoleWhoHas(interaction);
@@ -184,18 +148,6 @@ Module.addInteraction({
     const option = interaction.options.getFocused(true);
     const sub = interaction.options.getSubcommand(true);
     if (option.name === 'role') {
-      if (["give", "take"].includes(sub)) {
-        if (!u.perms.calc(interaction.member, ["team", "mod", "mgr"])) return;
-        const withPerms = teamAddRoles.filter(r => {
-          if (option.value && !r.role.name.toLowerCase().includes(option.value.toLowerCase())) return;
-          /** @type {("mgr"|"mod"|"team")[]} */
-          const permArr = ['mgr'];
-          if (r.permissions === 'mod') permArr.push("mod");
-          if (['team', 'mod'].includes(r.permissions)) permArr.push("team");
-          return u.perms.calc(interaction.member, permArr);
-        }).sort((a, b) => b.role.comparePositionTo(a.role)).map(r => r.role.name);
-        return interaction.respond(withPerms.map(r => ({ name: r, value: r })));
-      }
       const adding = sub === "add";
       const values = (u.perms.calc(interaction.member, ["mgr", "botAdmin"]) ? interaction.guild.roles.cache : optRoles)
         .filter(r => r.name.toLowerCase().includes(option.value.toLowerCase()) && // relevant
