@@ -45,6 +45,8 @@ module.exports = new u.cmd()
   .setDescription("Add and remove self-assignable roles")
   .addSubcommand(add)
   .addSubcommand(remove)
+  // .addSubcommand(give) this is located at /team role give in team.js
+  // .addSubcommand(take) this is located at /team role take in team.js
   .addSubcommand(inventory)
   .addSubcommand(who)
   .addSubcommand(equip)

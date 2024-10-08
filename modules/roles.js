@@ -141,6 +141,7 @@ Module.addInteraction({
       case "inventory": return slashRoleInventory(interaction);
       case "equip": return slashRoleEquip(interaction);
       case "whohas": return slashRoleWhoHas(interaction);
+      // case "give" || "take": located in team.js
       default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   },
