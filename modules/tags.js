@@ -11,7 +11,7 @@ const Augur = require("augurbot-ts"),
 let tags = new u.Collection();
 
 /** @param {string | undefined} tag The tag name to find */
-const findTag = (tag) => tag ? tags.find(t => t.tag.toLowerCase() == tag.toLowerCase()) ?? null : null;
+const findTag = (tag) => tag ? tags.find(t => t.tag.toLowerCase() === tag.toLowerCase()) ?? null : null;
 
 /**
  * @param {Discord.Attachment} attachment
@@ -145,13 +145,13 @@ async function slashTagModify(int) {
 
   // log the modification
   try {
-    if (command.response != currentTag.response) {
+    if (command.response !== currentTag.response) {
       embed.addFields(
         { name: "Old Response", value: currentTag.response ?? 'None' },
         { name: "New Response", value: command.response ?? 'None' }
       );
     }
-    if (command.attachment != currentTag.attachment) embed.addFields({ name: "Attachment Status", value: currentTag.attachment ? attachment ? "Replaced" : "Removed" : attachment ? "Added" : "Unchanged" });
+    if (command.attachment !== currentTag.attachment) embed.addFields({ name: "Attachment Status", value: currentTag.attachment ? attachment ? "Replaced" : "Removed" : attachment ? "Added" : "Unchanged" });
     int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
     content.editReply({ embeds: [embed.setDescription(null)] });
   } catch (error) {
@@ -228,6 +228,7 @@ const Module = new Augur.Module()
       case "delete": return slashTagDelete(int);
       case "variables": return slashTagVariables(int);
       case "value": return slashTagValue(int);
+      default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },
   autocomplete: (int) => {
@@ -237,9 +238,8 @@ const Module = new Augur.Module()
   }
 })
 .addEvent("messageCreate", async (msg) => { if (!msg.author.bot) return runTag(msg); })
-.addEvent("messageUpdate", async (oldMsg, msg) => {
-  if (msg.partial) msg = await msg.fetch();
-  if (!msg.author?.bot) return runTag(msg);
+.addEvent("messageEdit", async (oldMsg, msg) => {
+  if (!msg.author.bot) return runTag(msg);
 })
 .setInit(async () => {
   try {
