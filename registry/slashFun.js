@@ -33,7 +33,7 @@ const ball8 = new u.sub()
   .addStringOption(
     new u.string()
       .setName("question")
-      .setDescription("What do you wish to ask the 8-ball today?")
+      .setDescription("What do you wish to ask the 8-ball today? (Must end in a ?)")
       .setRequired(true)
   );
 
@@ -126,7 +126,7 @@ const hbs = new u.sub()
   .addStringOption(
     new u.string()
       .setName("choice")
-      .setDescription("Your choice of Handicorn, Buttermelon, or Sloth!")
+      .setDescription("Pick your fighter!")
       .setRequired(true)
       .setChoices(
         { name: "Handicorn", value: "Handicorn" },
@@ -139,7 +139,7 @@ const hbs = new u.sub()
       .setName("mode")
       .setDescription("Who do you want to play against?")
       .setChoices(
-        { name: "Other Users", value: "user" },
+        { name: "Other Users (Default)", value: "user" },
         { name: "Icarus", value: "icarus" }
       )
   );
@@ -150,7 +150,7 @@ const color = new u.sub()
   .addStringOption(
     new u.string()
       .setName("color")
-      .setDescription("color (e.g. '#003B6F' or 'blue')")
+      .setDescription("color (e.g. '#003B6F' or 'blue'). Leave blank for a random one.")
   );
 
 const nameGame = new u.sub()
@@ -168,11 +168,11 @@ const quote = new u.sub()
 
 const buttermelon = new u.sub()
   .setName("buttermelon")
-  .setDescription("Get a random buttermelon fact");
+  .setDescription("Get a random buttermelon fact.");
 
 module.exports = new u.cmd()
   .setName("fun")
-  .setDescription("Its all fun and games till someone gets banned.")
+  .setDescription("Its all fun and games 'till someone gets banned.")
   .addSubcommand(roll)
   .addSubcommand(ball8)
   .addSubcommand(repost)

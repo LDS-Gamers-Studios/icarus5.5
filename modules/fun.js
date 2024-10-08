@@ -16,18 +16,19 @@ async function slashFunColor(int) {
   // get input or random color
   const colorCode = int.options.getString("color") || "#" + Math.floor(Math.random() * 16777216).toString(16).padStart(6, '0');
   // In the case that we have a string in 0xABCDEF format
+  /** @type {string | number} */
   let colorCSS = colorCode.replace('0x', "#");
   try {
-    if (!["#000000", "black", "#000000FF"].includes(colorCSS)) colorCSS = Jimp.cssColorToHex(colorCSS).toString();
+    if (!["#000000", "black", "#000000FF"].includes(colorCSS)) colorCSS = Jimp.cssColorToHex(colorCSS);
     // make sure it is a valid color, and not just defaulting to black
-    if (colorCSS === "255") {
-      return int.reply(`sorry, I couldn't understand the color ${colorCode}`);
+    if (colorCSS === 255) {
+      return int.reply(`sorry, I couldn't understand the color ${colorCode}`).then(u.clean);
     }
     // make and send the image
     const img = new Jimp(256, 256, colorCSS);
     return int.reply({ files: [await img.getBufferAsync(Jimp.MIME_JPEG)] });
   } catch (error) {
-    return int.reply(`Sorry, I couldn't understand the color \`${colorCode}\``);
+    return int.reply(`Sorry, I couldn't understand the color \`${colorCode}\``).then(u.clean);
   }
 }
 
@@ -67,7 +68,7 @@ async function slashFunHBS(int) {
       const oldstoredChoice = storedChoice;
       storedChooser = '';
       storedChoice = '';
-      return int.reply({ content:"## Handicorn, Buttermelon, Sloth, Fight!\n" +
+      return int.reply({ content: "## Handicorn, Buttermelon, Sloth, Fight!\n" +
           `🥊 ${chooser} challenged ${oldstoredChooser}!\n` +
           hbsResult(chooser, choice, oldstoredChooser, oldstoredChoice),
       allowedMentions: { parse: ["users"] } });
@@ -75,8 +76,8 @@ async function slashFunHBS(int) {
     default: {
       const aiChoice = u.rand(Object.keys(hbsValues));
       return int.reply("## Handicorn, Buttermelon, Sloth, Fight!\n" +
-      `🥊 ${chooser} challenged Icarus!\n` +
-      hbsResult(chooser, choice, "Icarus", aiChoice));
+      `🥊 ${chooser} challenged ${int.client.user}!\n` +
+      hbsResult(chooser, choice, int.client.user.toString(), aiChoice));
     }
   }
   /**
@@ -296,9 +297,9 @@ async function slashFun8ball(int) {
     "Outlook not so good.",
     "Very doubtful."
   ];
-  return int.reply(`You asked :"${question}"\n` +
-    "The 8ball replies:\n" +
-    u.rand(outcomes));
+  return int.reply(`❓: \`${question}\`\n` +
+    `🎱: \`${u.rand(outcomes)}\``
+  );
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -373,7 +374,9 @@ async function slashFunQuote(int) {
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunNamegame(int) {
-  const name = (int.options.getString("name") || int.user.displayName)
+  // fun shenanigans (basically check if member is partial (which it probably isnt 99% of the time))
+  const user = int.member && "displayName" in int.member ? int.member.displayName : int.user.displayName;
+  const name = (int.options.getString("name") || user)
     .replace(/[^a-zA-Z]/g, '_')// just ABCabc etc, numbers were causing problems.
     .split("_")[0];// and just one segment
   try {
@@ -391,8 +394,8 @@ async function slashFunNamegame(int) {
     } else if (profane > 0) {
       return int.editReply("Let's try a different one...");
     }
-    const embed = u.embed().setTitle(`🎶 **The Name Game! ${name}! 🎵`).setDescription(song);
-    return int.editReply({ embeds:[embed] });
+    const embed = u.embed().setTitle(`🎶 The Name Game! ${name}! 🎵`).setDescription(song);
+    return int.editReply({ embeds: [embed] });
   } catch (error) { u.errorHandler(error, int); }
 }
 
@@ -417,20 +420,23 @@ function emojiSanitize(emoji) {
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunEmoji(int) {
   try {
+    await int.deferReply();
     const emoji1input = int.options.getString("emoji1", true).trim();
     const emoji2input = int.options.getString("emoji2", true).trim();
     const emoji1 = emojiSanitize(emoji1input);
     const emoji2 = emojiSanitize(emoji2input);
-    const results = await fetch(`https://tenor.googleapis.com/v2/featured?key=${config.tenor.apiKey}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`, {
+    const results = await fetch(`https://tenor.googleapis.com/v2/featured?key=${config.api.tenor}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`, {
       mode: "cors"
     });
     const resjson = await results.json();
     const url = resjson.results[0]?.url;
     if (url) {
-      return int.reply({ files: [{ attachment:url, name:"combined.png" }] });
+      return int.editReply({ files: [{ attachment: url, name: "combined.png" }] });
     }
-    return int.reply(`I could not find an emojiKitchen combonation of ${emoji1} and ${emoji2}.`);
-  } catch (error) { u.errorHandler(error);return int.reply("error:" + error); }
+    return int.editReply(`For some reason I couldn't combine ${emoji1} and ${emoji2}.`).then(u.clean);
+  } catch (error) {
+    u.errorHandler(error);
+  }
 }
 
 const Module = new Augur.Module()
@@ -461,6 +467,15 @@ const Module = new Augur.Module()
   if (oldMsg.partial || !(oldMsg.cleanContent.toLowerCase().includes("banana"))) {
     buttermelonEdit(msg);
   }
+})
+.setInit((data) => {
+  if (data) {
+    storedChoice = data.storedChoice;
+    storedChooser = data.storedChooser;
+  }
+})
+.setUnload(() => {
+  return { storedChoice, storedChooser };
 // })
 // .addEvent(
 //   "messageReactionAdd",
