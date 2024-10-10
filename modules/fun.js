@@ -216,7 +216,7 @@ async function slashFunMinesweeper(int) {
   // console.log(spaces);
   // seperate into rows and emojify and hide if not exposed
   const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
-  if (!int.channel) {
+  if (!int.channel || !int.guild?.members.me?.permissionsIn(int.channel + "").has("SendMessages")) {
     return int.reply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
   }
   int.reply(`**Mines: ${mineCount}**`);
@@ -386,6 +386,9 @@ async function slashFunNamegame(int) {
     const response = await axios({ url, method: "get" }).catch(() => {
       return int.editReply(`Could not generate lyrics for ${name}.\nPerhaps you can get it yourself from https://thenamegame-generator.com.`);
     });
+    if (response instanceof Discord.Message) {
+      return response;
+    }
     const song = /<blockquote>\n(.*)<\/blockquote>/g.exec(response?.data)?.[1]?.replace(/<br ?\/>/g, "\n");
     const pf = new profanityFilter();
     const profane = pf.scan(song?.toLowerCase().replace("\n", " ")).length;
@@ -450,6 +453,7 @@ const Module = new Augur.Module()
       case "8ball": return slashFun8ball(int);
       case "repost": return slashFunRepost(int);
       case "mines": return slashFunMinesweeper(int);
+      case "minesadvanced": return slashFunMinesweeper(int);
       case "acronym": return slashFunAcronym(int);
       case "hbs": return slashFunHBS(int);
       case "color": return slashFunColor(int);

@@ -92,6 +92,20 @@ const mines = new u.sub()
         { name: "Medium", value: "Medium" },
         { name: "Hard", value: "Hard" }
       )
+  );
+const minesAdvanced = new u.sub()
+  .setName("minesadvanced")
+  .setDescription("Play a very custom game of Minesweeper!")
+  .addStringOption(
+    new u.string()
+      .setName("difficulty")
+      .setDescription("5 by 5 with 5 mines, 10 by 10 with 30 mines, or 10 by 18 with 60 mines")
+      .setRequired(true)
+      .setChoices(
+        { name: "Easy", value: "Easy" },
+        { name: "Medium", value: "Medium" },
+        { name: "Hard", value: "Hard" }
+      )
   )
   .addIntegerOption(
     new u.int()
@@ -176,6 +190,7 @@ module.exports = new u.cmd()
   .addSubcommand(roll)
   .addSubcommand(ball8)
   .addSubcommand(repost)
+  .addSubcommand(minesAdvanced)
   .addSubcommand(mines)
   .addSubcommand(acronym)
   .addSubcommand(hbs)
