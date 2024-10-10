@@ -11,7 +11,9 @@ const Augur = require("augurbot-ts"),
 let tags = new u.Collection();
 
 /** @param {string | undefined} tag The tag name to find */
-const findTag = (tag) => tag ? tags.find(t => t.tag.toLowerCase() === tag.toLowerCase()) ?? null : null;
+function findTag(tag) {
+  return tag ? tags.find(t => t.tag.toLowerCase() === tag.toLowerCase()) ?? null : null;
+}
 
 /**
  * @param {Discord.Attachment} attachment
@@ -34,12 +36,12 @@ function runTag(msg) {
 
   if (!tag) return;
   let response = tag.response;
-  let target = msg.mentions?.members?.first() || msg.mentions?.users?.first();
+  let target = msg.mentions.members?.first() || msg.mentions.users.first();
 
   if (response) {
     const randomChannels = msg.inGuild() ? msg.guild.channels.cache.filter(c =>
-      c.isTextBased() && !c.isThread() &&
-      !c.permissionOverwrites?.cache.get(msg.guild.id)?.deny?.has("ViewChannel")
+      c.isTextBased() && !c.isThread() && // normal text channel
+      !c.permissionOverwrites?.cache.get(msg.guild.id)?.deny?.has("ViewChannel") // public channel
     ).map(c => c.toString()) : ["Here"];
 
     const regex = /<@random ?\[(.*?)\]>/gm;
@@ -49,7 +51,7 @@ function runTag(msg) {
     }
     response = response
       .replace(/<@author>/ig, msg.author.toString())
-      .replace(/<@authorname>/ig, msg.member?.displayName || msg.author.username)
+      .replace(/<@authorname>/ig, (msg.member ?? msg.author).displayName)
       .replace(/<@channel>/ig, msg.channel.toString())
       .replace(/<@randomchannel>/, u.rand(randomChannels) ?? msg.channel.toString());
     if ((/(<@target>)|(<@targetname>)/ig).test(response)) {
@@ -66,28 +68,31 @@ function runTag(msg) {
   });
 }
 
-const contentModal = (value = "") => new u.Modal().addComponents(
-  u.ModalActionRow().addComponents(
-    new u.TextInput()
-      .setCustomId("content")
-      .setLabel("Content (optional)")
-      .setPlaceholder("Leave blank for no content")
-      .setRequired(false)
-      .setStyle(Discord.TextInputStyle.Paragraph)
-      .setValue(value)
+function contentModal(value = "") {
+  return new u.Modal().addComponents(
+    u.ModalActionRow().addComponents(
+      new u.TextInput()
+        .setCustomId("content")
+        .setLabel("Content (optional)")
+        .setPlaceholder("Leave blank for no content")
+        .setRequired(false)
+        .setStyle(Discord.TextInputStyle.Paragraph)
+        .setValue(value)
+        .setMaxLength(2000)
+    )
   )
-)
   .setTitle("Tag Content")
   .setCustomId("tagContent");
+}
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagCreate(int) {
   // Get and validate input
-  const name = int.options.getString('name', true).toLowerCase().replace("\n", " ");
+  const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
   const attachment = int.options.getAttachment('attachment');
   if (findTag(name)) return int.editReply(`Looks like that tag already exists. Try </tag modify:${u.sf.commands.slashTag}> or </tag delete:${u.sf.commands.slashTag}> instead.`);
   await int.showModal(contentModal());
-  const content = await int.awaitModalSubmit({ time: 5 * 3 * 1000, dispose: true }).catch(() => null);
+  const content = await int.awaitModalSubmit({ time: 5 * 3 * 1000, dispose: true }).catch(u.noop);
   if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", ephemeral: true });
   await content.deferReply({ ephemeral: true });
   if (!content.fields.getTextInputValue("content") && !attachment) return int.editReply("I either need content or a file.");
@@ -118,11 +123,11 @@ async function slashTagCreate(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagModify(int) {
   // get and validate inputs
-  const name = int.options.getString('name', true).toLowerCase().replace("\n", "");
+  const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
   const currentTag = findTag(name);
   if (!currentTag) return int.reply({ content: `I couldn't find that tag.`, ephemeral: true });
   await int.showModal(contentModal(currentTag.response ?? ""));
-  const content = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(() => null);
+  const content = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(u.noop);
   if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", ephemeral: true });
   await content.deferReply({ ephemeral: true });
   const attachment = int.options.getAttachment('attachment');
@@ -163,7 +168,7 @@ async function slashTagModify(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagDelete(int) {
   await int.deferReply({ ephemeral: true });
-  const name = int.options.getString('name', true).toLowerCase().replace("\n", "");
+  const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
   if (!findTag(name)) return int.editReply(`Looks like that tag doesn't exist.`);
   const command = await u.db.tags.deleteTag(name);
   if (!command) return int.editReply("I wasn't able to delete that. Please try again later or contact a dev to see what went wrong.");
