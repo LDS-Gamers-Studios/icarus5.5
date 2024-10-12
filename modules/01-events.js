@@ -16,6 +16,10 @@ const mutedPerms = {
   Speak: false,
   Stream: false
 };
+
+let lowBoosts = false;
+const tier3 = 14;
+
 /**
  * @typedef Sponsor
  * @prop {string} Sponsor The sponsor's ID
@@ -250,6 +254,18 @@ const Module = new Augur.Module()
       else if (!msg.guild.members.cache.has(sponsor) && isNaN(parseInt(sponsor)) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
     }
   }
+})
+.setClockwork(() => {
+  return setInterval(() => {
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+    if (!ldsg?.premiumSubscriptionCount) return;
+    if (ldsg.premiumSubscriptionCount < tier3) {
+      if (!lowBoosts) Module.client.getTextChannel(u.sf.channels.team)?.send(`⚠️ **We've dropped to ${ldsg.premiumSubscriptionCount} boosts!** ${tier3} boosts are required for Tier 3.`);
+      lowBoosts = true;
+    } else {
+      lowBoosts = false;
+    }
+  }, 60 * 60000);
 });
 
 
