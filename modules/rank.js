@@ -161,6 +161,7 @@ const Module = new Augur.Module()
   guildId: u.sf.ldsg,
   onlyGuild: true,
   id: u.sf.commands.slashRank,
+  options: { registry: "slashRank" },
   process: async (interaction) => {
     try {
       const subcommand = interaction.options.getSubcommand(true);

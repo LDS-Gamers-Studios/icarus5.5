@@ -211,7 +211,7 @@ const utils = {
     return embed;
   },
   /**
- * @param {Discord.CommandInteraction | null} int
+ * @param {Discord.CommandInteraction | Discord.ButtonInteraction | null} int
  * @param {Discord.EmbedBuilder} embed
  * @param {string[]} lines
  */

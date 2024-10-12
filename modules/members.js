@@ -94,6 +94,7 @@ const Module = new Augur.Module()
     id: u.sf.commands.slashUser,
     onlyGuild: true,
     guildId: u.sf.ldsg,
+    options: { registry: "slashUser" },
     process: async (interaction) => {
       const subcommand = interaction.options.getSubcommand(true);
       const user = interaction.options.getMember("user") ?? interaction.member;

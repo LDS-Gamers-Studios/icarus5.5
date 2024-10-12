@@ -190,6 +190,7 @@ const Module = new Augur.Module()
   id: u.sf.commands.slashBot,
   onlyGuild: true,
   hidden: true,
+  options: { registry: "slashBot" },
   permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin"]),
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol

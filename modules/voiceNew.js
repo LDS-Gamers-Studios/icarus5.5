@@ -341,6 +341,7 @@ Module.addEvent("interactionCreate", async (int) => {
   id: u.sf.commands.slashVoice,
   guildId: u.sf.ldsg,
   onlyGuild: true,
+  options: { registry: "slashVoice" },
   permissions: (int) => u.perms.calc(int.member, ["notMuted"]),
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);

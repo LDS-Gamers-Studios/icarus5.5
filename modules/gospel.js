@@ -226,6 +226,7 @@ const Module = new Augur.Module()
 .addInteraction({
   name: "gospel",
   id: u.sf.commands.slashGospel,
+  options: { registry: "slashGospel" },
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
       case "comefollowme": return slashGospelComeFollowMe(interaction);
