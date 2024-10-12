@@ -32,8 +32,8 @@ const store = new u.sub()
   .setDescription("Get the link to our merch store!");
 
 const youtube = new u.sub()
-  .setName("youtube")
-  .setDescription("Check out our YouTube channel");
+  .setName("socials")
+  .setDescription("Check out our other social platforms");
 
 const invite = new u.sub()
   .setName("invite")
