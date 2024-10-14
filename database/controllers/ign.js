@@ -1,28 +1,32 @@
-const Discord = require("discord.js");
-
+// @ts-check
 const Ign = require("../models/Ign.model");
+
+/**
+ * @typedef IGN
+ * @prop {string} [discordId]
+ * @prop {string} [system]
+ * @prop {string} [ign]
+ */
 
 module.exports = {
   /**
    * Delete an IGN
    * @function delete
-   * @param {string|Discord.User|Discord.GuildMember} discordId Which user's IGN to delete
+   * @param {string} discordId Which user's IGN to delete
    * @param {string} system Which system IGN to delete
-   * @returns {Promise<ign>}
+   * @returns {Promise<IGN | null>}
    */
   delete: function(discordId, system) {
-    if (discordId.id) discordId = discordId.id;
-    return Ign.findOneAndRemove({ discordId, system }).exec();
+    return Ign.findOneAndRemove({ discordId, system }, { lean: true, new: false }).exec();
   },
   /**
    * Find an IGN
    * @function find
-   * @param {string|Discord.User|Discord.GuildMember} discordId Which user's IGN to find
+   * @param {string} discordId Which user's IGN to find
    * @param {(string)} [system] Which system IGN to find
-   * @returns {Promise<Array<ign>|ign>}
+   * @returns {Promise<Array<IGN>|IGN|null>}
    */
   find: function(discordId, system) {
-    if (discordId.id) discordId = discordId.id;
     if (Array.isArray(system)) return Ign.find({ discordId, system: { $in: system } }).exec();
     else if (Array.isArray(discordId)) return Ign.find({ discordId: { $in: discordId }, system }).exec();
     else if (system) return Ign.findOne({ discordId, system }).exec();
@@ -32,7 +36,7 @@ module.exports = {
    * Find a list of IGNs for a given system
    * @function getList
    * @param {string} system Whcih system list to fetch
-   * @returns {Promise<Array<ign>>}
+   * @returns {Promise<Array<IGN>>}
    */
   getList: function(system) {
     return Ign.find({ system }).exec();
@@ -40,13 +44,12 @@ module.exports = {
   /**
    * Save a user's IGN
    * @function save
-   * @param {string|Discord.User|Discord.GuildMember} discordId Which user's IGN to save
+   * @param {string} discordId Which user's IGN to save
    * @param {string} system Which system IGN to save
    * @param {string} ign The IGN to save
-   * @returns {Promise{ign}}
+   * @returns {Promise<IGN>}
    */
   save: function(discordId, system, ign) {
-    if (discordId.id) discordId = discordId.id;
     return Ign.findOneAndUpdate(
       { discordId, system },
       { $set: { ign } },

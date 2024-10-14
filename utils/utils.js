@@ -364,7 +364,7 @@ const utils = {
    * @returns {T[]}
    */
   unique: function(items) {
-    return [...new Set(items)];
+    return Array.from(new Set(items));
   }
 };
 

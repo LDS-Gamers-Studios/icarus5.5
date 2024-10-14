@@ -16,4 +16,4 @@ module.exports = {
   infraction,
   oauth,
   user
-};
+}

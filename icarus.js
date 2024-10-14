@@ -3,6 +3,7 @@ const { AugurClient } = require("augurbot-ts"),
   { AllowedMentionsTypes, Partials } = require("discord.js"),
   u = require("./utils/utils");
 
+// @ts-expect-error config.json includes more properties and augur doesn't like that.
 const client = new AugurClient(config, {
   clientOptions: {
     allowedMentions: {

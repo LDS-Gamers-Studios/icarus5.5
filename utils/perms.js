@@ -46,7 +46,8 @@ const perms = {
   calc: (member, permArr) => {
     let result = false;
     if (!member) return false;
-    for (const perm of [...new Set(permArr.concat(["mgmt"]))]) {
+    /** @type {keyof permFuncs} */
+    for (const perm of Array.from(new Set(permArr.concat("mgmt")))) {
       const p = permFuncs[perm];
       if (p) result = p(member);
       if (result) break;
