@@ -36,6 +36,8 @@ if (config.siteOn) {
   app.use(passport.initialize());
   app.use(passport.session());
   app.use('/api', routes);
+  app.use('/static', express.static('site/backend/public'));
+  // app.use('/tags', express.static('media/tags'));
 
   // eslint-disable-next-line no-console
   app.listen(siteConfig.port, () => console.log(`Backend running on port ${siteConfig.port}`));
