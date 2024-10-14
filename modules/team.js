@@ -100,6 +100,41 @@ async function slashTeamBankAward(interaction) {
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashTeamTournamentChampions(int) {
+  await int.deferReply({ ephemeral: true });
+  const tName = int.options.getString('tournament');
+  const user = (str) => int.options.getMember(str);
+  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].map(usr => usr?.id).filter(usr => usr !== null));
+  const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
+
+  await u.db.sheets.data.doc?.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr ?? "", "Take Role At": date })));
+  const members = users.map(usr => int.guild.members.cache.get(usr ?? "")).filter(m => m !== undefined);
+  members.forEach(m => m.roles.add(u.sf.roles.champion));
+
+  const s = users.length > 1 ? 's' : '';
+  int.client.getTextChannel(u.sf.channels.announcements)?.send(`## Congratulations to our new tournament champion${s}!\n${members.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
+  int.editReply("Champions recorded and announced!");
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashTeamTournamentReset(int) {
+  await int.deferReply({ ephemeral: true });
+  const role = int.guild.roles.cache.get(u.sf.roles.tournamentparticipant);
+  if (!role) throw new Error("Missing Tournament Participant Role");
+  let succeeded = 0;
+  let i = 0;
+  const members = role.members;
+  while (i < members.size) {
+    const member = members.at(i);
+    try {
+      await member?.roles.remove(role.id);
+      succeeded++;
+    } catch (error) {null;}
+    i++;
+  }
+  return int.editReply(`Removed ${succeeded}/${members.size} people from the ${role} role`);
+}
 
 const Module = new Augur.Module()
 .addInteraction({ id: u.sf.commands.slashTeam,
@@ -110,6 +145,8 @@ const Module = new Augur.Module()
       case "give": return slashTeamRoleGive(int, true);
       case "take": return slashTeamRoleGive(int, false);
       case "award": return slashTeamBankAward(int);
+      case "champions": return slashTeamTournamentChampions(int);
+      case "reset": return slashTeamTournamentReset(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },
