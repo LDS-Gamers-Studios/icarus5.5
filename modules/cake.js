@@ -6,7 +6,7 @@ const Augur = require("augurbot-ts"),
   Module = new Augur.Module();
 
 function celebrate(test) {
-  if (u.moment().hours() === 15) {
+  if (u.moment().hours() === 15 || test) {
     doBirthdays().catch(error => u.errorHandler(error, (test ? "Test -> " : "") + "Celebrate -> Birthdays"));
     doCakeDays().catch(error => u.errorHandler(error, (test ? "Test -> " : "") + "Celebrate -> Cake Days"));
   }
