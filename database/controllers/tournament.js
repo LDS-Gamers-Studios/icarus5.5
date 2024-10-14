@@ -30,6 +30,17 @@ module.exports = {
     return Tournament.findOne({ id }, undefined, { lean: true });
   },
   /**
+ * Get a range of tournaments
+ * @param {number} start
+ * @param {number} end
+ * @returns {Promise<Tournament[]>}
+ */
+  getRecent: async (start, end) => {
+    const tourneys = await Tournament.find({}, undefined, { lean: true }).exec();
+    return tourneys.sort((a, b) => a.starts.valueOf() - b.starts.valueOf())
+      .filter((t, i) => i >= start && i <= end);
+  },
+  /**
    * @param {string} id
    * @param {Omit<Tournament, "participants" | "id" | "organizerId">} tournament
    * @returns {Promise<Tournament | null>}
@@ -51,17 +62,6 @@ module.exports = {
   */
   delete: (id) => {
     return Tournament.findOneAndDelete({ id }, { lean: true, old: true });
-  },
-  /**
-   * Get a range of tournaments
-   * @param {number} start
-   * @param {number} end
-   * @returns {Promise<Tournament[]>}
-   */
-  getRecent: async (start, end) => {
-    const tourneys = await Tournament.find({}, undefined, { lean: true }).exec();
-    return tourneys.sort((a, b) => a.starts.valueOf() - b.starts.valueOf())
-      .filter((t, i) => i >= start && i <= end);
   },
   /**
    * @param {string} id
