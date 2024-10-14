@@ -383,11 +383,9 @@ async function slashFunNamegame(int) {
     const url = `https://thenamegame-generator.com/lyrics/${name}.html`;
     await int.deferReply();
     // @ts-ignore
-    const response = await axios({ url, method: "get" }).catch(() => {
+    const response = await axios({ url, method: "get" }).catch(u.noop);
+    if (!response) {
       return int.editReply(`Could not generate lyrics for ${name}.\nPerhaps you can get it yourself from https://thenamegame-generator.com.`);
-    });
-    if (response instanceof Discord.Message) {
-      return response;
     }
     const song = /<blockquote>\n(.*)<\/blockquote>/g.exec(response?.data)?.[1]?.replace(/<br ?\/>/g, "\n");
     const pf = new profanityFilter();
