@@ -216,7 +216,7 @@ async function slashFunMinesweeper(int) {
   // console.log(spaces);
   // seperate into rows and emojify and hide if not exposed
   const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
-  if (!int.channel || !int.guild?.members.me?.permissionsIn(int.channel + "").has("SendMessages")) {
+  if (!int.channel) {
     return int.reply(`I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`);
   }
   int.reply(`**Mines: ${mineCount}**`);
