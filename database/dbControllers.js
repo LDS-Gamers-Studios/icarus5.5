@@ -8,6 +8,8 @@ const bank = require("./controllers/bank"),
   oauth = require("./controllers/oauth"),
   user = require("./controllers/user");
 
+const sheets = require("./sheets").data;
+
 mongoose.connect(config.db.db, config.db.settings);
 
 module.exports = {
@@ -15,5 +17,6 @@ module.exports = {
   ign,
   infraction,
   oauth,
-  user
-}
+  user,
+  sheets
+};

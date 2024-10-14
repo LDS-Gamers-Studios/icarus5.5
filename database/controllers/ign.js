@@ -30,7 +30,7 @@ module.exports = {
     if (Array.isArray(system)) return Ign.find({ discordId, system: { $in: system } }).exec();
     else if (Array.isArray(discordId)) return Ign.find({ discordId: { $in: discordId }, system }).exec();
     else if (system) return Ign.findOne({ discordId, system }).exec();
-    else return Ign.find({ discordId }).exec();
+    return Ign.find({ discordId }).exec();
   },
   /**
    * Find a list of IGNs for a given system

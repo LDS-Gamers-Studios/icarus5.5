@@ -22,9 +22,9 @@ const Module = new Augur.Module()
         return interaction.user.send({ embeds: [embed, ...message.embeds], files: Array.from(message.attachments.values()) }).catch(() => {
           interaction.editReply("I wasn't able to send the message! Do you have DMs from server members turned off?");
         });
-      } else {
-        interaction.editReply("Against all odds, I couldn't find that message.");
       }
+      interaction.editReply("Against all odds, I couldn't find that message.");
+
     } catch (error) {
       u.errorHandler(error, interaction);
     }
