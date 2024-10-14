@@ -24,6 +24,7 @@
   "devMode": true,
   "silentMode": false,
   "ownerOverride": true,
+  "siteOn": false,
   "webhooks": {
     "error": "Webhook url for errors",
     "watchlist": "Webhook url for #watch-list",

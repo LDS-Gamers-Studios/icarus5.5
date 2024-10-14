@@ -16,6 +16,15 @@ const outdated = "Expected a Discord ID but likely recieved an object instead. T
 
 module.exports = {
   /**
+   * Get all user records
+   * @param {string} discordId
+   * @return {Promise<CurrencyRecord[]>}
+   */
+  getAll: async function(discordId) {
+    if (typeof discordId !== "string") throw new TypeError(outdated);
+    return Bank.find({ discordId }, undefined, { lean: true });
+  },
+  /**
    * Gets a user's current balance for a given currency.
    * @param {String} discordId The user whose balance you want to view.
    * @return {Promise<{discordId: string, gb: number, em: number}>} Object with `discordId` and `balance` properties.

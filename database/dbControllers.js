@@ -6,7 +6,8 @@ const bank = require("./controllers/bank"),
   ign = require("./controllers/ign"),
   infraction = require("./controllers/infraction"),
   oauth = require("./controllers/oauth"),
-  user = require("./controllers/user");
+  user = require("./controllers/user"),
+  tournament = require("./controllers/tournament");
 
 const sheets = require("./sheets").data;
 
@@ -18,5 +19,6 @@ module.exports = {
   infraction,
   oauth,
   user,
+  tournament,
   sheets
 };

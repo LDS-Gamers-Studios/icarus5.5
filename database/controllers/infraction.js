@@ -49,8 +49,8 @@ module.exports = {
     /** @type {Infraction[]} */
     const records = (await Infraction.find({ discordId, timestamp: { $gte: since } }, undefined, { lean: true })
       .exec())
-      // -1 is cleared
-      .filter(r => r.value > -1);
+      // -1 is cleared, 0 is unhandled
+      .filter(r => r.value > 0);
     return {
       discordId,
       count: records.length,
