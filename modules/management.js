@@ -39,7 +39,7 @@ function runBirthday(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runCelebrate(int) {
-  cake.doCelebrate(true);
+  cake.celebrate(true);
   return int.editReply("Celebrate run!");
 }
 
