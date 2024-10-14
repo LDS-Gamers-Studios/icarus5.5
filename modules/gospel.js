@@ -199,7 +199,7 @@ function slashGospelComeFollowMe(interaction) {
   if (date && typeof date !== 'string') {
     interaction.reply(`## Come, Follow Me Lesson for the week of ${date.str}:\n${date.link}`);
   } else {
-    interaction.reply({ content:`Sorry, I don't have information for the ${new Date().getFullYear()} manual yet.`, ephemeral: true });
+    interaction.reply({ content: `Sorry, I don't have information for the ${new Date().getFullYear()} manual yet.`, ephemeral: true });
   }
 }
 
