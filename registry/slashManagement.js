@@ -33,6 +33,9 @@ const cakeday = new u.sub()
   .addStringOption(month)
   .addIntegerOption(day);
 
+const celebrate = new u.sub()
+  .setName("celebrate")
+  .setDescription("Run celebrations");
 const birthday = new u.sub()
   .setName("birthday")
   .setDescription("Run birthday for a specific Date")
@@ -78,6 +81,7 @@ module.exports = new u.cmd()
   .setDescription("Management Commands")
   .setDMPermission(false)
   .setDefaultMemberPermissions(u.devMode)
+  .addSubcommand(celebrate)
   .addSubcommand(cakeday)
   .addSubcommand(banner)
   .addSubcommand(birthday)

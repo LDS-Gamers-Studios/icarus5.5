@@ -5,10 +5,10 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   Module = new Augur.Module();
 
-function celebrate() {
-  if (u.moment().hours() === 15) {
-    testBirthdays().catch(error => u.errorHandler(error, "Test Birthdays"));
-    testCakeDays().catch(error => u.errorHandler(error, "Test Cake Days"));
+function celebrate(test) {
+  if (u.moment().hours() === 15 || test) {
+    doBirthdays().catch(error => u.errorHandler(error, (test ? "Test -> " : "") + "Celebrate -> Birthdays"));
+    doCakeDays().catch(error => u.errorHandler(error, (test ? "Test -> " : "") + "Celebrate -> Cake Days"));
   }
 }
 
@@ -30,7 +30,7 @@ function checkDate(date, today, checkYear) {
  * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  * @param {Date|string} [testDate] fake date
  */
-async function testBirthdays(testMember, testDate) {
+async function doBirthdays(testMember, testDate) {
   // Send Birthday Messages, if saved by member
   try {
     const guild = Module.client.guilds.cache.get(u.sf.ldsg);
@@ -79,7 +79,7 @@ async function testBirthdays(testMember, testDate) {
  * @param {Date} [testDate]
  * @param {Discord.Collection<string, Discord.GuildMember>} [testMember]
  */
-async function testCakeDays(testJoinDate, testDate, testMember) {
+async function doCakeDays(testJoinDate, testDate, testMember) {
   // Add tenure roles on member cake days
 
   try {
@@ -127,7 +127,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
         embed.addFields({ name: `${years} ${years > 1 ? "Years" : "Year"}`, value: cakeMembers.join("\n") });
       }
       const allMentions = [...celebrating.values()].flat().map(c => c.toString());
-      await guild.client.getTextChannel(u.sf.channels.general)?.send({ content: allMentions.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
+      await Module.client.getTextChannel(u.sf.channels.general)?.send({ content: allMentions.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
     }
   } catch (e) { u.errorHandler(e, "Cake Days"); }
 }
@@ -147,6 +147,22 @@ Module.addEvent("ready", () => {
 
   celebrate();
 })
+.addCommand({ name: "bday",
+  permissions: () => config.devMode,
+  hidden: true,
+  process: (msg) => {
+    doBirthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
+  }
+})
+.addCommand({ name: "cakeday",
+  permissions: () => config.devMode,
+  hidden: true,
+  process: (msg, suffix) => {
+    const date = new Date();
+    if (suffix) date.setFullYear(parseInt(suffix));
+    doCakeDays(date, new Date(), new u.Collection().set(msg.author.id, msg.member));
+  }
+})
 .setInit(async () => {
   try {
     const years = u.db.sheets.roles.filter(r => r.type === "Year").map(r => {
@@ -160,27 +176,6 @@ Module.addEvent("ready", () => {
     u.errorHandler(e, "Cakeday Init");
   }
 })
-// Janky stuff, but it works!!! (for now lol)
-.setUnload((date, type) => {
-  if (type === "cake") testCakeDays(undefined, date);
-  else if (type === "bday") testBirthdays(undefined, date);
-})
-.addCommand({ name: "bday",
-  permissions: () => config.devMode,
-  hidden: true,
-  process: (msg) => {
-    testBirthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
-  }
-})
-.addCommand({ name: "cakeday",
-  permissions: () => config.devMode,
-  hidden: true,
-  process: (msg, suffix) => {
-    const date = new Date();
-    if (suffix) date.setFullYear(parseInt(suffix));
-    testCakeDays(date, new Date(), new u.Collection().set(msg.author.id, msg.member));
-  }
-})
 .setClockwork(() => {
   return setInterval(() => {
     try {
@@ -192,3 +187,6 @@ Module.addEvent("ready", () => {
 });
 
 module.exports = Module;
+module.exports.doBirthdays = doBirthdays;
+module.exports.doCakeDays = doCakeDays;
+module.exports.celebrate = celebrate;
