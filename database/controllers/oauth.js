@@ -1,6 +1,6 @@
 // @ts-check
 
-const OAuth = require("../models/Infraction.model");
+const OAuth = require("../models/OAuth.model");
 
 module.exports = {
   get: (id) => {
