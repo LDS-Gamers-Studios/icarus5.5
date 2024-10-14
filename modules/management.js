@@ -15,8 +15,10 @@ function runCakeday(int) {
     const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
+    // @ts-ignore
     cake.doCakeDays(new Date(), date, new u.Collection().set(int.member.id, int.member));
   } else {
+    // @ts-ignore
     cake.doCakeDays();
   }
   return int.editReply("Cakeday run!");
@@ -30,8 +32,10 @@ function runBirthday(int) {
     const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
+    // @ts-ignore
     cake.doBirthdays([int.member], date);
   } else {
+    // @ts-ignore
     cake.doBirthdays();
   }
   return int.editReply("Birthday run!");
@@ -39,6 +43,7 @@ function runBirthday(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runCelebrate(int) {
+  // @ts-ignore
   cake.celebrate(true);
   return int.editReply("Celebrate run!");
 }
