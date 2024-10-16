@@ -65,9 +65,9 @@ function blocked(user) {
  * @param {Discord.GuildMember} target
  */
 function compareRoles(mod, target) {
-  const modHigh = mod.roles.cache.filter(r => r.id !== u.sf.roles.live)
+  const modHigh = mod.roles.cache.filter(r => r.id !== u.sf.roles.streaming.live)
     .sort((a, b) => b.comparePositionTo(a)).first();
-  const targetHigh = target.roles.cache.filter(r => r.id !== u.sf.roles.live)
+  const targetHigh = target.roles.cache.filter(r => r.id !== u.sf.roles.streaming.live)
     .sort((a, b) => b.comparePositionTo(a)).first();
   if (!modHigh || !targetHigh) return false;
   return (modHigh.comparePositionTo(targetHigh) > 0);
@@ -685,7 +685,7 @@ const modCommon = {
    * @param {Augur.GuildInteraction<"CommandSlash">} int
    * @param {Boolean} give
    * @param {Discord.GuildMember} recipient
-   * @param {Discord.Role} role
+   * @param {Discord.Role | string} role
    * @returns {Promise<string>}
    */
   assignRole: async function(int, recipient, role, give = true) {
@@ -693,17 +693,19 @@ const modCommon = {
     try {
       const pres = give ? "give" : "take";
       const past = give ? "gave" : "took";
+      const id = typeof role === "string" ? role : role.id;
+      const str = `<@&${id}>`;
       try {
-        if (recipient.roles.cache.has(role.id) === give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${role} role`;
-        give ? await recipient?.roles.add(role.id) : await recipient?.roles.remove(role.id);
-        const returnStr = `Successfully ${past} the ${role} role ${give ? "to" : "from"} ${recipient}`;
-        if (role.id === u.sf.roles.bookworm) return returnStr;
+        if (recipient.roles.cache.has(id) === give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${str} role`;
+        give ? await recipient?.roles.add(id) : await recipient?.roles.remove(id);
+        const returnStr = `Successfully ${past} the ${str} role ${give ? "to" : "from"} ${recipient}`;
+        if (id === u.sf.roles.bookworm) return returnStr;
         const embed = u.embed({ author: recipient, color: 0x00ffff })
-            .setTitle(`User ${give ? "added to" : "removed from"} ${role.name}`)
-            .setDescription(`${int.member} ${past} the ${role} role ${give ? "to" : "from"} ${recipient}.`);
+            .setTitle(`User ${give ? "added to" : "removed from"} ${typeof role === "string" ? "role" : role.name}`)
+            .setDescription(`${int.member} ${past} the ${str} role ${give ? "to" : "from"} ${recipient}.`);
         int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
         return returnStr;
-      } catch (e) { return `Failed to ${pres} ${recipient} the ${role} role`; }
+      } catch (e) { return `Failed to ${pres} ${recipient} the ${str} role`; }
     } catch (error) { u.errorHandler(error, int); }
     return "I could not find that role!";
   },

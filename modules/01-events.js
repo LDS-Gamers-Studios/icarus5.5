@@ -25,7 +25,7 @@ const mutedPerms = {
 // roles that SHOULD NOT be given when a user rejoins
 const dangerRoles = [
   u.sf.roles.team, u.sf.roles.management, u.sf.roles.manager, u.sf.roles.mod,
-  u.sf.roles.live, u.sf.roles.headofhouse, u.sf.roles.emberguardian,
+  u.sf.roles.streaming.live, u.sf.roles.headofhouse, u.sf.roles.emberguardian,
   u.sf.roles.destinyclansmanager, u.sf.roles.volunteer
 ];
 
