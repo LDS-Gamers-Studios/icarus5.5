@@ -19,9 +19,14 @@ const live = new u.sub()
   .setName("live")
   .setDescription("See who's live in the server.");
 
+const approve = new u.sub()
+  .setName("approve")
+  .setDescription("Apply to become an Approved LDSG Streamer");
+
 module.exports = new u.cmd()
   .setName("twitch")
   .setDescription("Get info on our Twitch team!")
   .addSubcommandGroup(extralife)
   .addSubcommand(live)
+  .addSubcommand(approve)
   .setDMPermission(false);

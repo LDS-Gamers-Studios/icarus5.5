@@ -682,7 +682,7 @@ const modCommon = {
 
   /**
    * Give somebody a staff assigned role
-   * @param {Augur.GuildInteraction<"CommandSlash">} int
+   * @param {Augur.GuildInteraction<"CommandSlash"|"Button">} int
    * @param {Boolean} give
    * @param {Discord.GuildMember} recipient
    * @param {Discord.Role | string} role
