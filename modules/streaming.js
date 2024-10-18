@@ -7,10 +7,9 @@ const Augur = require("augurbot-ts"),
   TwitchAuth = require("@twurple/auth").AppTokenAuthProvider,
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  gamesDBApi = require("../utils/thegamesdb"),
+  axios = require("axios"),
   teamId = config.twitch.elTeam,
-  ELAPI = require("../utils/extralife"),
-  gamesDB = new gamesDBApi();
+  ELAPI = require("../utils/extralife");
 
 const Module = new Augur.Module();
 
@@ -39,8 +38,8 @@ async function gameInfo(gameId) {
     const game = await twitch.games.getGameById(gameId).catch(u.noop);
     if (game && config.api.thegamesdb) {
       twitchGames.set(game.id, game);
-      const ratings = (await gamesDB.byGameName(game.name, { fields: "rating" }))
-        .games?.filter(g => g.game_title.toLowerCase() === game.name.toLowerCase() && g.rating !== "Not Rated");
+      const apiGame = await axios(`https://api.thegamesdb.net/v1/Games/ByGameName/?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(game.name)}&fields=rating`).then((res) => res.data);
+      const ratings = apiGame.games?.filter(g => g.game_title.toLowerCase() === game.name.toLowerCase() && g.rating !== "Not Rated");
       twitchGames.get(game.id).rating = ratings[0]?.rating;
     }
   }
@@ -452,7 +451,6 @@ Module.addInteraction({
   }
 })
 .setInit((data) => {
-  gamesDB._setKey(config.api.thegamesdb);
   if (data) {
     for (const [key, status] of data.twitchStatus) {
       twitchStatus.set(key, status);
