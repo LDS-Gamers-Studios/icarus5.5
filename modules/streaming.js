@@ -1,4 +1,5 @@
 // @ts-check
+
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   fs = require("fs"),
@@ -18,7 +19,7 @@ const extraLife = () => config.devMode || [9, 10].includes(new Date().getMonth()
   twitchURL = (name) => `https://twitch.tv/${encodeURIComponent(name)}`,
   authProvider = new TwitchAuth(config.twitch.clientId, config.twitch.clientSecret),
   twitch = new Twitch.ApiClient({ authProvider }),
-  /** @type {Map<string, any>} */
+  /** @type {Map<string, Twitch.HelixGame & { rating?: string }>} */
   twitchGames = new Map(),
   /** @type {Map<string, {live: boolean, since: number}>} */
   twitchStatus = new Map(),
@@ -38,9 +39,10 @@ async function gameInfo(gameId) {
     const game = await twitch.games.getGameById(gameId).catch(u.noop);
     if (game && config.api.thegamesdb) {
       twitchGames.set(game.id, game);
-      const apiGame = await axios(`https://api.thegamesdb.net/v1/Games/ByGameName/?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(game.name)}&fields=rating`).then((res) => res.data);
-      const ratings = apiGame.games?.filter(g => g.game_title.toLowerCase() === game.name.toLowerCase() && g.rating !== "Not Rated");
-      twitchGames.get(game.id).rating = ratings[0]?.rating;
+      const apiGame = await axios(`https://api.thegamesdb.net/v1/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(game.name)}&fields=rating`).then((res) => res.data?.games);
+      const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === game.name.toLowerCase() && g.rating !== "Not Rated");
+      const withRating = Object.assign(game, { rating: ratings?.[0]?.rating });
+      twitchGames.set(game.id, withRating);
     }
   }
   return twitchGames.get(gameId);
@@ -166,6 +168,7 @@ function isPartnered(member) {
   return member.roles.cache.hasAny(...roles);
 }
 
+/** @param {{ign: string, discordId: string}[]} igns */
 async function processTwitch(igns) {
   try {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
@@ -205,13 +208,13 @@ async function processTwitch(igns) {
           });
           // apply live role if applicable
           const ign = streamers.find(streamer => streamer.ign.toLowerCase() === stream.userDisplayName.toLowerCase());
-          const member = await ldsg.members.fetch(ign.discordId).catch(u.noop);
+          const member = await ldsg.members.fetch(ign?.discordId ?? "").catch(u.noop);
           if (member && isPartnered(member)) member.roles.add(u.sf.roles.streaming.live).catch(u.noop);
           // generate embed
           const embed = u.embed()
             .setTimestamp()
             .setColor("#6441A4")
-            .setThumbnail(stream.thumbnailUrl.replace("{width}", "480"))
+            .setThumbnail(stream.getThumbnailUrl(480, 270))
             .setAuthor({ name: `${stream.userDisplayName} ${game ? `playing ${game.name}` : ""}` })
             .setDescription(`${member || stream.userDisplayName} went live on Twitch!`)
             .setTitle(`🔴 ${stream.title}`)
