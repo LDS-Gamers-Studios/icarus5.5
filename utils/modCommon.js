@@ -703,7 +703,7 @@ const modCommon = {
         if (id === u.sf.roles.bookworm) return returnStr;
         const embed = u.embed({ author: recipient, color: 0x00ffff })
             .setTitle(`User ${give ? "added to" : "removed from"} ${typeof role === "string" ? "role" : role.name}`)
-            .setDescription(`${int.member} ${past} the ${str} role ${give ? "to" : "from"} ${recipient}.`);
+            .setDescription(`${userBackup(int.member)} ${past} the ${str} role ${give ? "to" : "from"} ${userBackup(recipient)}.`);
         int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
         return returnStr;
       } catch (e) { return `Failed to ${pres} ${recipient} the ${str} role`; }
