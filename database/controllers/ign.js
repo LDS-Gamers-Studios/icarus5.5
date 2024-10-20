@@ -17,12 +17,11 @@ module.exports = {
   /**
    * Find an IGN
    * @function find
-   * @param {string|Discord.User|Discord.GuildMember} discordId Which user's IGN to find
+   * @param {string|string[]} discordId Which user's IGN to find
    * @param {(string)} system Which system IGN to find
    * @returns {Promise<Array<ign>|ign>}
    */
   find: function(discordId, system) {
-    if (discordId.id) discordId = discordId.id;
     if (Array.isArray(system)) return Ign.find({ discordId, system: { $in: system } }).exec();
     else if (Array.isArray(discordId)) return Ign.find({ discordId: { $in: discordId }, system }).exec();
     else if (system) return Ign.findOne({ discordId, system }).exec();

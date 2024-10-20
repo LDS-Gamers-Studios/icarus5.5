@@ -6,7 +6,8 @@
   "api": {
     "snipcart": "we don't have a way to test the API right now",
     "steam": "https://steamcommunity.com/dev/apikey",
-    "challonge": "https://api.challonge.com/v1"
+    "challonge": "https://api.challonge.com/v1",
+    "thegamesdb": ""
   },
   "applicationId": "https://discord.com/developers/applications",
   "color": "0xf89a22",
@@ -67,6 +68,11 @@
       "games": "",
       "applications": ""
     }
+  },
+  "twitch": {
+    "clientId": "https://dev.twitch.tv",
+    "clientSecret": "^",
+    "elTeam": "Extra Life Team ID"
   },
   "prefix": "! (change this to something unique)",
   "spamThreshold":  {
