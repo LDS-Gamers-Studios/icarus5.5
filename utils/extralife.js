@@ -1,6 +1,8 @@
 // @ts-check
 const axios = require("axios");
+const config = require("../config/config.json");
 
+// this is only in its own file because of the huge types lol
 /**
  * @typedef Links
  * @prop {string} [join]
@@ -32,6 +34,19 @@ const axios = require("axios");
  * @prop {boolean} [isComplete]
  * @prop {string} milestoneID
  *
+ * @typedef Donation
+ * @prop {string} displayName
+ * @prop {string} donorId
+ * @prop {string} recipientName
+ * @prop {string} recipientImageURL
+ * @prop {string} message
+ * @prop {number} participantID
+ * @prop {number} amount
+ * @prop {string} avatarImageURL
+ * @prop {string} donationID
+ * @prop {string} createdDateUTC
+ * @prop {string} [incentiveID]
+ *
  * @typedef ParticipantExclusive
  * @prop {string} eventName
  * @prop {boolean} isTeamCoCaptain
@@ -41,61 +56,30 @@ const axios = require("axios");
  * @prop {string} participantTypeCode
  * @prop {boolean} isTeamCaptain
  *
- * @typedef {Omit<Team, "numParticipants"|"captainDisplayName"|"streamIsLive"|"hasTeamOnlyDonations"|"streamingPlatform"|"sourceTeamID"|"name"|"streamIsEnabled"|"streamingChannel"> & ParticipantExclusive} Participant
+ * @typedef {Omit<Team, "numParticipants"|"streamIsLive"|"name"|"streamingChannel"> & ParticipantExclusive} Participant
  */
 
-class ExtraLifeAPI {
-  /** @param {string} [data] */
-  constructor(data) {
-    this.set(data);
-    this.teams = new Map();
-    this.participants = new Map();
-  }
+const teamId = config.twitch.elTeam;
 
-  /**
-   * @param {string} path
-   * @param {any} [data]
-   */
-  _call(path, data) {
-    if (data) {
-      path += "?" + Array.from(Object.keys(data)).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(data[k])}`).join("&");
-    }
-    return axios(`https://extralife.donordrive.com/api${path}`).then(res => res.data);
-  }
-
-  /**
-   * @param {string} [teamId]
-   * @returns {Promise<Team>}
-   */
-  async getTeam(teamId) {
-    teamId = teamId ?? this.teamId;
-    if (!teamId) throw Error("teamId must be provided");
-
-    const team = await this._call(`/teams/${encodeURIComponent(teamId)}`);
-    team.milestones = await this._call(`/teams/${encodeURIComponent(teamId)}/milestones`);
-    team.participants = await this._call(`/teams/${encodeURIComponent(teamId)}/participants`);
-    this.teams.set(teamId, team);
-
-    return team;
-  }
-
-  /**
-   * @param {string} [teamId]
-   * @returns {Promise<any>} not sure of return type yet
-  */
-  async getTeamDonations(teamId) {
-    teamId = teamId ?? this.teamId;
-    if (!teamId) throw Error("teamId must be provided");
-
-    const donations = await this._call(`/teams/${encodeURIComponent(teamId)}/donations`);
-    return donations;
-  }
-
-  /** @param {string | undefined} teamId */
-  set(teamId) {
-    this.teamId = teamId;
-    return this;
-  }
+/** @param {string} path */
+async function call(path) {
+  return axios(`https://extralife.donordrive.com/api${path}`).then(res => res.data);
 }
 
-module.exports = { ExtraLifeAPI };
+/** @returns {Promise<Team>} */
+async function getTeam() {
+  const team = await call(`/teams/${encodeURIComponent(teamId)}`);
+  team.milestones = await call(`/teams/${encodeURIComponent(teamId)}/milestones`);
+  team.participants = await call(`/teams/${encodeURIComponent(teamId)}/participants`);
+  this.teams.set(teamId, team);
+
+  return team;
+}
+
+/** @returns {Promise<Donation[]>} */
+function getTeamDonations() {
+  return call(`/teams/${encodeURIComponent(teamId)}/donations`);
+}
+
+
+module.exports = { getTeam, getTeamDonations };

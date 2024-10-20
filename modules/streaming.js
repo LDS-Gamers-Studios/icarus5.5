@@ -10,15 +10,13 @@ const Augur = require("augurbot-ts"),
   c = require("../utils/modCommon"),
   axios = require("axios"),
   teamId = config.twitch.elTeam,
-  ELAPI = require("../utils/extralife");
+  extralifeApi = require("../utils/extralife");
 
 const Module = new Augur.Module();
 
 const extraLife = () => config.devMode || [9, 10].includes(new Date().getMonth()),
-  extralifeApi = new ELAPI.ExtraLifeAPI().set(teamId),
   twitchURL = (name) => `https://twitch.tv/${encodeURIComponent(name)}`,
-  authProvider = new TwitchAuth(config.twitch.clientId, config.twitch.clientSecret),
-  twitch = new Twitch.ApiClient({ authProvider }),
+  twitch = new Twitch.ApiClient({ authProvider: new TwitchAuth(config.twitch.clientId, config.twitch.clientSecret) }),
   /** @type {Map<string, Twitch.HelixGame & { rating?: string }>} */
   twitchGames = new Map(),
   /** @type {Map<string, {live: boolean, since: number}>} */
@@ -27,7 +25,7 @@ const extraLife = () => config.devMode || [9, 10].includes(new Date().getMonth()
 
 const approvalText = "## Congratulations!\n" +
   `You've been added to the Approved Streamers list in LDSG! This allows going live notifications to show up in <#${u.sf.channels.general}>, and grants access to stream to voice channels.\n` +
-  `This should have been done automatically, but in order to show notifications in <#${u.sf.channels.general}>, please double check that your correct Twitch name is saved in the database with \`!ign twitch\`. If the link doesn't work try \`!addign twitch YourTwitchUsername\`.\n\n` +
+  "This has been done automatically, but in order to show notifications in #general, please double check that your correct Twitch name is saved in the database with `!ign twitch`. If the link doesn't work try `!addign twitch YourTwitchUsername`.\n\n" +
   "While streaming, please remember the [Streaming Guidelines](<https://goo.gl/Pm3mwS>) and [LDSG Code of Conduct](<http://ldsgamers.com/code-of-conduct>).\n" +
   "-# LDSG may make changes to the Approved Streamers list from time to time at its discretion.";
 
@@ -54,8 +52,7 @@ async function checkStreams() {
     const streamers = Module.client.guilds.cache.get(u.sf.ldsg)?.roles.cache.get(u.sf.roles.streaming.approved)?.members.map(member => member.id) ?? [];
     if (streamers.length === 0) return;
     const igns = await u.db.ign.find(streamers, "twitch");
-    const streams = bonusStreams.map(s => ({ ign: s, discordId: s })).concat(igns);
-    processTwitch(streams);
+    processTwitch(bonusStreams.map(s => ({ ign: s, discordId: s })).concat(igns));
 
     // Check for Extra Life
     if (extraLife() && (new Date().getMinutes() < 5)) {
@@ -68,14 +65,14 @@ async function checkStreams() {
 async function extraLifeEmbed() {
   try {
     const streams = await fetchExtraLifeStreams();
-    if (!streams || streams.data.length === 0) return;
+    if (!streams || streams.length === 0) return;
     const embed = u.embed()
       .setTitle("Live from the Extra Life Team!")
       .setColor(0x7fd836);
 
-    const channels = streams.data.sort((a, b) => a.userDisplayName.localeCompare(b.userDisplayName)).map(s => {
+    const channels = streams.sort((a, b) => a.userDisplayName.localeCompare(b.userDisplayName)).map(s => {
       const game = twitchGames.get(s.gameId)?.name;
-      return `**${s.userDisplayName} ${game ? ` playing ${game}` : ""}**\n[${s.title}](https://twitch.tv/${s.userDisplayName})`;
+      return `**${s.userDisplayName} ${game ? ` playing ${game}` : ""}**\n[${s.title}](${twitchURL(s.userDisplayName)}`;
     });
     const embeds = await u.pagedEmbeds(null, embed, channels);
     embed.setDescription(embeds?.[0] ?? null);
@@ -85,19 +82,21 @@ async function extraLifeEmbed() {
   }
 }
 
-/** @param {ELAPI.Team | null} [team] */
+/** @param {extralifeApi.Team | null} [team] */
 async function fetchExtraLifeStreams(team) {
+  /** @type {Twitch.HelixStream[]} */
+  const defaultValue = [];
   try {
     if (!team) team = await fetchExtraLifeTeam().catch(() => null);
-    if (!team) return null;
-    const userName = team.participants.filter(m => m.links.stream)
+    if (!team) return defaultValue;
+    const users = team.participants.filter(m => m.links.stream)
       .map(p => p.links.stream?.replace("https://player.twitch.tv/?channel=", "") ?? "")
       .filter(channel => !(channel.includes(" ") || channel.includes("/")));
-    if (userName.length === 0) return { data: [] };
-    return twitch.streams.getStreams({ userName }).catch(() => null);
+    if (users.length === 0) return defaultValue;
+    return twitch.streams.getStreamsByUserNames(users).catch(() => defaultValue);
   } catch (error) {
     u.errorHandler(error, "Fetch Extra Life Streams");
-    return { data: [] };
+    return defaultValue;
   }
 }
 
@@ -122,7 +121,7 @@ async function fetchExtraLifeTeam() {
         donors.add(donation.displayName);
         const embed = u.embed().setColor(0x7fd836)
           .setTitle("New Extra Life Donor(s)")
-          .setThumbnail("https://assets.donordrive.com/extralife/images/$event55p$/facebookImage.png")
+          .setThumbnail(donation.avatarImageURL)
           .setDescription(donation.displayName)
           .setTimestamp(new Date(donation.createdDateUTC));
         Module.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed] });
@@ -136,7 +135,6 @@ async function fetchExtraLifeTeam() {
           { name: "Recipient", value: donation.recipientName, inline: true },
           { name: "Incentive", value: donation.incentiveID || "[ None ]", inline: true }
         ])
-        .setColor(donation.participantID === extralifeApi.teamId || donation.message?.toLowerCase().includes("#ldsg") ? 0x7fd836 : 0x26c2eb)
         .setTimestamp(new Date(donation.createdDateUTC));
       Module.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed] });
     }
@@ -156,15 +154,17 @@ async function fetchExtraLifeTeam() {
 
 /** @param {Discord.GuildMember} member */
 function isPartnered(member) {
+  // icarus is always partnered
+  if (member.id === member.client.user.id) return true;
   const roles = [
     u.sf.roles.sponsors.onyx,
     u.sf.roles.sponsors.pro,
     u.sf.roles.sponsors.legendary,
     u.sf.roles.team
   ];
+  // check for EL Team
   if (extraLife()) roles.push(u.sf.roles.streaming.elteam);
 
-  if (member.id === member.client.user.id) return true;
   return member.roles.cache.hasAny(...roles);
 }
 
@@ -179,12 +179,12 @@ async function processTwitch(igns) {
     const perPage = 50;
     for (let i = 0; i < igns.length; i += perPage) {
       const streamers = igns.slice(i, i + perPage);
-      const userName = streamers.map(s => s.ign);
-      const streams = await twitch.streams.getStreams({ userName })
+      const users = streamers.map(s => s.ign);
+      const streams = await twitch.streams.getStreamsByUserNames(users)
         .catch(error => { u.errorHandler(error, "Twitch getStreams()"); });
       if (!streams) return;
       // Handle Live
-      for (const stream of streams.data) {
+      for (const stream of streams) {
         const status = twitchStatus.get(stream.userDisplayName.toLowerCase());
         if (!status || ((status.live === false) && ((Date.now() - status.since) >= (30 * 60 * 1000)))) {
           const game = await gameInfo(stream.gameId);
@@ -213,17 +213,16 @@ async function processTwitch(igns) {
           // generate embed
           const embed = u.embed()
             .setTimestamp()
-            .setColor("#6441A4")
+            .setColor(0x6441A4)
             .setThumbnail(stream.getThumbnailUrl(480, 270))
             .setAuthor({ name: `${stream.userDisplayName} ${game ? `playing ${game.name}` : ""}` })
-            .setDescription(`${member || stream.userDisplayName} went live on Twitch!`)
             .setTitle(`🔴 ${stream.title}`)
-            .setURL(twitchURL(stream.userDisplayName));
+            .setDescription(`${member || stream.userDisplayName} went live on Twitch!`)
+            .setURL(url);
 
           // check for extralife
-          if (extraLife() && member &&
-            member.roles.cache.has(u.sf.roles.streaming.elteam) &&
-            (stream.title.toLowerCase().includes("extra life") || stream.title.toLowerCase().includes("extralife"))
+          if (extraLife() && member?.roles.cache.has(u.sf.roles.streaming.elteam) &&
+            stream.title.toLowerCase().match(/extra ?life/)
           ) {
             if (content) content = `<@&${ldsg.roles.cache.get(u.sf.roles.streaming.elraiders)}>, ${content} (for Extra Life!)`;
             else content = `<@&${ldsg.roles.cache.get(u.sf.roles.streaming.elraiders)}>, **${member.displayName}** is live for Extra Life!`;
@@ -235,10 +234,10 @@ async function processTwitch(igns) {
       }
 
       // Handle Offline
-      const offline = streamers.filter(streamer => !streams.data.find(stream => stream.userDisplayName.toLowerCase() === streamer.ign.toLowerCase()));
+      const offline = streamers.filter(streamer => !streams.find(stream => stream.userDisplayName.toLowerCase() === streamer.ign.toLowerCase()));
       for (const channel of offline) {
         const status = twitchStatus.get(channel.ign.toLowerCase());
-        if (status && status.live) {
+        if (status?.live) {
           if (channel.ign.toLowerCase() === "ldsgamers") Module.client.user?.setActivity("Tiddlywinks");
           const member = ldsg.members.cache.get(channel.discordId);
           if (member && liveRole?.members.has(member.id)) member.roles.remove(liveRole).catch(error => u.errorHandler(error, `Remove Live role from ${member.displayName}`));
@@ -260,10 +259,10 @@ async function slashTwitchExtralifeTeam(int) {
   await int.deferReply();
   const team = await fetchExtraLifeTeam();
   if (!team) return int.editReply("Sorry, looks like the Extra Life API is down! Try later!").then(u.clean);
-  const streams = await fetchExtraLifeStreams(team).catch(u.noop);
+  const streams = await fetchExtraLifeStreams(team);
   const members = team.participants.map(p => {
     const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "");
-    const stream = streams?.data.find(s => username && s.userDisplayName === username);
+    const stream = streams.find(s => username && s.userDisplayName === username);
     return { ...p, username, isLive: Boolean(stream), stream };
   }).sort((a, b) => {
     if (a.isLive !== b.isLive) return (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1;
@@ -331,48 +330,72 @@ async function slashTwitchLive(int) {
   const lines = channels.map(ch => `**${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})`);
   return u.pagedEmbeds(int, embed, lines, true);
 }
-/**
- * @param {Augur.GuildInteraction<"CommandSlash"|"Modal">} int
- * @param {string} [name]
- */
-async function slashTwitchApprove(int, name) {
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashTwitchApprove(int) {
+  if (int.member.roles.cache.has(u.sf.roles.streaming.approved)) return int.reply({ content: "You're already approved!", ephemeral: true });
+  const name = await u.db.ign.find(int.member.id, "twitch").then(i => i?.ign);
+  // make modal
+  const ignModal = new u.Modal().addComponents(
+    u.ModalActionRow().addComponents(
+      new u.TextInput()
+        .setLabel("Twitch Username")
+        .setRequired(true)
+        .setPlaceholder("https://twitch.tv/___this_part___")
+        .setValue(name || "")
+        .setCustomId("username")
+        .setStyle(Discord.TextInputStyle.Short)
+    ),
+    u.ModalActionRow().addComponents(
+      new u.TextInput()
+        .setLabel("What games do you usually stream?")
+        .setRequired(true)
+        .setCustomId("games")
+        .setStyle(Discord.TextInputStyle.Short)
+    )
+  ).setCustomId("streamerIgn")
+  .setTitle("Approved Streamer Application");
+
+  return int.showModal(ignModal);
+}
+
+const approveButton = u.MessageActionRow().addComponents(
+  new u.Button({ customId: "approveStreamer", emoji: "✅", label: "Approve", style: Discord.ButtonStyle.Success }),
+  new u.Button({ customId: "denyStreamer", emoji: "❌", label: "Deny", style: Discord.ButtonStyle.Secondary })
+);
+
+/** @param {Augur.GuildInteraction<"Modal">} int */
+async function modalStreamerIgn(int) {
   const agreement = u.MessageActionRow().addComponents([
     new u.Button({ customId: "streamerAgree", emoji: "✅", label: "Agree", style: Discord.ButtonStyle.Success }),
     new u.Button({ customId: "streamerDeny", emoji: "❌", label: "Deny", style: Discord.ButtonStyle.Secondary }),
   ]);
-
-  const ignModal = new u.Modal().addComponents(
-    u.ModalActionRow().addComponents(
-      new u.TextInput()
-        .setLabel("Twitch IGN")
-        .setRequired(true)
-        .setPlaceholder("https://twitch.tv/___this_part___")
-        .setCustomId("username")
-        .setStyle(Discord.TextInputStyle.Short)
-    )
-  ).setCustomId("streamerIgn")
-  .setTitle("Set Twitch IGN");
-
-  // get their twitch username
-  if (!name) name = await u.db.ign.find(int.member.id, "twitch").then(i => i?.ign);
-  if (int.isModalSubmit()) {
-    if (!name) return int.editReply("Sorry, I ran into an error. Try again!");
-  } else if (!name) {
-    return int.showModal(ignModal);
-  }
-  if (!int.deferred) await int.deferReply({ ephemeral: true });
-  if (int.member.roles.cache.has(u.sf.roles.streaming.approved)) return int.editReply("You're already approved!");
-  // Set the conditions and send
-  const embed = u.embed().setTitle("Approved Streamer Application")
-    .setDescription(`By clicking \`Agree\`, you agree to follow the [Streaming Guidelines](https://goo.gl/Pm3mwS) and the [Code of Conduct](https://ldsg.io/code). Are you willing to follow these standards?`);
-  int.editReply({ embeds: [embed], components: [agreement] });
-}
-/** @param {Augur.GuildInteraction<"Modal">} int */
-async function modalStreamerIgn(int) {
+  // get inputs
   await int.deferReply({ ephemeral: true });
-  const name = int.fields.getField("username").value;
+  const name = int.fields.getTextInputValue("username");
+  const games = int.fields.getTextInputValue("games");
   await u.db.ign.save(int.member.id, "twitch", name);
-  return slashTwitchApprove(int, name);
+  // Set the conditions and send
+  const applicationEmbed = u.embed().setTitle("Approved Streamer Application")
+    .setDescription(`By clicking \`Agree\`, you agree to follow the [Streaming Guidelines](https://goo.gl/Pm3mwS) and the [Code of Conduct](https://ldsg.io/code). Are you willing to follow these standards?\n-# P.S. There's a 10 minute timer on the buttons. If you run out of time, use the command again.`);
+  const msg = await int.editReply({ embeds: [applicationEmbed], components: [agreement] });
+  // wait for response and determine if they agreed or not
+  const result = await msg.awaitMessageComponent({ time: 10 * 60 * 1000 }).catch(u.noop);
+  if (!result) return int.editReply({ content: "I fell asleep waiting for your input! You can use this command again if you want to try again.", components: [], embeds: [] });
+  await result.deferUpdate();
+  // see if they agreed
+  const agreed = result.customId === "streamerAgree";
+  if (!agreed) return result.editReply({ content: "No worries! Feel free to use this command again when you're ready.", components: [], embeds: [] });
+  // generate and send the request
+  const embed = u.embed().setTitle("Approved Streamer Request")
+    .setDescription(`${c.userBackup(int.member)} has requested to become an approved streamer.`)
+    .setColor(c.colors.info)
+    .addFields(
+      { name: "Twitch", value: `[${name}](https://twitch.tv/${name})` },
+      { name: "Usual Games", value: games }
+    )
+    .setFooter({ text: int.member.id });
+  await int.client.getTextChannel(u.sf.channels.publicaffairs)?.send({ embeds: [embed], components: [approveButton] });
+  return int.editReply({ content: "Your application has been submitted! Please wait for the moderators to handle your request.", components: [], embeds: [] });
 }
 /** @param {Augur.GuildInteraction<"Button">} int*/
 async function buttonApproveStreamer(int) {
@@ -386,24 +409,6 @@ async function buttonApproveStreamer(int) {
   int.editReply({ content, components: [] });
 }
 
-const approveButton = u.MessageActionRow().addComponents(
-  new u.Button({ customId: "approveStreamer", emoji: "✅", label: "Approve", style: Discord.ButtonStyle.Success })
-);
-
-/** @param {Augur.GuildInteraction<"Button">} int */
-async function buttonStreamerAgree(int) {
-  await int.deferUpdate();
-  const name = await u.db.ign.find(int.member.id, "twitch").then(i => i?.ign);
-  if (!name) return int.editReply("Something happened and I wasn't able to get your Twitch IGN.");
-  // generate and send the request
-  const embed = u.embed().setTitle("Approved Streamer Request")
-    .setDescription(`${int.member} (${int.member.displayName}) has requested to become an approved streamer.`)
-    .setColor(c.colors.info)
-    .addFields({ name: "Twitch", value: `[${name}](https://twitch.tv/${name})` })
-    .setFooter({ text: int.member.id });
-  await int.client.getTextChannel(u.sf.channels.publicaffairs)?.send({ embeds: [embed], components: [approveButton] });
-  return int.editReply({ content: "Your application has been submitted!", components: [], embeds: [] });
-}
 
 Module.addInteraction({
   id: u.sf.commands.slashTwitch,
@@ -423,24 +428,26 @@ Module.addInteraction({
     }
   }
 })
-.addEvent("interactionCreate", (int) => {
-  if (!int.inCachedGuild()) return;
-  if (int.isButton()) {
-    switch (int.customId) {
-      case "approveStreamer": {
-        if (!u.perms.calc(int.member, ["team", "mod"])) return true;
-        return buttonApproveStreamer(int);
-      }
-      case "streamerAgree": return buttonStreamerAgree(int);
-      case "streamerDeny": {
-        return int.update({ content: "Ok! When you're ready to agree, feel free to apply again.", components: [], embeds: [] });
-      }
-      default: return;
-    }
-  } else if (int.isModalSubmit() && int.customId === "streamerIgn") {
-    return modalStreamerIgn(int);
-  }
+.addInteraction({
+  id: "streamerIgn",
+  type: "Modal",
+  onlyGuild: true,
+  process: modalStreamerIgn
 })
+.addInteraction({
+  id: "approveStreamer",
+  type: "Button",
+  onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["team", "mod"]),
+  process: buttonApproveStreamer
+})
+.addInteraction({
+  id: "denyStreamer",
+  type: "Button", onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["team", "mod"]),
+  process: (int) => int.update({ content: "Request has been denied.", components: [] })
+})
+// twitch sub notifications
 .addEvent("guildMemberUpdate", (oldMember, newMember) => {
   const twitchSub = u.sf.roles.streaming.sub;
   const alertChannel = newMember.client.getTextChannel(u.sf.channels.team);

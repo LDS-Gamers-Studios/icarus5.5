@@ -86,6 +86,7 @@ const modCommon = {
   compareRoles,
   nameGen,
   logEmbed,
+  userBackup,
   modActions,
   revert: retract,
   colors: embedColors,
