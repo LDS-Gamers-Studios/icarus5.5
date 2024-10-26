@@ -400,6 +400,7 @@ async function slashFunEmoji(int) {
     if (url) {
       return int.editReply({ files: [{ attachment: url, name: "combined.png" }] });
     }
+    if ((emoji1input + emoji2input).includes("<:")) return int.editReply("I can't combine custom emojis! Try again with some default ones.").then(u.clean);
     return int.editReply(`For some reason I couldn't combine ${emoji1} and ${emoji2}.`).then(u.clean);
   } catch (error) {
     u.errorHandler(error);
