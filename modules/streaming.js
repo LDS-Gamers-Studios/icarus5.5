@@ -454,10 +454,10 @@ Module.addInteraction({
   const hexlogo = `<:hexlogo:${u.sf.emoji.hexlogo}>`;
   if (oldMember.roles.cache.has(twitchSub) && !newMember.roles.cache.has(twitchSub)) {
     newMember.send(`## It looks like your Twitch subscription to LDS Gamers has expired!\nTwitch Prime subscriptions need to be resubbed on a monthly basis. If this was unintentional, please consider resubbing at <https://www.twitch.tv/ldsgamers>. It helps keep the website and various game servers running. Thanks for the support! ${hexlogo}`).catch(u.noop);
-    alertChannel?.send(`**${newMember} (${newMember.displayName})**'s Twitch Sub has expired!`);
+    alertChannel?.send(`**${c.userBackup(newMember)}**'s Twitch Sub has expired!`);
   } else if (!oldMember.roles.cache.has(twitchSub) && newMember.roles.cache.has(twitchSub)) {
     newMember.send(`## Thanks for becoming an LDS Gamers Twitch Subscriber!\nPeople like you help keep the website and various game servers running. If you subscribed with a Twitch Prime sub, those need to be renewed monthly. You'll get a notification if I notice it lapse. Thanks for the support! ${hexlogo}`).catch(u.noop);
-    alertChannel?.send(`**${newMember} (${newMember.displayName})** has become a Twitch Sub!`);
+    alertChannel?.send(`**${c.userBackup(newMember)}** has become a Twitch Sub!`);
   }
 })
 .setInit((data) => {
