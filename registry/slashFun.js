@@ -93,6 +93,7 @@ const mines = new u.sub()
         { name: "Hard", value: "Hard" }
       )
   );
+
 const minesAdvanced = new u.sub()
   .setName("minesadvanced")
   .setDescription("Play a very custom game of Minesweeper!")
@@ -184,13 +185,15 @@ const buttermelon = new u.sub()
   .setName("buttermelon")
   .setDescription("Get a random buttermelon fact.");
 
+minesAdvanced;
+
 module.exports = new u.cmd()
   .setName("fun")
   .setDescription("Its all fun and games 'till someone gets banned.")
   .addSubcommand(roll)
   .addSubcommand(ball8)
   .addSubcommand(repost)
-  .addSubcommand(minesAdvanced)
+  // .addSubcommand(minesAdvanced) functional but disabled while we get the command started
   .addSubcommand(mines)
   .addSubcommand(acronym)
   .addSubcommand(hbs)
