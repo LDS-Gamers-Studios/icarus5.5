@@ -57,6 +57,9 @@
 			"named": "never",
 			"asyncArrow": "always"
 		}],
+		"key-spacing": ["warn", {
+			"afterColon": true
+		}],
 		"space-in-parens": "warn",
 		"space-infix-ops": "warn",
 		"space-unary-ops": "warn",

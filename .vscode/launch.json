@@ -2,13 +2,49 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "pwa-node",
+      "type": "node",
       "request": "launch",
-      "name": "Launch Program",
+      "name": "test part",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}/tmp/test.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Program(windows)",
       "skipFiles": [
         "<node_internals>/**"
       ],
       "program": "${workspaceFolder}\\icarus.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "register commands(windows)",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}\\register-commands.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Program(linux)",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}/icarus.js"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "register commands(linux)",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}/register-commands.js"
     }
   ]
 }
