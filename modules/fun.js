@@ -27,7 +27,7 @@ async function slashFunColor(int) {
     await int.deferReply();
     // make and send the image
     const img = new Jimp(256, 256, colorCSS);
-    return int.reply({ files: [await img.getBufferAsync(Jimp.MIME_JPEG)] });
+    return int.editReply({ files: [await img.getBufferAsync(Jimp.MIME_JPEG)] });
   } catch (error) {
     const content = `Sorry, I couldn't understand the color \`${colorCode}\``;
     if (int.replied || int.deferred) return int.editReply({ content }).then(u.clean);
@@ -250,12 +250,12 @@ async function slashFunRoll(int) {
   if (rolls.length > maxShown + 3) {
     const extra = rolls.length - maxShown;
     const reduced = rolls.filter((r, i) => i < maxShown);
-    rollStr = `${reduced.join(", ")}, + ${extra} more`;
+    rollStr = `${reduced.join(" + ")}, + ${extra} more`;
   } else {
-    rollStr = rolls.join(", ");
+    rollStr = rolls.join(" + ");
   }
-  const modStr = modifier > 0 ? `+${modifier}` : modifier ? modifier : "";
-  const summary = `${rollStr ? ` (**1d${sides}**: ${rollStr})` : ""} ${modStr}`;
+  const modStr = modifier > 0 ? ` + ${modifier}` : modifier ? ` - ${Math.abs(modifier)}` : "";
+  const summary = `${rollStr ? ` (**1d${sides}**: ${rollStr})` : ""}${modStr ? `**${modStr}**` : ""}`;
   // send visually pleasing result
   return int.reply(`You rolled ${dice}d${sides}${modStr} and got \`${total}\`!\n ${summary}`);
 }
@@ -305,7 +305,7 @@ async function slashFunRepost(int) {
     return int.editReply("I couldn't find anything in the last 100 messages to repost.").then(u.clean);
   }
   return int.editReply({
-    content: '🚨🚨🚨 Repost alert! repost alert! 🚨🚨🚨',
+    content: 'repost that? ok!',
     files: latest.attachments.map(a => a.url),
     embeds: latest.embeds.filter(embed => embed.image || embed.video)
   });
@@ -327,7 +327,8 @@ async function slashFunQuote(int) {
   const embed = u.embed();
   if (data) {
     embed.setAuthor({ name: data.quoteAuthor })
-      .setDescription(data.quoteText);
+      .setDescription(data.quoteText)
+      .setTimestamp(null);
   } else {
     embed.setAuthor({ name: "ChainSword20000" })
       .setDescription("A developer uses dark mode because bugs are attracted to light, but wouldn't that put the bugs in the code instead of the background?");
@@ -339,9 +340,10 @@ async function slashFunQuote(int) {
 async function slashFunNamegame(int) {
   // fun shenanigans (basically check if member is partial (which it probably isnt 99% of the time))
   const user = int.member && "displayName" in int.member ? int.member.displayName : int.user.displayName;
-  const name = (int.options.getString("name") || user)
+  let name = (int.options.getString("name") || user)
     .replace(/[^a-zA-Z]/g, '_')// just ABCabc etc, numbers were causing problems.
     .split("_")[0];// and just one segment
+  name = name.charAt(0).toUpperCase() + name.slice(1);
   try {
     const url = `https://thenamegame-generator.com/lyrics/${name}.html`;
     await int.deferReply();
