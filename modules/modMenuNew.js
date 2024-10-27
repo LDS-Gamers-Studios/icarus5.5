@@ -2,7 +2,9 @@
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  Discord = require("discord.js");
+  Discord = require("discord.js"),
+  /** @type {string[]} */
+  banned = require("../data/banned.json").features.flag;
 
 const menuOptions = require("../data/modMenuOptions.json"),
   menuFlagOptions = require("../data/modMenuFlagOptions.json"),
@@ -423,6 +425,7 @@ async function handleModMenu(submitted, oldInt) {
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
 function permComponents(int) {
   let components = menuOptions.everyone;
+  if (!banned.includes(int.user.id)) components.push(menuOptions.flag);
   if (u.perms.calc(int.member, ['mod', 'mgr'])) components = components.concat(menuOptions.mod);
   if (u.perms.calc(int.member, ['mgr', 'mgmt'])) components = components.concat(menuOptions.mgmt);
   return components.filter(cmp => (
