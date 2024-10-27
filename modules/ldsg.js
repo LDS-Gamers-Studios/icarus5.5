@@ -1,12 +1,9 @@
 // @ts-check
-const bannedFromSuggesting = [
-  // "123456" // a fake account
-  // "602887436300714013", // ohgo
-];
-
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
-  Discord = require("discord.js");
+  Discord = require("discord.js"),
+  /** @type {string[]} */
+  banned = require("../data/banned.json").features.suggestions;
 
 // suggestion modals
 const replyModal = new u.Modal().addComponents(
@@ -42,7 +39,7 @@ const replyOption = [
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashLdsgSuggest(int) {
-  if (bannedFromSuggesting.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
+  if (banned.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
   const suggestion = int.options.getString("suggestion", true);
   await int.deferReply({ ephemeral: true });
   const embed = u.embed({ author: int.user })

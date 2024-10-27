@@ -14,5 +14,10 @@
     "exception": [
         "https://cdn.discordapp.com",
         "ldsgamers.com"
-    ]
+    ],
+    "features": {
+        "welcome": [],
+        "suggestions": [],
+        "flag": []
+    }
 }
