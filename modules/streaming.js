@@ -25,7 +25,7 @@ const extraLife = () => config.devMode || [9, 10].includes(new Date().getMonth()
 
 const approvalText = "## Congratulations!\n" +
   `You've been added to the Approved Streamers list in LDSG! This allows going live notifications to show up in <#${u.sf.channels.general}>, and grants access to stream to voice channels.\n` +
-  "This has been done automatically, but in order to show notifications in #general, please double check that your correct Twitch name is saved in the database with `!ign twitch`. If the link doesn't work try `!addign twitch YourTwitchUsername`.\n\n" +
+  "This has been done automatically, but in order to show notifications in #general, please double check that your correct Twitch name is saved in the database with `!ign twitch`. If the link doesn't work, try `!addign twitch YourTwitchUsername`.\n\n" +
   "While streaming, please remember the [Streaming Guidelines](<https://goo.gl/Pm3mwS>) and [LDSG Code of Conduct](<http://ldsgamers.com/code-of-conduct>).\n" +
   "-# LDSG may make changes to the Approved Streamers list from time to time at its discretion.";
 
@@ -57,7 +57,7 @@ async function checkStreams() {
     // Check for Extra Life
     if (extraLife() && (new Date().getMinutes() < 5)) {
       const embed = await extraLifeEmbed();
-      if (embed) Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds : [embed] });
+      if (embed) Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
     }
   } catch (e) { u.errorHandler(e, "Stream Check"); }
 }
@@ -137,6 +137,35 @@ async function fetchExtraLifeTeam() {
         ])
         .setTimestamp(new Date(donation.createdDateUTC));
       Module.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed] });
+
+      const almosts = [
+        "almost",
+        "like",
+        "basically equivalent to",
+        "essentially",
+        "the same as"
+      ];
+
+      const rnd = num => Math.round((num + Number.EPSILON) * 100) / 100;
+
+      const prices = [
+        `${rnd(donation.amount * 3.84615384)} buttermelons`,
+        `${rnd(donation.amount * 15.5)}oz of beans`,
+        `${rnd(donation.amount / 4.99)} handicorn sets`,
+        `${rnd(donation.amount * 3.84615384)} ice cream sandwiches`,
+        `${rnd(donation.amount / 29.99)} copies of Minecraft`,
+        `${rnd(donation.amount / 100)} <:gb:493084576470663180>`,
+        `${rnd(donation.amount / 5)} copies of Shrek`,
+        `${rnd(donation.amount / 27.47)} ink cartridges`
+      ];
+
+      const publicEmbed = u.embed().setColor(0x7fd836)
+        .setTitle("New Extra Life Donation")
+        .setURL(`https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${teamId}`)
+        .setThumbnail("https://assets.donordrive.com/extralife/images/$event550$/facebookImage.png")
+        .setTimestamp(new Date(donation.createdDateUTC))
+        .setDescription(`Someone just donated **$${donation.amount}** to our Extra Life team! That's ${u.rand(almosts)} **${u.rand(prices)}!**\n(btw, that means we're at **$${team.sumDonations}**, which is **${team.sumDonations / team.fundraisingGoal * 100}%** of the way to our goal!)`);
+      Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [publicEmbed] });
     }
     if (update) {
       fs.writeFileSync("./data/extraLifeDonors.json", JSON.stringify({
@@ -331,8 +360,20 @@ async function slashTwitchLive(int) {
   return u.pagedEmbeds(int, embed, lines, true);
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashTwitchApprove(int) {
+async function slashTwitchApplication(int) {
   if (int.member.roles.cache.has(u.sf.roles.streaming.approved)) return int.reply({ content: "You're already approved!", ephemeral: true });
+  const agreement = u.MessageActionRow().addComponents([
+    new u.Button({ customId: "streamerAgree", emoji: "✅", label: "Agree", style: Discord.ButtonStyle.Success }),
+    new u.Button({ customId: "streamerDeny", emoji: "❌", label: "Deny", style: Discord.ButtonStyle.Secondary }),
+  ]);
+  const applicationEmbed = u.embed().setTitle("Approved Streamer Application (Part 1)")
+    .setDescription(`By clicking \`Agree\`, you agree to follow the [Streaming Guidelines](https://goo.gl/Pm3mwS) and the [Code of Conduct](https://ldsg.io/code). Are you willing to follow these standards?`);
+  return int.reply({ embeds: [applicationEmbed], components: [agreement], ephemeral: true });
+
+}
+
+/** @param {Augur.GuildInteraction<"Button">} int*/
+async function buttonStreamerAgree(int) {
   const name = await u.db.ign.find(int.member.id, "twitch").then(i => i?.ign);
   // make modal
   const ignModal = new u.Modal().addComponents(
@@ -353,38 +394,23 @@ async function slashTwitchApprove(int) {
         .setStyle(Discord.TextInputStyle.Short)
     )
   ).setCustomId("streamerIgn")
-  .setTitle("Approved Streamer Application");
+  .setTitle("Approved Streamer Application (Part 2)");
 
   return int.showModal(ignModal);
 }
 
-const approveButton = u.MessageActionRow().addComponents(
+const approveButtons = u.MessageActionRow().addComponents(
   new u.Button({ customId: "approveStreamer", emoji: "✅", label: "Approve", style: Discord.ButtonStyle.Success }),
   new u.Button({ customId: "denyStreamer", emoji: "❌", label: "Deny", style: Discord.ButtonStyle.Secondary })
 );
 
 /** @param {Augur.GuildInteraction<"Modal">} int */
 async function modalStreamerIgn(int) {
-  const agreement = u.MessageActionRow().addComponents([
-    new u.Button({ customId: "streamerAgree", emoji: "✅", label: "Agree", style: Discord.ButtonStyle.Success }),
-    new u.Button({ customId: "streamerDeny", emoji: "❌", label: "Deny", style: Discord.ButtonStyle.Secondary }),
-  ]);
   // get inputs
-  await int.deferReply({ ephemeral: true });
+  await int.deferUpdate();
   const name = int.fields.getTextInputValue("username");
   const games = int.fields.getTextInputValue("games");
   await u.db.ign.save(int.member.id, "twitch", name);
-  // Set the conditions and send
-  const applicationEmbed = u.embed().setTitle("Approved Streamer Application")
-    .setDescription(`By clicking \`Agree\`, you agree to follow the [Streaming Guidelines](https://goo.gl/Pm3mwS) and the [Code of Conduct](https://ldsg.io/code). Are you willing to follow these standards?\n-# P.S. There's a 10 minute timer on the buttons. If you run out of time, use the command again.`);
-  const msg = await int.editReply({ embeds: [applicationEmbed], components: [agreement] });
-  // wait for response and determine if they agreed or not
-  const result = await msg.awaitMessageComponent({ time: 10 * 60 * 1000 }).catch(u.noop);
-  if (!result) return int.editReply({ content: "I fell asleep waiting for your input! You can use this command again if you want to try again.", components: [], embeds: [] });
-  await result.deferUpdate();
-  // see if they agreed
-  const agreed = result.customId === "streamerAgree";
-  if (!agreed) return result.editReply({ content: "No worries! Feel free to use this command again when you're ready.", components: [], embeds: [] });
   // generate and send the request
   const embed = u.embed().setTitle("Approved Streamer Request")
     .setDescription(`${c.userBackup(int.member)} has requested to become an approved streamer.`)
@@ -394,9 +420,10 @@ async function modalStreamerIgn(int) {
       { name: "Usual Games", value: games }
     )
     .setFooter({ text: int.member.id });
-  await int.client.getTextChannel(u.sf.channels.publicaffairs)?.send({ embeds: [embed], components: [approveButton] });
+  await int.client.getTextChannel(u.sf.channels.publicaffairs)?.send({ embeds: [embed], components: [approveButtons] });
   return int.editReply({ content: "Your application has been submitted! Please wait for the moderators to handle your request.", components: [], embeds: [] });
 }
+
 /** @param {Augur.GuildInteraction<"Button">} int*/
 async function buttonApproveStreamer(int) {
   const id = int.message.embeds[0]?.data.footer?.text;
@@ -407,6 +434,16 @@ async function buttonApproveStreamer(int) {
   const content = await c.assignRole(int, member, u.sf.roles.streaming.approved);
   await member.send(approvalText).catch(u.noop);
   int.editReply({ content, components: [] });
+}
+
+/** @param {Augur.GuildInteraction<"Button">} int*/
+async function buttonDenyStreamer(int) {
+  const id = int.message.embeds[0]?.data.footer?.text;
+  const member = int.guild.members.cache.get(id ?? "");
+  await int.deferUpdate();
+  if (!member) return int.editReply({ content: "Sorry, I couldn't find that user!", components: [] });
+  await member.send(`Hey ${member.displayName}, unfortunately your application to become an approved streamer has been denied. This was likely due to the type of content being streamed, but please reach out to someone on the Public Affairs team if you have any questions.`).catch(u.noop);
+  int.editReply({ content: `${member}'s application has been denied`, components: [] });
 }
 
 
@@ -420,7 +457,7 @@ Module.addInteraction({
         case "team": return slashTwitchExtralifeTeam(int);
         case "streaming": return slashTwitchExtralifeStreaming(int);
         case "live": return slashTwitchLive(int);
-        case "approve": return slashTwitchApprove(int);
+        case "application": return slashTwitchApplication(int);
         default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
       }
     } catch (error) {
@@ -435,6 +472,18 @@ Module.addInteraction({
   process: modalStreamerIgn
 })
 .addInteraction({
+  id: "streamerAgree",
+  type: "Button",
+  onlyGuild: true,
+  process: buttonStreamerAgree
+})
+.addInteraction({
+  id: "streamerDeny",
+  type: "Button",
+  onlyGuild: true,
+  process: (int) => int.update({ content: "No worries! Feel free to apply again when you're ready.", components: [], embeds: [] })
+})
+.addInteraction({
   id: "approveStreamer",
   type: "Button",
   onlyGuild: true,
@@ -445,7 +494,7 @@ Module.addInteraction({
   id: "denyStreamer",
   type: "Button", onlyGuild: true,
   permissions: (int) => u.perms.calc(int.member, ["team", "mod"]),
-  process: (int) => int.update({ content: "Request has been denied.", components: [] })
+  process: buttonDenyStreamer
 })
 // twitch sub notifications
 .addEvent("guildMemberUpdate", (oldMember, newMember) => {

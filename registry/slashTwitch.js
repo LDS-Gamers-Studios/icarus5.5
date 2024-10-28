@@ -20,7 +20,7 @@ const live = new u.sub()
   .setDescription("See who's live in the server.");
 
 const approve = new u.sub()
-  .setName("approve")
+  .setName("application")
   .setDescription("Apply to become an Approved LDSG Streamer");
 
 module.exports = new u.cmd()
