@@ -424,7 +424,7 @@ async function handleModMenu(submitted, oldInt) {
 
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
 function permComponents(int) {
-  let components = menuOptions.everyone;
+  let components = [...menuOptions.everyone];
   if (!banned.includes(int.user.id)) components.push(menuOptions.flag);
   if (u.perms.calc(int.member, ['mod', 'mgr'])) components = components.concat(menuOptions.mod);
   if (u.perms.calc(int.member, ['mgr', 'mgmt'])) components = components.concat(menuOptions.mgmt);
