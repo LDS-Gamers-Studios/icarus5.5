@@ -8,13 +8,6 @@
       "context": "any"
     },
     {
-      "label": "Flag Message/User",
-      "value": "flag",
-      "description": "Bring this to the attention of the Moderators",
-      "emoji": "🚩",
-      "context": "any"
-    },
-    {
       "label": "Pin Message",
       "value": "pinMessage",
       "description": "Request a message pin (or pin it if you're in Team)",
@@ -22,6 +15,13 @@
       "context": "msg"
     }
   ],
+  "flag": {
+    "label": "Flag Message/User",
+    "value": "flag",
+    "description": "Bring this to the attention of the Moderators",
+    "emoji": "🚩",
+    "context": "any"
+  },
   "mod" : [
     {
       "label": "Crospost to Mod Discussion",
