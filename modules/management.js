@@ -9,13 +9,18 @@ const Augur = require("augurbot-ts"),
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runCakeday(int) {
-  const month = int.options.getString("month", true);
-  const day = int.options.getInteger("day", true);
-  const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
-  date.setHours(10);
-  if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-  // @ts-expect-error we're doing janky stuff here :)
-  cake.unload(date, "cake");
+  const month = int.options.getString("month");
+  const day = int.options.getInteger("day");
+  if (month && day) {
+    const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
+    date.setHours(10);
+    if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
+    // @ts-ignore
+    cake.doCakeDays(new Date(), date, new u.Collection().set(int.member.id, int.member));
+  } else {
+    // @ts-ignore
+    cake.doCakeDays();
+  }
   return int.editReply("Cakeday run!");
 }
 
@@ -23,14 +28,25 @@ function runCakeday(int) {
 function runBirthday(int) {
   const month = int.options.getString("month", true);
   const day = int.options.getInteger("day", true);
-  const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
-  date.setHours(10);
-  if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-  // @ts-expect-error we're doing janky stuff here :)
-  cake.unload(date, "bday");
+  if (month && day) {
+    const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
+    date.setHours(10);
+    if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
+    // @ts-ignore
+    cake.doBirthdays([int.member], date);
+  } else {
+    // @ts-ignore
+    cake.doBirthdays();
+  }
   return int.editReply("Birthday run!");
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+function runCelebrate(int) {
+  // @ts-ignore
+  cake.celebrate(true);
+  return int.editReply("Celebrate run!");
+}
 
 /** @param {string} [holiday] */
 async function setBanner(holiday) {
@@ -73,6 +89,7 @@ Module.addInteraction({
     const subcommand = int.options.getSubcommand(true);
     await int.deferReply({ ephemeral: true });
     switch (subcommand) {
+      case "celebrate": return runCelebrate(int);
       case "cakeday": return runCakeday(int);
       case "birthday": return runBirthday(int);
       case "banner": {
