@@ -4,6 +4,7 @@ const { GoogleSpreadsheet, GoogleSpreadsheetRow } = require("google-spreadsheet"
 const config = require("../config/config.json");
 const { JWT } = require("google-auth-library");
 const { nanoid } = require("nanoid");
+const { Collection } = require("discord.js");
 
 /**
  * @typedef Game
@@ -50,6 +51,7 @@ const { nanoid } = require("nanoid");
  * @prop {string} name
  * @prop {string} userId
  * @prop {Date} takeAt
+ * @prop {string} key
  */
 
 /**
@@ -80,20 +82,20 @@ const data = {
     /** @type {{ config: GoogleSpreadsheet, games: GoogleSpreadsheet } | null} */
     docs: null
   },
-  /** @type {Game[]} */
-  games: [],
-  /** @type {IGN[]} */
-  igns: [],
-  /** @type {Role[]} */
-  roles: [],
-  /** @type {OptRole[]} */
-  optRoles: [],
-  /** @type {TourneyChampion[]} */
-  tourneyChampions: [],
-  /** @type {Sponsor[]} */
-  sponsors: [],
-  /** @type {string[]} */
-  vcNames: []
+  /** @type {Collection<string, Game>} */
+  games: new Collection(),
+  /** @type {Collection<string, IGN>} */
+  igns:  new Collection(),
+  /** @type {Collection<string, Role>} */
+  roles:  new Collection(),
+  /** @type {Collection<string, OptRole>} */
+  optRoles: new Collection(),
+  /** @type {Collection<string, TourneyChampion>} */
+  tourneyChampions: new Collection(),
+  /** @type {Collection<string, Sponsor>} */
+  sponsors: new Collection(),
+  /** @type {Collection<string, string>} */
+  vcNames: new Collection()
 };
 
 /** @param {string} [sheetId] */
@@ -110,66 +112,72 @@ function makeDocument(sheetId) {
 }
 
 const mappers = {
-  games: () => data.games = data.data.games.map(g => ({
-    title: g.get("Title"),
-    system: g.get("System"),
-    rating: g.get("Rating") || "E",
-    cost: parseInt(g.get("Cost")),
-    recipient: g.get("Recipient ID") || undefined,
-    code: g.get("Code"),
-    key: g.get("Key"),
-    date: new Date(parseInt(g.get("Date"))) || undefined,
-    steamId: g.get("Steam ID")
-  })).filter(g => noBlank(g, "cost")),
+  /** @param {GoogleSpreadsheetRow} p */
+  games: (p) => ({
+    title: p.get("Title"),
+    system: p.get("System"),
+    rating: p.get("Rating") || "E",
+    cost: parseInt(p.get("Cost")),
+    recipient: p.get("Recipient ID") || undefined,
+    code: p.get("Code"),
+    key: p.get("Key"),
+    date: new Date(parseInt(p.get("Date"))) || undefined,
+    steamId: p.get("Steam ID")
+  }),
 
-  igns: () => data.igns = data.data.igns.map(i => ({
-    aliases: i.get("Aliases")?.split(" ") ?? [],
+  /** @param {GoogleSpreadsheetRow} i */
+  igns: (i) => ({
+    aliases: i.get("Aliases")?.split(" ").filter(/** @param {string} a */a => noBlank(a)) ?? [],
     category: i.get("Category") || "Game Platforms",
     link: i.get("Link") || "",
     name: i.get("Name"),
     system: i.get("System")
-  })).filter(i => noBlank(i, "system")),
-
-  roles: () => data.roles = data.data.roles.map(r => ({
+  }),
+  /** @param {GoogleSpreadsheetRow} r\ */
+  roles: (r) => ({
     type: r.get("Type"),
     base: r.get("Base Role ID"),
     color: r.get("Color Role ID"),
-    parents: r.get("Parent Roles")?.split(" ") ?? [],
+    parents: r.get("Parent Roles")?.split(" ").filter(/** @param {string} a */a => noBlank(a)) ?? [],
     level: r.get("Level"),
     badge: r.get("Badge")
-  })).filter(r => noBlank(r, "base")),
+  }),
 
-  optRoles: () => data.optRoles = data.data.optRoles.map(r => ({
+  /** @param {GoogleSpreadsheetRow} r */
+  optRoles: (r) => ({
     name: r.get("Role Tag"),
     id: r.get("RoleID"),
     badge: r.get("Badge")
-  })).filter(r => noBlank(r, "id")),
+  }),
 
-  tourneyChampions: () => data.tourneyChampions = data.data.tourneyChampions.map(r => ({
+  /** @param {GoogleSpreadsheetRow} r */
+  tourneyChampions: (r) => ({
     name: r.get("Tourney Name"),
     userId: r.get("User ID"),
-    takeAt: new Date(r.get("Take Role At"))
-  })).filter(c => noBlank(c, "userId")),
+    takeAt: new Date(r.get("Take Role At")),
+    key: r.get("Key")
+  }),
 
-  sponsors: () => data.sponsors = data.data.sponsors.map(s => ({
+  /** @param {GoogleSpreadsheetRow} s */
+  sponsors: (s) => ({
     userId: s.get("Sponsor"),
     channelId: s.get("Channel"),
     emojiId: s.get("Emoji"),
     enabled: true,
     archiveAt: new Date()
-  })).filter(s => noBlank(s, "userId")),
+  }),
 
-  vcNames: () => data.vcNames = data.data.vcNames.map(n => n.get("Name"))
-    .filter(n => noBlank(n))
+  /** @param {GoogleSpreadsheetRow} n */
+  vcNames: (n) => n.get("Name")
 };
 
 const sheetMap = {
-  igns: "IGN",
-  roles: "Roles",
-  optRoles: "Opt-In Roles",
-  tourneyChampions: "Tourney Champions",
-  sponsors: "Sponsor Channels",
-  vcNames: "Voice ChannelNames"
+  igns: ["IGN", "System"],
+  roles: ["Roles", "Base Role ID"],
+  optRoles: ["Opt-In Roles", "RoleID"],
+  tourneyChampions: ["Tourney Champions", "Key"],
+  sponsors: ["Sponsor Channels", "Sponsor"],
+  vcNames: ["Voice Channel Names", "Name"]
 };
 
 /**
@@ -189,33 +197,45 @@ async function loadData(loggedIn = true, justRows = false, sheet) {
   if (sheet) {
     if (sheet === "games") {
       data.data.games = await games.sheetsByIndex[0].getRows();
-      for (const game of data.data.games.filter(g => !g.get("Code"))) {
-        game.set("Code", nanoid());
-        game.save();
+      data.games.clear();
+      for (const game of data.data.games) {
+        if (!game.get("Title")) {
+          game.set("Code", nanoid());
+          game.save();
+        }
+        if (!data.games.find(g => g.title === game.get("Title"))) data.games.set(game.get("Code"), mappers.games(game));
       }
-      mappers.games();
     } else {
-      data.data[sheet] = await games.sheetsByTitle[sheetMap[sheet]].getRows();
-      mappers[sheet]();
+      data.data[sheet] = await games.sheetsByTitle[sheetMap[sheet][0]].getRows();
+      data[sheet].clear();
+      for (const datum of data.data[sheet]) {
+        if (datum.get(sheetMap[sheet][1]))data[sheet].set(datum.get(sheetMap[sheet][1]), mappers[sheet](datum));
+      }
     }
     return;
   }
 
   data.data.games = await games.sheetsByIndex[0].getRows();
-  data.data.igns = await conf.sheetsByTitle.IGN.getRows();
-  data.data.roles = await conf.sheetsByTitle.Roles.getRows();
-  data.data.optRoles = await conf.sheetsByTitle["Opt-In Roles"].getRows();
-  data.data.tourneyChampions = await conf.sheetsByTitle["Tourney Champions"].getRows();
-  data.data.sponsors = await conf.sheetsByTitle["Sponsor Channels"].getRows();
-  data.data.vcNames = await conf.sheetsByTitle["Voice Channel Names"].getRows();
-
-  for (const game of data.data.games.filter(g => !g.get("Code"))) {
-    game.set("Code", nanoid());
-    game.save();
+  data.games.clear();
+  for (const game of data.data.games) {
+    if (!game.get("Code")) {
+      game.set("Code", nanoid());
+      game.save();
+    }
+    if (!data.games.find(g => g.title === game.get("Title"))) data.games.set(game.get("Code"), mappers.games(game));
   }
 
-  mappers.games();
-  mappers.igns();
+  for (const key in sheetMap) {
+    /** @type {keyof typeof sheetMap} */
+    // @ts-ignore
+    const typeCorrectKey = key;
+    const s = sheetMap[typeCorrectKey];
+    data[typeCorrectKey].clear();
+    data.data[typeCorrectKey] = await conf.sheetsByTitle[s[0]].getRows();
+    for (const datum of data.data[typeCorrectKey]) {
+      if (datum.get(s[1])) data[typeCorrectKey].set(datum.get(s[1]), mappers[typeCorrectKey](datum));
+    }
+  }
 }
 
 

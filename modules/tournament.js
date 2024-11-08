@@ -54,8 +54,10 @@ async function champs(int) {
   const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].map(usr => usr?.id).filter(usr => usr !== null));
   const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
 
-  await u.db.sheets.data.doc?.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr ?? "", "Take Role At": date })));
-
+  const rows = await u.db.sheets.data.docs?.config.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr ?? "", "Take Role At": date, Key: u.customId(5) })));
+  for (const row of rows ?? []) {
+    u.db.sheets.tourneyChampions.set(row.get("Key"), u.db.sheets.mappers.tourneyChampions(row));
+  }
   for (const usr of users) {
     const member = int.guild.members.cache.get(usr ?? "");
     if (!member) continue;

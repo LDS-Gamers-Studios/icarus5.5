@@ -6,7 +6,7 @@ const Augur = require("augurbot-ts"),
   config = require("../config/config.json"),
   SteamApi = require("steamapi"),
   { customAlphabet } = require("nanoid");
-const { GoogleSpreadsheetCell, GoogleSpreadsheetRow } = require("google-spreadsheet");
+const { GoogleSpreadsheetRow } = require("google-spreadsheet");
 
 const Module = new Augur.Module(),
   gb = `<:gb:${u.sf.emoji.gb}>`,
@@ -18,19 +18,6 @@ const nanoid = customAlphabet(chars, 8);
 
 /** @type {SteamApi.App[]} */
 let steamGameList = [];
-
-/**
- * Get unique games
- * @param {import("../database/sheets").Game} game
- * @param {number} i
- * @param {import("../database/sheets").Game[]} gameList
- * @returns {boolean}
- */
-function filterUnique(game, i, gameList) {
-  const ga = gameList.find(g => g.title === game.title && g.system === game.system);
-  if (ga) return gameList.indexOf(ga) === i;
-  return false;
-}
 
 /**
  * @param {import("../database/sheets").Game} game
@@ -80,7 +67,7 @@ async function buyGame(game, rawGame, user) {
   rawGame.set("Recipient ID", user.id);
   rawGame.set("Date", new Date().valueOf());
   rawGame.save();
-  u.db.sheets.mappers.games();
+  u.db.sheets.games.set(game.code, u.db.sheets.mappers.games(rawGame));
 
   const embed2 = u.embed({ author: user })
     .setDescription(`${user.displayName} just redeemed ${gb}${game.cost} for a ${game.title} (${game.system}) key.`)
@@ -217,8 +204,7 @@ async function slashBankGameList(interaction) {
   try {
     if (!u.db.sheets.data.docs?.games) throw new Error("Games List Error");
 
-    let gameList = u.db.sheets.games.filter(g => !g.recipient)
-      .filter(filterUnique)
+    let gameList = u.uniqueObj(u.db.sheets.games.toJSON(), "title").filter(g => !g.recipient)
       .sort((a, b) => a.title.localeCompare(b.title));
     // Filter Rated M, unless the member has the Rated M Role
     if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.rating.toUpperCase() !== "M");
@@ -226,21 +212,11 @@ async function slashBankGameList(interaction) {
     const embed = u.embed()
       .setTitle("Games Available to Redeem")
       .setDescription(`Redeem ${gb} for game codes with the </bank game redeem:${u.sf.commands.slashBank}> command.\n\n`);
-    /** @type {GoogleSpreadsheetCell[]} */
-    const updating = [];
+
     u.pagedEmbeds(interaction, embed, gameList.map(game => {
-      if (game.system.toLowerCase() === "steam" && !game.steamId) {
-        const full = u.db.sheets.data.games.find(g => g.get("Code") === game.code);
-        game.steamId = steamGameList.find(g => g.name.toLowerCase() === game.title.toLowerCase())?.appid.toString();
-        if (game.steamId && full) {
-          full.set("Steam ID", game.steamId);
-          full.save();
-        }
-      }
       return `${game.steamId ? "[" : ""}**${game.title}** (${game.system})${game.steamId ? `](https://store.steampowered.com/app/${game.steamId})` : ""}`
         + ` Rated ${game.rating} - ${gb}${game.cost} | Code: **${game.code}**\n`;
     }));
-    if (updating.length > 0) u.db.sheets.data.docs.games.sheetsByIndex[0].saveCells(updating);
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
@@ -250,10 +226,12 @@ async function slashBankGameRedeem(interaction) {
     await interaction.deferReply({ ephemeral: true });
     if (!u.db.sheets.data.docs?.games) throw new Error("Get Game List Error");
     // find the game they're trying to redeem
-    const game = u.db.sheets.games.find(g => (g.code === interaction.options.getString("code", true).toUpperCase()) && !g.recipient);
+    const game = u.db.sheets.games.get(interaction.options.getString("code", true).toUpperCase());
     const rawGame = u.db.sheets.data.games.find(g => g.get("Code") === game?.code);
     if (!game || !rawGame) {
       return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);
+    } else if (game.recipient || game.date) {
+      return interaction.editReply("Looks like someone else already bought the game! Sorry about that.");
     }
 
     // buy the game (or fail)
@@ -414,4 +392,4 @@ Module.addInteraction({ name: "bank",
 })
 .setUnload(() => steamGameList);
 
-module.exports = { filterUnique, buyGame, ...Module };
+module.exports = { buyGame, ...Module };

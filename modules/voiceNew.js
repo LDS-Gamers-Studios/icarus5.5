@@ -396,7 +396,7 @@ Module.addEvent("interactionCreate", async (int) => {
   if (newState.channel.members.size === 1) newState.channel.send({ embeds: components.embeds, components: components.components });
 })
 .setInit(async () => {
-  channelNames = u.db.sheets.vcNames;
+  channelNames = Array.from(u.db.sheets.vcNames.values());
 })
 .addEvent("ready", () => {
   updateChannels();

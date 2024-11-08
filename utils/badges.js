@@ -17,19 +17,18 @@ const badges = new Discord.Collection();
 /**
  * Gets all badge data from the Google Sheet.
  */
-async function getBadgeData() {
+function getBadgeData() {
   const roles = u.db.sheets.roles;
   const optInRoles = u.db.sheets.optRoles;
 
   try {
-
-    for (const role of roles) {
+    for (const [id, role] of roles) {
       // Only add to the map...
       if (!role.badge || // if they have a badge listed
         !fs.existsSync(`./site/backend/public/badges/${role.badge}.png`) // and if the badge path is valid
       ) continue;
 
-      badges.set(role.base, {
+      badges.set(id, {
         image: `${role.badge}.png`,
         // if there are lower roles, split them, and then remove the one at the end that's just an empty string.
         overrides: role.parents
@@ -37,11 +36,11 @@ async function getBadgeData() {
 
     }
 
-    for (const role of optInRoles) {
+    for (const [id, role] of optInRoles) {
       // See above for documentation of what this statement means
       if (!role.badge || !fs.existsSync(`./site/backend/public/badges/${role.badge}.png`)) continue;
 
-      badges.set(role.id, {
+      badges.set(id, {
         image: `${role.badge}.png`,
         overrides: []
       });
