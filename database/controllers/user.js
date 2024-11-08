@@ -72,7 +72,7 @@ const models = {
   getLeaderboard: async function(options) {
     const members = (options.memberIds instanceof Discord.Collection ? Array.from(options.memberIds.keys()) : options.memberIds);
     const member = options.member;
-    const season = options.season ?? true;
+    const season = options.season;
     const limit = options.limit ?? 10;
 
     // Get top X users first
@@ -99,6 +99,36 @@ const models = {
     }
 
     return ranked;
+  },
+  /**
+   * Get the top X of both leaderboards
+   * @param {Omit<leaderboardOptions, "season">} options
+   * @returns {Promise<{ season: (UserRecord & { rank: number })[], life: (UserRecord & { rank: number })[] }>}
+   */
+  getBothLeaderboards: async function(options) {
+    const members = (options.memberIds instanceof Discord.Collection ? Array.from(options.memberIds.keys()) : options.memberIds);
+    const member = options.member;
+    const limit = options.limit ?? 10;
+
+    /** @param {UserRecord[]} users */
+    const mapper = (users) => users.map((u, i) => ({ ...u, rank: i + 1 }));
+
+    const query = () => User.find({ excludeXP: false, discordId: { $in: members } }, undefined, { lean: true }).limit(limit);
+    const season = await query().sort({ currentXP: "desc" }).exec().then(mapper);
+    const life = await query().sort({ totalXP: "desc" }).exec().then(mapper);
+
+    // Get requested user
+    const seasonHas = season.some(r => r.discordId === member);
+    const lifeHas = life.some(r => r.discordId === member);
+    if (member && (!seasonHas || !lifeHas)) {
+      const record = await models.getRank(member, members);
+      if (record) {
+        if (!seasonHas) season.push({ ...record, rank: record.rank.season });
+        if (!lifeHas) life.push({ ...record, rank: record.rank.lifetime });
+      }
+    }
+
+    return { season, life };
   },
   /**
      * Get a user's rank

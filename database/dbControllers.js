@@ -9,7 +9,7 @@ const bank = require("./controllers/bank"),
   user = require("./controllers/user"),
   tournament = require("./controllers/tournament");
 
-const sheets = require("./sheets").data;
+const { data, loadData, makeDocument, mappers } = require("./sheets");
 
 mongoose.connect(config.db.db, config.db.settings);
 
@@ -20,5 +20,5 @@ module.exports = {
   oauth,
   user,
   tournament,
-  sheets
+  sheets: { ...data, loadData, makeDocument, mappers }
 };

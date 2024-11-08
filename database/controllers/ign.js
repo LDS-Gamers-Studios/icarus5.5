@@ -3,9 +3,9 @@ const Ign = require("../models/Ign.model");
 
 /**
  * @typedef IGN
- * @prop {string} [discordId]
- * @prop {string} [system]
- * @prop {string} [ign]
+ * @prop {string} discordId
+ * @prop {string} system
+ * @prop {string} ign
  */
 
 module.exports = {
@@ -20,17 +20,29 @@ module.exports = {
     return Ign.findOneAndRemove({ discordId, system }, { lean: true, new: false }).exec();
   },
   /**
-   * Find an IGN
-   * @function find
-   * @param {string} discordId Which user's IGN to find
-   * @param {(string)} [system] Which system IGN to find
-   * @returns {Promise<Array<IGN>|IGN|null>}
+   * Find many IGNs
+   * @param {string | string[]} discordId Which user's IGN to find
+   * @param {string | string[]} [system] Which system IGN to find
+   * @returns {Promise<IGN[]>}
    */
-  find: function(discordId, system) {
-    if (Array.isArray(system)) return Ign.find({ discordId, system: { $in: system } }).exec();
-    else if (Array.isArray(discordId)) return Ign.find({ discordId: { $in: discordId }, system }).exec();
-    else if (system) return Ign.findOne({ discordId, system }).exec();
-    return Ign.find({ discordId }).exec();
+  findMany: function(discordId, system) {
+    let sys;
+    let id;
+    if (Array.isArray(system)) sys = { $in: system };
+    else sys = system;
+    if (Array.isArray(discordId)) id = { $in: discordId };
+    else id = discordId;
+    if (sys) return Ign.find({ discordId: id, system: sys }, undefined, { lean: true });
+    return Ign.find({ discordId: id });
+  },
+  /**
+   * Find a specific IGN
+   * @param {string} discordId
+   * @param {string} system
+   * @returns {Promise<IGN | null>}
+   */
+  findOne: function(discordId, system) {
+    return Ign.findOne({ discordId, system }, undefined, { lean: true }).exec();
   },
   /**
    * Find a list of IGNs for a given system
@@ -55,5 +67,22 @@ module.exports = {
       { $set: { ign } },
       { upsert: true, new: true }
     ).exec();
+  },
+  /**
+   * Update a lot of IGNs at the same time
+   * @param {string} discordId
+   * @param {{system: string, ign: string }[]} igns
+   */
+  saveMany: function(discordId, igns) {
+    const actions = igns.map(i => {
+      const filter = { discordId, system: i.system };
+      if (i.ign) {
+        return { updateOne: {
+          filter, update: { ign: i.ign }, upsert: true, new: true
+        } };
+      }
+      return { deleteOne: { filter } };
+    });
+    return Ign.bulkWrite(actions);
   }
 };

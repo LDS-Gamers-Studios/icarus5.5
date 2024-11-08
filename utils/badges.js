@@ -26,7 +26,7 @@ async function getBadgeData() {
     for (const role of roles) {
       // Only add to the map...
       if (!role.badge || // if they have a badge listed
-        !fs.existsSync(`./media/badges/${role.badge}.png`) // and if the badge path is valid
+        !fs.existsSync(`./site/backend/public/badges/${role.badge}.png`) // and if the badge path is valid
       ) continue;
 
       badges.set(role.base, {
@@ -39,7 +39,7 @@ async function getBadgeData() {
 
     for (const role of optInRoles) {
       // See above for documentation of what this statement means
-      if (!role.badge || !fs.existsSync(`./media/badges/${role.badge}.png`)) continue;
+      if (!role.badge || !fs.existsSync(`./site/backend/public/badges/${role.badge}.png`)) continue;
 
       badges.set(role.id, {
         image: `${role.badge}.png`,
@@ -59,7 +59,11 @@ async function getBadgeData() {
  * @returns {Badge[]} Badge objects used by the makeProfileCard function.
  */
 function getBadges(roles) {
-  return badges.filter((b, id) => roles.hasAny(id, ...b.overrides)).toJSON();
+  const guild = roles.first()?.guild;
+  return badges.filter((b, id) => roles.hasAny(id) && !roles.hasAny(...b.overrides)).map((r, id) => {
+    const name = guild?.roles.cache.get(id)?.name ?? "";
+    return { ...r, name };
+  });
 }
 
 module.exports = { getBadges, getBadgeData };

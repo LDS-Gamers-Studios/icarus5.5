@@ -22,13 +22,14 @@ async function equip(member, equipRoles, role) {
   const allColors = equipRoles.map(r => r.colorId);
   const available = getInventory(member, equipRoles);
   if (!role) {
-    member.roles.remove(allColors.filter(c => member.roles.cache.has(c)));
+    await member.roles.remove(allColors.filter(c => member.roles.cache.has(c)));
     return true;
   }
   if (!member.guild.roles.cache.has(role)) return false;
   const color = available.find(a => a.baseId === role);
   if (!color) return false;
-  await member.roles.remove(allColors.filter(c => member.roles.cache.has(c)));
+  if (member.roles.cache.has(color.colorId)) return true;
+  await member.roles.remove(allColors.filter(c => member.roles.cache.has(c) && c !== color.colorId));
   await member.roles.add(color.colorId);
   return true;
 }
