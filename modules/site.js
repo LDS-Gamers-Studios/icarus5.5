@@ -1,7 +1,6 @@
 // @ts-check
 const Augur = require("augurbot-ts");
 const config = require("../config/config.json");
-const u = require("../utils/utils");
 
 if (config.siteOn) {
   require("../site/backend/utils/strategy");
@@ -20,7 +19,7 @@ if (config.siteOn) {
   app.use(express.urlencoded({ extended: false }));
   app.use(cors({
     origin: [siteConfig.frontend],
-    credentials: true
+    credentials: true,
   }));
 
   app.use(session({
@@ -40,12 +39,6 @@ if (config.siteOn) {
   app.use('/api', routes);
   app.use('/static', express.static('site/backend/public'));
   // app.use('/tags', express.static('media/tags'));
-
-  // eslint-disable-next-line no-unused-vars
-  app.use((err, req, res, next) => {
-    u.errorHandler(err, `[WEB] - ${req.originalUrl} (${req.user?.id ?? "Unknown User"})`);
-    res.status(500).send({ msg: "Sorry, I ran into an error." });
-  });
 
   // eslint-disable-next-line no-console
   app.listen(siteConfig.port, () => console.log(`Backend running on port ${siteConfig.port}`));

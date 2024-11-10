@@ -28,6 +28,8 @@ const permFuncs = {
   /** @type {perm} */
   volunteer: m => m.roles.cache.has(sf.roles.volunteer),
   /** @type {perm} */
+  inHouse: m => m.roles.cache.hasAny(...Object.values(sf.roles.houses)),
+  /** @type {perm} */
   trustPlus: m => m.roles.cache.has(sf.roles.trustedplus),
   /** @type {perm} */
   trusted: m => m.roles.cache.has(sf.roles.trusted),
@@ -67,6 +69,8 @@ const perms = {
   isMgr: (m) => m && permFuncs.mgr(m),
   /** @type {mem} */
   isTeam: (m) => m && permFuncs.team(m),
+  /** @type {mem} */
+  inHouse: (m) => m && permFuncs.inHouse(m),
   /** @type {mem} */
   isTrusted: (m) => m && permFuncs.trusted(m),
   /** @type {mem} */
