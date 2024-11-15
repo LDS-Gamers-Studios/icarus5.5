@@ -28,9 +28,9 @@ jobs:
 
       - name: Create temp JSON files
         run: |
-          cp config/config-example.json config/config.json 
-          cp config/snowflakes-commands-example.json config/snowflakes-commands.json 
-          cp config/siteConfig-example.json.json config/siteConfig.json 
+          cp ./config/config-example.json config/config.json 
+          cp ./config/snowflakes-commands-example.json config/snowflakes-commands.json 
+          cp ./config/siteConfig-example.json.json config/siteConfig.json 
           exit 1
       
       - name: Run TSCheck
