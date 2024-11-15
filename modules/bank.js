@@ -289,7 +289,7 @@ async function slashBankDiscount(interaction) {
       });
       const embed = u.embed({ author: interaction.member })
         .addFields(
-          { name: "Amount", value:  `${gb}${-withdraw.value} ($${-withdraw.value / 100})` },
+          { name: "Amount", value: `${gb}${-withdraw.value} ($${-withdraw.value / 100})` },
           { name: "Balance", value: `${gb}${balance.gb + withdraw.value}` }
         )
         .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb} for a store coupon code.`);
@@ -342,7 +342,7 @@ async function slashBankAward(interaction) {
     const str = (/** @type {string} */ m) => value > 0 ? `awarded ${m} ${ember}${receipt.value}` : `docked ${ember}${-receipt.value} from ${m}`;
     let embed = u.embed({ author: interaction.client.user })
       .addFields(
-        { name:"Reason", value: reason },
+        { name: "Reason", value: reason },
         { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
       )
       .setDescription(`${u.escapeText(giver.displayName)} just ${str("you")}! This counts toward your House's Points.`);

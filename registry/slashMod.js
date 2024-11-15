@@ -137,6 +137,7 @@ const watchlist = new u.sub()
 const slowmode = new u.sub()
   .setName("slowmode")
   .setDescription("Set a temporary slow mode in the current channel")
+  .addStringOption(reason("slowmoded", true))
   .addIntegerOption(
     new u.int()
       .setName("duration")
@@ -149,12 +150,6 @@ const slowmode = new u.sub()
       .setName("delay")
       .setDescription("How many seconds between messages? (Default: 15)")
       .setMinValue(0)
-      .setRequired(false)
-  )
-  .addBooleanOption(
-    new u.bool()
-      .setName("indefinite")
-      .setDescription("Enables slowmode forever")
       .setRequired(false)
   );
 

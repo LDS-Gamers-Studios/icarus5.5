@@ -239,7 +239,8 @@ async function slashModSlowmode(interaction) {
 
   const duration = interaction.options.getInteger("duration") ?? 10;
   const delay = interaction.options.getInteger("delay") ?? 15;
-  const indefinitely = interaction.options.getBoolean("indefinite") ?? false;
+  const reason = interaction.options.getString("reason", true);
+
   const ch = interaction.channel;
   if (!ch) return interaction.editReply("I can't access the channel you're in!");
 
@@ -265,21 +266,18 @@ async function slashModSlowmode(interaction) {
     if (prev) clearTimeout(prev.timeout);
 
     const limit = prev ? prev.limit : ch.rateLimitPerUser;
+    await ch.send(`Let's slow down for a bit.\nReason: ${reason}`).catch(u.noop);
     await ch.setRateLimitPerUser(delay);
 
-    let durationStr = "indefinitely";
+    molasses.set(ch.id, {
+      timeout: setTimeout((channel, rateLimitPerUser) => {
+        channel.edit({ rateLimitPerUser }).catch(error => u.errorHandler(error, "Reset rate limit after slowmode"));
+        molasses.delete(channel.id);
+      }, duration * 60000, ch, limit),
+      limit
+    });
 
-    if (duration > 0 && !indefinitely) {
-      molasses.set(ch.id, {
-        timeout: setTimeout((channel, rateLimitPerUser) => {
-          channel.edit({ rateLimitPerUser }).catch(error => u.errorHandler(error, "Reset rate limit after slowmode"));
-          molasses.delete(channel.id);
-        }, duration * 60000, ch, limit),
-        limit
-      });
-      durationStr = `for ${duration.toString()} minute${duration > 1 ? 's' : ''}`;
-    }
-
+    const durationStr = `for ${duration.toString()} minute${duration > 1 ? 's' : ''}`;
     await interaction.editReply(`${delay}-second slowmode activated ${durationStr}.`);
     await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
       u.embed({ author: interaction.member })
