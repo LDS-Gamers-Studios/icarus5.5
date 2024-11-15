@@ -85,9 +85,9 @@ const data = {
   /** @type {Collection<string, Game>} */
   games: new Collection(),
   /** @type {Collection<string, IGN>} */
-  igns:  new Collection(),
+  igns: new Collection(),
   /** @type {Collection<string, Role>} */
-  roles:  new Collection(),
+  roles: new Collection(),
   /** @type {Collection<string, OptRole>} */
   optRoles: new Collection(),
   /** @type {Collection<string, TourneyChampion>} */
