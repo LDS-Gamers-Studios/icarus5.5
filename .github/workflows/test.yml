@@ -31,7 +31,7 @@ jobs:
           cp ./config/config-example.json config/config.json 
           cp ./config/snowflakes-commands-example.json config/snowflakes-commands.json 
           cp ./config/siteConfig-example.json config/siteConfig.json 
-          exit 1
+          exit 0
       
       - name: Run TSCheck
         run: npm run tscheck
