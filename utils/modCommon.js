@@ -85,8 +85,10 @@ const modCommon = {
   blocked,
   compareRoles,
   nameGen,
+  userBackup,
   logEmbed,
   modActions,
+  messageFromMods,
   revert: retract,
   colors: embedColors,
   /**

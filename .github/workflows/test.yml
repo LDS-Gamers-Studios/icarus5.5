@@ -25,3 +25,13 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
+
+      - name: Create temp JSON files
+        run: |
+          cp ./config/config-example.json config/config.json 
+          cp ./config/snowflakes-commands-example.json config/snowflakes-commands.json 
+          cp ./config/siteConfig-example.json config/siteConfig.json 
+          exit 0
+      
+      - name: Run TSCheck
+        run: npm run tscheck

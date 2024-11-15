@@ -26,6 +26,7 @@ const { nanoid } = require("nanoid");
 function parseInteraction(int) {
   if (int.isCommand() || int.isAutocomplete()) {
     let command = "";
+    /** @type {Record<any, any> & {name: string, value?: string | number | boolean}[]} */
     let data = [];
     if (int.isAutocomplete()) command += "Autocomplete for ";
     if (int.isChatInputCommand()) {
@@ -412,7 +413,17 @@ const utils = {
    * @returns {T[]}
    */
   unique: function(items) {
-    return [...new Set(items)];
+    return Array.from(new Set(items));
+  },
+  /**
+   * @template T
+   * @param {T[]} items
+   * @param {keyof T} key
+   * @returns {T[]}
+   */
+  uniqueObj: function(items, key) {
+    const col = new Discord.Collection(items.map(i => [i[key], i]));
+    return Array.from(col.values());
   }
 };
 

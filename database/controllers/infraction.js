@@ -1,5 +1,6 @@
 // @ts-check
 const moment = require('moment-timezone');
+const Discord = require("discord.js");
 
 const Infraction = require("../models/Infraction.model");
 
@@ -49,8 +50,8 @@ module.exports = {
     /** @type {Infraction[]} */
     const records = (await Infraction.find({ discordId, timestamp: { $gte: since } }, undefined, { lean: true })
       .exec())
-      // -1 is cleared
-      .filter(r => r.value > -1);
+      // -1 is cleared, 0 is unhandled
+      .filter(r => r.value > 0);
     return {
       discordId,
       count: records.length,
@@ -60,10 +61,25 @@ module.exports = {
     };
   },
   /**
-     * Remove/delete an infraction
-     * @param {String} flag The infraction flag
-     * @return {Promise<Infraction | null>}
-     */
+   * Get the infraction counts for different users
+   * @param {string[]} discordIds
+   * @param {number} time
+   * @returns {Promise<Discord.Collection<string, number>>}
+   */
+  getCounts: async function(discordIds, time = 28) {
+    if (!Array.isArray(discordIds)) throw new TypeError("discordIds must be an array of IDs");
+    const since = moment().tz("America/Denver").subtract(time, "days").toDate();
+    const records = await Infraction.aggregate([
+      { $match: { timestamp: { $gte: since } } },
+      { $group: { _id: "$discordId", count: { $sum: 1 } } }
+    ]).exec();
+    return new Discord.Collection(records.map(r => [r._id, r.count]));
+  },
+  /**
+   * Remove/delete an infraction
+   * @param {String} flag The infraction flag
+   * @return {Promise<Infraction | null>}
+   */
   remove: function(flag) {
     if (typeof flag !== "string") throw new TypeError(outdated);
     return Infraction.findOneAndDelete({ flag }, { new: false, lean: true }).exec();

@@ -3,6 +3,30 @@
 const { GoogleSpreadsheet, GoogleSpreadsheetRow } = require("google-spreadsheet");
 const config = require("../config/config.json");
 const { JWT } = require("google-auth-library");
+const { nanoid } = require("nanoid");
+const { Collection } = require("discord.js");
+
+/**
+ * @typedef Game
+ * @prop {string} title
+ * @prop {string} system
+ * @prop {string} rating
+ * @prop {number} cost
+ * @prop {string} [recipient]
+ * @prop {string} code
+ * @prop {string} key
+ * @prop {string} [steamId]
+ * @prop {Date} [date]
+ */
+
+/**
+ * @typedef IGN
+ * @prop {string} name
+ * @prop {string} system
+ * @prop {string} category
+ * @prop {string[]} aliases
+ * @prop {string} link
+ */
 
 /**
  * @typedef Role
@@ -27,6 +51,7 @@ const { JWT } = require("google-auth-library");
  * @prop {string} name
  * @prop {string} userId
  * @prop {Date} takeAt
+ * @prop {string} key
  */
 
 /**
@@ -41,6 +66,10 @@ const { JWT } = require("google-auth-library");
 const data = {
   data: {
     /** @type {GoogleSpreadsheetRow[]} */
+    games: [],
+    /** @type {GoogleSpreadsheetRow[]} */
+    igns: [],
+    /** @type {GoogleSpreadsheetRow[]} */
     roles: [],
     /** @type {GoogleSpreadsheetRow[]} */
     optRoles: [],
@@ -50,19 +79,23 @@ const data = {
     sponsors: [],
     /** @type {GoogleSpreadsheetRow[]} */
     vcNames: [],
-    /** @type {GoogleSpreadsheet | null} */
-    doc: null
+    /** @type {{ config: GoogleSpreadsheet, games: GoogleSpreadsheet } | null} */
+    docs: null
   },
-  /** @type {Role[]} */
-  roles: [],
-  /** @type {OptRole[]} */
-  optRoles: [],
-  /** @type {TourneyChampion[]} */
-  tourneyChampions: [],
-  /** @type {Sponsor[]} */
-  sponsors: [],
-  /** @type {string[]} */
-  vcNames: []
+  /** @type {Collection<string, Game>} */
+  games: new Collection(),
+  /** @type {Collection<string, IGN>} */
+  igns: new Collection(),
+  /** @type {Collection<string, Role>} */
+  roles: new Collection(),
+  /** @type {Collection<string, OptRole>} */
+  optRoles: new Collection(),
+  /** @type {Collection<string, TourneyChampion>} */
+  tourneyChampions: new Collection(),
+  /** @type {Collection<string, Sponsor>} */
+  sponsors: new Collection(),
+  /** @type {Collection<string, string>} */
+  vcNames: new Collection()
 };
 
 /** @param {string} [sheetId] */
@@ -78,48 +111,131 @@ function makeDocument(sheetId) {
   return sheet;
 }
 
-async function loadData(loggedIn = true) {
-  if (!loggedIn) data.data.doc = makeDocument();
-  if (!data.data.doc) throw new Error("Something has gone terribly wrong during sheets loadData");
-  await data.data.doc.loadInfo();
+const mappers = {
+  /** @param {GoogleSpreadsheetRow} p */
+  games: (p) => ({
+    title: p.get("Title"),
+    system: p.get("System"),
+    rating: p.get("Rating") || "E",
+    cost: parseInt(p.get("Cost")),
+    recipient: p.get("Recipient ID") || undefined,
+    code: p.get("Code"),
+    key: p.get("Key"),
+    date: new Date(parseInt(p.get("Date"))) || undefined,
+    steamId: p.get("Steam ID")
+  }),
 
-  data.data.roles = await data.data.doc.sheetsByTitle.Roles.getRows();
-  data.data.optRoles = await data.data.doc.sheetsByTitle["Opt-In Roles"].getRows();
-  data.data.tourneyChampions = await data.data.doc.sheetsByTitle["Tourney Champions"].getRows();
-  data.data.sponsors = await data.data.doc.sheetsByTitle["Sponsor Channels"].getRows();
-  data.data.vcNames = await data.data.doc.sheetsByTitle["Voice Channel Names"].getRows();
-
-  data.roles = data.data.roles.map(r => ({
+  /** @param {GoogleSpreadsheetRow} i */
+  igns: (i) => ({
+    aliases: i.get("Aliases")?.split(" ").filter(/** @param {string} a */a => noBlank(a)) ?? [],
+    category: i.get("Category") || "Game Platforms",
+    link: i.get("Link") || "",
+    name: i.get("Name"),
+    system: i.get("System")
+  }),
+  /** @param {GoogleSpreadsheetRow} r\ */
+  roles: (r) => ({
     type: r.get("Type"),
     base: r.get("Base Role ID"),
     color: r.get("Color Role ID"),
-    parents: r.get("Parent Roles")?.split(" ") ?? [],
+    parents: r.get("Parent Roles")?.split(" ").filter(/** @param {string} a */a => noBlank(a)) ?? [],
     level: r.get("Level"),
     badge: r.get("Badge")
-  })).filter(r => noBlank(r, "base"));
+  }),
 
-  data.optRoles = data.data.optRoles.map(r => ({
+  /** @param {GoogleSpreadsheetRow} r */
+  optRoles: (r) => ({
     name: r.get("Role Tag"),
     id: r.get("RoleID"),
     badge: r.get("Badge")
-  })).filter(r => noBlank(r, "id"));
+  }),
 
-  data.tourneyChampions = data.data.tourneyChampions.map(r => ({
+  /** @param {GoogleSpreadsheetRow} r */
+  tourneyChampions: (r) => ({
     name: r.get("Tourney Name"),
     userId: r.get("User ID"),
-    takeAt: new Date(r.get("Take Role At"))
-  })).filter(c => noBlank(c, "userId"));
+    takeAt: new Date(r.get("Take Role At")),
+    key: r.get("Key")
+  }),
 
-  data.sponsors = data.data.sponsors.map(s => ({
+  /** @param {GoogleSpreadsheetRow} s */
+  sponsors: (s) => ({
     userId: s.get("Sponsor"),
     channelId: s.get("Channel"),
     emojiId: s.get("Emoji"),
     enabled: true,
     archiveAt: new Date()
-  })).filter(s => noBlank(s, "userId"));
+  }),
 
-  data.vcNames = data.data.vcNames.map(n => n.get("Name"))
-    .filter(n => noBlank(n));
+  /** @param {GoogleSpreadsheetRow} n */
+  vcNames: (n) => n.get("Name")
+};
+
+const sheetMap = {
+  igns: ["IGN", "System"],
+  roles: ["Roles", "Base Role ID"],
+  optRoles: ["Opt-In Roles", "RoleID"],
+  tourneyChampions: ["Tourney Champions", "Key"],
+  sponsors: ["Sponsor Channels", "Sponsor"],
+  vcNames: ["Voice Channel Names", "Name"]
+};
+
+/**
+ * @param {keyof Omit<data, "data">} [sheet]
+ */
+async function loadData(loggedIn = true, justRows = false, sheet) {
+  if (!loggedIn) data.data.docs = { config: makeDocument(), games: makeDocument(config.google.sheets.games) };
+  if (!data.data.docs) throw new Error("Something has gone terribly wrong during sheets loadData");
+  if (!justRows) {
+    await data.data.docs.config.loadInfo();
+    await data.data.docs.games.loadInfo();
+  }
+
+  const conf = data.data.docs.config;
+  const games = data.data.docs.games;
+
+  if (sheet) {
+    if (sheet === "games") {
+      data.data.games = await games.sheetsByIndex[0].getRows();
+      data.games.clear();
+      for (const game of data.data.games) {
+        if (!game.get("Code")) {
+          game.set("Code", nanoid());
+          game.save();
+        }
+        if (!data.games.find(g => g.title === game.get("Title"))) data.games.set(game.get("Code"), mappers.games(game));
+      }
+    } else {
+      data.data[sheet] = await games.sheetsByTitle[sheetMap[sheet][0]].getRows();
+      data[sheet].clear();
+      for (const datum of data.data[sheet]) {
+        if (datum.get(sheetMap[sheet][1])) data[sheet].set(datum.get(sheetMap[sheet][1]), mappers[sheet](datum));
+      }
+    }
+    return;
+  }
+
+  data.data.games = await games.sheetsByIndex[0].getRows();
+  data.games.clear();
+  for (const game of data.data.games) {
+    if (!game.get("Code")) {
+      game.set("Code", nanoid());
+      game.save();
+    }
+    if (!data.games.find(g => g.title === game.get("Title"))) data.games.set(game.get("Code"), mappers.games(game));
+  }
+
+  for (const key in sheetMap) {
+    /** @type {keyof typeof sheetMap} */
+    // @ts-ignore
+    const typeCorrectKey = key;
+    const s = sheetMap[typeCorrectKey];
+    data[typeCorrectKey].clear();
+    data.data[typeCorrectKey] = await conf.sheetsByTitle[s[0]].getRows();
+    for (const datum of data.data[typeCorrectKey]) {
+      if (datum.get(s[1])) data[typeCorrectKey].set(datum.get(s[1]), mappers[typeCorrectKey](datum));
+    }
+  }
 }
 
 
@@ -136,5 +252,6 @@ function noBlank(e, key) {
 module.exports = {
   loadData,
   makeDocument,
-  data
+  data,
+  mappers
 };

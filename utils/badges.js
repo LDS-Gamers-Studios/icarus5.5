@@ -3,6 +3,7 @@
 // Gets the badges that belong to the user based on a list of roles.
 
 const Discord = require("discord.js"),
+  config = require("../config/config.json"),
   fs = require("fs"),
   u = require("./utils");
 
@@ -17,31 +18,30 @@ const badges = new Discord.Collection();
 /**
  * Gets all badge data from the Google Sheet.
  */
-async function getBadgeData() {
+function getBadgeData() {
   const roles = u.db.sheets.roles;
   const optInRoles = u.db.sheets.optRoles;
 
   try {
-
-    for (const role of roles) {
+    for (const [id, role] of roles) {
       // Only add to the map...
       if (!role.badge || // if they have a badge listed
-        !fs.existsSync(`./media/badges/${role.badge}.png`) // and if the badge path is valid
+        !fs.existsSync(`${config.badgePath}/${role.badge}.png`) // and if the badge path is valid
       ) continue;
 
-      badges.set(role.base, {
+      badges.set(id, {
         image: `${role.badge}.png`,
-        // if there are lower roles, split them, and then remove the one at the end that's just an empty string.
+        // roles that have a higher level badge than this one
         overrides: role.parents
       });
 
     }
 
-    for (const role of optInRoles) {
+    for (const [id, role] of optInRoles) {
       // See above for documentation of what this statement means
-      if (!role.badge || !fs.existsSync(`./media/badges/${role.badge}.png`)) continue;
+      if (!role.badge || !fs.existsSync(`${config.badgePath}/${role.badge}.png`)) continue;
 
-      badges.set(role.id, {
+      badges.set(id, {
         image: `${role.badge}.png`,
         overrides: []
       });
@@ -56,10 +56,14 @@ async function getBadgeData() {
  * should have on their profile card.
  *
  * @param {Discord.Collection<string, Discord.Role>} roles The roles that the member has.
- * @returns {Badge[]} Badge objects used by the makeProfileCard function.
+ * @returns {(Badge & {name: string})[]} Badge objects used by the makeProfileCard function.
  */
 function getBadges(roles) {
-  return badges.filter((b, id) => roles.hasAny(id, ...b.overrides)).toJSON();
+  const guild = roles.first()?.guild;
+  return badges.filter((b, id) => roles.hasAny(id) && !roles.hasAny(...b.overrides)).map((r, id) => {
+    const name = guild?.roles.cache.get(id)?.name ?? "";
+    return { ...r, name };
+  });
 }
 
 module.exports = { getBadges, getBadgeData };

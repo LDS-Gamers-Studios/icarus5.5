@@ -19,7 +19,7 @@ const User = require("../models/User.model");
 
 /**
  * @typedef leaderboardOptions Options for the leaderboard fetch
- * @prop {Discord.Collection<string, Discord.GuildMember> | string[]} [memberIds] Collection or Array of snowflakes to include in the leaderboard
+ * @prop {Discord.Collection<string, Discord.GuildMember> | string[]} memberIds Collection or Array of snowflakes to include in the leaderboard
  * @prop {number} [limit] The number of users to limit the search to
  * @prop {string} [member] A user to include in the results, no matter their ranking.
  * @prop {boolean} [season] Whether to fetch the current season (`true`, default) or lifetime (`false`) leaderboard.
@@ -69,15 +69,14 @@ const models = {
    * @param {leaderboardOptions} options
    * @returns {Promise<(UserRecord & {rank: number})[]>}
    */
-  getLeaderboard: async function(options = {}) {
+  getLeaderboard: async function(options) {
     const members = (options.memberIds instanceof Discord.Collection ? Array.from(options.memberIds.keys()) : options.memberIds);
     const member = options.member;
-    const season = options.season ?? true;
+    const season = options.season;
     const limit = options.limit ?? 10;
 
     // Get top X users first
-    const params = { excludeXP: false };
-    if (members) params.discordId = { $in: members };
+    const params = { excludeXP: false, discordId: { $in: members } };
 
     const query = User.find(params, undefined, { lean: true });
     if (season) query.sort({ currentXP: "desc" });
@@ -102,25 +101,52 @@ const models = {
     return ranked;
   },
   /**
+   * Get the top X of both leaderboards
+   * @param {Omit<leaderboardOptions, "season">} options
+   * @returns {Promise<{ season: (UserRecord & { rank: number })[], life: (UserRecord & { rank: number })[] }>}
+   */
+  getBothLeaderboards: async function(options) {
+    const members = (options.memberIds instanceof Discord.Collection ? Array.from(options.memberIds.keys()) : options.memberIds);
+    const member = options.member;
+    const limit = options.limit ?? 10;
+
+    /** @param {UserRecord[]} users */
+    const mapper = (users) => users.map((u, i) => ({ ...u, rank: i + 1 }));
+
+    const query = () => User.find({ excludeXP: false, discordId: { $in: members } }, undefined, { lean: true }).limit(limit);
+    const season = await query().sort({ currentXP: "desc" }).exec().then(mapper);
+    const life = await query().sort({ totalXP: "desc" }).exec().then(mapper);
+
+    // Get requested user
+    const seasonHas = season.some(r => r.discordId === member);
+    const lifeHas = life.some(r => r.discordId === member);
+    if (member && (!seasonHas || !lifeHas)) {
+      const record = await models.getRank(member, members);
+      if (record) {
+        if (!seasonHas) season.push({ ...record, rank: record.rank.season });
+        if (!lifeHas) life.push({ ...record, rank: record.rank.lifetime });
+      }
+    }
+
+    return { season, life };
+  },
+  /**
      * Get a user's rank
-     * @param {string} [discordId] The member whose ranking you want to view.
-     * @param {Discord.Collection<string, Discord.GuildMember>|string[]} [members] Collection or Array of snowflakes to include in the leaderboard
+     * @param {string} discordId The member whose ranking you want to view.
+     * @param {Discord.Collection<string, Discord.GuildMember>|string[]} members Collection or Array of snowflakes to include in the leaderboard
      * @returns {Promise<(UserRecord & {rank: {season: number, lifetime: number}}) | null>}
      */
   getRank: async function(discordId, members) {
-    if (!discordId) return null;
     members = (members instanceof Discord.Collection ? Array.from(members.keys()) : members);
 
     // Get requested user
     const record = await User.findOne({ discordId }, undefined, { lean: true }).exec();
     if (!record || record.excludeXP) return null;
 
-    const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP } };
-    if (members) seasonParams.discordId = { $in: members };
+    const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP }, discordId: { $in: members } };
     const seasonCount = await User.count(seasonParams);
 
-    const lifetimeParams = { excludeXP: false, totalXP: { $gt: record.totalXP } };
-    if (members) lifetimeParams.discordId = { $in: members };
+    const lifetimeParams = { excludeXP: false, totalXP: { $gt: record.totalXP }, discordId: { $in: members } };
     const lifeCount = await User.count(lifetimeParams);
 
     return { ...record, rank: { season: seasonCount + 1, lifetime: lifeCount + 1 } };

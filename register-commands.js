@@ -58,12 +58,10 @@ function getCommandType(typeId) {
 function displayError(error) {
   if (error.response) {
     if (error.response.status === 429) {
-      // @ts-expect-error
       console.log("You're being rate limited! try again after " + error.response.data.retry_after + " seconds. Starting countdown...");
       setTimeout(() => {
         console.log("try now!");
         process.exit();
-        // @ts-expect-error
       }, error.response.data.retry_after * 1000);
     } else if (error.response.status === 400) {
       console.log("You've got a bad bit of code somewhere! Unfortunately it won't tell me where :(");
@@ -98,6 +96,7 @@ async function register() {
     const load = require(path.resolve(commandPath, command));
     guildCommandLoads.push(load);
   }
+  // @ts-expect-error
   const guild = await axios({
     method: "put",
     url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${ldsg}/commands`,
@@ -119,6 +118,7 @@ async function register() {
     globalCommandLoads.push(load);
   }
   /** @type {ReturnedCommand|void} */
+  // @ts-expect-error
   const global = await axios({
     method: "put",
     url: `https://discord.com/api/v8/applications/${applicationId}/commands`,

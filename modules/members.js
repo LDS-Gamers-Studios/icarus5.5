@@ -43,7 +43,7 @@ async function makeProfileCard(member) {
 
     const badges = badgeUtils.getBadges(member.roles.cache);
     const promises = badges.map(async (b, i) => {
-      const badge = await Jimp.read(`./media/badges/${b.image}`);
+      const badge = await Jimp.read(`${config.badgePath}/${b.image}`);
       card.blit(badge.resize(61, 61), 10 + (73 * (i % 4)), rankOffset + (73 * Math.floor(i / 4)));
     });
 
