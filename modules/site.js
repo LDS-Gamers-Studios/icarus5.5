@@ -50,7 +50,7 @@ if (config.siteOn) {
     res.sendFile(frontFiles + "/index.html");
   });
   // eslint-disable-next-line no-console
-  app.listen(siteConfig.backPort, () => console.log(`Backend running on port ${siteConfig.backPort}`));
+  app.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
 
 
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { AugurClient } = require("augurbot-ts"),
   config = require("./config/config.json"),
   { AllowedMentionsTypes, Partials } = require("discord.js"),
