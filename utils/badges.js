@@ -3,6 +3,7 @@
 // Gets the badges that belong to the user based on a list of roles.
 
 const Discord = require("discord.js"),
+  config = require("../config/config.json"),
   fs = require("fs"),
   u = require("./utils");
 
@@ -25,12 +26,12 @@ function getBadgeData() {
     for (const [id, role] of roles) {
       // Only add to the map...
       if (!role.badge || // if they have a badge listed
-        !fs.existsSync(`./site/backend/public/badges/${role.badge}.png`) // and if the badge path is valid
+        !fs.existsSync(`${config.badgePath}/${role.badge}.png`) // and if the badge path is valid
       ) continue;
 
       badges.set(id, {
         image: `${role.badge}.png`,
-        // if there are lower roles, split them, and then remove the one at the end that's just an empty string.
+        // roles that have a higher level badge than this one
         overrides: role.parents
       });
 
@@ -38,7 +39,7 @@ function getBadgeData() {
 
     for (const [id, role] of optInRoles) {
       // See above for documentation of what this statement means
-      if (!role.badge || !fs.existsSync(`./site/backend/public/badges/${role.badge}.png`)) continue;
+      if (!role.badge || !fs.existsSync(`${config.badgePath}/${role.badge}.png`)) continue;
 
       badges.set(id, {
         image: `${role.badge}.png`,

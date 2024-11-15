@@ -82,5 +82,6 @@
   "memberMilestone": {
     "enabled": false,
     "count": 5000
-  }
+  },
+  "badgePath": "./media/badges"
 }
