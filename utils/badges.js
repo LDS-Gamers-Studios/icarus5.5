@@ -55,7 +55,7 @@ function getBadgeData() {
  * should have on their profile card.
  *
  * @param {Discord.Collection<string, Discord.Role>} roles The roles that the member has.
- * @returns {Badge[]} Badge objects used by the makeProfileCard function.
+ * @returns {(Badge & {name: string})[]} Badge objects used by the makeProfileCard function.
  */
 function getBadges(roles) {
   const guild = roles.first()?.guild;

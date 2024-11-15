@@ -40,8 +40,19 @@ if (config.siteOn) {
   app.use('/static', express.static('site/backend/public'));
   // app.use('/tags', express.static('media/tags'));
 
+  const path = require("path");
+  const frontFiles = path.resolve(__dirname, '../site/frontend/build');
+  // Serve static files from the React build folder
+  app.use(express.static("site/frontend/build"));
+
+  // Handle all other routes by serving the React index.html file
+  app.get('*', (req, res) => {
+    res.sendFile(frontFiles + "/index.html");
+  });
   // eslint-disable-next-line no-console
-  app.listen(siteConfig.port, () => console.log(`Backend running on port ${siteConfig.port}`));
+  app.listen(siteConfig.backPort, () => console.log(`Backend running on port ${siteConfig.backPort}`));
+
+
 }
 
 module.exports = new Augur.Module();
