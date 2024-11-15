@@ -199,7 +199,7 @@ async function loadData(loggedIn = true, justRows = false, sheet) {
       data.data.games = await games.sheetsByIndex[0].getRows();
       data.games.clear();
       for (const game of data.data.games) {
-        if (!game.get("Title")) {
+        if (!game.get("Code")) {
           game.set("Code", nanoid());
           game.save();
         }
@@ -209,7 +209,7 @@ async function loadData(loggedIn = true, justRows = false, sheet) {
       data.data[sheet] = await games.sheetsByTitle[sheetMap[sheet][0]].getRows();
       data[sheet].clear();
       for (const datum of data.data[sheet]) {
-        if (datum.get(sheetMap[sheet][1]))data[sheet].set(datum.get(sheetMap[sheet][1]), mappers[sheet](datum));
+        if (datum.get(sheetMap[sheet][1])) data[sheet].set(datum.get(sheetMap[sheet][1]), mappers[sheet](datum));
       }
     }
     return;
