@@ -21,6 +21,10 @@ const UserSchema = new Schema({
     type: Number,
     default: 0
   },
+  voice: {
+    type: Number,
+    default: 0
+  },
   excludeXP: {
     type: Boolean,
     default: true

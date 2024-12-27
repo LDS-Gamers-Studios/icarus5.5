@@ -81,5 +81,6 @@
   "memberMilestone": {
     "enabled": false,
     "count": 5000
-  }
+  },
+  "xpBase": 25
 }
