@@ -336,8 +336,10 @@ const Module = new Augur.Module()
     const highlight = highlights.has(msg.channelId) ? 1.3 : 1;
     const lure = ((lures.get(msg.channelId)?.length ?? 0) * 0.1) + 1;
     const multiplier = channelMultiplier * mediaMultiplier * highlight * lure;
-    // add the xp if they haven't sent a message
-    if (!active.get(msg.author.id)?.find(a => a.isMessage)) addXp(msg.author.id, multiplier, msg.channelId, false, true);
+    // add the xp if they haven't sent a message, or change the multiplier if they posted something of more value
+    const prevMessage = active.get(msg.author.id)?.find(a => a.isMessage);
+    if (prevMessage && prevMessage.multiplier < multiplier) prevMessage.multiplier = multiplier;
+    else if (!prevMessage) addXp(msg.author.id, multiplier, msg.channelId, false, true);
   })
   // xp for poll votes
   .addEvent("messageUpdate", async (msg, newMsg) => {
