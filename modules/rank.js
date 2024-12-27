@@ -9,17 +9,8 @@ const Rank = require("../utils/rankInfo");
 // [🥴,😬,🤷‍♂️] Some emoji aren't allowed
 let bannedEmoji = new Set();
 
-/** @type {Discord.Collection<string, Set<string>>} */
-// [[id, [🤩,🥰,😻]]] These reactions are worth more in specific channels, like #pet-ownership would prefer cute reactions
-let channelEmojiBoost = new u.Collection();
-
-/** @type {Discord.Collection<string, number>} */
-// [id, multiplier] Some channels are worth more xp than default, but others are worth less
-let postMultipliers = new u.Collection();
-
-/** @type {Set<string>} */
-// [id, multiplier] Some channels prefer media over conversation
-let mediaMultipliers = new Set();
+/** @type {Discord.Collection<string, import("../database/sheets").ChannelXPSetting>} */
+let channelSettings = new u.Collection();
 
 /** @type {Set<string>} */
 // There can be "channel of the week" style events, where that channel is worth more xp
@@ -154,9 +145,8 @@ async function reactionXp(reaction, user, add = true) {
   const countMultiplier = (((await reaction.users.fetch()).size + (add ? 0 : 1)) * 0.7) + 1;
   // voice channel IDs aren't very helpful since they get replaced, so we use Voice instead
   const channelId = reaction.message.channel.type === Discord.ChannelType.GuildVoice ? "Voice" : reaction.message.channelId;
-  // general multipliers
   // some emoji are worth more in certain channels
-  const channelEmoji = channelEmojiBoost.get(channelId)?.has(identifier) ? 1.5 : 1;
+  const channelEmoji = channelSettings.get(channelId)?.emoji.has(identifier) ? 1.5 : 1;
   const recipient = 0.5 * countMultiplier * channelEmoji * (add ? 1 : -1);
   const giver = 0.5 * channelEmoji * (add ? 1 : -1);
   // add the xp to the queue
@@ -313,16 +303,9 @@ const Module = new Augur.Module()
     // set banned emoji
     bannedEmoji = u.db.sheets.xpSettings.banned;
     // set multipliers
-    channelEmojiBoost = new u.Collection(
-      u.db.sheets.xpSettings.channels.filter(ch => ch.emoji.size > 0).map(ch => [ch.channelId, ch.emoji])
+    channelSettings = new u.Collection(
+      u.db.sheets.xpSettings.channels.map(ch => [ch.channelId, ch])
     );
-    postMultipliers = new u.Collection(
-      u.db.sheets.xpSettings.channels.filter(ch => ch.posts !== 1).map(ch => [ch.channelId, ch.posts])
-    );
-    mediaMultipliers = new Set(
-      u.db.sheets.xpSettings.channels.filter(ch => ch.preferMedia).map(ch => ch.channelId)
-    );
-
   })
   .setUnload(() => active)
   .addEvent("messageReactionAdd", (reaction, user) => reactionXp(reaction, user, true))
@@ -331,9 +314,10 @@ const Module = new Augur.Module()
     // no fun for bots
     if (msg.author.bot || msg.author.system || msg.webhookId) return;
     // different multipliers for different channels
-    const channelMultiplier = postMultipliers.get(msg.channelId) ?? 1;
-    const mediaMultiplier = (msg.attachments.size * (mediaMultipliers.has(msg.channelId) ? 0.3 : 0)) + 1;
+    const channelMultiplier = channelSettings.get(msg.channelId)?.posts ?? 1;
+    const mediaMultiplier = (msg.attachments.size * (channelSettings.get(msg.channelId)?.preferMedia ? 0.3 : 0)) + 1;
     const highlight = highlights.has(msg.channelId) ? 1.3 : 1;
+    // time specific multipliers
     const lure = ((lures.get(msg.channelId)?.length ?? 0) * 0.1) + 1;
     const multiplier = channelMultiplier * mediaMultiplier * highlight * lure;
     // add the xp if they haven't sent a message, or change the multiplier if they posted something of more value
