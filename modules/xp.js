@@ -168,7 +168,7 @@ async function rankClockwork(client) {
     .forEach(m => {
       // vcs get deleted, stage channels don't
       const channelId = m.voice.channel?.type === Discord.ChannelType.GuildVoice ? "Voice" : m.voice.channelId ?? "";
-      return addXp(m.id, 1, channelId, true);
+      return addXp(m.id, 0.5, channelId, true);
     });
 
   // no reason to do anything
