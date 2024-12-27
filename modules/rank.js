@@ -345,13 +345,20 @@ const Module = new Augur.Module()
   .addEvent("messageUpdate", async (msg, newMsg) => {
     // not allowed in VCs
     if (msg.poll && !msg.poll.resultsFinalized && newMsg.poll?.resultsFinalized && msg.channel.type !== Discord.ChannelType.GuildVoice) {
+      // find the top answer
       const sorted = [...newMsg.poll.answers.values()].sort((a, b) => b.voteCount - a.voteCount);
+      // people can only get xp once per poll. no multiple answers shenanigans
+      const voters = new Set();
+      // assign xp to people who voted, favoring those with the right answer
       for (let i = 0; i < sorted.length; i++) {
         const answer = sorted[i];
         if (answer.voteCount === 0) continue;
         const people = await answer.fetchVoters();
         for (const [id, user] of people) {
-          if (!user.bot && !user.system) addXp(id, i === 0 ? 2 : 1, msg.channelId);
+          if (!voters.has(user.id) && !user.bot && !user.system) {
+            voters.add(user.id);
+            addXp(id, i === 0 ? 2 : 1, msg.channelId);
+          }
         }
       }
     }
