@@ -247,8 +247,8 @@ async function rankClockwork(client) {
   }
 }
 
-const Module = new Augur.Module()
-.setUnload(() => active)
+const Module = new Augur.Module();
+Module.setUnload(() => active)
   .addEvent("messageReactionAdd", (reaction, user) => reactionXp(reaction, user, true))
   .addEvent("messageReactionRemove", (reaction, user) => reactionXp(reaction, user, false))
   // @ts-expect-error REMOVE THESE TWO BEFORE LAUNCH
@@ -326,3 +326,5 @@ const Module = new Augur.Module()
     resetFeatherDrops();
   })
   .setUnload(() => active);
+
+module.exports = Module;
