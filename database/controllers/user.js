@@ -33,17 +33,18 @@ const outdated = "Expected a Discord ID but likely recieved an object instead. T
 const models = {
   /**
      * Add XP to a set of users
-     * @param {Discord.Collection<string, import("../../modules/rank").ActiveUser[]>} activity Users to add XP, as well as their multipliers
-     * @returns {Promise<{users: UserRecord[], xp: number}>}
+     * @param {Discord.Collection<string, import("../../modules/xp").ActiveUser[]>} activity Users to add XP, as well as their multipliers
+     * @returns {Promise<{users: UserRecord[], oldUsers: UserRecord[], xp: number}>}
      */
   addXp: async function(activity) {
-    const xpBase = config.xpBase;
-    const included = new Set((await User.find({ discordId: { $in: [...activity.keys()] }, excludeXP: false }, undefined, { lean: true })).map(u => u.discordId));
+    const xpBase = config.xp.base;
+    const included = await User.find({ discordId: { $in: [...activity.keys()] }, excludeXP: false }, undefined, { lean: true });
+    const uniqueIncluded = new Set(included.map(u => u.discordId));
     await User.bulkWrite(
       activity.map((val, discordId) => {
         // add the multiple bonuses together
         const x = Math.ceil(xpBase * val.reduce((p, c) => c.multiplier + p, 0));
-        const xp = included.has(discordId) ? x : 0;
+        const xp = uniqueIncluded.has(discordId) ? x : 0;
         const posts = val.filter(v => v.isMessage).length;
         const voice = val.filter(v => v.isVoice).length;
         return {
@@ -62,7 +63,7 @@ const models = {
     // update channel xp
     /** @type {Discord.Collection<string, number[]>} */
     const uniqueChannels = new Discord.Collection();
-    const channels = activity.filter((_, id) => included.has(id)).map(a => a).flat();
+    const channels = activity.filter((_, id) => uniqueIncluded.has(id)).map(a => a).flat();
     for (const val of channels) {
       uniqueChannels.ensure(val.channelId, () => []).push(val.multiplier);
     }
@@ -80,7 +81,7 @@ const models = {
         };
       })
     );
-    return { users: userDocs, xp: xpBase };
+    return { users: userDocs, oldUsers: included, xp: xpBase };
   },
   /**
    * Fetch a user record from the database.
