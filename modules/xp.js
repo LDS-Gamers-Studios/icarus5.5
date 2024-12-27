@@ -71,13 +71,16 @@ function DEBUGFeatherState(msg) {
 
 /** @param {Discord.Message<true>} msg */
 async function featherCheck(msg) {
+  const lureCount = lures.get(msg.channelId) ?? 0;
   if (
-    !dropCode || // if primed or already reacted
+    !(dropCode || lureCount) || // only if it's primed or they have a lure placed
     msg.channel.isDMBased() || msg.channel.permissionsFor(u.sf.ldsg)?.has("SendMessages") // only publicly postable channels
   ) return;
 
   try {
-    if (Math.random() > config.xp.featherDropChance) return;
+    // chances of a feather dropping is pretty low unless they have a lure
+    if (Math.random() > (config.xp.featherDropChance * (lureCount + 1))) return;
+
     dropCode = false;
     const reaction = await msg.react(u.sf.emoji.xpFeather).catch(u.noop);
     // don't let someone blocking the bot ruin the fun
