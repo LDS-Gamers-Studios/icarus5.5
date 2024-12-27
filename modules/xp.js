@@ -93,8 +93,17 @@ async function featherCheck(msg) {
     await reaction.remove();
     const finder = userReact?.first()?.users.cache.find(usr => !usr.bot);
     if (finder) {
-      // do we want to give them a few ember?
-      // either way they get xp
+      // give em ember
+      u.db.bank.addCurrency({
+        currency: "em",
+        description: `XP feather drop in #${msg.channel.name}`,
+        discordId: finder.id,
+        giver: msg.client.user.id,
+        hp: true,
+        value: 5 * Math.ceil(Math.random() * 4)
+      });
+
+      // give em xp
       addXp(finder.id, 3, msg.channelId);
     } else {
       // they missed it! Try again.
