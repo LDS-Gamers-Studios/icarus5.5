@@ -45,6 +45,7 @@ const models = {
         // add the multiple bonuses together
         const x = Math.ceil(xpBase * val.reduce((p, c) => c.multiplier + p, 0));
         const xp = uniqueIncluded.has(discordId) ? x : 0;
+        if (!Number.isFinite(xp)) throw new Error(`${discordId} achieved INFINITE XP!`);
         const posts = val.filter(v => v.isMessage).length;
         const voice = val.filter(v => v.isVoice).length;
         return {
