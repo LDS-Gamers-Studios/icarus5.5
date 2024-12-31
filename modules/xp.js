@@ -59,13 +59,13 @@ function resetFeatherDrops() {
 function DEBUGFeatherPrime(msg) {
   dropCode = true;
   clearTimeout(cooldown);
-  msg.react("👌");
+  msg.react("👌").catch(u.noop);
 }
 
 function DEBUGFeatherState(msg) {
   msg.reply(
     `Current State: ${dropCode ? "Ready" : "On Cooldown"}\n` +
-    `Cooldown End: ${cooltime.toLocaleString()}`
+    `Cooldown End: ${u.time(cooltime, "F")}`
   );
 }
 
@@ -73,18 +73,19 @@ function DEBUGFeatherState(msg) {
 async function featherCheck(msg) {
   const lureCount = lures.get(msg.channelId) ?? 0;
   if (
-    !(dropCode || lureCount) || // only if it's primed or they have a lure placed
-    msg.channel.isDMBased() || msg.channel.permissionsFor(u.sf.ldsg)?.has("SendMessages") // only publicly postable channels
+    !(dropCode || lureCount > 0) || // only if it's primed or they have a lure placed
+    msg.channel.isDMBased() || !msg.channel.permissionsFor(u.sf.ldsg)?.has("SendMessages") // only publicly postable channels
   ) return;
-
   try {
     // chances of a feather dropping is pretty low unless they have a lure
     if (Math.random() > (config.xp.featherDropChance * (lureCount + 1))) return;
-
     dropCode = false;
     const reaction = await msg.react(u.sf.emoji.xpFeather).catch(u.noop);
     // don't let someone blocking the bot ruin the fun
-    if (!reaction) return dropCode = true;
+    if (!reaction) {
+      dropCode = true;
+      return;
+    }
     const userReact = await msg.awaitReactions({
       maxUsers: 1,
       time: 60_000,
@@ -107,7 +108,8 @@ async function featherCheck(msg) {
       addXp(finder.id, 3, msg.channelId);
     } else {
       // they missed it! Try again.
-      return dropCode = false;
+      dropCode = true;
+      return;
     }
     resetFeatherDrops();
   } catch (error) {
@@ -270,7 +272,6 @@ Module.setUnload(() => active)
       msg.author.bot || msg.author.system || msg.webhookId || // no bots
       u.parse(msg) // not a command
     ) return;
-
     // do a feather drop check
     featherCheck(msg);
 

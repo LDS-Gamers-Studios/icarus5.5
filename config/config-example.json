@@ -82,5 +82,9 @@
     "enabled": false,
     "count": 5000
   },
-  "xpBase": 25
+  "xp": {
+    "base": 25,
+    "featherCooldown": 3,
+    "featherDropChance": 0.01
+  }
 }
