@@ -38,31 +38,42 @@ const { JWT } = require("google-auth-library");
  * @prop {Date} archiveAt
  */
 
+/**
+ * @typedef ChannelXPSetting
+ * @prop {string} channelId
+ * @prop {Set<string>} emoji
+ * @prop {number} posts
+ * @prop {boolean} preferMedia
+ */
 const data = {
   data: {
     /** @type {GoogleSpreadsheetRow[]} */
-    roles: [],
-    /** @type {GoogleSpreadsheetRow[]} */
     optRoles: [],
     /** @type {GoogleSpreadsheetRow[]} */
-    tourneyChampions: [],
+    roles: [],
     /** @type {GoogleSpreadsheetRow[]} */
     sponsors: [],
     /** @type {GoogleSpreadsheetRow[]} */
+    tourneyChampions: [],
+    /** @type {GoogleSpreadsheetRow[]} */
     vcNames: [],
+    /** @type {GoogleSpreadsheetRow[]} */
+    xpSettings: [],
     /** @type {GoogleSpreadsheet | null} */
     doc: null
   },
-  /** @type {Role[]} */
-  roles: [],
   /** @type {OptRole[]} */
   optRoles: [],
-  /** @type {TourneyChampion[]} */
-  tourneyChampions: [],
+  /** @type {Role[]} */
+  roles: [],
   /** @type {Sponsor[]} */
   sponsors: [],
+  /** @type {TourneyChampion[]} */
+  tourneyChampions: [],
   /** @type {string[]} */
-  vcNames: []
+  vcNames: [],
+  /** @type {{ channels: ChannelXPSetting[], banned: Set<string> }} */
+  xpSettings: { banned: new Set, channels: [] }
 };
 
 /** @param {string} [sheetId] */
@@ -83,11 +94,18 @@ async function loadData(loggedIn = true) {
   if (!data.data.doc) throw new Error("Something has gone terribly wrong during sheets loadData");
   await data.data.doc.loadInfo();
 
-  data.data.roles = await data.data.doc.sheetsByTitle.Roles.getRows();
   data.data.optRoles = await data.data.doc.sheetsByTitle["Opt-In Roles"].getRows();
-  data.data.tourneyChampions = await data.data.doc.sheetsByTitle["Tourney Champions"].getRows();
+  data.data.roles = await data.data.doc.sheetsByTitle.Roles.getRows();
   data.data.sponsors = await data.data.doc.sheetsByTitle["Sponsor Channels"].getRows();
+  data.data.tourneyChampions = await data.data.doc.sheetsByTitle["Tourney Champions"].getRows();
   data.data.vcNames = await data.data.doc.sheetsByTitle["Voice Channel Names"].getRows();
+  data.data.xpSettings = await data.data.doc.sheetsByTitle["XP Settings"].getRows();
+
+  data.optRoles = data.data.optRoles.map(r => ({
+    name: r.get("Role Tag"),
+    id: r.get("RoleID"),
+    badge: r.get("Badge")
+  })).filter(r => noBlank(r, "id"));
 
   data.roles = data.data.roles.map(r => ({
     type: r.get("Type"),
@@ -98,18 +116,6 @@ async function loadData(loggedIn = true) {
     badge: r.get("Badge")
   })).filter(r => noBlank(r, "base"));
 
-  data.optRoles = data.data.optRoles.map(r => ({
-    name: r.get("Role Tag"),
-    id: r.get("RoleID"),
-    badge: r.get("Badge")
-  })).filter(r => noBlank(r, "id"));
-
-  data.tourneyChampions = data.data.tourneyChampions.map(r => ({
-    name: r.get("Tourney Name"),
-    userId: r.get("User ID"),
-    takeAt: new Date(r.get("Take Role At"))
-  })).filter(c => noBlank(c, "userId"));
-
   data.sponsors = data.data.sponsors.map(s => ({
     userId: s.get("Sponsor"),
     channelId: s.get("Channel"),
@@ -118,8 +124,28 @@ async function loadData(loggedIn = true) {
     archiveAt: new Date()
   })).filter(s => noBlank(s, "userId"));
 
+  data.tourneyChampions = data.data.tourneyChampions.map(r => ({
+    name: r.get("Tourney Name"),
+    userId: r.get("User ID"),
+    takeAt: new Date(r.get("Take Role At"))
+  })).filter(c => noBlank(c, "userId"));
+
   data.vcNames = data.data.vcNames.map(n => n.get("Name"))
     .filter(n => noBlank(n));
+
+  const channelXp = data.data.xpSettings.map(s => {
+    const posts = parseFloat(s.get("PostMultiplier"));
+    return {
+      channelId: s.get("ChannelId"),
+      emoji: new Set(s.get("Emoji")?.split(", ") ?? []),
+      posts: isNaN(posts) ? 1 : posts,
+      preferMedia: s.get("PreferMedia") === "TRUE"
+    };
+  }).filter(s => noBlank(s, "channelId"));
+
+  const banned = data.data.xpSettings.map(s => s.get("BannedEmoji"))
+    .filter(b => noBlank(b));
+  data.xpSettings = { banned: new Set(banned), channels: channelXp };
 }
 
 

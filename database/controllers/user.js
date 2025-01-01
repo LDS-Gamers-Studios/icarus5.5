@@ -1,8 +1,10 @@
 // @ts-check
 const Discord = require("discord.js"),
-  moment = require("moment");
+  moment = require("moment"),
+  config = require("../../config/config.json");
 
 const User = require("../models/User.model");
+const ChannelXP = require("../models/ChannelXP.model");
 
 /**
  * @typedef UserRecord
@@ -10,7 +12,8 @@ const User = require("../models/User.model");
  * @prop {string[]} roles
  * @prop {string[]} badges
  * @prop {number} posts
- * @prop {boolean} excludeXP
+ * @prop {number} voice
+ * @prop {number} trackXP
  * @prop {number} currentXP
  * @prop {number} totalXP
  * @prop {number} priorTenure
@@ -27,22 +30,39 @@ const User = require("../models/User.model");
 
 const outdated = "Expected a Discord ID but likely recieved an object instead. That's deprecated now!";
 
+const TrackXPEnum = {
+  0: "OFF",
+  1: "SILENT",
+  2: "FULL",
+  "OFF": 0,
+  "SILENT": 1,
+  "FULL": 2
+};
+
 const models = {
+  TrackXPEnum,
   /**
      * Add XP to a set of users
-     * @param {string[]} userIds Users to add XP
-     * @returns {Promise<{users: UserRecord[], xp: number}>}
+     * @param {Discord.Collection<string, import("../../modules/xp").ActiveUser[]>} activity Users to add XP, as well as their multipliers
+     * @returns {Promise<{users: UserRecord[], oldUsers: UserRecord[], xp: number}>}
      */
-  addXp: async function(userIds) {
-    const xp = Math.floor(Math.random() * 11) + 15;
-    const included = (await User.find({ discordId: { $in: userIds }, excludeXP: false }, undefined, { lean: true })).map(u => u.discordId);
+  addXp: async function(activity) {
+    const xpBase = Math.floor(Math.random() * 3) + config.xp.base;
+    const included = await User.find({ discordId: { $in: [...activity.keys()] }, excludeXP: false }, undefined, { lean: true });
+    const uniqueIncluded = new Set(included.map(u => u.discordId));
     await User.bulkWrite(
-      userIds.map(u => {
-        const x = included.includes(u) ? xp : 0;
+      activity.map((val, discordId) => {
+        // add the multiple bonuses together
+        const x = Math.ceil(xpBase * val.reduce((p, c) => c.multiplier + p, 0));
+        const xp = uniqueIncluded.has(discordId) ? x : 0;
+        if (!Number.isFinite(xp)) throw new Error(`${discordId} achieved INFINITE XP!`);
+        if (xp > 500) throw new Error(`${discordId} was going to get ${xp} xp. That doesn't seem safe!\n${JSON.stringify(val)}`);
+        const posts = val.filter(v => v.isMessage).length;
+        const voice = val.filter(v => v.isVoice).length;
         return {
           updateOne: {
-            filter: { discordId: u },
-            update: { $inc: { currentXP: x, totalXP: x, posts: 1 } },
+            filter: { discordId },
+            update: { $inc: { currentXP: xp, totalXP: xp, posts, voice } },
             upsert: true,
             new: true
           }
@@ -50,9 +70,30 @@ const models = {
       })
     );
     const userDocs = await User.find(
-      { discordId: { $in: userIds } }, null, { lean: true }
+      { discordId: { $in: [...activity.keys()] } }, null, { lean: true }
     ).exec();
-    return { users: userDocs, xp };
+    // update channel xp
+    /** @type {Discord.Collection<string, number[]>} */
+    const uniqueChannels = new Discord.Collection();
+    const channels = activity.filter((_, id) => uniqueIncluded.has(id)).map(a => a).flat();
+    for (const val of channels) {
+      uniqueChannels.ensure(val.channelId, () => []).push(val.multiplier);
+    }
+    // no need to wait for it to finish before moving on
+    ChannelXP.bulkWrite(
+      uniqueChannels.map((v, channelId) => {
+        const xp = Math.ceil(xpBase * v.reduce((p, c) => p + c, 0));
+        return {
+          updateOne: {
+            filter: { channelId },
+            update: { $inc: { xp } },
+            upsert: true,
+            new: true
+          }
+        };
+      })
+    );
+    return { users: userDocs, oldUsers: included, xp: xpBase };
   },
   /**
    * Fetch a user record from the database.
@@ -63,6 +104,12 @@ const models = {
   fetchUser: async function(discordId, createIfNotFound = true) {
     if (typeof discordId !== "string") throw new TypeError(outdated);
     return User.findOne({ discordId }, undefined, { lean: true, upsert: createIfNotFound }).exec();
+  },
+  /**
+   * DANGER!!! THIS RESETS ALL CURRENTXP TO 0
+   */
+  resetSeason: function() {
+    return User.updateMany({}, { currentXP: 0 }, { lean: true });
   },
   /**
    * Get the top X of the leaderboard
@@ -113,7 +160,7 @@ const models = {
 
     // Get requested user
     const record = await User.findOne({ discordId }, undefined, { lean: true }).exec();
-    if (!record || record.excludeXP) return null;
+    if (!record || record.trackXP === TrackXPEnum.OFF) return null;
 
     const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP } };
     if (members) seasonParams.discordId = { $in: members };
@@ -145,14 +192,14 @@ const models = {
   /**
    * Update a member's track XP preference
    * @param {string} discordId The guild member to update.
-   * @param {boolean} track Whether to track the member's XP.
+   * @param {number} trackXP The new status
    * @returns {Promise<UserRecord | null>}
    */
-  trackXP: function(discordId, track = true) {
+  trackXP: function(discordId, trackXP) {
     if (typeof discordId !== 'string') throw new Error(outdated);
     return User.findOneAndUpdate(
       { discordId },
-      { $set: { excludeXP: !track } },
+      { $set: { trackXP } },
       { new: true, upsert: true, lean: true }
     ).exec();
   },
