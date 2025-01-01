@@ -48,7 +48,7 @@ let cooldown;
 let dropCode = false;
 
 function resetFeatherDrops() {
-  // 1 hour plus some until the next drop
+  // rand(x) hours until the next drop
   const time = ((Math.random() * (config.xp.featherCooldown - 1)) + 1) * 60 * 60_000;
   cooltime = new Date(Date.now() + time);
   cooldown = setTimeout(() => {
@@ -100,15 +100,17 @@ async function featherCheck(msg) {
     await reaction.remove();
     const finder = userReact?.first()?.users.cache.find(usr => !usr.bot);
     if (finder) {
-      // give em ember
-      u.db.bank.addCurrency({
-        currency: "em",
-        description: `XP feather drop in #${msg.channel.name}`,
-        discordId: finder.id,
-        giver: msg.client.user.id,
-        hp: true,
-        value: 5 * Math.ceil(Math.random() * 4)
-      });
+      // give em ember if they didn't buy their way in
+      if (dropCode) {
+        u.db.bank.addCurrency({
+          currency: "em",
+          description: `XP feather drop in #${msg.channel.name}`,
+          discordId: finder.id,
+          giver: msg.client.user.id,
+          hp: true,
+          value: 5 * Math.ceil(Math.random() * 4)
+        });
+      }
 
       // give em xp
       addXp(finder.id, 3, msg.channelId);
