@@ -37,7 +37,7 @@ const models = {
      * @returns {Promise<{users: UserRecord[], oldUsers: UserRecord[], xp: number}>}
      */
   addXp: async function(activity) {
-    const xpBase = config.xp.base;
+    const xpBase = Math.floor(Math.random() * 3) + config.xp.base;
     const included = await User.find({ discordId: { $in: [...activity.keys()] }, excludeXP: false }, undefined, { lean: true });
     const uniqueIncluded = new Set(included.map(u => u.discordId));
     await User.bulkWrite(
@@ -46,6 +46,7 @@ const models = {
         const x = Math.ceil(xpBase * val.reduce((p, c) => c.multiplier + p, 0));
         const xp = uniqueIncluded.has(discordId) ? x : 0;
         if (!Number.isFinite(xp)) throw new Error(`${discordId} achieved INFINITE XP!`);
+        if (xp > 500) throw new Error(`${discordId} was going to get ${xp} xp. That doesn't seem safe!\n${JSON.stringify(val)}`);
         const posts = val.filter(v => v.isMessage).length;
         const voice = val.filter(v => v.isVoice).length;
         return {
