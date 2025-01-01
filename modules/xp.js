@@ -153,12 +153,14 @@ async function reactionXp(reaction, user, add = true) {
   const identifier = reaction.emoji.id ?? reaction.emoji.name ?? "";
 
   if (
+    !reaction.message.inGuild() || // must be in the server
     user.bot || user.system || reaction.message.author?.bot || reaction.message.author?.system || // no fun for the bots
     !reaction.message.author || user.id === reaction.message.author.id || // no reacting to yourself. also funny business with the member object
-    u.db.sheets.xpSettings.banned.has(identifier) // no banned reactions
+    u.db.sheets.xpSettings.banned.has(identifier) || // no banned reactions
+    channelSettings.get(reaction.message.id)?.posts === 0 // no xp excluded channels
   ) return;
 
-  // more reactions means more xp for the poster. If it was removed we have to add it back temporarily
+  // more reactions means more xp for the poster. If it was removed we have to get the pre-removal count
   const countMultiplier = await reaction.users.fetch().then(usrs => usrs.size + (add ? 0 : 1) * 1.3);
 
   // voice channel IDs aren't very helpful since they get replaced, so we use Voice instead
@@ -171,11 +173,13 @@ async function reactionXp(reaction, user, add = true) {
   const recipient = 0.5 * countMultiplier * channelEmoji * (add ? 1 : -1);
   const giver = 0.5 * channelEmoji * (add ? 1 : -1);
 
-  // only give xp to the poster if it's a publicly postable channel. Excludes things like #announcements and polls in team channels
-  if (!reaction.message.channel.isDMBased() && reaction.message.channel.permissionsFor(u.sf.ldsg)?.has("SendMessages")) addXp(user.id, giver, channelId);
   addXp(reaction.message.author.id, recipient, channelId);
 
-  return { recipient, giver };
+  // if it's a public readonly, (like announcements), don't give xp to the poster
+  const perms = reaction.message.channel.permissionsFor(u.sf.ldsg);
+  if (perms?.has("ViewChannel") && !perms.has("SendMessages")) return;
+  addXp(user.id, giver, channelId);
+
 }
 
 /** @param {Augur.AugurClient} client */
@@ -187,7 +191,7 @@ async function rankClockwork(client) {
   ldsg.members.cache.filter(m => m.voice.channel && !m.voice.mute && !m.voice.deaf)
     .forEach(m => {
       // vcs get deleted, stage channels don't
-      const channelId = m.voice.channel?.type === Discord.ChannelType.GuildVoice ? "Voice" : m.voice.channelId ?? "";
+      const channelId = m.voice.channel?.type === Discord.ChannelType.GuildVoice ? "Voice" : m.voice.channelId ?? "No VC";
       return addXp(m.id, 0.5, channelId, true);
     });
 
@@ -302,7 +306,7 @@ Module.setUnload(() => active)
   // xp for poll votes
   .addEvent("messageUpdate", async (msg, newMsg) => {
     // see if it's a finished poll outside of a VC
-    if (!msg.poll || !(!msg.poll.resultsFinalized && newMsg.poll?.resultsFinalized) || msg.channel.type === Discord.ChannelType.GuildVoice) return;
+    if (!msg.inGuild() || !msg.poll || !(!msg.poll.resultsFinalized && newMsg.poll?.resultsFinalized) || msg.channel.type === Discord.ChannelType.GuildVoice) return;
 
     // people can only get xp once per poll. no multiple answers shenanigans
     const sorted = [...newMsg.poll.answers.values()].sort((a, b) => a.voteCount - b.voteCount);
