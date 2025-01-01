@@ -170,8 +170,11 @@ async function reactionXp(reaction, user, add = true) {
   // add the xp to the queue
   const recipient = 0.5 * countMultiplier * channelEmoji * (add ? 1 : -1);
   const giver = 0.5 * channelEmoji * (add ? 1 : -1);
-  addXp(user.id, giver, channelId);
+
+  // only give xp to the poster if it's a publicly postable channel. Excludes things like #announcements and polls in team channels
+  if (!reaction.message.channel.isDMBased() && reaction.message.channel.permissionsFor(u.sf.ldsg)?.has("SendMessages")) addXp(user.id, giver, channelId);
   addXp(reaction.message.author.id, recipient, channelId);
+
   return { recipient, giver };
 }
 
