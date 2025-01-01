@@ -6,6 +6,7 @@ config/snowflakes-commands.json
 test.js
 *-.js
 *-.json
+*.csv
 data/banned.json
 site
 .DS_Store

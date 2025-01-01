@@ -76,21 +76,27 @@ async function featherCheck(msg) {
     !(dropCode || lureCount > 0) || // only if it's primed or they have a lure placed
     msg.channel.isDMBased() || !msg.channel.permissionsFor(u.sf.ldsg)?.has("SendMessages") // only publicly postable channels
   ) return;
+
   try {
     // chances of a feather dropping is pretty low unless they have a lure
     if (Math.random() > (config.xp.featherDropChance * (lureCount + 1))) return;
     dropCode = false;
     const reaction = await msg.react(u.sf.emoji.xpFeather).catch(u.noop);
+
     // don't let someone blocking the bot ruin the fun
     if (!reaction) {
       dropCode = true;
       return;
     }
+
+    // wait for reactions
     const userReact = await msg.awaitReactions({
       maxUsers: 1,
       time: 60_000,
       filter: (r, usr) => r.emoji.id === u.sf.emoji.xpFeather && !usr.bot
     }).catch(u.noop);
+
+    // oop we got a hit!
     await reaction.remove();
     const finder = userReact?.first()?.users.cache.find(usr => !usr.bot);
     if (finder) {
@@ -262,9 +268,9 @@ const Module = new Augur.Module();
 Module.setUnload(() => active)
   .addEvent("messageReactionAdd", (reaction, user) => reactionXp(reaction, user, true))
   .addEvent("messageReactionRemove", (reaction, user) => reactionXp(reaction, user, false))
-  // @ts-expect-error REMOVE THESE TWO BEFORE LAUNCH
-  .addCommand({ name: "prime", process: DEBUGFeatherPrime })
-  .addCommand({ name: "status", process: DEBUGFeatherState })
+  // mainly for debug
+  .addCommand({ name: "prime", process: DEBUGFeatherPrime, onlyOwner: true })
+  .addCommand({ name: "status", process: DEBUGFeatherState, onlyOwner: true })
   .addEvent("messageCreate", (msg) => {
     if (
       !msg.inGuild() || msg.guild?.id !== u.sf.ldsg || // only in LDSG
@@ -272,6 +278,7 @@ Module.setUnload(() => active)
       msg.author.bot || msg.author.system || msg.webhookId || // no bots
       u.parse(msg) // not a command
     ) return;
+
     // do a feather drop check
     featherCheck(msg);
 
@@ -294,16 +301,17 @@ Module.setUnload(() => active)
     // see if it's a finished poll outside of a VC
     if (!msg.poll || !(!msg.poll.resultsFinalized && newMsg.poll?.resultsFinalized) || msg.channel.type === Discord.ChannelType.GuildVoice) return;
 
-    const sorted = [...newMsg.poll.answers.values()].sort((a, b) => a.voteCount - b.voteCount);
     // people can only get xp once per poll. no multiple answers shenanigans
+    const sorted = [...newMsg.poll.answers.values()].sort((a, b) => a.voteCount - b.voteCount);
     const voters = new Set();
     const hours = Math.max(1, u.moment(msg.poll.expiresTimestamp).diff(msg.createdTimestamp, "hours", false));
     const voterCount = newMsg.poll.answers.reduce((p, c) => p + c.voteCount, 0);
+
     // assign xp to people who voted, favoring those with the right answer
     for (let i = 0; i < sorted.length; i++) {
       const answer = sorted[i];
-      if (answer.voteCount === 0) continue;
       const people = await answer.fetchVoters();
+      if (answer.voteCount === 0) continue;
       for (const [id, user] of people) {
         if (!voters.has(user.id) && !user.bot && !user.system) {
           voters.add(user.id);

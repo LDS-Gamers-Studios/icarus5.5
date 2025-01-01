@@ -95,6 +95,12 @@ const models = {
     return User.findOne({ discordId }, undefined, { lean: true, upsert: createIfNotFound }).exec();
   },
   /**
+   * DANGER!!! THIS RESETS ALL CURRENTXP TO 0
+   */
+  resetSeason: function() {
+    return User.updateMany({}, { currentXP: 0 }, { lean: true });
+  },
+  /**
    * Get the top X of the leaderboard
    * @param {leaderboardOptions} options
    * @returns {Promise<(UserRecord & {rank: number})[]>}
