@@ -25,9 +25,9 @@ const UserSchema = new Schema({
     type: Number,
     default: 0
   },
-  excludeXP: {
-    type: Boolean,
-    default: true
+  trackXP: {
+    type: Number,
+    default: 2
   },
   currentXP: {
     type: Number,

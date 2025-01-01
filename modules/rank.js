@@ -36,13 +36,15 @@ async function slashRankTrack(interaction) {
   // Set XP tracking
   try {
     await interaction.deferReply({ ephemeral: true });
-    const track = interaction.options.getBoolean("choice");
+    const track = interaction.options.getString("status");
     if (track === null) {
       const status = await u.db.user.fetchUser(interaction.user.id);
-      return interaction.editReply(`You are currently ${status?.excludeXP ? "not " : ""}tracking XP!`);
+      return interaction.editReply(`You are currently ${status?.trackXP === u.db.user.TrackXPEnum.OFF ? "not " : ""}tracking XP${status?.trackXP === u.db.user.TrackXPEnum.FULL ? " with level up notifications" : ""}!`);
     }
-    await u.db.user.trackXP(interaction.user.id, track);
-    await interaction.editReply(`Ok! I'll ${track ? "start" : "stop"} tracking your XP!`);
+    const enumed = u.db.user.TrackXPEnum[track] ?? u.db.user.TrackXPEnum.FULL;
+    await u.db.user.trackXP(interaction.user.id, enumed);
+    const str = track === "FULL" ? "track your XP and notify you of level ups!" : track === "SILENT" ? "silently track your XP!" : "stop tracking your XP.";
+    await interaction.editReply(`Ok! I'll ${str}`);
   } catch (error) { u.errorHandler(error, interaction); }
 }
 

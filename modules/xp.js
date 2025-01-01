@@ -242,7 +242,7 @@ async function rankClockwork(client) {
       }
 
       // Grant ranked rewards if applicable
-      if (user.excludeXP) continue;
+      if (user.trackXP === u.db.user.TrackXPEnum.OFF) continue;
 
       const lvl = Rank.level(user.totalXP);
       const oldLvl = Rank.level(response.oldUsers.find(usr => usr.discordId === user.discordId)?.totalXP ?? user.totalXP);
@@ -265,7 +265,7 @@ async function rankClockwork(client) {
 
           message += `\n\nYou have been awarded the **${reward.name}** role!`;
         }
-        member.send(message).catch(u.noop);
+        if (user.trackXP === u.db.user.TrackXPEnum.FULL) member.send(message).catch(u.noop);
       }
     } catch (error) {
       u.errorHandler(error, `Member Rank processing (${member.displayName} - ${member.id})`);

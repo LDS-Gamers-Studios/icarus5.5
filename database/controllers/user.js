@@ -13,7 +13,7 @@ const ChannelXP = require("../models/ChannelXP.model");
  * @prop {string[]} badges
  * @prop {number} posts
  * @prop {number} voice
- * @prop {boolean} excludeXP
+ * @prop {number} trackXP
  * @prop {number} currentXP
  * @prop {number} totalXP
  * @prop {number} priorTenure
@@ -30,7 +30,17 @@ const ChannelXP = require("../models/ChannelXP.model");
 
 const outdated = "Expected a Discord ID but likely recieved an object instead. That's deprecated now!";
 
+const TrackXPEnum = {
+  0: "OFF",
+  1: "SILENT",
+  2: "FULL",
+  "OFF": 0,
+  "SILENT": 1,
+  "FULL": 2
+};
+
 const models = {
+  TrackXPEnum,
   /**
      * Add XP to a set of users
      * @param {Discord.Collection<string, import("../../modules/xp").ActiveUser[]>} activity Users to add XP, as well as their multipliers
@@ -150,7 +160,7 @@ const models = {
 
     // Get requested user
     const record = await User.findOne({ discordId }, undefined, { lean: true }).exec();
-    if (!record || record.excludeXP) return null;
+    if (!record || record.trackXP === TrackXPEnum.OFF) return null;
 
     const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP } };
     if (members) seasonParams.discordId = { $in: members };
@@ -182,14 +192,14 @@ const models = {
   /**
    * Update a member's track XP preference
    * @param {string} discordId The guild member to update.
-   * @param {boolean} track Whether to track the member's XP.
+   * @param {number} trackXP The new status
    * @returns {Promise<UserRecord | null>}
    */
-  trackXP: function(discordId, track = true) {
+  trackXP: function(discordId, trackXP) {
     if (typeof discordId !== 'string') throw new Error(outdated);
     return User.findOneAndUpdate(
       { discordId },
-      { $set: { excludeXP: !track } },
+      { $set: { trackXP } },
       { new: true, upsert: true, lean: true }
     ).exec();
   },
