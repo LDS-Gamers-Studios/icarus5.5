@@ -111,12 +111,12 @@ async function rankReset(msg, suffix) {
 
     // in an ideal world this is if (true)
     if (dist) {
-      const rewards = ["id,xp,award"];
+      const rewards = ["id,season,life,award"];
       // award ember to each user and log it in a csv
       for (const user of users) {
         const award = Math.round(rate * user.currentXP);
         if (award) {
-          rewards.push(`${user.discordId},${user.currentXP},${award}`);
+          rewards.push(`${user.discordId},${user.currentXP},${user.totalXP},${award}`);
           u.db.bank.addCurrency({
             currency: "em",
             description: `Chat Rank Reset - ${new Date().toLocaleDateString()}`,
