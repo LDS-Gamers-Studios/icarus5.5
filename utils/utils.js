@@ -260,12 +260,12 @@ const utils = {
       /* eslint-disable-next-line no-console*/
       console.error(`${message.author.username} in ${loc}: ${message.cleanContent}`);
 
-      message.channel.send("I've run into an error. I've let my devs know.")
+      message.reply("I've run into an error. I've let my devs know.")
         .then(utils.clean);
       embed.addFields(
         { name: "User", value: message.author.username, inline: true },
         { name: "Location", value: loc, inline: true },
-        { name: "Command", value: message.cleanContent || "`undefined`", inline: true }
+        { name: "Command", value: message.cleanContent || "`No Content`", inline: true }
       );
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");

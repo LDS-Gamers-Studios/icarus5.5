@@ -141,7 +141,7 @@ async function pin(int, msg) {
   if (msg.author.id === int.user.id) return edit(int, "You can't request your own message to be pinned!");
   const embed = u.embed({ author: int.member })
       .setTimestamp()
-      .setDescription(msg.cleanContent)
+      .setDescription(msg.cleanContent || null)
       .addFields(
         { name: "Pin Requested By", value: int.member.toString() },
         { name: "Post", value: msg.url }

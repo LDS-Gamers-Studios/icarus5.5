@@ -263,7 +263,7 @@ const modCommon = {
         channel: msg.channel.id,
         message: msg.id,
         flag: card.id,
-        description: msg.cleanContent,
+        description: msg.cleanContent || "No Content",
         mod: client.user?.id ?? "Icarus",
         value: 0
       };

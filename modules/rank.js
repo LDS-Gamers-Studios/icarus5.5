@@ -89,6 +89,7 @@ async function slashRankView(interaction) {
 */
 async function rankReset(msg, suffix) {
   try {
+    msg.react("🥇").catch(u.noop);
     // useful vars. Dist should be 10_000 for a normal season length
     const ember = `<:ember:${u.sf.emoji.ember}>`;
     const dist = parseInt(suffix, 10) || 0;
