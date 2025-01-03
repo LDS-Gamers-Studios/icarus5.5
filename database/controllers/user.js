@@ -109,7 +109,7 @@ const models = {
    * DANGER!!! THIS RESETS ALL CURRENTXP TO 0
    */
   resetSeason: function() {
-    return User.updateMany({}, { currentXP: 0 }, { lean: true });
+    return User.updateMany({ currentXP: { $gt: 0 } }, { currentXP: 0 }, { lean: true, new: true }).exec();
   },
   /**
    * Get the top X of the leaderboard

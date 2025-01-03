@@ -413,6 +413,21 @@ const utils = {
    */
   unique: function(items) {
     return [...new Set(items)];
+  },
+  /** @param {Discord.GuildMember | null} [member]*/
+  getHouseInfo: function(member) {
+    const houseInfo = new Map([
+      [utils.sf.roles.housebb, { name: "Brightbeam", color: 0x00a1da }],
+      [utils.sf.roles.housefb, { name: "Freshbeast", color: 0xfdd023 }],
+      [utils.sf.roles.housesc, { name: "Starcamp", color: 0xe32736 }]
+    ]);
+
+    if (member) {
+      for (const [k, v] of houseInfo) {
+        if (member.roles.cache.has(k)) return v;
+      }
+    }
+    return { name: "Unsorted", color: 0x402a37 };
   }
 };
 

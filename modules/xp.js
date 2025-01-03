@@ -72,6 +72,7 @@ function DEBUGFeatherState(msg) {
 /** @param {Discord.Message<true>} msg */
 async function featherCheck(msg) {
   const lureCount = lures.get(msg.channelId) ?? 0;
+  const dropMode = lureCount === 0;
   if (
     !(dropCode || lureCount > 0) || // only if it's primed or they have a lure placed
     msg.channel.isDMBased() || !msg.channel.permissionsFor(u.sf.ldsg)?.has("SendMessages") // only publicly postable channels
@@ -80,12 +81,12 @@ async function featherCheck(msg) {
   try {
     // chances of a feather dropping is pretty low unless they have a lure
     if (Math.random() > (config.xp.featherDropChance * (lureCount + 1))) return;
-    dropCode = false;
+    if (dropMode) dropCode = false;
     const reaction = await msg.react(u.sf.emoji.xpFeather).catch(u.noop);
 
     // don't let someone blocking the bot ruin the fun
     if (!reaction) {
-      dropCode = true;
+      if (dropMode) dropCode = true;
       return;
     }
 
@@ -101,28 +102,39 @@ async function featherCheck(msg) {
     const finder = userReact?.first()?.users.cache.find(usr => !usr.bot);
     if (finder) {
       // give em ember if they didn't buy their way in
-      if (dropCode) {
+      if (dropMode) {
+        const value = 5 * Math.ceil(Math.random() * 4);
         u.db.bank.addCurrency({
           currency: "em",
           description: `XP feather drop in #${msg.channel.name}`,
           discordId: finder.id,
           giver: msg.client.user.id,
           hp: true,
-          value: 5 * Math.ceil(Math.random() * 4)
+          value
         });
+        const house = u.getHouseInfo(msg.guild.members.cache.get(finder.id));
+        const embed = u.embed({ author: finder })
+          .setColor(house.color)
+          .addFields(
+            { name: "House", value: house.name },
+            { name: "Reason", value: `XP feather drop in #${msg.channel.name}` }
+          )
+          .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in #${msg.channel.name} and got <:ember:${u.sf.emoji.ember}>${value}!`);
+
+        msg.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
       }
 
       // give em xp
       addXp(finder.id, 3, msg.channelId);
     } else {
       // they missed it! Try again.
-      dropCode = true;
+      if (dropMode) dropCode = true;
       return;
     }
-    resetFeatherDrops();
+    if (dropMode) resetFeatherDrops();
   } catch (error) {
-    u.errorHandler(error, "XP Feather Drop");
-    resetFeatherDrops();
+    u.errorHandler(error, `XP Feather Drop - Mode: ${dropMode ? "Drop" : "Lure"}`);
+    if (dropMode) resetFeatherDrops();
   }
 }
 
@@ -165,6 +177,9 @@ async function reactionXp(reaction, user, add = true) {
   // more reactions means more xp for the poster. If it was removed we have to get the pre-removal count
   const countMultiplier = await reaction.users.fetch().then(usrs => usrs.size + (add ? 0 : 1) * 1.3);
 
+  // reactions should mean more or less depending on the channel
+  const channelMultiplier = channelSettings.get(reaction.message.channelId)?.posts ?? 1;
+
   // voice channel IDs aren't very helpful since they get replaced, so we use Voice instead
   const channelId = reaction.message.channel.type === Discord.ChannelType.GuildVoice ? "Voice" : reaction.message.channelId;
 
@@ -172,8 +187,8 @@ async function reactionXp(reaction, user, add = true) {
   const channelEmoji = channelSettings.get(channelId)?.emoji.has(identifier) ? 1.5 : 1;
 
   // add the xp to the queue
-  const recipient = 0.5 * countMultiplier * channelEmoji * (add ? 1 : -1);
-  const giver = 0.5 * channelEmoji * (add ? 1 : -1);
+  const recipient = 0.5 * countMultiplier * channelEmoji * channelMultiplier * (add ? 1 : -1);
+  const giver = 0.5 * channelEmoji * channelMultiplier * (add ? 1 : -1);
 
   addXp(reaction.message.author.id, recipient, channelId);
 
@@ -190,11 +205,12 @@ async function rankClockwork(client) {
   if (!ldsg) throw new Error("Couldn't get LDSG - Rank Clockwork");
 
   // give xp to people active in voice chats
-  ldsg.members.cache.filter(m => m.voice.channel && !m.voice.mute && !m.voice.deaf)
+  ldsg.members.cache.filter(m => m.voice.channel && !m.voice.mute && !m.voice.deaf && m.voice.channel.members.size > 1)
     .forEach(m => {
       // vcs get deleted, stage channels don't
       const channelId = m.voice.channel?.type === Discord.ChannelType.GuildVoice ? "Voice" : m.voice.channelId ?? "No VC";
-      return addXp(m.id, 0.5, channelId, true);
+      const members = m.voice.channel?.members.size ?? 0;
+      return addXp(m.id, 0.05 * Math.max(5, members), channelId, true);
     });
 
   // no reason to do anything

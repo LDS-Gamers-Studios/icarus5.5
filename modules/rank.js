@@ -95,10 +95,10 @@ async function rankReset(msg, suffix) {
 
     // get people who opted in to xp
     const members = await msg.guild.members.fetch().then(mems => mems.map(m => m.id));
-    const users = await u.db.user.getUsers({ currentXp: { $gt: 0 }, discordId: { $in: members } });
+    const users = await u.db.user.getUsers({ currentXP: { $gt: 0 }, discordId: { $in: members } });
 
     // log for backup
-    fs.writeFileSync("./data/rankDetail-.json", JSON.stringify(users.map(usr => ({ discordId: usr.discordId, currentXp: usr.currentXP }))));
+    fs.writeFileSync("./data/rankDetail-.json", JSON.stringify(users.map(usr => ({ discordId: usr.discordId, currentXP: usr.currentXP }))));
 
     // formula for ideal ember distribution
     const totalXP = users.reduce((p, cur) => p + cur.currentXP, 0);
@@ -140,7 +140,7 @@ async function rankReset(msg, suffix) {
       announcement += `\n\n${ember}${dist} have been distributed among *all* of those ${users.length} XP trackers, proportional to their participation.`;
     }
     announcement += "\n\nIf you would like to participate in this season's chat ranks and *haven't* opted in, `/rank track` will get you in the mix. If you've previously used that command, you don't need to do so again.";
-    msg.client.getTextChannel(u.sf.channels.announcements)?.send(announcement)
+    msg.client.getTextChannel(u.sf.channels.announcements)?.send({ content: announcement, allowedMentions: { parse: ["users"] } })
       .catch(() => msg.reply("I wasn't able to send the announcement!"));
 
     // set everyone's xp back to 0
