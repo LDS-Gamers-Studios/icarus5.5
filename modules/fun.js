@@ -223,6 +223,7 @@ async function slashFunMinesweeper(int) {
   let i = 0;
   do {
     const msg = messages[i];
+    // @ts-ignore I've given up properly checking by now. it seems that there are half a million things that can make it fail to send.
     await int.channel.send(msg);
     i++;
   } while (i < messages.length);
@@ -401,36 +402,30 @@ async function slashFunEmoji(int) {
     const emoji1 = emojiSanitize(emoji1input);
     if (emoji2input.length <= 0) {
       // embiggen
-      console.log(emoji1input);
       if (emoji1input.includes("<:") || emoji1input.includes("<a:")) {
         const idExtractRegx = /<(a?):(\w+):(\d+)>/i;
         // eslint-disable-next-line no-unused-vars
         const [_, gif, name, id] = idExtractRegx.exec(emoji1input) || [false, "error", 244108501188739072];
-        console.log(gif+":"+name+":"+id);
         if ((await axios(`https://cdn.discordapp.com/emojis/${id}.${gif.length >= 1 ? 'gif' : 'png'}`)).status !== 200) {
           return int.editReply(`For some reason I couldn't enlarge ${emoji1input}.`).then(u.clean);
         }
         return int.editReply({ files: [{ attachment: `https://cdn.discordapp.com/emojis/${id}.${gif.length >= 1 ? 'gif' : 'png'}`, name: name + "Fullres." + (gif.length >= 1 ? 'gif' : 'png') }] });
       }
       const e1CP = emojiCodePointify(emoji1);
-      console.log(e1CP);
       try {
-        if ((await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`)).status !== 200) {
-          throw new AxiosError;
+        if ((await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`)).status === 200) {
+          return int.editReply({
+            content: `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`,
+            files: [{
+              attachment: `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${e1CP}.png`,
+              name: emojiSanitizeHelp.find(emoji1)?.key + "Fullres.png"
+            }]
+          });
         }
-        return int.editReply({
-          content: `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`,
-          files: [{
-            attachment: `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${e1CP}.png`,
-            name: emojiSanitizeHelp.find(emoji1)?.key + "Fullres.png"
-          }]
-        });
-      } catch {
-        const e1CPR = e1CP.replace(/-fe0f/g, '');
-        try {
-          if ((await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CPR}.svg`)).status !== 200) {
-            throw new AxiosError;
-          }
+      } catch { /* either it returned or keep going */ }
+      const e1CPR = e1CP.replace(/-fe0f/g, '');
+      try {
+        if ((await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CPR}.svg`)).status === 200) {
           return int.editReply({
             content: `https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CPR}.svg`,
             files: [{
@@ -438,10 +433,9 @@ async function slashFunEmoji(int) {
               name: emojiSanitizeHelp.find(emoji1)?.key + "Fullres.png"
             }]
           });
-        } catch {
-          return int.editReply(`For some reason I couldn't enlarge ${emoji1input}.`).then(u.clean);
         }
-      }
+      } catch { /* either it returned or keep going */ }
+      return int.editReply(`For some reason I couldn't enlarge ${emoji1input}.`).then(u.clean);
     }
     // attempt to merge
     const emoji2 = emojiSanitize(emoji2input);
