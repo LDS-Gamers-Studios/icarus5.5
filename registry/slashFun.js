@@ -49,11 +49,11 @@ const choose = new u.sub()
 
 const emoji = new u.sub()
   .setName("emoji")
-  .setDescription("Combines two (non-custom) or enlarges one (any) emoji")
+  .setDescription("Enlarges an emoji or combines two")
   .addStringOption(
     new u.string()
       .setName("emoji1")
-      .setDescription("First emoji to combine, or enlarge")
+      .setDescription("Emoji to enlarge or combine")
       .setRequired(true)
   )
   .addStringOption(
