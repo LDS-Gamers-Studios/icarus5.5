@@ -318,7 +318,7 @@ async function slashFunButtermelon(int) {
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunQuote(int) {
-  const url = "https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en";
+  const url = "https://thequoteshub.com/api/random-quote?format=json";
   await int.deferReply();
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error(`axios error: ${e.status}\n${e.message}`);
@@ -326,8 +326,8 @@ async function slashFunQuote(int) {
   const data = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
   const embed = u.embed();
   if (data) {
-    embed.setAuthor({ name: data.quoteAuthor })
-      .setDescription(data.quoteText)
+    embed.setAuthor({ name: data.author })
+      .setDescription(data.text)
       .setTimestamp(null);
   } else {
     embed.setAuthor({ name: "ChainSword20000" })
