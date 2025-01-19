@@ -323,7 +323,6 @@ async function slashFunQuote(int) {
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error(`axios error: ${e.status}\n${e.message}`);
   });
-  console.log(response.data);
   const data = (typeof response.data === "string" ? JSON.parse(response.data) : response.data)[0] || false;
   const embed = u.embed();
   if (data) {
