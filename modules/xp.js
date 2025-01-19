@@ -120,7 +120,9 @@ async function featherCheck(msg) {
             { name: "House", value: house.name },
             { name: "Reason", value: `XP feather drop in #${msg.channel.name}` }
           )
-          .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in #${msg.channel.name} and got <:ember:${u.sf.emoji.ember}>${value}!`);
+          .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in <#${msg.channelId}> (${msg.channel.name})
+          https://discord.com/channels/${msg.guildId}/${msg.channelId}/${msg.id}
+          and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
         msg.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
       }
