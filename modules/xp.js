@@ -106,8 +106,7 @@ async function featherCheck(msg) {
         const value = 5 * Math.ceil(Math.random() * 4);
         u.db.bank.addCurrency({
           currency: "em",
-          description: `XP feather drop in <#${msg.channelId}> (${msg.channel.name})
-          https://discord.com/channels/${msg.guildId}/${msg.channelId}/${msg.id}`,
+          description: `XP feather drop at ${msg.url}`,
           discordId: finder.id,
           giver: msg.client.user.id,
           hp: true,
@@ -118,11 +117,9 @@ async function featherCheck(msg) {
           .setColor(house.color)
           .addFields(
             { name: "House", value: house.name },
-            { name: "Reason", value: `XP feather drop in #${msg.channel.name}` }
+            { name: "Reason", value: `XP feather drop in <#${msg.channelId}>` }
           )
-          .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in <#${msg.channelId}> (${msg.channel.name})
-          https://discord.com/channels/${msg.guildId}/${msg.channelId}/${msg.id}
-          and got <:ember:${u.sf.emoji.ember}>${value}!`);
+          .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in ${msg.url} and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
         msg.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
       }
