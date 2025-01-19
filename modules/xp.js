@@ -117,7 +117,7 @@ async function featherCheck(msg) {
           .setColor(house.color)
           .addFields(
             { name: "House", value: house.name },
-            { name: "Reason", value: `XP feather drop in <#${msg.channelId}>` }
+            { name: "Reason", value: `XP feather drop in #${msg.channelId}` }
           )
           .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in ${msg.url} and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
