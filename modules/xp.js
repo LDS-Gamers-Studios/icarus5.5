@@ -106,7 +106,7 @@ async function featherCheck(msg) {
         const value = 5 * Math.ceil(Math.random() * 4);
         u.db.bank.addCurrency({
           currency: "em",
-          description: `XP feather drop at ${msg.url}`,
+          description: `XP feather drop in #${msg.channel.name}`,
           discordId: finder.id,
           giver: msg.client.user.id,
           hp: true,
