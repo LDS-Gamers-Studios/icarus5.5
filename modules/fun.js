@@ -57,12 +57,12 @@ async function slashFunHBS(int) {
       storedChoice = choice;
       int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
-      `${chooser} has chosen their fighter and is awaiting a challenger.`);
+      `${chooser} has chosen their fighter and is awaiting a challenger. Respond using </fun hbs:${u.sf.commands.slashFun}>.`);
     } else if (storedChooser === chooser) {
       storedChoice = choice;
       int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
-      `${chooser} has changed their fighter and is awaiting a challenger.`
+      `${chooser} has changed their fighter and is awaiting a challenger.  Respond using </fun hbs:${u.sf.commands.slashFun}>.`
       );
     }
 
