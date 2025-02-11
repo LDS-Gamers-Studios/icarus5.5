@@ -15,7 +15,7 @@ const { nanoid } = require("nanoid");
 /**
  * @typedef ParsedInteraction
  * @property {String | null} command - The command issued, represented as a string.
- * @property {{name: string, value: string|number|boolean|undefined}[]} data - Associated data for the command, such as command options or values selected.
+ * @property {{name: string, value?: string|number|boolean}[]} data - Associated data for the command, such as command options or values selected.
  */
 
 /**
@@ -35,7 +35,7 @@ function parseInteraction(int) {
       const sc = int.options.getSubcommand(false);
       if (sg) {
         command += ` ${sg}`;
-        data = int.options.data[0]?.options?.[0]?.options ?? [];
+        data = int.options.data[0]?.options?.[0]?.options?.map(o => ({ name: o.name, value: o.value })) ?? [];
       }
       if (sc) command += ` ${sc}`;
     } else {
