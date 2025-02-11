@@ -6,6 +6,7 @@ const Augur = require("augurbot-ts"),
   SteamApi = require("steamapi"),
   { customAlphabet } = require("nanoid");
 const { GoogleSpreadsheetRow } = require("google-spreadsheet");
+const Discord = require("discord.js");
 
 const Module = new Augur.Module(),
   gb = `<:gb:${u.sf.emoji.gb}>`,
@@ -19,7 +20,7 @@ const nanoid = customAlphabet(chars, 8);
 let steamGameList = [];
 
 /**
- * @param {import("../database/sheets").Game} game
+ * @param {import("../database/sheetTypes").Game} game
  * @param {GoogleSpreadsheetRow} rawGame
  * @param {Discord.GuildMember} user
  */
@@ -187,7 +188,7 @@ async function slashBankGameList(interaction) {
   try {
     if (!u.db.sheets.data.docs?.games) throw new Error("Games List Error");
 
-    let gameList = u.uniqueObj(u.db.sheets.games.toJSON(), "title").filter(g => !g.recipient)
+    let gameList = u.uniqueObj(u.db.sheets.games.toJSON(), "title").filter(g => !g.recipient && !g.date)
       .sort((a, b) => a.title.localeCompare(b.title));
     // Filter Rated M, unless the member has the Rated M Role
     if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.rating.toUpperCase() !== "M");
@@ -209,7 +210,8 @@ async function slashBankGameRedeem(interaction) {
     await interaction.deferReply({ ephemeral: true });
     if (!u.db.sheets.data.docs?.games) throw new Error("Get Game List Error");
     // find the game they're trying to redeem
-    const game = u.db.sheets.games.get(interaction.options.getString("code", true).toUpperCase());
+    const code = interaction.options.getString("code", true).toUpperCase();
+    const game = u.db.sheets.games.get(code);
     const rawGame = u.db.sheets.data.games.find(g => g.get("Code") === game?.code);
     if (!game || !rawGame) {
       return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);

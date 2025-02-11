@@ -4,72 +4,11 @@ const { GoogleSpreadsheet, GoogleSpreadsheetRow } = require("google-spreadsheet"
 const config = require("../config/config.json");
 const { JWT } = require("google-auth-library");
 const { nanoid } = require("nanoid");
-const { Collection } = require("discord.js");
+const { Client, Collection, Role } = require("discord.js");
+const types = require("./sheetTypes");
+const sf = config.devMode ? require("../config/snowflakes-testing.json") : require("../config/snowflakes.json");
+const { setBadgeData } = require("../utils/badges");
 
-/**
- * @typedef Game
- * @prop {string} title
- * @prop {string} system
- * @prop {string} rating
- * @prop {number} cost
- * @prop {string} [recipient]
- * @prop {string} code
- * @prop {string} key
- * @prop {string} [steamId]
- * @prop {Date} [date]
- */
-
-/**
- * @typedef IGN
- * @prop {string} name
- * @prop {string} system
- * @prop {string} category
- * @prop {string[]} aliases
- * @prop {string} link
- */
-
-/**
- * @typedef Role
- * @prop {"Equip"|"Comment"|"Team Assign"|"Rank"|"Year"} type
- * @prop {string} base
- * @prop {string} color
- * @prop {string[]} parents
- * @prop {string} level
- * @prop {string} badge
- */
-
-/**
- * Role Tag	RoleID	Badge	Emoji
- * @typedef OptRole
- * @prop {string} name
- * @prop {string} id
- * @prop {string} badge
- */
-
-/**
- * @typedef TourneyChampion
- * @prop {string} name
- * @prop {string} userId
- * @prop {Date} takeAt
- * @prop {string} key
- */
-
-/**
- * @typedef Sponsor
- * @prop {string} userId
- * @prop {string} channelId
- * @prop {string} emojiId
- * @prop {boolean} enabled
- * @prop {Date} archiveAt
- */
-
-/**
- * @typedef ChannelXPSetting
- * @prop {string} channelId
- * @prop {Set<string>} emoji
- * @prop {number} posts
- * @prop {boolean} preferMedia
- */
 const data = {
   data: {
     /** @type {GoogleSpreadsheetRow[]} */
@@ -91,21 +30,31 @@ const data = {
     /** @type {{ config: GoogleSpreadsheet, games: GoogleSpreadsheet } | null}} */
     docs: null
   },
-  /** @type {Collection<string, Game>} */
+  /** @type {Collection<string, types.Game>} */
   games: new Collection(),
-  /** @type {Collection<string, IGN>} */
+  /** @type {Collection<string, types.IGN>} */
   igns: new Collection(),
-  /** @type {Collection<string, OptRole>} */
+  /** @type {Collection<string, types.OptRole>} */
   optRoles: new Collection(),
-  /** @type {Collection<string, Role>} */
-  roles: new Collection(),
-  /** @type {Collection<string, Sponsor>} */
+  roles: {
+    /** @type {Collection<string, types.Role>} */
+    all: new Collection(),
+    /** @type {Collection<string, Omit<types.Role, "level"> & { level: string }>} */
+    team: new Collection(),
+    /** @type {Collection<string, Omit<types.Role, "color"> & { color: Role }>} */
+    equip: new Collection(),
+    /** @type {Collection<number, Omit<types.Role, "level"> & { level: string }>} */
+    rank: new Collection(),
+    /** @type {Collection<number, Omit<types.Role, "level"> & { level: string }>} */
+    year: new Collection(),
+  },
+  /** @type {Collection<string, types.Sponsor>} */
   sponsors: new Collection(),
-  /** @type {Collection<string, TourneyChampion>} */
+  /** @type {Collection<string, types.TourneyChampion>} */
   tourneyChampions: new Collection(),
-  /** @type {Set<string>} */
-  vcNames: new Set(),
-  /** @type {{ channels: Collection<string, ChannelXPSetting>, banned: Set<string> }} */
+  /** @type {string[]} */
+  vcNames: [],
+  /** @type {{ channels: Collection<string, types.ChannelXPSetting>, banned: Set<string> }} */
   xpSettings: { banned: new Set(), channels: new Collection() }
 };
 
@@ -122,6 +71,13 @@ function makeDocument(sheetId) {
   return sheet;
 }
 
+/**
+ * @param {Client} client
+ */
+function getServer(client) {
+  return client.guilds.cache.get(sf.ldsg);
+}
+
 const sheetMap = {
   games: [],
   igns: ["IGN", "System"],
@@ -134,71 +90,126 @@ const sheetMap = {
 };
 
 const mappers = {
-  /** @param {GoogleSpreadsheetRow} row */
-  games: (row) => ({
-    title: row.get("Title"),
-    system: row.get("System"),
-    rating: row.get("Rating") || "E",
-    cost: parseInt(row.get("Cost")),
-    recipient: row.get("Recipient ID") || undefined,
-    code: row.get("Code"),
-    key: row.get("Key"),
-    date: new Date(parseInt(row.get("Date"))) || undefined,
-    steamId: row.get("Steam ID")
-  }),
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @returns {types.Game}
+  */
+  games: (row) => {
+    const date = new Date(parseInt(row.get("Date")));
+    return {
+      title: row.get("Title"),
+      system: row.get("System"),
+      rating: row.get("Rating") || "E",
+      cost: parseInt(row.get("Cost")),
+      recipient: row.get("Recipient ID") || null,
+      code: row.get("Code"),
+      key: row.get("Key"),
+      date: isNaN(date.valueOf()) ? null : date,
+      steamId: row.get("Steam ID")
+    };
+  },
 
-  /** @param {GoogleSpreadsheetRow} row */
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @returns {types.IGN}
+  */
   igns: (row) => ({
     aliases: row.get("Aliases")?.split(" ").filter(/** @param {string} a */a => noBlank(a)) ?? [],
     category: row.get("Category") || "Game Platforms",
-    link: row.get("Link") || "",
+    link: row.get("Link") || null,
     name: row.get("Name"),
     system: row.get("System")
   }),
 
-  /** @param {GoogleSpreadsheetRow} row */
-  optRoles: (row) => ({
-    name: row.get("Role Tag"),
-    id: row.get("RoleID"),
-    badge: row.get("Badge")
-  }),
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @param {Client} client
+   * @returns {types.OptRole}
+   */
+  optRoles: (row, client) => {
+    const id = row.get("RoleID");
+    const role = getServer(client)?.roles.cache.get(id);
+    if (!role) throw new Error(`Sheet Error - Missing Opt-Role: A${row.rowNumber} (${id})`);
+    return {
+      name: row.get("Role Tag"),
+      badge: row.get("Badge") || null,
+      role
+    };
+  },
 
-  /** @param {GoogleSpreadsheetRow} row */
-  roles: (row) => ({
-    type: row.get("Type"),
-    base: row.get("Base Role ID"),
-    color: row.get("Color Role ID"),
-    parents: row.get("Parent Roles")?.split(" ").filter(/** @param {string} a */a => noBlank(a)) ?? [],
-    level: row.get("Level"),
-    badge: row.get("Badge")
-  }),
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @param {Client} client
+   * @returns {types.Role}
+   */
+  roles: (row, client) => {
+    const baseId = row.get("Base Role ID");
+    const colorId = row.get("Color Role ID");
+    const base = getServer(client)?.roles.cache.get(baseId);
+    const color = getServer(client)?.roles.cache.get(colorId) || null;
+    if (!base) throw new Error(`Sheet Error - Missing Role: Row ${row.rowNumber}, ${baseId}`);
+    if (colorId && !color) throw new Error(`Sheet Error - Missing Color Role: Row ${row.rowNumber}, ${colorId}`);
+    return {
+      type: row.get("Type"),
+      base,
+      color: color,
+      parents: row.get("Parent Roles")?.split(" ").filter(/** @param {string} a */a => noBlank(a)) ?? [],
+      level: row.get("Level") || null,
+      badge: row.get("Badge") || null,
+    };
+  },
 
-  /** @param {GoogleSpreadsheetRow} row */
-  sponsors: row => ({
-    userId: row.get("Sponsor"),
-    channelId: row.get("Channel"),
-    emojiId: row.get("Emoji"),
-    enabled: true,
-    archiveAt: new Date()
-  }),
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @param {Client} client
+   * @returns {types.Sponsor}
+   */
+  sponsors: (row, client) => {
+    const date = new Date(row.get("Archive At"));
+    const cId = row.get("Channel");
+    const channel = client.getTextChannel(cId);
+    if (cId && !channel) throw new Error(`Sheet Error - Missing Sponsor Channel: Row ${row.rowNumber}, ${cId}`);
+    return {
+      userId: row.get("Sponsor"),
+      channel,
+      emojiId: row.get("Emoji"),
+      enabled: row.get("Enabled") === "TRUE",
+      archiveAt: isNaN(date.valueOf()) ? null : date
+    };
+  },
 
-  /** @param {GoogleSpreadsheetRow} row */
-  tourneyChampions: (row) => ({
-    name: row.get("Tourney Name"),
-    userId: row.get("User ID"),
-    takeAt: new Date(row.get("Take Role At")),
-    key: row.get("Key")
-  }),
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @returns {types.TourneyChampion}
+   */
+  tourneyChampions: (row) => {
+    const date = new Date(parseInt(row.get("Take Role At")));
+    return {
+      tourneyName: row.get("Tourney Name"),
+      userId: row.get("User ID"),
+      takeAt: isNaN(date.valueOf()) ? null : date,
+      key: row.get("Key")
+    };
+  },
 
-  /** @param {GoogleSpreadsheetRow} row */
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @returns {string}
+   */
   vcNames: (row) => row.get("Name"),
 
-  /** @param {GoogleSpreadsheetRow} row */
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @returns {types.ChannelXPSetting}
+   */
   xpSettings: (row) => {
     const posts = parseFloat(row.get("PostMultiplier"));
+    // in the event that there are no emoji
+    const emoji = new Set(row.get("Emoji")?.split(", ") ?? []);
+    emoji.delete("");
     return {
       channelId: row.get("ChannelId"),
-      emoji: new Set(row.get("Emoji")?.split(", ") ?? []),
+      emoji,
       posts: isNaN(posts) ? 1 : posts,
       preferMedia: row.get("PreferMedia") === "TRUE"
     };
@@ -208,14 +219,15 @@ const mappers = {
 /**
  * @param {keyof Omit<data, "data">} sheet
  * @param {GoogleSpreadsheet} doc
+ * @param {Client} client
  */
-async function setData(sheet, doc) {
+async function setData(sheet, doc, client) {
   if (sheet === "games") {
     data.data.games = await doc.sheetsByIndex[0].getRows();
     data.games.clear();
     for (const game of data.data.games) {
-      if (!game.get("code")) {
-        game.set("Code", nanoid());
+      if (!game.get("Code") && game.get("Title")) {
+        game.set("Code", nanoid(5).toUpperCase());
         game.save();
       }
       if (!data.games.find(g => g.title === game.get("Title"))) data.games.set(game.get("Code"), mappers.games(game));
@@ -237,21 +249,50 @@ async function setData(sheet, doc) {
     return;
   }
 
-  data[sheet].clear();
+  if (sheet === "roles") {
+    data.roles.all.clear();
+    data.roles.equip.clear();
+    data.roles.rank.clear();
+    data.roles.team.clear();
+    data.roles.year.clear();
+    for (const role of data.data.roles) {
+      const type = role.get("Type");
+      const id = role.get("Base Role ID");
+      if (!id || type === "Comment") continue;
+      /** @type {types.FullRole} */
+      // @ts-expect-error sigh... the things we do to get things to work...
+      const mapped = mappers.roles(role, client);
+      switch (type) {
+        case "Equip": data.roles.equip.set(id, mapped); break;
+        case "Team Assign": data.roles.team.set(id, mapped); break;
+        case "Rank": data.roles.rank.set(parseInt(mapped.level ?? "1000"), mapped); break;
+        case "Year": data.roles.year.set(parseInt(mapped.level ?? "1000"), mapped); break;
+        default: break;
+      }
+      data.roles.all.set(id, mapped);
+    }
+    return;
+  }
+
+  // hacky but fast way to clear an array without overriding it
+  if (sheet === "vcNames") data[sheet].length = 0;
+  else data[sheet].clear();
+
   for (const datum of data.data[sheet]) {
     const key = datum.get(sheetMap[sheet][1]);
     if (key) {
-      if (sheet === "vcNames") data[sheet].add(key);
+      if (sheet === "vcNames") data[sheet].push(key);
       // @ts-expect-error i'm not writing a switch case for something thats meant to be procedural
-      else data[sheet].set(key, mappers[sheet](datum));
+      else data[sheet].set(key, mappers[sheet](datum, client));
     }
   }
 }
 
 /**
+ * @param {Client} client
  * @param {keyof Omit<data, "data">} [sheet]
  */
-async function loadData(loggedIn = true, justRows = false, sheet) {
+async function loadData(client, loggedIn = true, justRows = false, sheet) {
   if (!loggedIn) data.data.docs = { config: makeDocument(), games: makeDocument(config.google.sheets.games) };
   if (!data.data.docs) throw new Error("Something has gone terribly wrong during sheets loadData");
 
@@ -265,12 +306,13 @@ async function loadData(loggedIn = true, justRows = false, sheet) {
 
   if (sheet) {
     if (sheet === "games") {
-      await setData(sheet, games);
-      return data.games;
+      await setData(sheet, games, client);
+      return data;
     }
 
-    await setData(sheet, conf);
-    return data[sheet];
+    await setData(sheet, conf, client);
+    if (["roles", "optRoles"].includes(sheet)) setBadgeData(data.optRoles, data.roles);
+    return data;
   }
 
 
@@ -280,13 +322,14 @@ async function loadData(loggedIn = true, justRows = false, sheet) {
     // @ts-ignore
     const typeCorrectKey = key;
     if (typeCorrectKey === "games") {
-      promises.push(setData(typeCorrectKey, games));
+      promises.push(setData(typeCorrectKey, games, client));
     } else {
-      promises.push(setData(typeCorrectKey, conf));
+      promises.push(setData(typeCorrectKey, conf, client));
     }
   }
   await Promise.all(promises);
-  return data.data;
+  setBadgeData(data.optRoles, data.roles);
+  return data;
 }
 
 const blank = ["", undefined, null];

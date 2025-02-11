@@ -202,7 +202,7 @@ async function slashFunMinesweeper(int) {
   }
   // seperate into rows and emojify and hide if not exposed
   const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
-  if (!int.channel) {
+  if (!int.channel?.isSendable()) {
     return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`, ephemeral: true });
   }
   await int.reply(`**Mines: ${mineCount}**`);
@@ -221,11 +221,11 @@ async function slashFunMinesweeper(int) {
   });
   // send the messages in order
   let i = 0;
-  do {
+  while (i < messages.length) {
     const msg = messages[i];
     await int.channel.send(msg);
     i++;
-  } while (i < messages.length);
+  }
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -320,6 +320,7 @@ async function slashFunButtermelon(int) {
 async function slashFunQuote(int) {
   const url = "https://zenquotes.io/api/random";
   await int.deferReply();
+  // @ts-ignore
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error(`axios error: ${e.status}\n${e.message}`);
   });
@@ -395,6 +396,7 @@ async function slashFunEmoji(int) {
     const emoji2input = int.options.getString("emoji2", true).trim();
     const emoji1 = emojiSanitize(emoji1input);
     const emoji2 = emojiSanitize(emoji2input);
+    // @ts-ignore
     const results = await axios(`https://tenor.googleapis.com/v2/featured?key=${config.api.tenor}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`).catch(u.noop);
     const url = results?.data?.results[0]?.url;
     if (url) {

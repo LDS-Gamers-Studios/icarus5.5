@@ -18,7 +18,7 @@ const client = new AugurClient(config, {
   errorHandler: u.errorHandler,
   parse: u.parse,
   delayStart: () => {
-    return s.loadData(false);
+    return s.loadData(client, false);
   }
 });
 

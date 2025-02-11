@@ -126,6 +126,7 @@ async function rankReset(msg, suffix) {
             discordId: user.discordId,
             value: award,
             giver: msg.client.user.id,
+            otherUser: msg.client.user.id,
             hp: true
           });
         }

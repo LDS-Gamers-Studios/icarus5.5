@@ -4,8 +4,7 @@
 
 const Discord = require("discord.js"),
   config = require("../config/config.json"),
-  fs = require("fs"),
-  u = require("./utils");
+  fs = require("fs");
 
 /**
  * @typedef Badge
@@ -17,39 +16,34 @@ const Discord = require("discord.js"),
 const badges = new Discord.Collection();
 /**
  * Gets all badge data from the Google Sheet.
+ * @param {typeof import("../database/sheets").data.optRoles} optRoles
+ * @param {typeof import("../database/sheets").data.roles} roles
  */
-function getBadgeData() {
-  const roles = u.db.sheets.roles;
-  const optInRoles = u.db.sheets.optRoles;
+function setBadgeData(optRoles, roles) {
+  badges.clear();
+  for (const [id, role] of roles.all) {
+    // Only add to the map...
+    if (!role.badge || // if they have a badge listed
+      !fs.existsSync(`${config.badgePath}/${role.badge}.png`) // and if the badge path is valid
+    ) continue;
 
-  try {
-    for (const [id, role] of roles) {
-      // Only add to the map...
-      if (!role.badge || // if they have a badge listed
-        !fs.existsSync(`${config.badgePath}/${role.badge}.png`) // and if the badge path is valid
-      ) continue;
+    badges.set(id, {
+      image: `${role.badge}.png`,
+      // roles that have a higher level badge than this one
+      overrides: role.parents
+    });
 
-      badges.set(id, {
-        image: `${role.badge}.png`,
-        // roles that have a higher level badge than this one
-        overrides: role.parents
-      });
-
-    }
-
-    for (const [id, role] of optInRoles) {
-      // See above for documentation of what this statement means
-      if (!role.badge || !fs.existsSync(`${config.badgePath}/${role.badge}.png`)) continue;
-
-      badges.set(id, {
-        image: `${role.badge}.png`,
-        overrides: []
-      });
-    }
-  } catch (e) {
-    u.errorHandler(e, "Get Badge Data");
   }
-  return badges;
+
+  for (const [id, role] of optRoles) {
+    // See above for documentation of what this statement means
+    if (!role.badge || !fs.existsSync(`${config.badgePath}/${role.badge}.png`)) continue;
+
+    badges.set(id, {
+      image: `${role.badge}.png`,
+      overrides: []
+    });
+  }
 }
 
 /** Based on the list of roles inserted, return the list of badge objects that the member
@@ -60,10 +54,10 @@ function getBadgeData() {
  */
 function getBadges(roles) {
   const guild = roles.first()?.guild;
-  return badges.filter((b, id) => roles.hasAny(id) && !roles.hasAny(...b.overrides)).map((r, id) => {
+  return badges.filter((b, id) => roles.has(id) && !roles.hasAny(...b.overrides)).map((r, id) => {
     const name = guild?.roles.cache.get(id)?.name ?? "";
     return { ...r, name };
   });
 }
 
-module.exports = { getBadges, getBadgeData };
+module.exports = { getBadges, setBadgeData };

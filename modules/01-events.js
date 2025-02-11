@@ -31,6 +31,12 @@ const dangerRoles = [
   u.sf.roles.destinyclansmanager, u.sf.roles.volunteer
 ];
 
+const emojis = [
+  ["buttermelon", u.sf.emoji.buttermelon],
+  ["noice", u.sf.emoji.noice],
+  ["carp", "🐟"]
+];
+
 /**
  * Log user updates
  * @param {Discord.GuildMember | Discord.PartialGuildMember | Discord.User | Discord.PartialUser} oldUser
@@ -77,8 +83,6 @@ async function update(oldUser, newUser) {
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.displayName)} (${newUser.id})`); }
 }
 
-/** @type {(string[])[]} */
-let emojis = [];
 const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
   try {
@@ -233,22 +237,15 @@ const Module = new Augur.Module()
 })
 .addEvent("guildMemberUpdate", update)
 .addEvent("userUpdate", update)
-.setInit(async () => {
-  try {
-    emojis = u.db.sheets.sponsors.map(x => [x.userId, x.emojiId])
-      .concat([
-        ["buttermelon", u.sf.emoji.buttermelon],
-        ["noice", u.sf.emoji.noice],
-        ["carp", "🐟"]
-      ]);
-  } catch (e) { u.errorHandler(e, "Load Sponsor Reactions"); }
-})
 .addEvent("messageCreate", async (msg) => {
   if (!msg.author.bot && msg.guild?.id === u.sf.ldsg) {
-    for (const [sponsor, emoji] of emojis) {
-      if (msg.mentions.members?.has(sponsor)) await msg.react(emoji).catch(u.noop);
-      // Filter out sponsors and test for trigger words
-      else if (!msg.guild.members.cache.has(sponsor) && isNaN(parseInt(sponsor)) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
+    // sponsor pings
+    for (const [sponsor, info] of u.db.sheets.sponsors) {
+      if (info.enabled && info.emojiId && msg.mentions.members?.has(sponsor)) await msg.react(info.emojiId).catch(u.noop);
+    }
+    // trigger words
+    for (const [word, emoji] of emojis) {
+      if (Math.random() < 0.3 && msg.content.toLowerCase().includes(word)) await msg.react(emoji).catch(u.noop);
     }
   }
 });

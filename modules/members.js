@@ -87,7 +87,6 @@ const Module = new Augur.Module()
   .setInit(async () => {
     font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
     cardBackground = await Jimp.read("./media/background.jpg");
-    await badgeUtils.getBadgeData();
   })
   .addInteraction({
     name: "user",

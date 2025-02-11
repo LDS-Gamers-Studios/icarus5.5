@@ -74,8 +74,6 @@ function getComponents(user, channel, oldMsg) {
  */
 
 let processing = false;
-/** @type {string[]} */
-let channelNames = [];
 
 /**
  * @param {Augur.GuildInteraction<"Button"|"SelectMenuUser"|"CommandSlash">} int
@@ -395,9 +393,6 @@ Module.addEvent("interactionCreate", async (int) => {
   const components = getComponents(newState.member.user, newState.channel);
   if (newState.channel.members.size === 1) newState.channel.send({ embeds: components.embeds, components: components.components });
 })
-.setInit(async () => {
-  channelNames = Array.from(u.db.sheets.vcNames.values());
-})
 .addEvent("ready", () => {
   updateChannels();
 });
@@ -432,7 +427,7 @@ async function updateChannels(oldState, newState, bypass = false) {
   const used = channels.map(c => c.isVoiceBased() ? c.bitrate : 0);
   const bitrate = bitrates.find(c => !used.includes(c * 1000)) ?? u.rand(bitrates);
   if (open.size < 2 || channels.size < 3) {
-    const name = u.rand(channelNames.filter(cn => !channels.find(ch => ch.name.includes(cn)))) ?? "Room Error";
+    const name = u.rand(u.db.sheets.vcNames.filter(cn => !channels.find(ch => ch.name.includes(cn)))) ?? "Room Error";
     voiceCategory.children.create({
       name: `${name} (${bitrate} kbps)`,
       type: Discord.ChannelType.GuildVoice,

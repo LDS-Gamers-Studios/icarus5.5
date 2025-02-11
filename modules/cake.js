@@ -12,8 +12,6 @@ function celebrate() {
   }
 }
 
-/** @type {Discord.Collection<number, string>} */
-let tenureCache = new u.Collection();
 
 /**
  * @param {import("moment").Moment} date
@@ -102,11 +100,11 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
         if (checkDate(join, now, true)) {
           const years = now.year() - join.year();
           // yell at devs if not
-          const role = tenureCache.get(years);
+          const role = u.db.sheets.roles.year.get(years);
           if (role) {
-            const oldRole = tenureCache.find(r => member.roles.cache.has(r));
-            if (oldRole) await member.roles.remove(oldRole).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
-            await member.roles.add(role).catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
+            const oldRole = u.db.sheets.roles.year.filter(r => member.roles.cache.has(r.base.id));
+            if (oldRole) await member.roles.remove(oldRole.map(r => r.base)).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
+            await member.roles.add(role.base).catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
           } else {
             unknownYears.add(years);
             unapplied.push(member);
@@ -134,32 +132,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
 }
 
 Module.addEvent("ready", () => {
-  // Populate tenureCache
-  const guild = Module.client.guilds.cache.get(u.sf.ldsg);
-  if (!guild) return;
-  const exp = /^Member - (\d+) Years?$/;
-  const roles = guild.roles.cache.filter(r => exp.test(r.name));
-
-  for (const [roleId, role] of roles) {
-    const match = exp.exec(role.name);
-    if (!match) continue;
-    tenureCache.set(parseInt(match[1], 10), roleId);
-  }
-
   celebrate();
-})
-.setInit(async () => {
-  try {
-    const years = u.db.sheets.roles.filter(r => r.type === "Year").map(r => {
-      return {
-        year: parseInt(r.level),
-        role: r.base,
-      };
-    });
-    tenureCache = new u.Collection(years.map(r => [r.year, r.role]));
-  } catch (e) {
-    u.errorHandler(e, "Cakeday Init");
-  }
 })
 // Janky stuff, but it works!!! (for now lol)
 .setUnload((date, type) => {
@@ -177,9 +150,9 @@ Module.addEvent("ready", () => {
   permissions: () => config.devMode,
   hidden: true,
   process: (msg, suffix) => {
-    const date = new Date();
-    if (suffix) date.setFullYear(parseInt(suffix));
-    testCakeDays(date, new Date(), new u.Collection().set(msg.author.id, msg.member));
+    const date = u.moment();
+    if (suffix) date.subtract(parseInt(suffix), "year");
+    testCakeDays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
   }
 })
 .setClockwork(() => {
