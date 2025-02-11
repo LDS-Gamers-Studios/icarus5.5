@@ -129,7 +129,7 @@ async function featherCheck(msg) {
       return;
     }
     if (dropMode) resetFeatherDrops();
-  } catch (/** @type {any} */ error) {
+  } catch (error) {
     u.errorHandler(error, `XP Feather Drop - Mode: ${dropMode ? "Drop" : "Lure"}`);
     if (dropMode) resetFeatherDrops();
   }
@@ -275,7 +275,7 @@ async function rankClockwork(client) {
         }
         if (user.trackXP === u.db.user.TrackXPEnum.FULL) member.send(message).catch(u.noop);
       }
-    } catch (/** @type {any} */ error) {
+    } catch (error) {
       u.errorHandler(error, `Member Rank processing (${member.displayName} - ${member.id})`);
     }
   }
@@ -349,7 +349,7 @@ Module.setUnload(() => active)
   .setClockwork(() => {
     try {
       return setInterval(rankClockwork, 60_000, Module.client);
-    } catch (/** @type {any} */ error) {
+    } catch (error) {
       u.errorHandler(error, "Rank outer clockwork");
     }
   })

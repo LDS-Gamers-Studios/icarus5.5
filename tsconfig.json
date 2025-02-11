@@ -11,6 +11,7 @@
     "allowJs": true,
     "moduleResolution": "node",
     "module": "CommonJS",
+    "useUnknownInCatchVariables": false,
     "resolveJsonModule": true,
     "strict": true,
     "esModuleInterop": true,
