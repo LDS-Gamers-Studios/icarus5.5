@@ -1,7 +1,6 @@
 // @ts-check
 
 const Augur = require("augurbot-ts"),
-  Discord = require('discord.js'),
   u = require("../utils/utils"),
   config = require("../config/config.json"),
   SteamApi = require("steamapi"),
@@ -77,22 +76,6 @@ async function buyGame(game, rawGame, user) {
     );
   user.client.getTextChannel(u.sf.channels.logistics)?.send({ embeds: [embed2] });
   return embed1;
-}
-
-/**
- * @param {Discord.GuildMember} member
- */
-function getHouseInfo(member) {
-  const houseInfo = new Map([
-    [u.sf.roles.housebb, { name: "Brightbeam", color: 0x00a1da }],
-    [u.sf.roles.housefb, { name: "Freshbeast", color: 0xfdd023 }],
-    [u.sf.roles.housesc, { name: "Starcamp", color: 0xe32736 }]
-  ]);
-
-  for (const [k, v] of houseInfo) {
-    if (member.roles.cache.has(k)) return v;
-  }
-  return { name: "Unsorted", color: 0x402a37 };
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
@@ -351,7 +334,7 @@ async function slashBankAward(interaction) {
     recipient.send({ embeds: [embed] }).catch(() => interaction.followUp({ content: `I wasn't able to alert ${recipient} about the award. Please do so yourself.`, ephemeral: true }));
     u.clean(interaction, 60000);
 
-    const house = getHouseInfo(recipient);
+    const house = u.getHouseInfo(recipient);
 
     embed = u.embed({ author: recipient })
       .setColor(house.color)

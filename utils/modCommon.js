@@ -265,7 +265,7 @@ const modCommon = {
         channel: msg.channel.id,
         message: msg.id,
         flag: card.id,
-        description: msg.cleanContent,
+        description: msg.cleanContent || "No Content",
         mod: client.user?.id ?? "Icarus",
         value: 0
       };
@@ -313,7 +313,7 @@ const modCommon = {
     if (getInfractions) {
       embed
         .setDescription(text)
-        .addFields({ name: "Activity", value: `Active Minutes: ${userDoc?.posts ?? "Unknown"}`, inline: true });
+        .addFields({ name: "Activity", value: `Chat: ${userDoc?.posts ?? "Unknown"} minutes\nVoice: ${userDoc?.voice ?? "Unknown"}`, inline: true });
     }
     return embed;
 

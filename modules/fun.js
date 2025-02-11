@@ -57,12 +57,12 @@ async function slashFunHBS(int) {
       storedChoice = choice;
       int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
-      `${chooser} has chosen their fighter and is awaiting a challenger.`);
+      `${chooser} has chosen their fighter and is awaiting a challenger. Respond using </fun hbs:${u.sf.commands.slashFun}>.`);
     } else if (storedChooser === chooser) {
       storedChoice = choice;
       int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
-      `${chooser} has changed their fighter and is awaiting a challenger.`
+      `${chooser} has changed their fighter and is awaiting a challenger.  Respond using </fun hbs:${u.sf.commands.slashFun}>.`
       );
     }
 
@@ -318,16 +318,16 @@ async function slashFunButtermelon(int) {
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunQuote(int) {
-  const url = "https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en";
+  const url = "https://zenquotes.io/api/random";
   await int.deferReply();
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error(`axios error: ${e.status}\n${e.message}`);
   });
-  const data = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
+  const data = (typeof response.data === "string" ? JSON.parse(response.data) : response.data)[0] || false;
   const embed = u.embed();
   if (data) {
-    embed.setAuthor({ name: data.quoteAuthor })
-      .setDescription(data.quoteText)
+    embed.setAuthor({ name: data.a })
+      .setDescription(data.q)
       .setTimestamp(null);
   } else {
     embed.setAuthor({ name: "ChainSword20000" })

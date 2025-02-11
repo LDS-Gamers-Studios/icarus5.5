@@ -261,12 +261,12 @@ const utils = {
       /* eslint-disable-next-line no-console*/
       console.error(`${message.author.username} in ${loc}: ${message.cleanContent}`);
 
-      message.channel.send("I've run into an error. I've let my devs know.")
+      message.reply("I've run into an error. I've let my devs know.")
         .then(utils.clean);
       embed.addFields(
         { name: "User", value: message.author.username, inline: true },
         { name: "Location", value: loc, inline: true },
-        { name: "Command", value: message.cleanContent || "`undefined`", inline: true }
+        { name: "Command", value: message.cleanContent || "`No Content`", inline: true }
       );
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
@@ -424,6 +424,21 @@ const utils = {
   uniqueObj: function(items, key) {
     const col = new Discord.Collection(items.map(i => [i[key], i]));
     return Array.from(col.values());
+  },
+  /** @param {Discord.GuildMember | null} [member]*/
+  getHouseInfo: function(member) {
+    const houseInfo = new Map([
+      [utils.sf.roles.houses.housebb, { name: "Brightbeam", color: 0x00a1da }],
+      [utils.sf.roles.houses.housefb, { name: "Freshbeast", color: 0xfdd023 }],
+      [utils.sf.roles.houses.housesc, { name: "Starcamp", color: 0xe32736 }]
+    ]);
+
+    if (member) {
+      for (const [k, v] of houseInfo) {
+        if (member.roles.cache.has(k)) return v;
+      }
+    }
+    return { name: "Unsorted", color: 0x402a37 };
   }
 };
 

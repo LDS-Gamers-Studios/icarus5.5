@@ -7,6 +7,7 @@ config/siteConfig.json
 test.js
 *-.js
 *-.json
+*.csv
 data/banned.json
 site
 .DS_Store

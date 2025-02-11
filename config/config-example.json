@@ -83,5 +83,10 @@
     "enabled": false,
     "count": 5000
   },
-  "badgePath": "./media/badges"
+  "badgePath": "./media/badges",
+  "xp": {
+    "base": 25,
+    "featherCooldown": 3,
+    "featherDropChance": 0.01
+  }
 }
