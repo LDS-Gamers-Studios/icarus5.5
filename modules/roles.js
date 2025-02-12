@@ -67,7 +67,7 @@ async function slashRoleList(int) {
   const roles = new u.Collection(u.db.sheets.optRoles.map(r => [r.role.id, r.role]));
   const [has, without] = roles.partition(r => int.member.roles.cache.has(r.id));
 
-  const ephemeral = int.channel?.id !== u.sf.channels.botspam;
+  const ephemeral = int.channel?.id !== u.sf.channels.botSpam;
   const embed = u.embed().setTitle("Opt-In Roles")
     .setDescription(`You can add these roles with </role add:${u.sf.commands.slashRole}> to recieve pings and access to certain channels`);
   let lines = [];
@@ -133,14 +133,14 @@ async function slashRoleInventory(int) {
       .setTitle("Equippable Color Inventory")
       .setDescription(`Equip a color role with </role equip:${u.sf.commands.slashRole}>\n\n${inv.join("\n")}`);
     if (inv.length === 0) int.reply({ content: "You don't have any colors in your inventory!", ephemeral: true });
-    else int.reply({ embeds: [embed], ephemeral: int.channel?.id !== u.sf.channels.botspam });
+    else int.reply({ embeds: [embed], ephemeral: int.channel?.id !== u.sf.channels.botSpam });
   } catch (e) { u.errorHandler(e, int); }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashRoleEquip(int) {
   try {
-    await int.deferReply({ ephemeral: int.channel?.id !== u.sf.channels.botspam });
+    await int.deferReply({ ephemeral: int.channel?.id !== u.sf.channels.botSpam });
 
     // get stored roles
     const equipRoles = u.db.sheets.roles.equip;

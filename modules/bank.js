@@ -75,7 +75,7 @@ async function buyGame(game, rawGame, user) {
       { name: "Cost", value: gb + game.cost, inline: true },
       { name: "Balance", value: `${gb}${balance.gb - game.cost}`, inline: true }
     );
-  user.client.getTextChannel(u.sf.channels.logistics)?.send({ embeds: [embed2] });
+  user.client.getTextChannel(u.sf.channels.team.logistics)?.send({ embeds: [embed2] });
   return embed1;
 }
 
@@ -161,7 +161,7 @@ async function slashBankGive(interaction) {
     giver.send({ embeds: [embed] }).catch(u.noop);
 
     if (toIcarus) {
-      const hoh = interaction.client.getTextChannel(u.sf.channels.logistics);
+      const hoh = interaction.client.getTextChannel(u.sf.channels.team.logistics);
       const hohEmbed = u.embed({ author: giver })
         .setDescription(`**${u.escapeText(giver.displayName)}** gave me ${coin}${value}.`)
         .addFields({ name: "Reason", value: reason });
@@ -278,7 +278,7 @@ async function slashBankDiscount(interaction) {
           { name: "Balance", value: `${gb}${balance.gb + withdraw.value}` }
         )
         .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb} for a store coupon code.`);
-      interaction.client.getTextChannel(u.sf.channels.logistics)?.send({ embeds: [embed] });
+      interaction.client.getTextChannel(u.sf.channels.team.logistics)?.send({ embeds: [embed] });
     } else {
       interaction.editReply("Sorry, something went wrong. Please try again.");
     }
@@ -345,7 +345,7 @@ async function slashBankAward(interaction) {
         { name: "Reason", value: reason }
       )
       .setDescription(`**${giver}** ${str(recipient.toString())}`);
-    interaction.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
+    interaction.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed] });
   } catch (e) { u.errorHandler(e, interaction); }
 }
 

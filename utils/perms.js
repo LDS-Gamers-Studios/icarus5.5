@@ -14,27 +14,27 @@ const permFuncs = {
   /** @type {perm} */
   botAdmin: m => config.adminId.includes(m.id) || permFuncs.botOwner(m),
   /** @type {perm} */
-  mgmt: m => m.roles.cache.has(sf.roles.management) || (config.ownerOverride && permFuncs.botOwner(m)),
+  mgmt: m => m.roles.cache.has(sf.roles.team.management) || (config.ownerOverride && permFuncs.botOwner(m)),
   /** @type {perm} */
-  mgr: m => m.roles.cache.has(sf.roles.manager),
+  mgr: m => m.roles.cache.has(sf.roles.team.manager),
   /** @type {perm} */
-  mod: m => m.roles.cache.has(sf.roles.mod),
+  mod: m => m.roles.cache.has(sf.roles.team.mod),
   /** @type {perm} */
-  mcMod: m => m.roles.cache.has(sf.roles.minecraftmod),
+  mcMod: m => m.roles.cache.has(sf.roles.team.minecraftMod),
   /** @type {perm} */
-  botTeam: m => m.roles.cache.has(sf.roles.botTeam),
+  botTeam: m => m.roles.cache.has(sf.roles.team.botTeam),
   /** @type {perm} */
-  team: m => m.roles.cache.has(sf.roles.team),
+  team: m => m.roles.cache.has(sf.roles.team.team),
   /** @type {perm} */
-  volunteer: m => m.roles.cache.has(sf.roles.volunteer),
+  volunteer: m => m.roles.cache.has(sf.roles.team.volunteer),
   /** @type {perm} */
-  inHouse: m => m.roles.cache.hasAny(...Object.values(sf.roles.houses)),
+  inHouse: m => m.roles.cache.hasAny(sf.roles.houses.housebb, sf.roles.houses.housefb, sf.roles.houses.housesc),
   /** @type {perm} */
-  trustPlus: m => m.roles.cache.has(sf.roles.trustedplus),
+  trustPlus: m => m.roles.cache.has(sf.roles.moderation.trustedPlus),
   /** @type {perm} */
-  trusted: m => m.roles.cache.has(sf.roles.trusted),
+  trusted: m => m.roles.cache.has(sf.roles.moderation.trusted),
   /** @type {perm} */
-  notMuted: m => !m.roles.cache.hasAny(sf.roles.muted, sf.roles.ducttape),
+  notMuted: m => !m.roles.cache.hasAny(sf.roles.moderation.muted, sf.roles.moderation.ductTape),
   /** @type {perm} */
   everyone: () => true
 };
@@ -48,7 +48,6 @@ const perms = {
   calc: (member, permArr) => {
     let result = false;
     if (!member) return false;
-    /** @type {keyof permFuncs} */
     for (const perm of Array.from(new Set(permArr.concat("mgmt")))) {
       const p = permFuncs[perm];
       if (p) result = p(member);

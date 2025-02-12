@@ -147,7 +147,7 @@ async function pin(int, msg) {
         { name: "Post", value: msg.url }
       );
   if (msg.attachments.size > 0) embed.setImage(msg.attachments.first()?.url ?? null);
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] });
   return edit(int, "Pin request submitted!");
 
 }
@@ -249,7 +249,7 @@ async function warnUser(int, usr) {
 /** @type {message} */
 async function modDiscussion(int, msg) {
   if (!msg) return edit(int, "I couldn't find that message!");
-  const md = int.client.getTextChannel(u.sf.channels.moddiscussion);
+  const md = int.client.getTextChannel(u.sf.channels.mods.discussion);
   const embed = u.msgReplicaEmbed(msg, "", true)
     .setFooter({ text: `Linked by ${u.escapeText(int.member.displayName)}` })
     .setColor(c.colors.action);
@@ -338,7 +338,7 @@ async function purgeChannel(int, msg) {
   if (!toDelete) return edit(int, "I couldn't get those messages.");
   const deleted = await channel.bulkDelete(toDelete, true);
 
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({ author: int.member })
       .setTitle("Channel Purge")
       .addFields(
@@ -357,7 +357,7 @@ async function spamCleanup(int, msg) {
   const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false);
   if (!cleaned) return edit(int, "I couldn't find any recent messages that matched this one.");
   // Log it
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({ author: int.member })
       .setTitle("Channel Purge")
       .addFields(

@@ -61,7 +61,7 @@ async function champs(int) {
   for (const usr of users) {
     const member = int.guild.members.cache.get(usr ?? "");
     if (!member) continue;
-    member?.roles.add(u.sf.roles.champion);
+    member?.roles.add(u.sf.roles.tournament.champion);
   }
   const s = users.length > 1 ? 's' : '';
   Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send(`## Congratulations to our new tournament champion${s}!\n${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
@@ -70,7 +70,7 @@ async function champs(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function participant(int) {
-  const role = int.guild.roles.cache.get(u.sf.roles.tournamentparticipant);
+  const role = int.guild.roles.cache.get(u.sf.roles.tournament.participant);
   await int.deferReply({ ephemeral: true });
   if (!role) return u.errorHandler(new Error("No Tourney Champion Role"), int);
   const reset = int.options.getBoolean('reset');

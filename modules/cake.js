@@ -93,7 +93,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
 
     const unknownYears = new Set();
     const unapplied = [];
-    for (const [memberId, member] of members.filter(m => m.roles.cache.has(u.sf.roles.trusted))) {
+    for (const [memberId, member] of members.filter(m => m.roles.cache.has(u.sf.roles.moderation.trusted))) {
       try {
         const offset = offsets.find(o => o.discordId === memberId);
         const join = u.moment(testJoinDate ?? member.joinedAt ?? 0).subtract(offset?.priorTenure || 0, "days");
@@ -115,7 +115,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
       } catch (e) { u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`); continue; }
     }
     if (unknownYears.size > 0) {
-      Module.client.getTextChannel(u.sf.channels.bottesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
+      Module.client.getTextChannel(u.sf.channels.botTesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
     }
     if (celebrating.size > 0) {
       const embed = u.embed()

@@ -118,7 +118,7 @@ async function featherCheck(msg) {
           )
           .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in ${msg.url} and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
-        msg.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
+        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed] });
       }
 
       // give em xp
@@ -228,7 +228,7 @@ async function rankClockwork(client) {
     // Remind mods to trust people!
     try {
       // no need
-      if (member.roles.cache.has(u.sf.roles.trusted)) continue;
+      if (member.roles.cache.has(u.sf.roles.moderation.trusted)) continue;
 
       let content;
       // they posted 25 messages
@@ -242,7 +242,7 @@ async function rankClockwork(client) {
       if (content) {
         // get the summary and send it with options to trust
         const embed = await mc.getSummaryEmbed(member);
-        client.getTextChannel(u.sf.channels.modlogs)?.send({
+        client.getTextChannel(u.sf.channels.mods.logs)?.send({
           content: `${member} has had ${content} without being trusted!`,
           embeds: [embed.setFooter({ text: member.id })],
           components: [
@@ -291,7 +291,7 @@ Module.setUnload(() => active)
   .addEvent("messageCreate", (msg) => {
     if (
       !msg.inGuild() || msg.guild?.id !== u.sf.ldsg || // only in LDSG
-      msg.member?.roles.cache.has(u.sf.roles.muted) || // no muted allowed
+      msg.member?.roles.cache.has(u.sf.roles.moderation.muted) || // no muted allowed
       msg.author.bot || msg.author.system || msg.webhookId || // no bots
       u.parse(msg) // not a command
     ) return;

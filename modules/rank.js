@@ -52,7 +52,7 @@ async function slashRankTrack(interaction) {
 async function slashRankView(interaction) {
   try {
     // View member rankings
-    await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botspam });
+    await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botSpam });
     const members = interaction.guild.members.cache;
     const member = interaction.options.getMember("user") ?? interaction.member;
     const record = await u.db.user.getRank(member.id, members);
