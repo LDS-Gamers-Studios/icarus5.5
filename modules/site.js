@@ -17,13 +17,16 @@ if (config.siteOn) {
   const socket = require("express-ws")(express());
   const app = socket.app;
 
+  const TOURNEY_DEPLOYMENT_READY = false;
+  const DEPLOY_BUILD = false;
+
   // encoders
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
-  app.use(cors({
-    origin: [siteConfig.frontend],
-    credentials: true,
-  }));
+  app.use(express.json())
+    .use(express.urlencoded({ extended: false }))
+    .use(cors({
+      origin: [siteConfig.frontend],
+      credentials: true,
+    }));
 
   // token storage setup
   app.use(session({
@@ -37,10 +40,10 @@ if (config.siteOn) {
     })
   }));
 
-  app.use(passport.initialize());
-  app.use(passport.session());
+  app.use(passport.initialize())
+    .use(passport.session());
 
-  // expose routes
+  // expose backend routes
   app.use('/api', routes);
   app.use('/static', express.static('site/backend/public', { setHeaders: (res, path) => {
     // we want these to be direct downloads
@@ -50,12 +53,11 @@ if (config.siteOn) {
     return res;
   } }));
 
-  const readyToDeploy = false;
-
+  // not quite ready, waiting for tag migration
   // app.use('/tags', express.static('media/tags'));
 
   // Handle all other routes by serving the React index.html file
-  if (readyToDeploy) {
+  if (DEPLOY_BUILD) {
     const path = require("path");
     const frontFiles = path.resolve(__dirname, '../site/frontend/build');
 
@@ -65,14 +67,16 @@ if (config.siteOn) {
       res.sendFile(frontFiles + "/index.html");
     });
   }
+
+  if (TOURNEY_DEPLOYMENT_READY) {
+    // tournament websocket handler
+    app.ws("/ws/tournaments/:id/listen", (ws, req) => {
+      tourneyWS.listen(ws, req);
+    });
+  }
+
   // eslint-disable-next-line no-console
   app.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
-
-  // tournament websocket handler
-  app.ws("/ws/tournaments/:id/listen", (ws, req) => {
-    tourneyWS.listen(ws, req);
-  });
-
 }
 
 module.exports = new Augur.Module();

@@ -7,30 +7,41 @@ const u = require("./utils");
  */
 /**
  * @param {GuildMember} member
- * @param {equipRoles} equipRoles
  */
-function getInventory(member, equipRoles) {
-  return u.perms.calc(member, ["mgr"]) ? equipRoles : equipRoles.filter(r => member.roles.cache.hasAny(r.baseId, ...r.inherited));
+function getInventory(member, override = true) {
+  const equipRoles = u.db.sheets.roles.equip;
+  if (override && u.perms.calc(member, ["mgr"])) return equipRoles;
+  return equipRoles.filter(r => member.roles.cache.hasAny(r.base.id, ...r.parents));
 }
 
 /**
  * @param {GuildMember} member
- * @param {equipRoles} equipRoles
- * @param {string | null} role
+ * @param {string | null} baseName
+ * @param {string} [baseId]
  */
-async function equip(member, equipRoles, role) {
-  const allColors = equipRoles.map(r => r.colorId);
-  const available = getInventory(member, equipRoles);
-  if (!role) {
-    await member.roles.remove(allColors.filter(c => member.roles.cache.has(c)));
+async function equip(member, baseName, baseId) {
+  const allColors = u.db.sheets.roles.equip.map(r => r.color.id).filter(r => member.roles.cache.has(r));
+  const inventory = getInventory(member);
+
+  if (!baseName && !baseId) {
+    await member.roles.remove(allColors);
     return true;
   }
-  if (!member.guild.roles.cache.has(role)) return false;
-  const color = available.find(a => a.baseId === role);
-  if (!color) return false;
-  if (member.roles.cache.has(color.colorId)) return true;
-  await member.roles.remove(allColors.filter(c => member.roles.cache.has(c) && c !== color.colorId));
-  await member.roles.add(color.colorId);
+  // role can't be equipped
+  if (!baseName) return null;
+  if (baseId ? !u.db.sheets.roles.equip.get(baseId) : !u.db.sheets.roles.equip.find(r => r.base.name.toLowerCase() === baseName.toLowerCase())) {
+    return null;
+  }
+  const colorRole = baseId ? inventory.get(baseId) : inventory.find(r => r.base.name.toLowerCase() === baseName.toLowerCase());
+  // role isn't in their inventory
+  if (!colorRole) return false;
+
+  // nothing changed
+  if (member.roles.cache.has(colorRole.color.id)) return true;
+
+  const removal = allColors.filter(c => c !== colorRole.color.id);
+  if (removal.length > 0) await member.roles.remove(removal);
+  await member.roles.add(colorRole.color.id);
   return true;
 }
 

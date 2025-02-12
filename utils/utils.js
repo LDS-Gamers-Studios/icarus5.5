@@ -229,7 +229,7 @@ const utils = {
     descriptions.push(active);
     if (!int) return descriptions;
     let i = 0;
-    do {
+    while (i < descriptions.length) {
       const desc = descriptions[i];
       if (!desc) return;
       const e = utils.embed(embed.toJSON()).setDescription(desc);
@@ -240,7 +240,7 @@ const utils = {
         await int.followUp({ embeds: [e.setTitle(`${e.data.title ?? ""} Cont.`)], ephemeral });
       }
       i++;
-    } while (i < descriptions.length);
+    }
   },
   parseInteraction,
   /**

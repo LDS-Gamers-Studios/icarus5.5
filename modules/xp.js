@@ -159,6 +159,7 @@ async function reactionXp(reaction, user, add = true) {
   // sometimes it doesn't actually fetch within augur. annoying.
   await reaction.message.fetch();
   await reaction.message.member?.fetch();
+
   // check if custom id, then check if unicode emoji
   const identifier = reaction.emoji.id ?? reaction.emoji.name ?? "";
 
@@ -264,14 +265,14 @@ async function rankClockwork(client) {
         let message = `${u.rand(Rank.messages)} ${u.rand(Rank.levelPhrase).replace("%LEVEL%", lvl.toString())}`;
 
         // rank up!
-        const reward = u.db.sheets.roles.rank.get(lvl);
+        const reward = u.db.sheets.roles.rank.get(lvl)?.base;
         if (reward) {
           // out with the old and in with the new
           const has = u.db.sheets.roles.rank.find(r => member.roles.cache.has(r.base.id));
           if (has) await member.roles.remove(has.base);
-          await member.roles.add(reward.base);
+          await member.roles.add(reward);
 
-          message += `\n\nYou have been awarded the **${reward.base.name}** role!`;
+          message += `\n\nYou have been awarded the **${reward.name}** role!`;
         }
         if (user.trackXP === u.db.user.TrackXPEnum.FULL) member.send(message).catch(u.noop);
       }
