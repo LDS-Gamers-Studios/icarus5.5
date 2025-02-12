@@ -3,7 +3,6 @@
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   config = require("../config/config.json"),
-  SteamApi = require("steamapi"),
   { customAlphabet } = require("nanoid");
 const { GoogleSpreadsheetRow } = require("google-spreadsheet");
 const Discord = require("discord.js");
@@ -15,9 +14,6 @@ const Module = new Augur.Module(),
 
 const chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const nanoid = customAlphabet(chars, 8);
-
-/** @type {SteamApi.App[]} */
-let steamGameList = [];
 
 /**
  * @param {import("../database/sheetTypes").Game} game
@@ -364,17 +360,6 @@ Module.addInteraction({ name: "bank",
       default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   }
-})
-.setInit(async function(gl) {
-  try {
-    if (gl) {
-      steamGameList = gl;
-    } else {
-      const steam = new SteamApi(config.api.steam);
-      steamGameList = await steam.getAppList();
-    }
-  } catch (e) { u.errorHandler(e, "Fetch Steam Game List Error"); }
-})
-.setUnload(() => steamGameList);
+});
 
 module.exports = { buyGame, ...Module };
