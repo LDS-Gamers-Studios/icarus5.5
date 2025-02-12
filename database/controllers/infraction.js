@@ -48,17 +48,15 @@ module.exports = {
     if (typeof discordId !== "string") throw new TypeError(outdated);
     const since = moment().tz("America/Denver").subtract(time, "days");
     /** @type {Infraction[]} */
-    const records = (await Infraction.find({ discordId, timestamp: { $gte: since } }, undefined, { lean: true })
-      .exec())
-      // -1 is cleared, 0 is unhandled
-      .filter(r => r.value > 0);
-    return {
-      discordId,
-      count: records.length,
-      points: records.reduce((c, r) => c + r.value, 0),
-      time,
-      detail: records
-    };
+    // -1 is cleared, 0 is unhandled
+    return Infraction.find({ discordId, timestamp: { $gte: since }, value: { $gt: 0 } }, undefined, { lean: true }).exec()
+      .then(/** @param {Infraction[]} records */ records => ({
+        discordId,
+        count: records.length,
+        points: records.reduce((c, r) => c + r.value, 0),
+        time,
+        detail: records
+      }));
   },
   /**
    * Get the infraction counts for different users
@@ -68,9 +66,9 @@ module.exports = {
    */
   getCounts: async function(discordIds, time = 28) {
     if (!Array.isArray(discordIds)) throw new TypeError("discordIds must be an array of IDs");
-    const since = moment().tz("America/Denver").subtract(time, "days").toDate();
+    const since = moment().tz("America/Denver").subtract(time, "days");
     const records = await Infraction.aggregate([
-      { $match: { timestamp: { $gte: since } } },
+      { $match: { timestamp: { $gte: since }, value: { $gt: 0 } } },
       { $group: { _id: "$discordId", count: { $sum: 1 } } }
     ]).exec();
     return new Discord.Collection(records.map(r => [r._id, r.count]));
