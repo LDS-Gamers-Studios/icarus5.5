@@ -30,8 +30,12 @@ const data = {
     /** @type {{ config: GoogleSpreadsheet, games: GoogleSpreadsheet } | null}} */
     docs: null
   },
-  /** @type {Collection<string, types.Game>} */
-  games: new Collection(),
+  games: {
+    /** @type {Collection<string, types.Game>} */
+    purchased: new Collection(),
+    /** @type {Collection<string, types.Game>} */
+    available: new Collection()
+  },
   /** @type {Collection<string, types.IGN>} */
   igns: new Collection(),
   /** @type {Collection<string, types.OptRole>} */
@@ -224,13 +228,16 @@ const mappers = {
 async function setData(sheet, doc, client) {
   if (sheet === "games") {
     data.data.games = await doc.sheetsByIndex[0].getRows();
-    data.games.clear();
+    data.games.available.clear();
+    data.games.purchased.clear();
     for (const game of data.data.games) {
       if (!game.get("Code") && game.get("Title")) {
         game.set("Code", nanoid(5).toUpperCase());
         game.save();
       }
-      if (!data.games.find(g => g.title === game.get("Title"))) data.games.set(game.get("Code"), mappers.games(game));
+      const mapped = mappers.games(game);
+      if (mapped.recipient || mapped.date) data.games.purchased.set(mapped.code, mapped);
+      else if (!data.games.available.find(g => g.title === mapped.title)) data.games.available.set(mapped.code, mapped);
     }
     return;
   }

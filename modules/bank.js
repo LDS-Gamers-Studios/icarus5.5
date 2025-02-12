@@ -63,7 +63,11 @@ async function buyGame(game, rawGame, user) {
   rawGame.set("Recipient ID", user.id);
   rawGame.set("Date", new Date().valueOf());
   rawGame.save();
-  u.db.sheets.games.set(game.code, u.db.sheets.mappers.games(rawGame));
+  u.db.sheets.games.purchased.set(game.code, u.db.sheets.mappers.games(rawGame));
+  // sometimes there are multiple games
+  const backupGame = u.db.sheets.data.games.find(g => g.get("Title") === game.title && g.get("Code") !== game.code && !g.get("Recipient ID") && !g.get("Date"));
+  if (backupGame) u.db.sheets.games.available.set(game.code, u.db.sheets.mappers.games(backupGame));
+  else u.db.sheets.games.available.delete(game.code);
 
   const embed2 = u.embed({ author: user })
     .setDescription(`${user.displayName} just redeemed ${gb}${game.cost} for a ${game.title} (${game.system}) key.`)
@@ -184,19 +188,26 @@ async function slashBankGameList(interaction) {
   try {
     if (!u.db.sheets.data.docs?.games) throw new Error("Games List Error");
 
-    let gameList = u.uniqueObj(u.db.sheets.games.toJSON(), "title").filter(g => !g.recipient && !g.date)
-      .sort((a, b) => a.title.localeCompare(b.title));
     // Filter Rated M, unless the member has the Rated M Role
+    let gameList = u.db.sheets.games.available;
     if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.rating.toUpperCase() !== "M");
+    const games = gameList.sort((a, b) => a.title.localeCompare(b.title))
+      .map(g => {
+        const title = `**${g.title}** (${g.system})`;
+        let str = title;
+
+        // link shenanigans
+        if (g.steamId) str = `[${title}](https://store.steampowered.com/app/${g.steamId})`;
+
+        str += ` Rated ${g.rating}\n${gb}${g.cost} | Code: **${g.code}**\n`;
+        return str;
+      });
 
     const embed = u.embed()
       .setTitle("Games Available to Redeem")
       .setDescription(`Redeem ${gb} for game codes with the </bank game redeem:${u.sf.commands.slashBank}> command.\n\n`);
 
-    u.pagedEmbeds(interaction, embed, gameList.map(game => {
-      return `${game.steamId ? "[" : ""}**${game.title}** (${game.system})${game.steamId ? `](https://store.steampowered.com/app/${game.steamId})` : ""}`
-        + ` Rated ${game.rating} - ${gb}${game.cost} | Code: **${game.code}**\n`;
-    }));
+    u.pagedEmbeds(interaction, embed, games);
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
@@ -207,7 +218,7 @@ async function slashBankGameRedeem(interaction) {
     if (!u.db.sheets.data.docs?.games) throw new Error("Get Game List Error");
     // find the game they're trying to redeem
     const code = interaction.options.getString("code", true).toUpperCase();
-    const game = u.db.sheets.games.get(code);
+    const game = u.db.sheets.games.available.get(code);
     const rawGame = u.db.sheets.data.games.find(g => g.get("Code") === game?.code);
     if (!game || !rawGame) {
       return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);
