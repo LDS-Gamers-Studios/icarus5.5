@@ -123,14 +123,11 @@ const models = {
     const limit = options.limit ?? 10;
 
     // Get top X users first
-    const params = { excludeXP: false, discordId: { $in: members } };
-
-    const query = User.find(params, undefined, { lean: true });
+    const query = User.find({ trackXP: { $ne: TrackXPEnum.OFF }, discordId: { $in: members } }, undefined, { lean: true });
     if (season) query.sort({ currentXP: "desc" });
     else query.sort({ totalXP: "desc" });
 
-    if (limit) query.limit(limit);
-    const records = await query.exec();
+    const records = await query.limit(limit).exec();
     /** @type {(UserRecord & {rank: number})[]} */
     const ranked = records.map((r, i) => {
       return { ...r, rank: i + 1 };
@@ -160,7 +157,7 @@ const models = {
     /** @param {UserRecord[]} users */
     const mapper = (users) => users.map((u, i) => ({ ...u, rank: i + 1 }));
 
-    const query = () => User.find({ excludeXP: false, discordId: { $in: members } }, undefined, { lean: true }).limit(limit);
+    const query = () => User.find({ trackXP: { $ne: TrackXPEnum.OFF }, discordId: { $in: members } }, undefined, { lean: true }).limit(limit);
     const season = await query().sort({ currentXP: "desc" }).exec().then(mapper);
     const life = await query().sort({ totalXP: "desc" }).exec().then(mapper);
 
@@ -187,14 +184,11 @@ const models = {
     members = (members instanceof Discord.Collection ? Array.from(members.keys()) : members);
 
     // Get requested user
-    const record = await User.findOne({ discordId }, undefined, { lean: true }).exec();
-    if (!record || record.trackXP === TrackXPEnum.OFF) return null;
+    const record = await User.findOne({ discordId, trackXP: { $ne: TrackXPEnum.OFF } }, undefined, { lean: true }).exec();
+    if (!record) return null;
 
-    const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP }, discordId: { $in: members } };
-    const seasonCount = await User.count(seasonParams);
-
-    const lifetimeParams = { excludeXP: false, totalXP: { $gt: record.totalXP }, discordId: { $in: members } };
-    const lifeCount = await User.count(lifetimeParams);
+    const seasonCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, currentXP: { $gt: record.currentXP }, discordId: { $in: members } });
+    const lifeCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, totalXP: { $gt: record.totalXP }, discordId: { $in: members } });
 
     return { ...record, rank: { season: seasonCount + 1, lifetime: lifeCount + 1 } };
   },
@@ -223,11 +217,7 @@ const models = {
    */
   trackXP: function(discordId, trackXP) {
     if (typeof discordId !== 'string') throw new Error(outdated);
-    return User.findOneAndUpdate(
-      { discordId },
-      { $set: { trackXP } },
-      { new: true, upsert: true, lean: true }
-    ).exec();
+    return User.findOneAndUpdate({ discordId }, { trackXP }, { new: true, upsert: true, lean: true }).exec();
   },
   /**
    * Update a member's roles in the database
