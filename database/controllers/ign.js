@@ -32,8 +32,8 @@ module.exports = {
     else sys = system;
     if (Array.isArray(discordId)) id = { $in: discordId };
     else id = discordId;
-    if (sys) return Ign.find({ discordId: id, system: sys }, undefined, { lean: true });
-    return Ign.find({ discordId: id });
+    if (sys) return Ign.find({ discordId: id, system: sys }, undefined, { lean: true }).exec();
+    return Ign.find({ discordId: id }).exec();
   },
   /**
    * Find a specific IGN
@@ -45,10 +45,10 @@ module.exports = {
     return Ign.findOne({ discordId, system }, undefined, { lean: true }).exec();
   },
   /**
-   * Find a list of IGNs for a given system
+   * Find a list of all IGNs for a given system
    * @function getList
    * @param {string} system Whcih system list to fetch
-   * @returns {Promise<Array<IGN>>}
+   * @returns {Promise<IGN[]>}
    */
   getList: function(system) {
     return Ign.find({ system }).exec();
@@ -59,30 +59,25 @@ module.exports = {
    * @param {string} discordId Which user's IGN to save
    * @param {string} system Which system IGN to save
    * @param {string} ign The IGN to save
-   * @returns {Promise<IGN>}
+   * @returns {Promise<IGN | null>}
    */
   save: function(discordId, system, ign) {
-    return Ign.findOneAndUpdate(
-      { discordId, system },
-      { $set: { ign } },
-      { upsert: true, new: true }
-    ).exec();
+    return Ign.findOneAndUpdate({ discordId, system }, { ign }, { upsert: true, new: true, lean: true }).exec();
   },
   /**
    * Update a lot of IGNs at the same time
    * @param {string} discordId
    * @param {{system: string, ign: string }[]} igns
+   * @returns {Promise<number>}
    */
   saveMany: function(discordId, igns) {
     const actions = igns.map(i => {
       const filter = { discordId, system: i.system };
-      if (i.ign) {
-        return { updateOne: {
-          filter, update: { ign: i.ign }, upsert: true, new: true
-        } };
-      }
-      return { deleteOne: { filter } };
+      if (!i.ign) return { deleteOne: { filter } };
+      return {
+        updateOne: { filter, update: { ign: i.ign }, upsert: true, new: true, lean: true }
+      };
     });
-    return Ign.bulkWrite(actions);
+    return Ign.bulkWrite(actions).then((i) => i.modifiedCount);
   }
 };
