@@ -148,23 +148,50 @@ const Module = new Augur.Module()
 
       let welcomeString;
 
-      if (user) { // Member is returning
-        const toAdd = user.roles.filter(role => (
-          guild.roles.cache.has(role) && // role still exists
-          !guild.roles.cache.get(role)?.managed && // role can be applied
-          !dangerRoles.includes(role) // not a dangerous role (ie team+)
-        ));
-        const oldDanger = user.roles.filter(role => guild.roles.cache.has(role) && dangerRoles.includes(role))
-          .map(r => guild.roles.cache.get(r));
-        if (user.roles.length > 0) member = await member.roles.add(toAdd);
+      // Member is returning
+      if (user) {
+        /** @type {Discord.Role[][]} */
+        const [toAdd, danger, failed] = [[], [], []];
 
-        let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.toString()).join(", ") + (oldDanger.length > 0 ? "\nOld roles not given: " + oldDanger.join(", ") : "") ;
-        if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
+        for (const roleId of user.roles) {
+          // ensure role still exists
+          const role = guild.roles.cache.get(roleId);
+          if (!role) continue;
+
+          // can't be applied
+          if (role.managed || role.position >= (guild.members.me?.roles.highest.position ?? 0)) {
+            failed.push(role);
+          } else if (dangerRoles.includes(roleId)) { // dangerous!
+            danger.push(role);
+          } else { // go ahead and add!
+            toAdd.push(role);
+          }
+        }
+
+        if (toAdd.length > 0) {
+          await member.roles.add(toAdd).catch(() => {
+            u.errorHandler(new Error("Rejoin Roles Apply Failed"), "Check the console to find their lost roles");
+            // eslint-disable-next-line no-console
+            console.log("failed", failed.map(f => f.id).join("\n"));
+            // eslint-disable-next-line no-console
+            console.log("toAdd", toAdd.map(f => f.id).join("\n"));
+          });
+        }
+
+        const addSurplus = toAdd.length - 30;
+        const failedSurplus = failed.length - 30;
+        const dangerSurplus = danger.length - 30;
+        let roleString = toAdd.sort((a, b) => b.comparePositionTo(a)).map(role => role.toString()).slice(0, 30).join(", ");
+        if (addSurplus > 0) roleString += ` + ${addSurplus} more`;
+        embed.addFields({ name: "Roles Given", value: roleString || "None" });
+
+        if (failed.length > 0) embed.addFields({ name: "\n⚠️ FAILED TO GIVE THESE ROLES", value: failed.slice(0, 30).join(", ") + (failedSurplus > 0 ? ` + ${failedSurplus}` : "") });
+        if (danger.length > 0) embed.addFields({ name: "\n⛔ Dangerous Roles Not Given: ", value: danger.slice(0, 30).join(", ") + (dangerSurplus > 0 ? ` + ${dangerSurplus}` : "") });
 
         embed.setTitle(member.displayName + " has rejoined the server.")
           .addFields(
-            { name: "Roles", value: roleString },
-            { name: "Activity", value: `${user.posts} Active Minutes` }
+            { name: "Chat Activity", value: `${user.posts} Active Minutes` },
+            { name: "Voice Activity", value: `${user.voice} Active Minutes` }
           );
         welcomeString = `Welcome back, ${member}! Glad to see you again.`;
 
