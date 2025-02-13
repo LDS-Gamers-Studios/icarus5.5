@@ -51,20 +51,20 @@ async function champs(int) {
   await int.deferReply({ ephemeral: true });
   const tName = int.options.getString('tournament');
   const user = (str) => int.options.getMember(str);
-  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].map(usr => usr?.id).filter(usr => usr !== null));
-  const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
+  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr !== null));
+  const date = u.moment().add(3, "weeks").valueOf();
 
-  const rows = await u.db.sheets.data.docs?.config.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr ?? "", "Take Role At": date, Key: u.customId(5) })));
+  const rows = await u.db.sheets.data.docs?.config.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr?.id ?? "", "Take Role At": date, Key: u.customId(5) })));
   for (const row of rows ?? []) {
     u.db.sheets.tourneyChampions.set(row.get("Key"), u.db.sheets.mappers.tourneyChampions(row));
   }
   for (const usr of users) {
-    const member = int.guild.members.cache.get(usr ?? "");
-    if (!member) continue;
-    member?.roles.add(u.sf.roles.tournament.champion);
+    usr?.roles.add(u.sf.roles.tournament.champion);
   }
   const s = users.length > 1 ? 's' : '';
-  Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send(`## Congratulations to our new tournament champion${s}!\n${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
+  const content = `## 🏆 Congratulations to our new tournament champion${s}! 🏆\n` +
+    `${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`;
+  Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send({ content, allowedMentions: { parse: ["users"] } });
   int.editReply("Champions recorded and announced!");
 }
 
