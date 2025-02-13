@@ -269,8 +269,8 @@ async function setData(sheet, doc, client) {
       /** @type {types.FullRole} */
       // @ts-expect-error sigh... the things we do to get things to work...
       const mapped = mappers.roles(role, client);
+      if (mapped.color) data.roles.equip.set(id, mapped);
       switch (type) {
-        case "Equip": data.roles.equip.set(id, mapped); break;
         case "Team Assign": data.roles.team.set(id, mapped); break;
         case "Rank": data.roles.rank.set(parseInt(mapped.level ?? "1000"), mapped); break;
         case "Year": data.roles.year.set(parseInt(mapped.level ?? "1000"), mapped); break;
@@ -351,7 +351,6 @@ function noBlank(e, key) {
 
 module.exports = {
   loadData,
-  makeDocument,
   data,
   mappers
 };
