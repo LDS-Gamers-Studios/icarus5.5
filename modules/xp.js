@@ -187,12 +187,12 @@ async function reactionXp(reaction, user, add = true) {
   const recipient = 0.5 * countMultiplier * channelEmoji * channelMultiplier * (add ? 1 : -1);
   const giver = 0.5 * channelEmoji * channelMultiplier * (add ? 1 : -1);
 
-  addXp(reaction.message.author.id, recipient, channelId);
+  addXp(user.id, giver, channelId);
 
   // if it's a public readonly, (like announcements), don't give xp to the poster
   const perms = reaction.message.channel.permissionsFor(u.sf.ldsg);
   if (perms?.has("ViewChannel") && !perms.has("SendMessages")) return;
-  addXp(user.id, giver, channelId);
+  addXp(reaction.message.author.id, recipient, channelId);
 
 }
 
@@ -228,31 +228,31 @@ async function rankClockwork(client) {
 
     // Remind mods to trust people!
     try {
-      // no need
-      if (member.roles.cache.has(u.sf.roles.moderation.trusted)) continue;
+      if (!member.roles.cache.has(u.sf.roles.moderation.trusted)) {
+        let content;
+        // they posted 25 messages
+        if (user.posts % 25 === 0 && backupActive.get(user.discordId)?.find(v => v.isMessage)) {
+          content = `${user.posts} active minutes in chat`;
+        // they were active in vc for 2 hours
+        } else if (user.voice % 120 === 0 && backupActive.get(user.discordId)?.find(v => v.isVoice)) {
+          content = `${user.voice} active minutes in voice chats`;
+        }
 
-      let content;
-      // they posted 25 messages
-      if (user.posts % 25 === 0 && backupActive.get(user.discordId)?.find(v => v.isMessage)) {
-        content = `${user.posts} active minutes in chat`;
-      // they were active in vc for 2 hours
-      } else if (user.voice % 120 === 0 && backupActive.get(user.discordId)?.find(v => v.isVoice)) {
-        content = `${user.voice} active minutes in voice chats`;
+        if (content) {
+          // get the summary and send it with options to trust
+          const embed = await mc.getSummaryEmbed(member);
+          client.getTextChannel(u.sf.channels.mods.logs)?.send({
+            content: `${member} has had ${content} without being trusted!`,
+            embeds: [embed.setFooter({ text: member.id })],
+            components: [
+              u.MessageActionRow().addComponents(
+                new u.Button().setCustomId("timeModTrust").setEmoji("👍").setLabel("Give Trusted").setStyle(Discord.ButtonStyle.Success)
+              )
+            ]
+          });
+        }
       }
 
-      if (content) {
-        // get the summary and send it with options to trust
-        const embed = await mc.getSummaryEmbed(member);
-        client.getTextChannel(u.sf.channels.mods.logs)?.send({
-          content: `${member} has had ${content} without being trusted!`,
-          embeds: [embed.setFooter({ text: member.id })],
-          components: [
-            u.MessageActionRow().addComponents(
-              new u.Button().setCustomId("timeModTrust").setEmoji("👍").setLabel("Give Trusted").setStyle(Discord.ButtonStyle.Success)
-            )
-          ]
-        });
-      }
 
       // Grant ranked rewards if applicable
       if (user.trackXP === u.db.user.TrackXPEnum.OFF) continue;
