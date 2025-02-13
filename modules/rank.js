@@ -203,7 +203,7 @@ const Module = new Augur.Module()
   })
   .addCommand({ name: "rankreset",
     onlyGuild: true,
-    permissions: (msg) => u.perms.isMgr(msg.member),
+    permissions: (msg) => u.perms.calc(msg.member, ["mgr"]),
     process: rankReset
   });
 

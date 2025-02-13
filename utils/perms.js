@@ -46,34 +46,18 @@ const perms = {
    * @param {(keyof permFuncs)[]} permArr
    */
   calc: (member, permArr) => {
-    let result = false;
     if (!member) return false;
-    for (const perm of Array.from(new Set(permArr.concat("mgmt")))) {
+    permArr.push("mgmt");
+    for (const perm of new Set(permArr)) {
       const p = permFuncs[perm];
-      if (p) result = p(member);
-      if (result) break;
+      if (p && p(member)) return true;
     }
-    return result;
+    return false;
   },
-  /** @typedef {(m: Discord.GuildMember | null | undefined) => boolean | null | undefined} mem*/
-  /** @type {mem} */
-  isAdmin: (m) => m && permFuncs.botAdmin(m),
-  /** @type {mem} */
+  /**
+   * @param {Discord.GuildMember | null |undefined } m
+   */
   isOwner: (m) => m && permFuncs.botOwner(m),
-  /** @type {mem} */
-  isMod: (m) => m && permFuncs.mod(m),
-  /** @type {mem} */
-  isMgmt: (m) => m && permFuncs.mgmt(m),
-  /** @type {mem} */
-  isMgr: (m) => m && permFuncs.mgr(m),
-  /** @type {mem} */
-  isTeam: (m) => m && permFuncs.team(m),
-  /** @type {mem} */
-  inHouse: (m) => m && permFuncs.inHouse(m),
-  /** @type {mem} */
-  isTrusted: (m) => m && permFuncs.trusted(m),
-  /** @type {mem} */
-  isntMuted: (m) => m && permFuncs.notMuted(m)
 };
 
 module.exports = perms;
