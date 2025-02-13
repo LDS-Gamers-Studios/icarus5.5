@@ -1,6 +1,5 @@
 // @ts-check
 const Ign = require("../models/Ign.model");
-
 /**
  * @typedef IGN
  * @prop {string} discordId
@@ -20,24 +19,8 @@ module.exports = {
     return Ign.findOneAndRemove({ discordId, system }, { lean: true, new: false }).exec();
   },
   /**
-   * Find many IGNs
-   * @param {string | string[]} discordId Which user's IGN to find
-   * @param {string | string[]} [system] Which system IGN to find
-   * @returns {Promise<IGN[]>}
-   */
-  findMany: function(discordId, system) {
-    let sys;
-    let id;
-    if (Array.isArray(system)) sys = { $in: system };
-    else sys = system;
-    if (Array.isArray(discordId)) id = { $in: discordId };
-    else id = discordId;
-    if (sys) return Ign.find({ discordId: id, system: sys }, undefined, { lean: true }).exec();
-    return Ign.find({ discordId: id }).exec();
-  },
-  /**
    * Find a specific IGN
-   * @param {string} discordId
+   * @param {string | string[]} discordId
    * @param {string} system
    * @returns {Promise<IGN | null>}
    */
@@ -47,11 +30,18 @@ module.exports = {
   /**
    * Find a list of all IGNs for a given system
    * @function getList
-   * @param {string} system Whcih system list to fetch
+   * @param {string | string[]} discordId
+   * @param {string} [system] Which system list to fetch
    * @returns {Promise<IGN[]>}
    */
-  getList: function(system) {
-    return Ign.find({ system }).exec();
+  findMany: function(discordId, system) {
+    let ids;
+    let query;
+    if (Array.isArray(discordId)) ids = { $in: discordId };
+    else ids = discordId;
+    if (system) query = { discordId: ids, system };
+    else query = { discordId: ids };
+    return Ign.find(query, undefined, { lean: true }).exec();
   },
   /**
    * Save a user's IGN
@@ -67,7 +57,7 @@ module.exports = {
   /**
    * Update a lot of IGNs at the same time
    * @param {string} discordId
-   * @param {{system: string, ign: string }[]} igns
+   * @param {{system: string, ign?: string }[]} igns
    * @returns {Promise<number>}
    */
   saveMany: function(discordId, igns) {
@@ -78,6 +68,6 @@ module.exports = {
         updateOne: { filter, update: { ign: i.ign }, upsert: true, new: true, lean: true }
       };
     });
-    return Ign.bulkWrite(actions).then((i) => i.modifiedCount);
+    return Ign.bulkWrite(actions).then((i) => i.modifiedCount + i.insertedCount + i.deletedCount);
   }
 };

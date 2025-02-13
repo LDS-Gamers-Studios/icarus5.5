@@ -46,11 +46,11 @@ async function testBirthdays(testMember, testDate) {
       ":cake: "
     ];
 
-    const birthdays = testMember ?? (await u.db.ign.getList("birthday")).filter(ign => guild.members.cache.has(ign.discordId));
+    const birthdays = testMember ?? await u.db.ign.findMany(guild.members.cache.map(m => m.id), "birthday");
     const celebrating = [];
     for (const birthday of birthdays) {
       try {
-        const date = u.moment(new Date(birthday.ign).valueOf() + 10 * 60 * 60 * 1000);
+        const date = u.moment(new Date(birthday.ign + " 5:PM"));
         if (checkDate(date, now, false)) {
           const member = guild.members.cache.get(birthday.discordId);
           celebrating.push(member);
@@ -59,7 +59,7 @@ async function testBirthdays(testMember, testDate) {
             member?.send(":birthday: :confetti_ball: :tada: A very happy birthday to you, from LDS Gamers! :tada: :confetti_ball: :birthday:").catch(u.noop);
           }).catch(u.noop);
         }
-      } catch (e) { u.errorHandler(e, `Birthday Send - Discord Id: ${birthday.discordId}`); continue; }
+      } catch (e) { u.errorHandler(e, `Birthday Send - Discord ID: ${birthday.discordId}`); continue; }
     }
     if (celebrating.length > 0) {
       const embed = u.embed()
