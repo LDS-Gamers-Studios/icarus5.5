@@ -30,9 +30,8 @@ function setBadgeData(optRoles, roles) {
     badges.set(id, {
       image: `${role.badge}.png`,
       // roles that have a higher level badge than this one
-      overrides: role.parents
+      overrides: role.parents.filter(r => roles.all.get(r)?.badge)
     });
-
   }
 
   for (const [id, role] of optRoles) {
