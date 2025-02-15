@@ -268,10 +268,14 @@ async function rankClockwork(client) {
         const reward = u.db.sheets.roles.rank.get(lvl)?.base;
         if (reward) {
           // out with the old and in with the new
-          const has = u.db.sheets.roles.rank.find(r => member.roles.cache.has(r.base.id));
-          if (has) await member.roles.remove(has.base);
-          await member.roles.add(reward);
-
+          const has = u.db.sheets.roles.rank.find(r => member.roles.cache.has(r.base.id) && r.base.id !== reward.id);
+          const roles = member.roles.cache.clone();
+          if (has) roles.delete(has.base.id);
+          await member.roles.set([...roles.keys(), reward.id]).catch(e => {
+            u.errorHandler(e, `Tenure Role Set (${member.displayName} - ${member.id})`);
+            // eslint-disable-next-line no-console
+            console.log([...roles.keys(), reward.id]);
+          });
           message += `\n\nYou have been awarded the **${reward.name}** role!`;
         }
         if (user.trackXP === u.db.user.TrackXPEnum.FULL) member.send(message).catch(u.noop);

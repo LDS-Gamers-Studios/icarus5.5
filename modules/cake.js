@@ -102,9 +102,14 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
           // yell at devs if not
           const role = u.db.sheets.roles.year.get(years);
           if (role) {
-            const oldRole = u.db.sheets.roles.year.filter(r => member.roles.cache.has(r.base.id));
-            if (oldRole.size > 0) await member.roles.remove(oldRole.map(r => r.base)).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
-            await member.roles.add(role.base).catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
+            const oldRole = u.db.sheets.roles.year.find(r => member.roles.cache.has(r.base.id) && r.base.id !== role.base.id);
+            const roles = member.roles.cache.clone();
+            if (oldRole) roles.delete(oldRole.base.id);
+            await member.roles.set([...roles.keys(), role.base.id]).catch(e => {
+              u.errorHandler(e, `Tenure Role Set (${member.displayName} - ${memberId})`);
+              // eslint-disable-next-line no-console
+              console.log([...roles.keys(), role.base.id]);
+            });
           } else {
             unknownYears.add(years);
             unapplied.push(member);
