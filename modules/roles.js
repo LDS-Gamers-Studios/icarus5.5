@@ -242,7 +242,7 @@ Module.addInteraction({
         const newInventory = roleInfo.getInventory(newMember, false);
         const oldInventory = roleInfo.getInventory(oldMember, false);
         const diff = oldInventory.filter(r => !newInventory.has(r.base.id));
-        if (diff.size > 0) await newMember.roles.remove([...diff.keys()]);
+        if (diff.size > 0) await newMember.roles.remove(diff.map(d => d.color));
         await u.db.user.updateRoles(newMember);
       } catch (error) {
         u.errorHandler(error, "Update Roles on Role Remove");
