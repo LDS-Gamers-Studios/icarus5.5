@@ -394,30 +394,39 @@ function emojiCodePointify(emoji) {
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
-async function slashFunEmoji(int) {
+async function slashFunEmoGrow(int) {
+  try {
+    // get the inputs
+    await int.deferReply();
+    const emojiInput = int.options.getString("emoji", true);
+    const emoji1 = emojiSanitize(emojiInput);
+    // custom emoji embiggening
+    const idExtractRegx = /^<(a?):(.*):(\d+)>/i;
+    const match = idExtractRegx.exec(emojiInput);
+    if (match) {
+      // eslint-disable-next-line no-unused-vars
+      const [_, gif, name, id] = match;
+      return int.editReply({ files: [{ attachment: `https://cdn.discordapp.com/emojis/${id}.${gif ? 'gif' : 'png'}?size=512`, name: name + "Fullres." + (gif ? 'gif' : 'png') }] });
+    }
+
+    // default emoji embiggening
+    const e1CP = emojiCodePointify(emoji1);
+    const image = await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`).catch(u.noop);
+    if (image?.status !== 200) return int.editReply(`For some reason I couldn't enlarge ${emojiInput}.`).then(u.clean);
+    return int.editReply(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${e1CP}.png`);
+  } catch (error) {
+    u.errorHandler(error);
+  }
+}
+
+/** @param {Discord.ChatInputCommandInteraction} int */
+async function slashFunEmoMerge(int) {
   try {
     // get the inputs
     await int.deferReply();
     const emoji1input = int.options.getString("emoji1", true).trim();
-    const emoji2input = int.options.getString("emoji2")?.trim() || "";
+    const emoji2input = int.options.getString("emoji2", true).trim();
     const emoji1 = emojiSanitize(emoji1input);
-
-    if (!emoji2input) {
-      // custom emoji embiggening
-      const idExtractRegx = /^<(a?):(.*):(\d+)>/i;
-      const match = idExtractRegx.exec(emoji1input);
-      if (match) {
-        // eslint-disable-next-line no-unused-vars
-        const [_, gif, name, id] = match;
-        return int.editReply({ files: [{ attachment: `https://cdn.discordapp.com/emojis/${id}.${gif ? 'gif' : 'png'}?size=512`, name: name + "Fullres." + (gif ? 'gif' : 'png') }] });
-      }
-
-      // default emoji embiggening
-      const e1CP = emojiCodePointify(emoji1);
-      const image = await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`).catch(u.noop);
-      if (image?.status !== 200) return int.editReply(`For some reason I couldn't enlarge ${emoji1input}.`).then(u.clean);
-      return int.editReply(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${e1CP}.png`);
-    }
     // attempt to merge
     const emoji2 = emojiSanitize(emoji2input);
     const results = await axios(`https://tenor.googleapis.com/v2/featured?key=${config.api.tenor}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`).catch(u.noop);
@@ -478,7 +487,8 @@ const Module = new Augur.Module()
       case "quote": return slashFunQuote(int);
       case "namegame": return slashFunNamegame(int);
       case "choose": return slashFunChoose(int);
-      case "emoji": return slashFunEmoji(int);
+      case "emogrow": return slashFunEmoGrow(int);
+      case "emomerge": return slashFunEmoMerge(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   }

@@ -47,20 +47,30 @@ const choose = new u.sub()
       .setRequired(true)
   );
 
-const emoji = new u.sub()
-  .setName("emoji")
-  .setDescription("Enlarges an emoji or combines two")
+const emoMerge = new u.sub()
+  .setName("emomerge")
+  .setDescription("Combines two emoji.")
   .addStringOption(
     new u.string()
       .setName("emoji1")
-      .setDescription("Emoji to enlarge or combine")
+      .setDescription("First emoji to combine")
       .setRequired(true)
   )
   .addStringOption(
     new u.string()
       .setName("emoji2")
       .setDescription("Second emoji to combine")
-      .setRequired(false)
+      .setRequired(true)
+  );
+
+const emoGrow = new u.sub()
+  .setName("emogrow")
+  .setDescription("Enlarges an emoji")
+  .addStringOption(
+    new u.string()
+      .setName("emoji")
+      .setDescription("Emoji to enlarge")
+      .setRequired(true)
   );
 
 const repost = new u.sub()
@@ -193,7 +203,7 @@ module.exports = new u.cmd()
   .addSubcommand(roll)
   .addSubcommand(ball8)
   .addSubcommand(repost)
-  // .addSubcommand(minesAdvanced) functional but disabled while we get the command started
+  .addSubcommand(minesAdvanced) // functional but disabled while we get the command started
   .addSubcommand(mines)
   .addSubcommand(acronym)
   .addSubcommand(hbs)
@@ -202,5 +212,6 @@ module.exports = new u.cmd()
   .addSubcommand(quote)
   .addSubcommand(nameGame)
   .addSubcommand(choose)
-  .addSubcommand(emoji)
+  .addSubcommand(emoMerge)
+  .addSubcommand(emoGrow)
   .toJSON();
