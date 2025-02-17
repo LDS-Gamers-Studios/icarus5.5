@@ -3,8 +3,8 @@
 // Gets the badges that belong to the user based on a list of roles.
 
 const Discord = require("discord.js"),
-  fs = require("fs"),
-  u = require("./utils");
+  config = require("../config/config.json"),
+  fs = require("fs");
 
 /**
  * @typedef Badge
@@ -16,50 +16,47 @@ const Discord = require("discord.js"),
 const badges = new Discord.Collection();
 /**
  * Gets all badge data from the Google Sheet.
+ * @param {typeof import("../database/sheets").data.optRoles} optRoles
+ * @param {typeof import("../database/sheets").data.roles} roles
  */
-async function getBadgeData() {
-  const roles = u.db.sheets.roles;
-  const optInRoles = u.db.sheets.optRoles;
+function setBadgeData(optRoles, roles) {
+  badges.clear();
+  for (const [id, role] of roles.all) {
+    // Only add to the map...
+    if (!role.badge || // if they have a badge listed
+      !fs.existsSync(`${config.badgePath}/${role.badge}.png`) // and if the badge path is valid
+    ) continue;
 
-  try {
-
-    for (const role of roles) {
-      // Only add to the map...
-      if (!role.badge || // if they have a badge listed
-        !fs.existsSync(`./media/badges/${role.badge}.png`) // and if the badge path is valid
-      ) continue;
-
-      badges.set(role.base, {
-        image: `${role.badge}.png`,
-        // if there are lower roles, split them, and then remove the one at the end that's just an empty string.
-        overrides: role.parents
-      });
-
-    }
-
-    for (const role of optInRoles) {
-      // See above for documentation of what this statement means
-      if (!role.badge || !fs.existsSync(`./media/badges/${role.badge}.png`)) continue;
-
-      badges.set(role.id, {
-        image: `${role.badge}.png`,
-        overrides: []
-      });
-    }
-  } catch (e) {
-    u.errorHandler(e, "Get Badge Data");
+    badges.set(id, {
+      image: `${role.badge}.png`,
+      // roles that have a higher level badge than this one
+      overrides: role.parents.filter(r => roles.all.get(r)?.badge)
+    });
   }
-  return badges;
+
+  for (const [id, role] of optRoles) {
+    // See above for documentation of what this statement means
+    if (!role.badge || !fs.existsSync(`${config.badgePath}/${role.badge}.png`)) continue;
+
+    badges.set(id, {
+      image: `${role.badge}.png`,
+      overrides: []
+    });
+  }
 }
 
 /** Based on the list of roles inserted, return the list of badge objects that the member
  * should have on their profile card.
  *
  * @param {Discord.Collection<string, Discord.Role>} roles The roles that the member has.
- * @returns {Badge[]} Badge objects used by the makeProfileCard function.
+ * @returns {(Badge & {name: string})[]} Badge objects used by the makeProfileCard function.
  */
 function getBadges(roles) {
-  return badges.filter((b, id) => roles.hasAny(id, ...b.overrides)).toJSON();
+  const guild = roles.first()?.guild;
+  return badges.filter((b, id) => roles.has(id) && !roles.hasAny(...b.overrides)).map((r, id) => {
+    const name = guild?.roles.cache.get(id)?.name ?? "";
+    return { ...r, name };
+  });
 }
 
-module.exports = { getBadges, getBadgeData };
+module.exports = { getBadges, setBadgeData };

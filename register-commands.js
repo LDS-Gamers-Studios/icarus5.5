@@ -12,7 +12,8 @@ const ldsg = require(`./config/snowflakes${config.devMode ? "-testing" : ""}.jso
  ************************/
 const globalCommandFiles = [
   "messageBookmark.js",
-  "slashAvatar.js"
+  "slashAvatar.js",
+  "slashFun.js"
 ];
 
 const guildCommandFiles = [
@@ -134,7 +135,7 @@ async function register() {
       console.log(`${c.name} (${commandType}): ${c.id}`);
     }
   }
-  const files = { commands: Object.fromEntries((global?.data ?? []).concat(guild.data).map(cmd => {
+  const files = { commands: Object.fromEntries((global?.data ?? []).concat(guild?.data ?? []).map(cmd => {
     return [
       `${getCommandType(cmd.type)}${cmd.name[0].toUpperCase()}${cmd.name.substring(1).toLowerCase()}`,
       cmd.id

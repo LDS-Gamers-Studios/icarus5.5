@@ -6,9 +6,11 @@ const bank = require("./controllers/bank"),
   ign = require("./controllers/ign"),
   infraction = require("./controllers/infraction"),
   tags = require("./controllers/tag"),
-  user = require("./controllers/user");
+  oauth = require("./controllers/oauth"),
+  user = require("./controllers/user"),
+  tournament = require("./controllers/tournament");
 
-const sheets = require("./sheets").data;
+const { data, loadData, mappers } = require("./sheets");
 
 mongoose.connect(config.db.db, config.db.settings);
 
@@ -17,6 +19,8 @@ module.exports = {
   ign,
   infraction,
   tags,
+  oauth,
   user,
-  sheets
+  tournament,
+  sheets: { ...data, loadData, mappers }
 };

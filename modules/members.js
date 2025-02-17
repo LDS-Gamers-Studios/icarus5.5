@@ -43,7 +43,7 @@ async function makeProfileCard(member) {
 
     const badges = badgeUtils.getBadges(member.roles.cache);
     const promises = badges.map(async (b, i) => {
-      const badge = await Jimp.read(`./media/badges/${b.image}`);
+      const badge = await Jimp.read(`${config.badgePath}/${b.image}`);
       card.blit(badge.resize(61, 61), 10 + (73 * (i % 4)), rankOffset + (73 * Math.floor(i / 4)));
     });
 
@@ -68,7 +68,7 @@ async function slashUserInfo(interaction, user) {
   // un-mod-ifying it
     .setTitle(`About ${user.displayName}`)
     .setColor(parseInt(config.color));
-  return interaction.reply({ embeds: [embed], ephemeral: interaction.channelId !== u.sf.channels.botspam });
+  return interaction.reply({ embeds: [embed], ephemeral: interaction.channelId !== u.sf.channels.botSpam });
 }
 
 /**
@@ -77,7 +77,7 @@ async function slashUserInfo(interaction, user) {
  * @param {Discord.GuildMember} user The user to get the profile card for.
  */
 async function slashUserProfile(interaction, user) {
-  await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botspam });
+  await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botSpam });
   const card = await makeProfileCard(user);
   if (!card) return; // error handled
   return interaction.editReply({ files: [card] });
@@ -87,7 +87,6 @@ const Module = new Augur.Module()
   .setInit(async () => {
     font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
     cardBackground = await Jimp.read("./media/background.jpg");
-    await badgeUtils.getBadgeData();
   })
   .addInteraction({
     name: "user",

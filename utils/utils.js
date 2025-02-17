@@ -15,7 +15,7 @@ const { nanoid } = require("nanoid");
 /**
  * @typedef ParsedInteraction
  * @property {String | null} command - The command issued, represented as a string.
- * @property {{name: string, value: string|number|boolean|undefined}[]} data - Associated data for the command, such as command options or values selected.
+ * @property {{name: string, value?: string|number|boolean}[]} data - Associated data for the command, such as command options or values selected.
  */
 
 /**
@@ -26,6 +26,7 @@ const { nanoid } = require("nanoid");
 function parseInteraction(int) {
   if (int.isCommand() || int.isAutocomplete()) {
     let command = "";
+    /** @type {Record<any, any> & {name: string, value?: string | number | boolean}[]} */
     let data = [];
     if (int.isAutocomplete()) command += "Autocomplete for ";
     if (int.isChatInputCommand()) {
@@ -34,7 +35,7 @@ function parseInteraction(int) {
       const sc = int.options.getSubcommand(false);
       if (sg) {
         command += ` ${sg}`;
-        data = int.options.data[0]?.options?.[0]?.options ?? [];
+        data = int.options.data[0]?.options?.[0]?.options?.map(o => ({ name: o.name, value: o.value })) ?? [];
       }
       if (sc) command += ` ${sc}`;
     } else {
@@ -77,12 +78,12 @@ const utils = {
    */
   botSpam: function(msg) {
     if (msg.inGuild() && msg.guild.id === utils.sf.ldsg && // Is in server
-      ![utils.sf.channels.botspam, utils.sf.channels.bottesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
-      msg.channel.parentId !== utils.sf.channels.staffCategory) { // Isn't in the moderation category
+      ![utils.sf.channels.botSpam, utils.sf.channels.botTesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
+      msg.channel.parentId !== utils.sf.channels.team.category) { // Isn't in the moderation category
 
-      msg.reply(`I've placed your results in <#${utils.sf.channels.botspam}> to keep things nice and tidy in here. Hurry before they get cold!`)
+      msg.reply(`I've placed your results in <#${utils.sf.channels.botSpam}> to keep things nice and tidy in here. Hurry before they get cold!`)
         .then(utils.clean);
-      return msg.client.getTextChannel(utils.sf.channels.botspam);
+      return msg.client.getTextChannel(utils.sf.channels.botSpam);
     }
     return msg.channel;
 
@@ -228,7 +229,7 @@ const utils = {
     descriptions.push(active);
     if (!int) return descriptions;
     let i = 0;
-    do {
+    while (i < descriptions.length) {
       const desc = descriptions[i];
       if (!desc) return;
       const e = utils.embed(embed.toJSON()).setDescription(desc);
@@ -239,7 +240,7 @@ const utils = {
         await int.followUp({ embeds: [e.setTitle(`${e.data.title ?? ""} Cont.`)], ephemeral });
       }
       i++;
-    } while (i < descriptions.length);
+    }
   },
   parseInteraction,
   /**
@@ -260,12 +261,12 @@ const utils = {
       /* eslint-disable-next-line no-console*/
       console.error(`${message.author.username} in ${loc}: ${message.cleanContent}`);
 
-      message.channel.send("I've run into an error. I've let my devs know.")
+      message.reply("I've run into an error. I've let my devs know.")
         .then(utils.clean);
       embed.addFields(
         { name: "User", value: message.author.username, inline: true },
         { name: "Location", value: loc, inline: true },
-        { name: "Command", value: message.cleanContent || "`undefined`", inline: true }
+        { name: "Command", value: message.cleanContent || "`No Content`", inline: true }
       );
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
@@ -412,7 +413,32 @@ const utils = {
    * @returns {T[]}
    */
   unique: function(items) {
-    return [...new Set(items)];
+    return Array.from(new Set(items));
+  },
+  /**
+   * @template T
+   * @param {T[]} items
+   * @param {keyof T} key
+   * @returns {T[]}
+   */
+  uniqueObj: function(items, key) {
+    const col = new Discord.Collection(items.map(i => [i[key], i]));
+    return Array.from(col.values());
+  },
+  /** @param {Discord.GuildMember | null} [member]*/
+  getHouseInfo: function(member) {
+    const houseInfo = new Map([
+      [utils.sf.roles.houses.housebb, { name: "Brightbeam", color: 0x00a1da }],
+      [utils.sf.roles.houses.housefb, { name: "Freshbeast", color: 0xfdd023 }],
+      [utils.sf.roles.houses.housesc, { name: "Starcamp", color: 0xe32736 }]
+    ]);
+
+    if (member) {
+      for (const [k, v] of houseInfo) {
+        if (member.roles.cache.has(k)) return v;
+      }
+    }
+    return { name: "Unsorted", color: 0x402a37 };
   }
 };
 

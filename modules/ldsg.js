@@ -1,13 +1,11 @@
 // @ts-check
-const bannedFromSuggesting = [
-  // "123456" // a fake account
-  // "602887436300714013", // ohgo
-];
-
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   config = require("../config/config.json"),
-  Discord = require("discord.js");
+  Discord = require("discord.js"),
+  /** @type {string[]} */
+  banned = require("../data/banned.json").features.suggestions;
+
 
 // suggestion modals
 const replyModal = new u.Modal().addComponents(
@@ -43,14 +41,14 @@ const replyOption = [
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashLdsgSuggest(int) {
-  if (bannedFromSuggesting.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
+  if (banned.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
   const suggestion = int.options.getString("suggestion", true);
   await int.deferReply({ ephemeral: true });
   const embed = u.embed({ author: int.user })
     .setTitle("Suggestion")
     .setDescription(suggestion)
     .setFooter({ text: int.user.id });
-  await int.client.getForumChannel(u.sf.channels.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user.displayName}`, message: { content: suggestion, embeds: [embed], components: replyOption } });
+  await int.client.getForumChannel(u.sf.channels.team.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user.displayName}`, message: { content: suggestion, embeds: [embed], components: replyOption } });
   int.editReply("Sent!");
   return int.user.send({ content: "You have sent the following suggestion to the LDSG Team for review:", embeds: [embed] });
 }
@@ -87,7 +85,7 @@ async function suggestReply(int) {
 async function suggestManage(int) {
   // make sure everything is good
   if (!int.channel) return int.reply({ content: "I couldn't access the channel you're in!", ephemeral: true });
-  if (int.channel.parentId !== u.sf.channels.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.suggestionBox}>!`, ephemeral: true });
+  if (int.channel.parentId !== u.sf.channels.team.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.team.suggestionBox}>!`, ephemeral: true });
 
   // create modal
   const oldFields = (int.message.embeds[0]?.fields || []);

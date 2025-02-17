@@ -7,15 +7,15 @@ const { devMode } = require("../config/config.json"),
 const xpScale = 200;
 
 const globalExcludeChannels = [
-  u.sf.channels.botspam,
-  u.sf.channels.staffCategory,
-  u.sf.channels.muted,
-  u.sf.channels.office
+  u.sf.channels.botSpam,
+  u.sf.channels.team.category,
+  u.sf.channels.mods.muted,
+  u.sf.channels.mods.office
 ];
 
 const Rank = {
   excludeChannels: (devMode ? rankExcludeTesting : rankExclude).concat(globalExcludeChannels),
-  excludeRoles: u.sf.roles.muted,
+  excludeRoles: u.sf.roles.moderation.muted,
   messages: [
     "Your future is looking so bright that I need sunglasses.",
     "Keep being awesome, and I'll keep saying congratulations.",

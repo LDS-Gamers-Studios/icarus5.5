@@ -12,8 +12,6 @@ function celebrate() {
   }
 }
 
-/** @type {Discord.Collection<number, string>} */
-let tenureCache = new u.Collection();
 
 /**
  * @param {import("moment").Moment} date
@@ -48,11 +46,11 @@ async function testBirthdays(testMember, testDate) {
       ":cake: "
     ];
 
-    const birthdays = testMember ?? (await u.db.ign.getList("birthday")).filter(ign => guild.members.cache.has(ign.discordId));
+    const birthdays = testMember ?? await u.db.ign.findMany(guild.members.cache.map(m => m.id), "birthday");
     const celebrating = [];
     for (const birthday of birthdays) {
       try {
-        const date = u.moment(new Date(birthday.ign).valueOf() + 10 * 60 * 60 * 1000);
+        const date = u.moment(new Date(birthday.ign + " 5:PM"));
         if (checkDate(date, now, false)) {
           const member = guild.members.cache.get(birthday.discordId);
           celebrating.push(member);
@@ -61,7 +59,7 @@ async function testBirthdays(testMember, testDate) {
             member?.send(":birthday: :confetti_ball: :tada: A very happy birthday to you, from LDS Gamers! :tada: :confetti_ball: :birthday:").catch(u.noop);
           }).catch(u.noop);
         }
-      } catch (e) { u.errorHandler(e, `Birthday Send - Discord Id: ${birthday.discordId}`); continue; }
+      } catch (e) { u.errorHandler(e, `Birthday Send - Discord ID: ${birthday.discordId}`); continue; }
     }
     if (celebrating.length > 0) {
       const embed = u.embed()
@@ -95,17 +93,23 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
 
     const unknownYears = new Set();
     const unapplied = [];
-    for (const [memberId, member] of members.filter(m => m.roles.cache.has(u.sf.roles.trusted))) {
+    for (const [memberId, member] of members.filter(m => m.roles.cache.has(u.sf.roles.moderation.trusted))) {
       try {
         const offset = offsets.find(o => o.discordId === memberId);
         const join = u.moment(testJoinDate ?? member.joinedAt ?? 0).subtract(offset?.priorTenure || 0, "days");
         if (checkDate(join, now, true)) {
           const years = now.year() - join.year();
           // yell at devs if not
-          if (tenureCache.has(years)) {
-            const role = tenureCache.find(r => member.roles.cache.has(r));
-            await member.roles.add(tenureCache.get(years) ?? "").catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
-            if (role) await member.roles.remove(role).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
+          const role = u.db.sheets.roles.year.get(years);
+          if (role) {
+            const oldRole = u.db.sheets.roles.year.find(r => member.roles.cache.has(r.base.id) && r.base.id !== role.base.id);
+            const roles = member.roles.cache.clone();
+            if (oldRole) roles.delete(oldRole.base.id);
+            await member.roles.set([...roles.keys(), role.base.id]).catch(e => {
+              u.errorHandler(e, `Tenure Role Set (${member.displayName} - ${memberId})`);
+              // eslint-disable-next-line no-console
+              console.log([...roles.keys(), role.base.id]);
+            });
           } else {
             unknownYears.add(years);
             unapplied.push(member);
@@ -116,7 +120,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
       } catch (e) { u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`); continue; }
     }
     if (unknownYears.size > 0) {
-      Module.client.getTextChannel(u.sf.channels.bottesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
+      Module.client.getTextChannel(u.sf.channels.botTesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
     }
     if (celebrating.size > 0) {
       const embed = u.embed()
@@ -133,32 +137,7 @@ async function testCakeDays(testJoinDate, testDate, testMember) {
 }
 
 Module.addEvent("ready", () => {
-  // Populate tenureCache
-  const guild = Module.client.guilds.cache.get(u.sf.ldsg);
-  if (!guild) return;
-  const exp = /^Member - (\d+) Years?$/;
-  const roles = guild.roles.cache.filter(r => exp.test(r.name));
-
-  for (const [roleId, role] of roles) {
-    const match = exp.exec(role.name);
-    if (!match) continue;
-    tenureCache.set(parseInt(match[1], 10), roleId);
-  }
-
   celebrate();
-})
-.setInit(async () => {
-  try {
-    const years = u.db.sheets.roles.filter(r => r.type === "Year").map(r => {
-      return {
-        year: parseInt(r.level),
-        role: r.base,
-      };
-    });
-    tenureCache = new u.Collection(years.map(r => [r.year, r.role]));
-  } catch (e) {
-    u.errorHandler(e, "Cakeday Init");
-  }
 })
 // Janky stuff, but it works!!! (for now lol)
 .setUnload((date, type) => {
@@ -176,9 +155,9 @@ Module.addEvent("ready", () => {
   permissions: () => config.devMode,
   hidden: true,
   process: (msg, suffix) => {
-    const date = new Date();
-    if (suffix) date.setFullYear(parseInt(suffix));
-    testCakeDays(date, new Date(), new u.Collection().set(msg.author.id, msg.member));
+    const date = u.moment();
+    if (suffix) date.subtract(parseInt(suffix), "year");
+    testCakeDays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
   }
 })
 .setClockwork(() => {

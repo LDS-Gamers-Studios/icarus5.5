@@ -44,7 +44,7 @@ function getComponents(user, channel, oldMsg) {
   // Get status of vc
   const locked = isLocked(channel);
   const streamlocked = isStreamLocked(channel);
-  const ignore = [user.id, channel.client.user.id, channel.guildId, u.sf.roles.icarus, u.sf.roles.muted, u.sf.roles.suspended, u.sf.roles.ducttape];
+  const ignore = [user.id, channel.client.user.id, channel.guildId, u.sf.roles.icarus, u.sf.roles.moderation.muted, u.sf.roles.moderation.suspended, u.sf.roles.moderation.ductTape];
   const allowedUsers = channel.permissionOverwrites.cache.filter(p => p.allow.has("Connect") && !ignore.includes(p.id)).map(p => `<@${p.id}>`);
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak") && !ignore.includes(p.id)).map(p => `<@${p.id}>`);
   const banned = channel.permissionOverwrites.cache.filter(p => p.deny.has("Connect") && !ignore.includes(p.id)).map(p => `<@${p.id}>`);
@@ -74,8 +74,6 @@ function getComponents(user, channel, oldMsg) {
  */
 
 let processing = false;
-/** @type {string[]} */
-let channelNames = [];
 
 /**
  * @param {Augur.GuildInteraction<"Button"|"SelectMenuUser"|"CommandSlash">} int
@@ -396,9 +394,6 @@ Module.addEvent("interactionCreate", async (int) => {
   const components = getComponents(newState.member.user, newState.channel);
   if (newState.channel.members.size === 1) newState.channel.send({ embeds: components.embeds, components: components.components });
 })
-.setInit(async () => {
-  channelNames = u.db.sheets.vcNames;
-})
 .addEvent("ready", () => {
   updateChannels();
 });
@@ -433,7 +428,7 @@ async function updateChannels(oldState, newState, bypass = false) {
   const used = channels.map(c => c.isVoiceBased() ? c.bitrate : 0);
   const bitrate = bitrates.find(c => !used.includes(c * 1000)) ?? u.rand(bitrates);
   if (open.size < 2 || channels.size < 3) {
-    const name = u.rand(channelNames.filter(cn => !channels.find(ch => ch.name.includes(cn)))) ?? "Room Error";
+    const name = u.rand(u.db.sheets.vcNames.filter(cn => !channels.find(ch => ch.name.includes(cn)))) ?? "Room Error";
     voiceCategory.children.create({
       name: `${name} (${bitrate} kbps)`,
       type: Discord.ChannelType.GuildVoice,
