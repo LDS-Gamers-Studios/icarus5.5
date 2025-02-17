@@ -29,6 +29,16 @@ const reload = new u.sub()
       .setAutocomplete(true)
   );
 
+const sheets = new u.sub()
+  .setName("sheets")
+  .setDescription("[ADMIN] Reloads a google sheet. Good for loading in small changes.")
+  .addStringOption(
+    new u.string()
+      .setName("sheet-name")
+      .setDescription("What sheet should be reloaded? Leave blank to reload all.")
+      .setRequired(false)
+  );
+
 const getid = new u.sub()
   .setName("getid")
   .setDescription("Get the ID of anything in the server.")
@@ -100,6 +110,7 @@ module.exports = new u.cmd()
   .addSubcommand(getid)
   .addSubcommand(register)
   .addSubcommand(status)
+  .addSubcommand(sheets)
   .setDMPermission(false)
   .setDefaultMemberPermissions(u.devMode)
   .toJSON();

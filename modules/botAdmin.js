@@ -131,6 +131,15 @@ async function slashBotReload(int) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashBotSheets(int) {
+  const sheet = int.options.getString("sheet-name") || undefined;
+  if (sheet && !Object.keys(u.db.sheets).includes(sheet)) return int.editReply("That's not one of the sheets I can refresh.");
+  // @ts-expect-error
+  await u.db.sheets.loadData(int.client, true, true, sheet);
+  return int.editReply(`The ${sheet ? `${sheet} sheet has` : "sheets have"} been reloaded!`);
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashBotGetId(int) {
   const mentionable = int.options.getMentionable("mentionable");
   const channel = int.options.getChannel("channel");
@@ -194,8 +203,8 @@ const Module = new Augur.Module()
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
     const subcommand = int.options.getSubcommand(true);
-    const forThePing = await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.bottesting });
-    if (["gotobed", "reload", "register", "status"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
+    const forThePing = await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.botTesting });
+    if (["gotobed", "reload", "register", "status", "sheets"].includes(subcommand) && !u.perms.calc(int.member, ["botAdmin"])) return int.editReply("That command is only for Bot Admins.");
     if (subcommand === "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
       case "gotobed": return slashBotGtb(int);
@@ -206,6 +215,7 @@ const Module = new Augur.Module()
       case "getid": return slashBotGetId(int);
       case "register": return slashBotRegister(int);
       case "status": return slashBotStatus(int);
+      case "sheets": return slashBotSheets(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },

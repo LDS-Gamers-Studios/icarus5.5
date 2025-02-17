@@ -23,13 +23,6 @@ const config = require("../config/config.json");
  * @prop {boolean} isMessage
  */
 
-/** @type {Discord.Collection<number, string>} */
-// rank level up rewards
-let rewards = new u.Collection();
-
-/** @type {Discord.Collection<string, import("../database/sheets").ChannelXPSetting>} */
-let channelSettings = new u.Collection();
-
 /** @type {Set<string>} */
 // There can be "channel of the week" style events, where that channel is worth more xp
 const highlights = new Set();
@@ -44,6 +37,8 @@ const active = new u.Collection();
 
 // Feather drop settings
 let cooltime = new Date();
+// eslint-disable-next-line jsdoc/no-undefined-types
+/** @type {NodeJS.Timeout} */
 let cooldown;
 let dropCode = false;
 
@@ -56,12 +51,14 @@ function resetFeatherDrops() {
   }, time);
 }
 
+/** @param {Discord.Message} msg */
 function DEBUGFeatherPrime(msg) {
   dropCode = true;
   clearTimeout(cooldown);
   msg.react("👌").catch(u.noop);
 }
 
+/** @param {Discord.Message} msg */
 function DEBUGFeatherState(msg) {
   msg.reply(
     `Current State: ${dropCode ? "Ready" : "On Cooldown"}\n` +
@@ -80,7 +77,7 @@ async function featherCheck(msg) {
 
   try {
     // chances of a feather dropping is pretty low unless they have a lure
-    if (Math.random() > (config.xp.featherDropChance * (lureCount + 1))) return;
+    if (!config.devMode && Math.random() > (config.xp.featherDropChance * (lureCount + 1))) return;
     if (dropMode) dropCode = false;
     const reaction = await msg.react(u.sf.emoji.xpFeather).catch(u.noop);
 
@@ -110,7 +107,8 @@ async function featherCheck(msg) {
           discordId: finder.id,
           giver: msg.client.user.id,
           hp: true,
-          value
+          value,
+          otherUser: msg.client.user.id
         });
         const house = u.getHouseInfo(msg.guild.members.cache.get(finder.id));
         const embed = u.embed({ author: finder })
@@ -120,7 +118,7 @@ async function featherCheck(msg) {
           )
           .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in ${msg.url} and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
-        msg.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
+        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed] });
       }
 
       // give em xp
@@ -165,36 +163,36 @@ async function reactionXp(reaction, user, add = true) {
   // check if custom id, then check if unicode emoji
   const identifier = reaction.emoji.id ?? reaction.emoji.name ?? "";
 
+  // voice channel IDs aren't very helpful since they get replaced, so we use Voice instead
+  const channelId = reaction.message.channel.type === Discord.ChannelType.GuildVoice ? "Voice" : reaction.message.channelId;
+  const settings = u.db.sheets.xpSettings.channels.get(channelId);
   if (
     !reaction.message.inGuild() || // must be in the server
     user.bot || user.system || reaction.message.author?.bot || reaction.message.author?.system || // no fun for the bots
     !reaction.message.author || user.id === reaction.message.author.id || // no reacting to yourself. also funny business with the member object
     u.db.sheets.xpSettings.banned.has(identifier) || // no banned reactions
-    channelSettings.get(reaction.message.id)?.posts === 0 // no xp excluded channels
+    settings?.posts === 0 || // no xp excluded channels
+    u.moment().subtract(1, "week").isAfter(u.moment(reaction.message.createdAt)) // no ancient posts
   ) return;
 
   // more reactions means more xp for the poster. If it was removed we have to get the pre-removal count
-  const countMultiplier = await reaction.users.fetch().then(usrs => usrs.size + (add ? 0 : 1) * 1.3);
+  const countMultiplier = await reaction.users.fetch().then(usrs => (Math.min(8, usrs.size) + (add ? 0 : 1)) * 1.3);
 
   // reactions should mean more or less depending on the channel
-  const channelMultiplier = channelSettings.get(reaction.message.channelId)?.posts ?? 1;
-
-  // voice channel IDs aren't very helpful since they get replaced, so we use Voice instead
-  const channelId = reaction.message.channel.type === Discord.ChannelType.GuildVoice ? "Voice" : reaction.message.channelId;
+  const channelMultiplier = settings?.posts ?? 1;
 
   // some emoji are worth more in certain channels
-  const channelEmoji = channelSettings.get(channelId)?.emoji.has(identifier) ? 1.5 : 1;
-
+  const channelEmoji = settings?.emoji.has(identifier) ? 1.5 : 1;
   // add the xp to the queue
   const recipient = 0.5 * countMultiplier * channelEmoji * channelMultiplier * (add ? 1 : -1);
   const giver = 0.5 * channelEmoji * channelMultiplier * (add ? 1 : -1);
 
-  addXp(reaction.message.author.id, recipient, channelId);
+  addXp(user.id, giver, channelId);
 
   // if it's a public readonly, (like announcements), don't give xp to the poster
   const perms = reaction.message.channel.permissionsFor(u.sf.ldsg);
   if (perms?.has("ViewChannel") && !perms.has("SendMessages")) return;
-  addXp(user.id, giver, channelId);
+  addXp(reaction.message.author.id, recipient, channelId);
 
 }
 
@@ -230,31 +228,31 @@ async function rankClockwork(client) {
 
     // Remind mods to trust people!
     try {
-      // no need
-      if (member.roles.cache.has(u.sf.roles.trusted)) continue;
+      if (!member.roles.cache.has(u.sf.roles.moderation.trusted)) {
+        let content;
+        // they posted 25 messages
+        if (user.posts % 25 === 0 && backupActive.get(user.discordId)?.find(v => v.isMessage)) {
+          content = `${user.posts} active minutes in chat`;
+        // they were active in vc for 2 hours
+        } else if (user.voice % 120 === 0 && backupActive.get(user.discordId)?.find(v => v.isVoice)) {
+          content = `${user.voice} active minutes in voice chats`;
+        }
 
-      let content;
-      // they posted 25 messages
-      if (user.posts % 25 === 0 && backupActive.get(user.discordId)?.find(v => v.isMessage)) {
-        content = `${user.posts} active minutes in chat`;
-      // they were active in vc for 2 hours
-      } else if (user.voice % 120 === 0 && backupActive.get(user.discordId)?.find(v => v.isVoice)) {
-        content = `${user.voice} active minutes in voice chats`;
+        if (content) {
+          // get the summary and send it with options to trust
+          const embed = await mc.getSummaryEmbed(member);
+          client.getTextChannel(u.sf.channels.mods.logs)?.send({
+            content: `${member} has had ${content} without being trusted!`,
+            embeds: [embed.setFooter({ text: member.id })],
+            components: [
+              u.MessageActionRow().addComponents(
+                new u.Button().setCustomId("timeModTrust").setEmoji("👍").setLabel("Give Trusted").setStyle(Discord.ButtonStyle.Success)
+              )
+            ]
+          });
+        }
       }
 
-      if (content) {
-        // get the summary and send it with options to trust
-        const embed = await mc.getSummaryEmbed(member);
-        client.getTextChannel(u.sf.channels.modlogs)?.send({
-          content: `${member} has had ${content} without being trusted!`,
-          embeds: [embed.setFooter({ text: member.id })],
-          components: [
-            u.MessageActionRow().addComponents(
-              new u.Button().setCustomId("timeModTrust").setEmoji("👍").setLabel("Give Trusted").setStyle(Discord.ButtonStyle.Success)
-            )
-          ]
-        });
-      }
 
       // Grant ranked rewards if applicable
       if (user.trackXP === u.db.user.TrackXPEnum.OFF) continue;
@@ -267,17 +265,17 @@ async function rankClockwork(client) {
         let message = `${u.rand(Rank.messages)} ${u.rand(Rank.levelPhrase).replace("%LEVEL%", lvl.toString())}`;
 
         // rank up!
-        if (rewards.has(lvl)) {
-          const reward = ldsg.roles.cache.get(rewards.get(lvl) ?? "");
-
-          // uh oh, we done goofed
-          if (!reward) throw new Error(`Rank Role ${rewards.get(lvl)} couldn't be found! (${member})`);
-
+        const reward = u.db.sheets.roles.rank.get(lvl)?.base;
+        if (reward) {
           // out with the old and in with the new
-          const has = rewards.find(r => member.roles.cache.has(r));
-          if (has) await member.roles.remove(has);
-          await member.roles.add(reward);
-
+          const has = u.db.sheets.roles.rank.find(r => member.roles.cache.has(r.base.id) && r.base.id !== reward.id);
+          const roles = member.roles.cache.clone();
+          if (has) roles.delete(has.base.id);
+          await member.roles.set([...roles.keys(), reward.id]).catch(e => {
+            u.errorHandler(e, `Tenure Role Set (${member.displayName} - ${member.id})`);
+            // eslint-disable-next-line no-console
+            console.log([...roles.keys(), reward.id]);
+          });
           message += `\n\nYou have been awarded the **${reward.name}** role!`;
         }
         if (user.trackXP === u.db.user.TrackXPEnum.FULL) member.send(message).catch(u.noop);
@@ -298,7 +296,7 @@ Module.setUnload(() => active)
   .addEvent("messageCreate", (msg) => {
     if (
       !msg.inGuild() || msg.guild?.id !== u.sf.ldsg || // only in LDSG
-      msg.member?.roles.cache.has(u.sf.roles.muted) || // no muted allowed
+      msg.member?.roles.cache.has(u.sf.roles.moderation.muted) || // no muted allowed
       msg.author.bot || msg.author.system || msg.webhookId || // no bots
       u.parse(msg) // not a command
     ) return;
@@ -306,9 +304,13 @@ Module.setUnload(() => active)
     // do a feather drop check
     featherCheck(msg);
 
+    // voice channel IDs aren't very helpful since they get replaced, so we use Voice instead
+    const channelId = msg.channel.type === Discord.ChannelType.GuildVoice ? "Voice" : msg.channelId;
+    const settings = u.db.sheets.xpSettings.channels.get(channelId);
+
     // different multipliers for different channels
-    const channelMultiplier = channelSettings.get(msg.channelId)?.posts ?? 1;
-    const mediaMultiplier = (msg.attachments.size * (channelSettings.get(msg.channelId)?.preferMedia ? 0.3 : 0)) + 1;
+    const channelMultiplier = settings?.posts ?? 1;
+    const mediaMultiplier = (msg.attachments.size * (settings?.preferMedia ? 0.3 : 0)) + 1;
     const highlight = highlights.has(msg.channelId) ? 1.3 : 1;
 
     // time specific multipliers
@@ -360,10 +362,6 @@ Module.setUnload(() => active)
     if (talking) {
       for (const [id, user] of talking) active.set(id, user);
     }
-    // set rank roles
-    rewards = new u.Collection(u.db.sheets.roles.map(r => [parseInt(r.level), r.base]));
-    // set multipliers
-    channelSettings = new u.Collection(u.db.sheets.xpSettings.channels.map(c => [c.channelId, c]));
     // start xp feather drops
     resetFeatherDrops();
   })

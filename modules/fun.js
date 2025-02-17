@@ -49,18 +49,18 @@ async function slashFunHBS(int) {
   const mode = int.options.getString("mode") || "user";
   const choice = int.options.getString("choice", true);
   const chooser = int.user.toString();
-  const botLobby = int.client.getTextChannel(u.sf.channels.botspam);
+  const botLobby = int.client.getTextChannel(u.sf.channels.botSpam);
   let challenged;
   if (mode === "user") {
     if (!storedChoice) {
       storedChooser = chooser;
       storedChoice = choice;
-      int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+      int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
       `${chooser} has chosen their fighter and is awaiting a challenger. Respond using </fun hbs:${u.sf.commands.slashFun}>.`);
     } else if (storedChooser === chooser) {
       storedChoice = choice;
-      int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+      int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
       `${chooser} has changed their fighter and is awaiting a challenger.  Respond using </fun hbs:${u.sf.commands.slashFun}>.`
       );
@@ -202,8 +202,9 @@ async function slashFunMinesweeper(int) {
   }
   // seperate into rows and emojify and hide if not exposed
   const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
-  if (!int.channel || !int.channel.isSendable()) {
-    return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`, ephemeral: true });
+
+  if (!int.channel?.isSendable()) {
+    return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botSpam}>`, ephemeral: true });
   }
   await int.reply(`**Mines: ${mineCount}**`);
   const messages = [""];
@@ -221,11 +222,11 @@ async function slashFunMinesweeper(int) {
   });
   // send the messages in order
   let i = 0;
-  do {
+  while (i < messages.length) {
     const msg = messages[i];
     await int.channel.send(msg);
     i++;
-  } while (i < messages.length);
+  }
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -320,6 +321,7 @@ async function slashFunButtermelon(int) {
 async function slashFunQuote(int) {
   const url = "https://zenquotes.io/api/random";
   await int.deferReply();
+  // @ts-ignore
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error(`axios error: ${e.status}\n${e.message}`);
   });
@@ -429,6 +431,7 @@ async function slashFunMerge(int) {
     const emoji1 = emojiSanitize(emoji1input);
     // attempt to merge
     const emoji2 = emojiSanitize(emoji2input);
+    // @ts-ignore
     const results = await axios(`https://tenor.googleapis.com/v2/featured?key=${config.api.tenor}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`).catch(u.noop);
     const url = results?.data?.results[0]?.url;
     if (url) {
@@ -446,7 +449,7 @@ function buttermelonEdit(msg) {
   if (msg.channel.isDMBased() && (msg.cleanContent?.toLowerCase() === "test")) {
     msg.reply((Math.random() < 0.8 ? "pass" : "fail"));
   }
-  const exclude = [u.sf.channels.minecraftcategory];
+  const exclude = [u.sf.channels.minecraft.category];
   const roll = Math.random();
   if (roll < 0.3 && !msg.author?.bot && !exclude.includes(msg.channel.id)) {
     // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;

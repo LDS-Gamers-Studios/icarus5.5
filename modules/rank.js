@@ -52,7 +52,7 @@ async function slashRankTrack(interaction) {
 async function slashRankView(interaction) {
   try {
     // View member rankings
-    await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botspam });
+    await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botSpam });
     const members = interaction.guild.members.cache;
     const member = interaction.options.getMember("user") ?? interaction.member;
     const record = await u.db.user.getRank(member.id, members);
@@ -126,6 +126,7 @@ async function rankReset(msg, suffix) {
             discordId: user.discordId,
             value: award,
             giver: msg.client.user.id,
+            otherUser: msg.client.user.id,
             hp: true
           });
         }
@@ -202,7 +203,7 @@ const Module = new Augur.Module()
   })
   .addCommand({ name: "rankreset",
     onlyGuild: true,
-    permissions: (msg) => u.perms.isMgr(msg.member),
+    permissions: (msg) => u.perms.calc(msg.member, ["mgr"]),
     process: rankReset
   });
 
