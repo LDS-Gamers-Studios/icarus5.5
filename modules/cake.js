@@ -5,10 +5,10 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   Module = new Augur.Module();
 
-function celebrate(test) {
+function celebrate(test = false) {
   if (u.moment().hours() === 15 || test) {
-    doBirthdays().catch(error => u.errorHandler(error, (test ? "Test -> " : "") + "Celebrate -> Birthdays"));
-    doCakeDays().catch(error => u.errorHandler(error, (test ? "Test -> " : "") + "Celebrate -> Cake Days"));
+    birthdays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Birthdays"));
+    cakeDays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Cake Days"));
   }
 }
 
@@ -28,7 +28,7 @@ function checkDate(date, today, checkYear) {
  * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  * @param {Date|string} [testDate] fake date
  */
-async function doBirthdays(testMember, testDate) {
+async function birthdays(testMember, testDate) {
   // Send Birthday Messages, if saved by member
   try {
     const guild = Module.client.guilds.cache.get(u.sf.ldsg);
@@ -46,9 +46,9 @@ async function doBirthdays(testMember, testDate) {
       ":cake: "
     ];
 
-    const birthdays = testMember ?? await u.db.ign.findMany(guild.members.cache.map(m => m.id), "birthday");
+    const bdays = testMember ?? await u.db.ign.findMany(guild.members.cache.map(m => m.id), "birthday");
     const celebrating = [];
-    for (const birthday of birthdays) {
+    for (const birthday of bdays) {
       try {
         const date = u.moment(new Date(birthday.ign + " 5:PM"));
         if (checkDate(date, now, false)) {
@@ -59,7 +59,10 @@ async function doBirthdays(testMember, testDate) {
             member?.send(":birthday: :confetti_ball: :tada: A very happy birthday to you, from LDS Gamers! :tada: :confetti_ball: :birthday:").catch(u.noop);
           }).catch(u.noop);
         }
-      } catch (e) { u.errorHandler(e, `Birthday Send - Discord ID: ${birthday.discordId}`); continue; }
+      } catch (e) {
+        u.errorHandler(e, `Birthday Send - Discord ID: ${birthday.discordId}`);
+        continue;
+      }
     }
     if (celebrating.length > 0) {
       const embed = u.embed()
@@ -72,21 +75,19 @@ async function doBirthdays(testMember, testDate) {
 }
 
 /**
- * Provide testing parameters for testing which days work
+ * Add tenure roles on member cake days
  * @param {Date} [testJoinDate]
  * @param {Date} [testDate]
  * @param {Discord.Collection<string, Discord.GuildMember>} [testMember]
  */
-async function doCakeDays(testJoinDate, testDate, testMember) {
-  // Add tenure roles on member cake days
-
+async function cakeDays(testJoinDate, testDate, testMember) {
   try {
-    const guild = Module.client.guilds.cache.get(u.sf.ldsg);
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     const now = u.moment(testDate);
-    if (!guild) return u.errorHandler(new Error("LDSG is unavailable???"));
+    if (!ldsg) return u.errorHandler(new Error("LDSG is unavailable???"));
 
-    const members = testMember ?? await guild.members.fetch().catch(u.noop) ?? guild.members.cache;
-    const offsets = testJoinDate ? [] : await u.db.user.getUsers({ discordId: { $in: [...members.keys()] }, priorTenure: { $gt: 0 } });
+    const members = testMember ?? await ldsg.members.fetch().catch(u.noop) ?? ldsg.members.cache;
+    const offsets = await u.db.user.getUsers({ discordId: { $in: [...members.keys()] }, priorTenure: { $gt: 0 } });
 
     /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
     const celebrating = new u.Collection();
@@ -117,19 +118,24 @@ async function doCakeDays(testJoinDate, testDate, testMember) {
           if (celebrating.has(years)) celebrating.get(years)?.push(member);
           else celebrating.set(years, [member]);
         }
-      } catch (e) { u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`); continue; }
+      } catch (e) {
+        u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`);
+        continue;
+      }
     }
     if (unknownYears.size > 0) {
-      Module.client.getTextChannel(u.sf.channels.botTesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
+      ldsg.client.getTextChannel(u.sf.channels.botTesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
     }
     if (celebrating.size > 0) {
       const embed = u.embed()
-      .setTitle("Cake Days!")
-      .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
-      .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
+        .setTitle("Cake Days!")
+        .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
+        .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
+
       for (const [years, cakeMembers] of celebrating.sort((v1, v2, k1, k2) => k2 - k1)) {
         embed.addFields({ name: `${years} ${years > 1 ? "Years" : "Year"}`, value: cakeMembers.join("\n") });
       }
+
       const allMentions = [...celebrating.values()].flat().map(c => c.toString());
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ content: allMentions.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
     }
@@ -140,19 +146,19 @@ Module.addEvent("ready", () => {
   celebrate();
 })
 .addCommand({ name: "bday",
-  permissions: () => config.devMode,
+  enabled: config.devMode,
   hidden: true,
   process: (msg) => {
-    doBirthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
+    birthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
   }
 })
 .addCommand({ name: "cakeday",
-  permissions: () => config.devMode,
+  enabled: config.devMode,
   hidden: true,
   process: (msg, suffix) => {
     const date = u.moment();
     if (suffix) date.subtract(parseInt(suffix), "year");
-    doCakeDays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
+    cakeDays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
   }
 })
 .setClockwork(() => {
@@ -165,4 +171,4 @@ Module.addEvent("ready", () => {
   }, 60 * 60 * 1000);
 });
 
-module.exports = Module;
+module.exports = { Module, birthdays, cakeDays, celebrate };

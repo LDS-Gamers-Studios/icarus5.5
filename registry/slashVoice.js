@@ -56,5 +56,5 @@ module.exports = new u.cmd()
   .addSubcommand(streamunlock)
   .addSubcommand(refresh)
   .addSubcommand(kick)
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel)
   .toJSON();

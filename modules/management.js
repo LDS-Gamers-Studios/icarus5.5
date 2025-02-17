@@ -15,11 +15,9 @@ function runCakeday(int) {
     const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-    // @ts-ignore
-    cake.doCakeDays(new Date(), date, new u.Collection().set(int.member.id, int.member));
+    cake.cakeDays(new Date(), date);
   } else {
-    // @ts-ignore
-    cake.doCakeDays();
+    cake.cakeDays();
   }
   return int.editReply("Cakeday run!");
 }
@@ -32,11 +30,9 @@ function runBirthday(int) {
     const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-    // @ts-ignore
-    cake.doBirthdays([int.member], date);
+    cake.birthdays(undefined, date);
   } else {
-    // @ts-ignore
-    cake.doBirthdays();
+    cake.birthdays();
   }
   return int.editReply("Birthday run!");
 }
@@ -110,7 +106,7 @@ Module.addInteraction({
   }
 })
 .setClockwork(() =>
-  setInterval(() => setBanner(), 1000 * 60 * 60 * 24)
+  setInterval(() => setBanner(), 24 * 60 * 60_000)
 );
 
 module.exports = Module;

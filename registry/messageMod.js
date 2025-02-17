@@ -3,5 +3,5 @@ const u = require("./regUtils");
 
 module.exports = u.msgContext()
   .setName("Moderation")
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel)
   .toJSON();

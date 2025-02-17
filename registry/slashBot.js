@@ -111,6 +111,6 @@ module.exports = new u.cmd()
   .addSubcommand(register)
   .addSubcommand(status)
   .addSubcommand(sheets)
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel)
   .setDefaultMemberPermissions(u.devMode)
   .toJSON();

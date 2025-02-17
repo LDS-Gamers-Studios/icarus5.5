@@ -33,14 +33,15 @@ const cakeday = new u.sub()
   .addStringOption(month)
   .addIntegerOption(day);
 
-const celebrate = new u.sub()
-  .setName("celebrate")
-  .setDescription("Run celebrations");
 const birthday = new u.sub()
   .setName("birthday")
   .setDescription("Run birthday for a specific Date")
   .addStringOption(month)
   .addIntegerOption(day);
+
+const celebrate = new u.sub()
+  .setName("celebrate")
+  .setDescription("Run birthday and cakeday celebrations");
 
 const banner = new u.sub()
   .setName("banner")
@@ -79,7 +80,7 @@ const team = new u.sub()
 module.exports = new u.cmd()
   .setName("management")
   .setDescription("Management Commands")
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel)
   .setDefaultMemberPermissions(u.devMode)
   .addSubcommand(celebrate)
   .addSubcommand(cakeday)
