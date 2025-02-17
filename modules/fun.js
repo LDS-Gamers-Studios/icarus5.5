@@ -394,7 +394,7 @@ function emojiCodePointify(emoji) {
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
-async function slashFunEmoGrow(int) {
+async function slashFunGrow(int) {
   try {
     // get the inputs
     await int.deferReply();
@@ -420,7 +420,7 @@ async function slashFunEmoGrow(int) {
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
-async function slashFunEmoMerge(int) {
+async function slashFunMerge(int) {
   try {
     // get the inputs
     await int.deferReply();
@@ -487,8 +487,8 @@ const Module = new Augur.Module()
       case "quote": return slashFunQuote(int);
       case "namegame": return slashFunNamegame(int);
       case "choose": return slashFunChoose(int);
-      case "emogrow": return slashFunEmoGrow(int);
-      case "emomerge": return slashFunEmoMerge(int);
+      case "grow": return slashFunGrow(int);
+      case "merge": return slashFunMerge(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   }

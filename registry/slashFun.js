@@ -47,8 +47,8 @@ const choose = new u.sub()
       .setRequired(true)
   );
 
-const emoMerge = new u.sub()
-  .setName("emomerge")
+const merge = new u.sub()
+  .setName("merge")
   .setDescription("Combines two emoji.")
   .addStringOption(
     new u.string()
@@ -63,8 +63,8 @@ const emoMerge = new u.sub()
       .setRequired(true)
   );
 
-const emoGrow = new u.sub()
-  .setName("emogrow")
+const grow = new u.sub()
+  .setName("grow")
   .setDescription("Enlarges an emoji")
   .addStringOption(
     new u.string()
@@ -212,6 +212,6 @@ module.exports = new u.cmd()
   .addSubcommand(quote)
   .addSubcommand(nameGame)
   .addSubcommand(choose)
-  .addSubcommand(emoMerge)
-  .addSubcommand(emoGrow)
+  .addSubcommand(merge)
+  .addSubcommand(grow)
   .toJSON();
