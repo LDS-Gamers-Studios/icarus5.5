@@ -195,8 +195,6 @@ const buttermelon = new u.sub()
   .setName("buttermelon")
   .setDescription("Get a random buttermelon fact.");
 
-minesAdvanced;
-
 module.exports = new u.cmd()
   .setName("fun")
   .setDescription("Its all fun and games 'till someone gets banned.")
