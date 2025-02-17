@@ -469,7 +469,6 @@ const Module = new Augur.Module()
     name: "msgModMenu",
     id: u.sf.commands.messageModeration,
     type: "ContextMessage",
-    options: { registry: "messageMod" },
     onlyGuild: true,
     process: sendModMenu
   })
@@ -477,7 +476,6 @@ const Module = new Augur.Module()
     name: "usrModMenu",
     id: u.sf.commands.userModeration,
     type: "ContextUser",
-    options: { registry: "userMod" },
     onlyGuild: true,
     process: sendModMenu
   });

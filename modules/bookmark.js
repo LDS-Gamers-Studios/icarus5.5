@@ -9,7 +9,6 @@ const Module = new Augur.Module()
   name: "Bookmark",
   id: u.sf.commands.messageBookmark,
   type: "ContextMessage",
-  options: { registry: "messageBookmark" },
   process: async (interaction) => {
     try {
       await interaction.deferReply({ ephemeral: true });
