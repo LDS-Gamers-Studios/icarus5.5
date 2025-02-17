@@ -68,6 +68,7 @@ Module.addInteraction({
   name: "management",
   id: u.sf.commands.slashManagement,
   onlyGuild: true,
+  options: { registry: "slashManagement" },
   permissions: (int) => u.perms.calc(int.member, ["mgr"]),
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
