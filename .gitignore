@@ -3,9 +3,11 @@ storage/*
 tmp
 config/config.json
 config/snowflakes-commands.json
+config/siteConfig.json
 test.js
 *-.js
 *-.json
+*.csv
 data/banned.json
 site
 .DS_Store

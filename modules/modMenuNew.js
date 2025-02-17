@@ -141,13 +141,13 @@ async function pin(int, msg) {
   if (msg.author.id === int.user.id) return edit(int, "You can't request your own message to be pinned!");
   const embed = u.embed({ author: int.member })
       .setTimestamp()
-      .setDescription(msg.cleanContent)
+      .setDescription(msg.cleanContent || null)
       .addFields(
         { name: "Pin Requested By", value: int.member.toString() },
         { name: "Post", value: msg.url }
       );
   if (msg.attachments.size > 0) embed.setImage(msg.attachments.first()?.url ?? null);
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] });
   return edit(int, "Pin request submitted!");
 
 }
@@ -249,7 +249,7 @@ async function warnUser(int, usr) {
 /** @type {message} */
 async function modDiscussion(int, msg) {
   if (!msg) return edit(int, "I couldn't find that message!");
-  const md = int.client.getTextChannel(u.sf.channels.moddiscussion);
+  const md = int.client.getTextChannel(u.sf.channels.mods.discussion);
   const embed = u.msgReplicaEmbed(msg, "", true)
     .setFooter({ text: `Linked by ${u.escapeText(int.member.displayName)}` })
     .setColor(c.colors.action);
@@ -338,7 +338,7 @@ async function purgeChannel(int, msg) {
   if (!toDelete) return edit(int, "I couldn't get those messages.");
   const deleted = await channel.bulkDelete(toDelete, true);
 
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({ author: int.member })
       .setTitle("Channel Purge")
       .addFields(
@@ -357,7 +357,7 @@ async function spamCleanup(int, msg) {
   const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false);
   if (!cleaned) return edit(int, "I couldn't find any recent messages that matched this one.");
   // Log it
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({ author: int.member })
       .setTitle("Channel Purge")
       .addFields(
@@ -424,7 +424,7 @@ async function handleModMenu(submitted, oldInt) {
 
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
 function permComponents(int) {
-  let components = menuOptions.everyone;
+  let components = [...menuOptions.everyone];
   if (!banned.includes(int.user.id)) components.push(menuOptions.flag);
   if (u.perms.calc(int.member, ['mod', 'mgr'])) components = components.concat(menuOptions.mod);
   if (u.perms.calc(int.member, ['mgr', 'mgmt'])) components = components.concat(menuOptions.mgmt);

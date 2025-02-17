@@ -25,6 +25,7 @@
   "devMode": true,
   "silentMode": false,
   "ownerOverride": true,
+  "siteOn": false,
   "webhooks": {
     "error": "Webhook url for errors",
     "watchlist": "Webhook url for #watch-list",
@@ -81,5 +82,11 @@
   "memberMilestone": {
     "enabled": false,
     "count": 5000
+  },
+  "badgePath": "./media/badges",
+  "xp": {
+    "base": 25,
+    "featherCooldown": 3,
+    "featherDropChance": 0.01
   }
 }

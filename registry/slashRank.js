@@ -14,10 +14,15 @@ const leaderboard = new u.sub()
 const track = new u.sub()
 .setName("track")
 .setDescription("Toggle tracking XP or view your current tracking status.")
-.addBooleanOption(
-  new u.bool()
-    .setName("choice")
-    .setDescription("Do you want to track XP? (leave blank to see status)")
+.addStringOption(
+  new u.string()
+    .setName("status")
+    .setDescription("How do you want to track XP? (leave blank to see status)")
+    .setChoices(
+      { name: "Track + level up notifications", value: "FULL" },
+      { name: "Track without notifications", value: "SILENT" },
+      { name: "No tracking", value: "OFF" }
+    )
     .setRequired(false)
 );
 
