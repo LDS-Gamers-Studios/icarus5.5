@@ -203,7 +203,7 @@ module.exports = new u.cmd()
   .addSubcommand(roll)
   .addSubcommand(ball8)
   .addSubcommand(repost)
-  .addSubcommand(minesAdvanced) // functional but disabled while we get the command started
+  .addSubcommand(minesAdvanced)
   .addSubcommand(mines)
   .addSubcommand(acronym)
   .addSubcommand(hbs)
