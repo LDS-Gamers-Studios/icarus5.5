@@ -95,7 +95,7 @@ async function featherCheck(msg) {
     }).catch(u.noop);
 
     // oop we got a hit!
-    await reaction.users.remove(msg.client.user.id);
+    await reaction.remove();
     const finder = userReact?.first()?.users.cache.find(usr => !usr.bot);
     if (finder) {
       // give em ember if they didn't buy their way in
@@ -118,7 +118,7 @@ async function featherCheck(msg) {
           )
           .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in ${msg.url} and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
-        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed] });
+        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed], allowedMentions: { parse: ["users"] } });
       }
 
       // give em xp
