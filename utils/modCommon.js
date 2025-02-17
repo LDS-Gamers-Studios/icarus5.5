@@ -50,7 +50,7 @@ const logEmbed = (int, tg) => u.embed({ author: tg })
   * @param {Discord.GuildMember | Discord.User} user The guild member that's blocked.
   */
 function blocked(user) {
-  return user.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+  return user.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({
       author: user,
       color: embedColors.info,
@@ -85,8 +85,10 @@ const modCommon = {
   blocked,
   compareRoles,
   nameGen,
+  userBackup,
   logEmbed,
   modActions,
+  messageFromMods,
   revert: retract,
   colors: embedColors,
   /**
@@ -129,11 +131,11 @@ const modCommon = {
         });
 
         // Save roles
-        targetRoles.delete(u.sf.roles.trusted);
+        targetRoles.delete(u.sf.roles.moderation.trusted);
         u.db.user.updateRoles(target, targetRoles.map(r => r.id));
 
         // Log it
-        interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+        interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
           logEmbed(interaction, target)
             .setTitle(`${interaction.client.emojis.cache.get(u.sf.emoji.banhammer) ?? ""} User Ban`)
             .addFields({ name: "Reason", value: reason })
@@ -191,8 +193,8 @@ const modCommon = {
           { name: "Jump to Post", value: msg.url, inline: true },
           { name: "User", value: userBackup(user) }
         );
-      if (msg.channel.parentId === u.sf.channels.minecraftcategory) {
-        msg.client.getTextChannel(u.sf.channels.minecraftmods)?.send({
+      if (msg.channel.parentId === u.sf.channels.minecraft.category) {
+        msg.client.getTextChannel(u.sf.channels.minecraft.mods)?.send({
           embeds: [embed],
           components: [
             u.MessageActionRow()
@@ -227,18 +229,18 @@ const modCommon = {
     if (pingMods) {
       if (msg) u.clean(msg, 0);
       const ldsg = client.guilds.cache.get(u.sf.ldsg);
-      if (isMember ? !member.roles.cache.has(u.sf.roles.muted) : true) {
-        content.push(ldsg?.roles.cache.get(u.sf.roles.mod)?.toString());
+      if (isMember ? !member.roles.cache.has(u.sf.roles.moderation.muted) : true) {
+        content.push(ldsg?.roles.cache.get(u.sf.roles.team.mod)?.toString());
       }
       if (bot) {
         content.push("The message has been deleted. The member was *not* muted, on account of being a bot.");
       } else {
-        if (isMember && !member.roles?.cache.has(u.sf.roles.muted)) {
-          await member.roles?.add(u.sf.roles.muted);
+        if (isMember && !member.roles?.cache.has(u.sf.roles.moderation.muted)) {
+          await member.roles?.add(u.sf.roles.moderation.muted);
           if (member.voice?.channel) {
             member.voice?.disconnect("Auto-mute");
           }
-          ldsg?.client.getTextChannel(u.sf.channels.muted)?.send({
+          ldsg?.client.getTextChannel(u.sf.channels.mods.muted)?.send({
             content: `${member}, you have been auto-muted in ${msg?.guild.name ?? "LDS Gamers"}. Please review our ${code}. A member of the mod team will be available to discuss more details.`,
             allowedMentions: { users: [member.id] }
           });
@@ -247,12 +249,12 @@ const modCommon = {
       }
     }
 
-    const card = await client.getTextChannel(u.sf.channels.modlogs)?.send({
+    const card = await client.getTextChannel(u.sf.channels.mods.logs)?.send({
       content: content.join('\n'),
       embeds: [embed],
 
       components: ((bot || !msg) ? undefined : modActions),
-      allowedMentions: { roles: [u.sf.roles.mod] }
+      allowedMentions: { roles: [u.sf.roles.team.mod] }
     });
 
     if (!card) throw new Error("Card creation failed!");
@@ -356,11 +358,11 @@ const modCommon = {
       });
 
       // Save roles
-      targetRoles.delete(u.sf.roles.trusted);
+      targetRoles.delete(u.sf.roles.moderation.trusted);
       u.db.user.updateRoles(target, targetRoles.map(r => r.id));
 
       // Log it
-      interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+      interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
         logEmbed(interaction, target)
           .setTitle(`👢 User Kick`)
           .addFields({ name: "Reason", value: reason })
@@ -394,11 +396,11 @@ const modCommon = {
       if (!target.manageable) return `I have insufficient permissions to ${m} ${target}!`;
 
       // Don't mute if muted or vice versa
-      if (target.roles.cache.has(u.sf.roles.muted) === apply) return `${target} is already ${m}d.`;
+      if (target.roles.cache.has(u.sf.roles.moderation.muted) === apply) return `${target} is already ${m}d.`;
 
       // Impose Mute or Unmute
-      if (apply) await target.roles.add(u.sf.roles.muted);
-      else await target.roles.remove(u.sf.roles.muted);
+      if (apply) await target.roles.add(u.sf.roles.moderation.muted);
+      else await target.roles.remove(u.sf.roles.moderation.muted);
       success = 1; // role changed
 
       // Disconnect from VC and mute (or unmute)
@@ -410,7 +412,7 @@ const modCommon = {
       }
       success = 2; // vc status changed
 
-      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+      await interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
         logEmbed(interaction, target)
           .setTitle(`${apply ? "🔇" : "🔊"} Member ${M}`)
           .addFields({ name: "Reason", value: reason ?? "[Not Provided]" })
@@ -418,7 +420,7 @@ const modCommon = {
       ] });
 
       if (apply) {
-        await interaction.client.getTextChannel(u.sf.channels.muted)?.send({ content:
+        await interaction.client.getTextChannel(u.sf.channels.mods.muted)?.send({ content:
           `${target}, you have been muted in ${interaction.guild.name}. `
         + `Please review our ${code}.\n`
         + 'A member of the mod team will be available to discuss more details.',
@@ -454,7 +456,7 @@ const modCommon = {
       success = true;
       const summary = await u.db.infraction.getSummary(target.id);
 
-      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+      await interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
         logEmbed(interaction, target)
           .setTitle("🗒️ Note Created")
           .setColor(embedColors.info)
@@ -484,15 +486,15 @@ const modCommon = {
       if (!target.manageable) return `I have insufficient permissions to ${put} the office!`;
 
       // don't do it if it wont do anything
-      if (target.roles.cache.has(u.sf.roles.ducttape) === apply) return `${target} is ${apply ? "already" : "not"} in the office.`;
+      if (target.roles.cache.has(u.sf.roles.moderation.ductTape) === apply) return `${target} is ${apply ? "already" : "not"} in the office.`;
 
       // do it
-      if (apply) await target.roles.add(u.sf.roles.ducttape);
-      else await target.roles.remove(u.sf.roles.ducttape);
+      if (apply) await target.roles.add(u.sf.roles.moderation.ductTape);
+      else await target.roles.remove(u.sf.roles.moderation.ductTape);
       success = true;
 
       // log it;
-      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+      await interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
         logEmbed(interaction, target)
           .setTitle(`💼 Member ${apply ? "Sent to" : "Released from"} Office`)
           .addFields({ name: "Reason", value: reason ?? "[Not Provided]" })
@@ -500,7 +502,7 @@ const modCommon = {
       ] });
 
       if (apply) {
-        await interaction.client.getTextChannel(u.sf.channels.office)?.send({ content:
+        await interaction.client.getTextChannel(u.sf.channels.mods.office)?.send({ content:
           `${target}, you have been sent to the office in ${interaction.guild.name}.\n`
           + 'This allows you and the mods to have a private space to discuss issues or concerns.\n'
           + `Please review our ${code}. A member of the mod team will be available to discuss more details.`,
@@ -548,7 +550,7 @@ const modCommon = {
       }
       const summary = await u.db.infraction.getSummary(target.id);
 
-      interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+      interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
         logEmbed(interaction, target)
           .setTitle("✏️ User Renamed")
           .setDescription(comment)
@@ -632,7 +634,7 @@ const modCommon = {
 
       if (apply) embed.addFields({ name: "Time", value: `${time} minutes` });
 
-      await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+      await interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] });
 
       return `${target} has been ${td}${apply ? ` for ${time} minutes` : ""}.`;
     } catch (error) {
@@ -649,10 +651,10 @@ const modCommon = {
   trust: async function(interaction, target, apply = true) {
     let success = false;
     try {
-      if (target.roles.cache.has(u.sf.roles.trusted) === apply) return `${target} is ${apply ? "already trusted" : "not trusted yet"}!`;
+      if (target.roles.cache.has(u.sf.roles.moderation.trusted) === apply) return `${target} is ${apply ? "already trusted" : "not trusted yet"}!`;
       const embed = logEmbed(interaction, target).setColor(embedColors.info);
       if (apply) {
-        await target.roles.add(u.sf.roles.trusted);
+        await target.roles.add(u.sf.roles.moderation.trusted);
         success = true;
         target.send(
           "## Congratulations!\n"
@@ -663,7 +665,7 @@ const modCommon = {
         ).catch(() => blocked(target));
         embed.setTitle("🤝 User Given Trusted");
       } else {
-        await target.roles.remove([u.sf.roles.trusted, u.sf.roles.trustedplus]);
+        await target.roles.remove([u.sf.roles.moderation.trusted, u.sf.roles.moderation.trustedPlus]);
         success = true;
         target.send(messageFromMods + `You have been removed from "Trusted" in ${interaction.guild.name}.\n`
           + "This means you no longer have the ability to post images. "
@@ -672,7 +674,7 @@ const modCommon = {
         embed.setTitle("💢 User Trust Removed");
       }
       await modCommon.watch(interaction, target, !apply);
-      interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+      interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] });
       return `${target} has been ${apply ? "given" : "removed from"} the Trusted role!`;
     } catch (error) {
       await u.errorHandler(error, interaction);
@@ -697,11 +699,10 @@ const modCommon = {
         if (recipient.roles.cache.has(role.id) === give) return `${recipient} ${give ? "already has" : "doesn't have"} the ${role} role`;
         give ? await recipient?.roles.add(role.id) : await recipient?.roles.remove(role.id);
         const returnStr = `Successfully ${past} the ${role} role ${give ? "to" : "from"} ${recipient}`;
-        if (role.id === u.sf.roles.bookworm) return returnStr;
         const embed = u.embed({ author: recipient, color: 0x00ffff })
             .setTitle(`User ${give ? "added to" : "removed from"} ${role.name}`)
             .setDescription(`${int.member} ${past} the ${role} role ${give ? "to" : "from"} ${recipient}.`);
-        int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+        int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] });
         return returnStr;
       } catch (e) { return `Failed to ${pres} ${recipient} the ${role} role`; }
     } catch (error) { u.errorHandler(error, int); }
@@ -716,12 +717,12 @@ const modCommon = {
   trustPlus: async function(interaction, target, apply = true) {
     let success = false;
     try {
-      if (target.roles.cache.has(u.sf.roles.trustedplus) === apply) return `${target} ${apply ? "already has" : "doesn't have"} the Trusted+ role!`;
-      if (apply && !target.roles.cache.has(u.sf.roles.trusted)) return `${target} needs the Trusted role before they can get the Trusted+ role!`;
+      if (target.roles.cache.has(u.sf.roles.moderation.trustedPlus) === apply) return `${target} ${apply ? "already has" : "doesn't have"} the Trusted+ role!`;
+      if (apply && !target.roles.cache.has(u.sf.roles.moderation.trusted)) return `${target} needs the Trusted role before they can get the Trusted+ role!`;
       const embed = logEmbed(interaction, target).setColor(embedColors.info);
 
       if (apply) {
-        await target.roles.add(u.sf.roles.trustedplus);
+        await target.roles.add(u.sf.roles.moderation.trustedPlus);
         success = true;
         target.send(
           "## Congratulations!\n"
@@ -731,7 +732,7 @@ const modCommon = {
         ).catch(() => blocked(target));
         embed.setTitle("🎥 User Given Trusted+");
       } else {
-        await target.roles.remove(u.sf.roles.trustedplus);
+        await target.roles.remove(u.sf.roles.moderation.trustedPlus);
         success = true;
         target.send(messageFromMods +
           `You have been removed from "Trusted+" in ${interaction.guild.name}. `
@@ -741,7 +742,7 @@ const modCommon = {
 
         embed.setTitle("📤 User Trusted+ Removed");
       }
-      interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+      interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] });
       return `${target} has been ${apply ? "added to" : "removed from"} the Trusted+ role!`;
     } catch (error) {
       await u.errorHandler(error, interaction);
@@ -770,7 +771,7 @@ const modCommon = {
       success = true;
 
       if (typeof target !== 'string') {
-        const watchLog = interaction.client.getTextChannel(u.sf.channels.modWatchList);
+        const watchLog = interaction.client.getTextChannel(u.sf.channels.mods.watchList);
         const notifDesc = [
           `Use </mod watch:${u.sf.commands.slashMod}> to remove them.`,
           `Use </mod watch:${u.sf.commands.slashMod}> to re-add them.`
@@ -806,7 +807,7 @@ const modCommon = {
         .setColor(embedColors.handled)
         .setTimestamp();
       if (message?.cleanContent) embed.addFields({ name: "Message Content", value: message.cleanContent });
-      const flag = await interaction.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+      const flag = await interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] });
 
       await u.db.infraction.save({
         discordId: target.id,

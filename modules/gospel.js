@@ -255,7 +255,7 @@ const Module = new Augur.Module()
   }
 })
 .addCommand({ name: "debugcfm",
-  permissions: (msg) => u.perms.isAdmin(msg.member),
+  permissions: (msg) => u.perms.calc(msg.member, ["botAdmin"]),
   process: (msg) => {
     const fakeDay = new Date("Dec 31 2023");
     let i = 0;

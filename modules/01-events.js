@@ -26,9 +26,14 @@ const mutedPerms = {
  */
 // roles that SHOULD NOT be given when a user rejoins
 const dangerRoles = [
-  u.sf.roles.team, u.sf.roles.management, u.sf.roles.manager, u.sf.roles.mod,
-  u.sf.roles.live, u.sf.roles.headofhouse, u.sf.roles.emberguardian,
-  u.sf.roles.destinyclansmanager, u.sf.roles.volunteer
+  ...Object.values(u.sf.roles.team).filter(sf => ![u.sf.roles.team.botTeam, u.sf.roles.team.emeritus].includes(sf)),
+  u.sf.roles.live, u.sf.roles.houses.head, u.sf.roles.houses.emberGuardian,
+];
+
+const emojis = [
+  ["buttermelon", u.sf.emoji.buttermelon],
+  ["noice", u.sf.emoji.noice],
+  ["carp", "🐟"]
 ];
 
 /**
@@ -43,7 +48,7 @@ async function update(oldUser, newUser) {
     if (oldUser.partial) oldUser = await oldUser.fetch().catch(() => oldUser);
     if (oldUser.partial) return; // failed to fetch
     const user = await u.db.user.fetchUser(newUser.id);
-    if (newMember && (!newMember.roles.cache.has(u.sf.roles.trusted) || user?.watching)) {
+    if (newMember && (!newMember.roles.cache.has(u.sf.roles.moderation.trusted) || user?.watching)) {
       const embed = u.embed({ author: oldUser })
         .setTitle("User Update")
         .setDescription(newUser.toString())
@@ -69,7 +74,7 @@ async function update(oldUser, newUser) {
       }
       if ((embed.data.fields?.length || 0) > 0) {
         embed.addFields({ name: "Activity", value: `${user?.posts ?? 0} active minutes in ${u.moment(newMember?.joinedTimestamp).fromNow(true)}` });
-        ldsg?.client.getTextChannel(u.sf.channels.userupdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed], components: [
+        ldsg?.client.getTextChannel(u.sf.channels.mods.userUpdates)?.send({ content: `${newUser} (${newUser.displayName})`, embeds: [embed], components: [
           u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
         ] });
       }
@@ -77,21 +82,19 @@ async function update(oldUser, newUser) {
   } catch (error) { u.errorHandler(error, `User Update Error: ${u.escapeText(newUser?.displayName)} (${newUser.id})`); }
 }
 
-/** @type {(string[])[]} */
-let emojis = [];
 const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
   try {
     if (channel.guild?.id === u.sf.ldsg) {
       if (channel.permissionsFor(channel.client.user)?.has(["ViewChannel", "ManageChannels"])) {
         // muted role
-        channel.permissionOverwrites.create(u.sf.roles.muted, mutedPerms, { reason: "New channel permissions update" })
+        channel.permissionOverwrites.create(u.sf.roles.moderation.muted, mutedPerms, { reason: "New channel permissions update" })
         .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
         // duct tape role
-        channel.permissionOverwrites.create(u.sf.roles.ducttape, mutedPerms, { reason: "New channel permissions update" })
+        channel.permissionOverwrites.create(u.sf.roles.moderation.ductTape, mutedPerms, { reason: "New channel permissions update" })
           .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
       } else {
-        channel.client.getTextChannel(u.sf.channels.logistics)?.send({ embeds: [
+        channel.client.getTextChannel(u.sf.channels.team.logistics)?.send({ embeds: [
           u.embed({
             title: "Update New Channel Permissions",
             description: `Insufficient permissions to update channel ${channel} (#${channel.name}). Muted permissions need to be applied manually. Default denied permissions for Muted and Duct Tape are:\n\`\`\`${Object.keys(mutedPerms).join('\n')}\`\`\``,
@@ -108,7 +111,7 @@ const Module = new Augur.Module()
   const guild = guildBan.guild;
   const user = guildBan.user;
   if (guild.id === u.sf.ldsg) {
-    guild.client.getTextChannel(u.sf.channels.modlogs)?.send({
+    guild.client.getTextChannel(u.sf.channels.mods.logs)?.send({
       embeds: [
         u.embed({
           author: user,
@@ -132,7 +135,7 @@ const Module = new Augur.Module()
       const user = await u.db.user.fetchUser(member.id, false);
       const general = guild.client.getTextChannel(u.sf.channels.general);
       const welcomeChannel = guild.client.getTextChannel(u.sf.channels.welcome);
-      const modLogs = guild.client.getTextChannel(u.sf.channels.modlogs);
+      const modLogs = guild.client.getTextChannel(u.sf.channels.mods.logs);
 
       const embed = u.embed({ author: member })
         .setColor(c.colors.info)
@@ -145,23 +148,50 @@ const Module = new Augur.Module()
 
       let welcomeString;
 
-      if (user) { // Member is returning
-        const toAdd = user.roles.filter(role => (
-          guild.roles.cache.has(role) && // role still exists
-          !guild.roles.cache.get(role)?.managed && // role can be applied
-          !dangerRoles.includes(role) // not a dangerous role (ie team+)
-        ));
-        const oldDanger = user.roles.filter(role => guild.roles.cache.has(role) && dangerRoles.includes(role))
-          .map(r => guild.roles.cache.get(r));
-        if (user.roles.length > 0) member = await member.roles.add(toAdd);
+      // Member is returning
+      if (user) {
+        /** @type {Discord.Role[][]} */
+        const [toAdd, danger, failed] = [[], [], []];
 
-        let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.toString()).join(", ") + (oldDanger.length > 0 ? "\nOld roles not given: " + oldDanger.join(", ") : "") ;
-        if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
+        for (const roleId of user.roles) {
+          // ensure role still exists
+          const role = guild.roles.cache.get(roleId);
+          if (!role) continue;
+
+          // can't be applied
+          if (role.managed || role.position >= (guild.members.me?.roles.highest.position ?? 0)) {
+            failed.push(role);
+          } else if (dangerRoles.includes(roleId)) { // dangerous!
+            danger.push(role);
+          } else { // go ahead and add!
+            toAdd.push(role);
+          }
+        }
+
+        if (toAdd.length > 0) {
+          await member.roles.add(toAdd).catch(() => {
+            u.errorHandler(new Error("Rejoin Roles Apply Failed"), "Check the console to find their lost roles");
+            // eslint-disable-next-line no-console
+            console.log("failed", failed.map(f => f.id).join("\n"));
+            // eslint-disable-next-line no-console
+            console.log("toAdd", toAdd.map(f => f.id).join("\n"));
+          });
+        }
+
+        const addSurplus = toAdd.length - 30;
+        const failedSurplus = failed.length - 30;
+        const dangerSurplus = danger.length - 30;
+        let roleString = toAdd.sort((a, b) => b.comparePositionTo(a)).map(role => role.toString()).slice(0, 30).join(", ");
+        if (addSurplus > 0) roleString += ` + ${addSurplus} more`;
+        embed.addFields({ name: "Roles Given", value: roleString || "None" });
+
+        if (failed.length > 0) embed.addFields({ name: "\n⚠️ FAILED TO GIVE THESE ROLES", value: failed.slice(0, 30).join(", ") + (failedSurplus > 0 ? ` + ${failedSurplus}` : "") });
+        if (danger.length > 0) embed.addFields({ name: "\n⛔ Dangerous Roles Not Given: ", value: danger.slice(0, 30).join(", ") + (dangerSurplus > 0 ? ` + ${dangerSurplus}` : "") });
 
         embed.setTitle(member.displayName + " has rejoined the server.")
           .addFields(
-            { name: "Roles", value: roleString },
-            { name: "Activity", value: `${user.posts} Active Minutes` }
+            { name: "Chat Activity", value: `${user.posts} Active Minutes` },
+            { name: "Voice Activity", value: `${user.voice} Active Minutes` }
           );
         welcomeString = `Welcome back, ${member}! Glad to see you again.`;
 
@@ -187,7 +217,7 @@ const Module = new Augur.Module()
           "How'd you find us?",
           "What platforms/games do you play?"
         ]);
-        welcomeString = `${welcome}, ${member}! ${info1} ${welcomeChannel} ${info2}. ${info3}\n\nTry \`!profile\` over in <#${u.sf.channels.botspam}> if you'd like to opt in to roles or share IGNs.`;
+        welcomeString = `${welcome}, ${member}! ${info1} ${welcomeChannel} ${info2}. ${info3}\n\nTry \`!profile\` over in <#${u.sf.channels.botSpam}> if you'd like to opt in to roles or share IGNs.`;
         embed.setTitle(member.displayName + " has joined the server.");
 
         u.db.user.newUser(member.id);
@@ -198,10 +228,10 @@ const Module = new Augur.Module()
 
       const { enabled, count } = config.memberMilestone;
       if (enabled && (guild.memberCount < count)) welcomeString += `\n*${count - guild.memberCount} more members until we have a pizza party!*`;
-      if (!member.roles.cache.has(u.sf.roles.muted) && !member.user.bot && !banned.includes(member.id)) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
+      if (!member.roles.cache.has(u.sf.roles.moderation.muted) && !member.user.bot && !banned.includes(member.id)) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
       if (guild.memberCount === count) {
         await general?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:`);
-        await modLogs?.send({ content: `:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: <@${u.sf.other.ghost}> <@${config.ownerId}> <@&${u.sf.roles.management}*`, allowedMentions: { parse: ['roles', 'users'] } });
+        await modLogs?.send({ content: `:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: <@${u.sf.other.ghost}> <@${config.ownerId}> <@&${u.sf.roles.team.management}*`, allowedMentions: { parse: ['roles', 'users'] } });
       }
     }
   } catch (e) { u.errorHandler(e, "New Member Add"); }
@@ -225,7 +255,7 @@ const Module = new Augur.Module()
         { name: "Joined", value: u.moment(member.joinedAt).fromNow(), inline: true },
         { name: "Activity", value: (user?.posts || 0) + " Active Minutes", inline: true }
       );
-      member.guild.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed], components: [
+      member.guild.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed], components: [
         u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
       ] });
     }
@@ -233,22 +263,15 @@ const Module = new Augur.Module()
 })
 .addEvent("guildMemberUpdate", update)
 .addEvent("userUpdate", update)
-.setInit(async () => {
-  try {
-    emojis = u.db.sheets.sponsors.map(x => [x.userId, x.emojiId])
-      .concat([
-        ["buttermelon", u.sf.emoji.buttermelon],
-        ["noice", u.sf.emoji.noice],
-        ["carp", "🐟"]
-      ]);
-  } catch (e) { u.errorHandler(e, "Load Sponsor Reactions"); }
-})
 .addEvent("messageCreate", async (msg) => {
   if (!msg.author.bot && msg.guild?.id === u.sf.ldsg) {
-    for (const [sponsor, emoji] of emojis) {
-      if (msg.mentions.members?.has(sponsor)) await msg.react(emoji).catch(u.noop);
-      // Filter out sponsors and test for trigger words
-      else if (!msg.guild.members.cache.has(sponsor) && isNaN(parseInt(sponsor)) && Math.random() < 0.3 && msg.content.toLowerCase().includes(sponsor)) await msg.react(emoji).catch(u.noop);
+    // sponsor pings
+    for (const [sponsor, info] of u.db.sheets.sponsors) {
+      if (info.enabled && info.emojiId && msg.mentions.members?.has(sponsor)) await msg.react(info.emojiId).catch(u.noop);
+    }
+    // trigger words
+    for (const [word, emoji] of emojis) {
+      if (Math.random() < 0.3 && msg.content.toLowerCase().includes(word)) await msg.react(emoji).catch(u.noop);
     }
   }
 });

@@ -27,6 +27,10 @@ const BankSchema = new Schema({
     type: String,
     required: true
   },
+  otherUser: {
+    type: String,
+    required: true
+  },
   hp: {
     type: Boolean,
     default: false
