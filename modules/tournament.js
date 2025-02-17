@@ -107,7 +107,8 @@ async function participant(int) {
 
 }
 
-Module.addInteraction({ name: "tournament",
+Module.addInteraction({
+  name: "tournament",
   id: u.sf.commands.slashTournament,
   onlyGuild: true,
   options: { registry: "slashTournament" },

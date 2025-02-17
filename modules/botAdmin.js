@@ -195,7 +195,8 @@ async function slashBotStatus(int) {
 }
 
 const Module = new Augur.Module()
-.addInteraction({ name: "bot",
+.addInteraction({
+  name: "bot",
   id: u.sf.commands.slashBot,
   onlyGuild: true,
   hidden: true,

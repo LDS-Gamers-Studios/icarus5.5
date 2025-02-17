@@ -72,6 +72,7 @@ function encodeTag(tag, msg, int) {
 
 /** @param {Discord.Message} msg */
 function runTag(msg) {
+  if (!msg.channel.isSendable()) return;
   const cmd = u.parse(msg);
   const tag = findTag(cmd?.command);
 
@@ -126,10 +127,10 @@ async function slashTagCreate(int) {
   if (command.response) embed.addFields({ name: "Response", value: command.response });
   try {
     // report the tag creation
-    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
+    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
     content.editReply({ content: "Tag created!", embeds: [embed.setDescription(`Try it out with \`${config.prefix}${name}\``)], files: attachment ? [attachment] : [] });
   } catch (error) {
-    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag creation preview was too long to send." })] });
+    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag creation preview was too long to send." })] });
     content.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
 }
@@ -171,10 +172,10 @@ async function slashTagModify(int) {
       );
     }
     if (command.attachment !== currentTag.attachment) embed.addFields({ name: "Attachment Status", value: currentTag.attachment ? attachment ? "Replaced" : "Removed" : attachment ? "Added" : "Unchanged" });
-    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
+    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
     content.editReply({ embeds: [embed.setDescription(null)] });
   } catch (error) {
-    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag change preview was too long to send" })] });
+    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag change preview was too long to send" })] });
     content.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
 }
@@ -195,10 +196,10 @@ async function slashTagDelete(int) {
       embed.addFields({ name: "Attachment", value: "[Deleted]" });
       fs.rmSync(process.cwd() + `/media/tags/${command._id.toString()}`);
     }
-    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed] });
+    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
     int.editReply({ embeds: [embed.setDescription(null)] });
   } catch (err) {
-    int.client.getTextChannel(u.sf.channels.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag deletion preview was too long to send" })] });
+    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag deletion preview was too long to send" })] });
     int.editReply(`I deleted the tag \`${name}\`, but I wasn't able to send you the preview`);
   }
   tags.delete(name);

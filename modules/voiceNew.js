@@ -335,7 +335,8 @@ Module.addEvent("interactionCreate", async (int) => {
   else if (result instanceof Discord.ButtonInteraction || result instanceof Discord.UserSelectMenuInteraction) edit(result, channel);
   else if ("int" in result && !(result.int instanceof Discord.ChatInputCommandInteraction)) edit(result.int, channel, result.msg);
 })
-.addInteraction({ name: "slashVoice",
+.addInteraction({
+  name: "slashVoice",
   id: u.sf.commands.slashVoice,
   guildId: u.sf.ldsg,
   onlyGuild: true,

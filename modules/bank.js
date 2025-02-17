@@ -356,7 +356,8 @@ async function slashBankAward(interaction) {
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
-Module.addInteraction({ name: "bank",
+Module.addInteraction({
+  name: "bank",
   guildId: u.sf.ldsg,
   onlyGuild: true,
   id: u.sf.commands.slashBank,

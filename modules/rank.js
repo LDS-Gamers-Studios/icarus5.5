@@ -206,6 +206,8 @@ const Module = new Augur.Module()
   })
   .addCommand({ name: "rankreset",
     onlyGuild: true,
+    description: "Resets everyone's season XP and awards ember",
+    syntax: "rankreset <ember>",
     permissions: (msg) => u.perms.calc(msg.member, ["mgr"]),
     process: rankReset
   });

@@ -47,6 +47,7 @@ const Module = new Augur.Module()
   }
 })
 .addInteraction({
+  name: "help",
   id: u.sf.commands.slashHelp,
   options: { registry: "slashHelp" },
   process: async (int) => {
@@ -89,7 +90,11 @@ const Module = new Augur.Module()
   }
 });
 
-
+/**
+ * @param {Discord.APIApplicationCommand} op
+ * @param {string} baseName
+ * @param {{ name: string }} [group]
+ */
 function cmd(op, baseName = "", group) {
   let name = baseName ? `### /${baseName} ` : "## /";
   if (group) name += `${group.name} `;
