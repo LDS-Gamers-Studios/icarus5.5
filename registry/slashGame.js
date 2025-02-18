@@ -1,62 +1,6 @@
 // @ts-check
 const u = require("./regUtils");
 
-const destiny = new u.sub()
-  .setName("destiny")
-  .setDescription("[DESTINY MANAGER/ADMIN] Add or remove someone from a clan channel or the Valiant Knights role")
-  .addStringOption(
-    new u.string()
-      .setName("action")
-      .setDescription("The action to take")
-      .setChoices(
-        { "name": "Clan", "value": "clan" },
-        { "name": "Valiant", "value": "valiant" }
-      )
-      .setRequired(true)
-  )
-  .addUserOption(
-    new u.user()
-      .setName("user")
-      .setDescription("The user to add/remove")
-      .setRequired(true)
-  )
-  .addStringOption(
-    new u.string()
-      .setName("clan")
-      .setDescription("Required for setting a user's clan")
-      .setChoices(
-        {
-          "name": "Spartans (PC 1)",
-          "value": "spartans"
-        },
-        {
-          "name": "Lightbreakers (PC 2)",
-          "value": "lightbreakers"
-        },
-        {
-          "name": "Paladins (PC 3)",
-          "value": "paladins"
-        },
-        {
-          "name": "Curmudgeons (PS 1)",
-          "value": "curmudgeons"
-        },
-        {
-          "name": "Guardians (XB 1)",
-          "value": "guardians"
-        },
-        {
-          "name": "Iron Lords (XB 2)",
-          "value": "ironlords"
-        }
-      )
-  )
-  .addBooleanOption(
-    new u.bool()
-      .setName("remove")
-      .setDescription("Set to true if you want to remove them from the clan/role")
-  );
-
 const minecraft = new u.sub()
   .setName("minecraft-skin")
   .setDescription("Get a picture of someone's Minecraft skin")
@@ -125,7 +69,6 @@ module.exports = new u.cmd()
   .setName("game")
   .setDescription("Get information on games")
   .setDMPermission(false)
-  .addSubcommand(destiny)
   .addSubcommand(minecraft)
   .addSubcommand(playing)
   .addSubcommand(elite)
