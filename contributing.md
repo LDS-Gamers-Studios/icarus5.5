@@ -20,8 +20,7 @@
 
 ![Clone Repo](https://github.com/LDS-Gamers-Studios/icarus5.5/blob/main/docs/clonerepo.png?raw=true)
 
-4. Run `node register-commands.js` to register all of the interaction commands with the Discord API. Note the IDs of the commands for configuring the bot later.
-5. Create a [local database](https://www.mongodb.com/try/download/community), or try the server based [Atlas Shared Tier](https://www.mongodb.com/cloud/atlas/register). For the sake of this tutorial, I will be using the server based version.
+4. Create a [local database](https://www.mongodb.com/try/download/community), or try the server based [Atlas Shared Tier](https://www.mongodb.com/cloud/atlas/register). For the sake of this tutorial, I will be using the server based version.
     1. Sign up for an Atlas Shared Tier, selecting the free M0 option
     
     ![M0 Free Tier](https://github.com/LDS-Gamers-Studios/icarus5.5/blob/main/docs/mzero.png?raw=true)
@@ -29,8 +28,9 @@
     2. When prompted to connect, choose the Compass option. If you haven't installed Compass yet, it will provide instructions to do so. Installing it is not required, but will help with setup.
     3. Take note of your connection string. It'll have the format of `mongodb+srv://<username>:<password>@<connection>`. You can copy and paste that into Compass and try connecting. Note this somewhere you can come back to later.
     4. Create a new database called `icarus`, and a collection called `bank`. This will act as a base to start, and Icarus should be able to create new collections and records on its own.
-6. Create the following files, based on their matching `-example` file: `config/config.json`, `config/snowflake-testing-commands.json`, and `data/banned.json`. Explanations of these files can be found below.
-7. Within the root folder of the repo, run `npm ci`.
+5. Create the following files, based on their matching `-example` file: `config/config.json`, `config/snowflake-testing-commands.json`, and `data/banned.json`. Explanations of these files can be found below.
+6. Within the root folder of the repo, run `npm ci`.
+7. Run `node register-commands.js` to register all of the interaction commands with the Discord API. Note the IDs of the commands for configuring the bot later.
 8. The start-up command is `node .`. If you want to be fancy, you can start a debugging instance as well.
 
 ## File Explanations
@@ -39,11 +39,12 @@ For the bot to successfully run, you'll need to create or edit a few files first
 ### `config/config.json`
 Required items:
 
+**NOTE: THIS SECTION MIGHT NOT BE UP TO DATE, so please refer to `config-example.json`**
+
 (Just as a general rule of thumb, if there's a placeholder string you should probably change it to the correct value.)
 - `adminId`: put your ID in there.
 - `ownerId`: put your ID there
 - `api.snipcart`: required to run `/bank discount`. Can otherwise be left blank.
-- `api.steam`: required to run `/bank game list`. Can otherwise be left blank, but will create an error message on loading `bank.js`. An API key can be requested [here](https://steamcommunity.com/dev/apikey).
 - `applicationId`: The applicationId you took note of during bot creation
 - `db`: This is the connection info for Mongo. Recall the connection string you noted down earlier. The format is `mongodb+srv://<username>:<password>@<connection>`
 - - `db.db`: `mongodb+srv://<connection>/icarus`
@@ -58,7 +59,7 @@ Required items:
 The provided example can be copied without modification.
 
 ### `config/snowflakes-testing-commands.json`
-Copy all of your command IDs that you registered earlier into the appropriate fields.
+The provided example can be copied without modification. It will be filled out when you run `node register-commands.js`.
 
 # Contributing
 
@@ -93,5 +94,5 @@ In order for a pull request to be approved, the following requirements have to b
 - All interactions that need registration must follow the style of the existing files in `/registry`
 - All functions must have valid JSDoc describing the types of parameters, as well as the return type if really needed.
 - All new dependencies should be reflected in `package.json` and `package-lock.json`
-- Minimal @ts-check errors (message the Bot Owner if you're having trouble)
+- No @ts-check errors (message the Bot Owner if you're having trouble)
 - No ESLint errors
