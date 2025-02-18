@@ -1,20 +1,6 @@
 // @ts-check
 const u = require("./regUtils");
 
-const chess = new u.sub()
-  .setName("chess")
-  .setDescription("Get Chess.com games")
-  .addUserOption(
-    new u.user()
-      .setName("user")
-      .setDescription("The Discord user to search for")
-  )
-  .addStringOption(
-    new u.string()
-      .setName("username")
-      .setDescription("The username of the Chess.com player")
-  );
-
 const destiny = new u.sub()
   .setName("destiny")
   .setDescription("[DESTINY MANAGER/ADMIN] Add or remove someone from a clan channel or the Valiant Knights role")
@@ -139,7 +125,6 @@ module.exports = new u.cmd()
   .setName("game")
   .setDescription("Get information on games")
   .setDMPermission(false)
-  .addSubcommand(chess)
   .addSubcommand(destiny)
   .addSubcommand(minecraft)
   .addSubcommand(playing)

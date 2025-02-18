@@ -6,7 +6,6 @@ const Augur = require("augurbot-ts"),
   discord = require('discord.js'),
   moment = require('moment'),
   perms = require('../utils/perms'),
-  chessAPI = new (require('chess-web-api'))({ queue: true }),
   u = require("../utils/utils"),
   config = require('../config/config.json');
 
@@ -14,64 +13,6 @@ const Augur = require("augurbot-ts"),
 let gameDefaults = new u.Collection();
 
 const Module = new Augur.Module();
-
-/** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
-async function slashGameChess(interaction) {
-  const user = interaction.options.getMember('user');
-  let name = interaction.options.getString('username');
-  if (user) name = (await u.db.ign.find(user.id, 'chess'))?.ign;
-  else if (!name) name = (await u.db.ign.find(interaction.user.id, 'chess'))?.ign;
-  if (name) {
-    try {
-      let result = await chessAPI.getPlayerCurrentDailyChess(encodeURIComponent(name));
-      const games = result.body.games;
-      const getPlayer = /https:\/\/api\.chess\.com\/pub\/player\/(.*)$/;
-      const embed = u.embed().setTitle(`Current Chess.com Games for ${name}`)
-        .setThumbnail("https://openclipart.org/image/800px/svg_to_png/275248/1_REY_Blanco_Pieza-Mural_.png");
-      let i = 0;
-      for (const game of games) {
-        const white = getPlayer.exec(game.white);
-        const black = getPlayer.exec(game.black);
-        const turn = getPlayer.exec(game[game.turn]);
-        embed.addFields(
-          {
-            name: `♙${white ? white[1] : "Unknown Player"} v ♟${black ? black[1] : "Unknown Player"}`,
-            value: `Current Turn: ${(game.turn == "white" ? "♙" : "♟")}${turn ? turn[1] : "?"}\nMove By: ${moment(game.move_by).format("ddd h:mmA Z")}\n[[link]](${game.url})`
-          });
-        if (++i == 25) break;
-      }
-      if (games.length == 0) {
-        result = await chessAPI.getPlayerStats(encodeURIComponent(name));
-        if (result) {
-          const daily = result.body["chess_daily"];
-          const tactics = result.body["tactics"];
-          const puzzle = result.body["puzzle_rush"]?.best;
-          const toTime = (time) => `<t:${time}:F>`;
-          const overall = daily?.record ? `Overall:\nWins: ${daily.record.win}\nLosses: ${daily.record.loss}\nDraws: ${daily.record.draw}\nTime Per Move: ${daily.record['time_per_move']}\n\n` : "";
-          const latest = daily?.last ? `Latest:\nRating: ${daily.last.rating}\nDate: ${toTime(daily.last.date)}\n\n` : "";
-          const best = daily?.best ? `Best:\nRating: ${daily.best.rating}\nDate: ${toTime(daily.best.date)}\n[Link](${daily.best.game})` : "";
-          embed.setTitle(`Chess.com Stats for ${name}`)
-            .addFields(
-              { name: "Chess Daily", value: (overall || latest || best) ? `${overall}${latest}${best}` : "No available stats" },
-              { name: "Puzzle Rush", value: puzzle ? `Total Attempts: ${puzzle["total_attempts"]}\nHigh Score: ${puzzle.score}` : "No available stats" },
-              { name: "Tactics", value: tactics ? `Highest Rating: ${tactics.highest.rating}\nLowest Rating: ${tactics.lowest.rating}` : "No available stats" }
-            );
-          return interaction.reply({ embeds: [embed] });
-        }
-      }
-      if (games.length == 0) embed.setDescription(`No active games found for ${name}`);
-      if (games.length > 25) embed.setDescription(`${name}'s first 25 active games:`);
-      else embed.setDescription(`${name}'s active games:`);
-      interaction.reply({ embeds: [embed] });
-    } catch (error) {
-      if (error.message == "Not Found" && error.statusCode == 404) {
-        interaction.reply({ content: `I couldn't find a profile for \`${name}\`.`, ephemeral: true });
-      } else { u.errorHandler(error, interaction); }
-    }
-  } else {
-    interaction.reply({ content: "I couldn't find a saved IGN for them.", ephemeral: true });
-  }
-}
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} inter */
 async function slashGameDestiny(inter) {
@@ -354,7 +295,6 @@ Module.addInteraction({
   process: async (interaction) => {
     try {
       switch (interaction.options.getSubcommand()) {
-      case "chess": return slashGameChess(interaction);
       case "destiny": return slashGameDestiny(interaction);
       case "elite": return slashGameElite(interaction);
       case "minecraft-skin": return slashGameMinecraftSkin(interaction);

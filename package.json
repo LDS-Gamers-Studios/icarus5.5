@@ -24,7 +24,6 @@
     "@types/steamapi": "^2.2.5",
     "augurbot-ts": "^3.2.2",
     "axios": "^1.6.7",
-    "chess-web-api": "^1.2.0",
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
