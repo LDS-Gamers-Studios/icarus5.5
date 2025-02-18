@@ -4,7 +4,8 @@ const Augur = require("augurbot-ts"),
   banners = require('../data/banners.json'),
   fs = require('fs'),
   path = require('path'),
-  cake = require('./cake');
+  cake = require('./cake'),
+  Module = new Augur.Module();
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runCakeday(int) {
@@ -38,7 +39,7 @@ async function setBanner(holiday) {
   const day = date.getDate();
 
   // should look for the banners in banners.json
-  const banner = banners.find(b => holiday ? b.file == holiday.toLowerCase() : b.month === month && b.day === day);
+  const banner = banners.find(b => holiday ? b.file === holiday.toLowerCase() : b.month === month && b.day === day);
   if (!banner) return "I couldn't find that file."; // end function here if there's not a banner
 
   const bannerPath = `media/banners/${banner.file}.png`;
@@ -54,7 +55,7 @@ async function setBanner(holiday) {
     await ldsg.setBanner(bannerPath);
   } catch (error) {
     if (holiday) return "I couldn't set the banner.";
-    Module.client.getTextChannel(u.sf.channels.management)?.send({
+    Module.client.getTextChannel(u.sf.channels.team.logistics)?.send({
       content: `Failed to set banner, please do this manually.`,
       files: [bannerPath]
     });
@@ -63,8 +64,7 @@ async function setBanner(holiday) {
   return "I set the banner!";
 }
 
-const Module = new Augur.Module()
-.addInteraction({
+Module.addInteraction({
   name: "management",
   id: u.sf.commands.slashManagement,
   onlyGuild: true,
@@ -79,7 +79,9 @@ const Module = new Augur.Module()
         int.editReply("Setting banner...");
         const response = await setBanner(int.options.getString("file", true));
         if (response) int.editReply(response);
+        break;
       }
+      default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },
   autocomplete: (int) => {

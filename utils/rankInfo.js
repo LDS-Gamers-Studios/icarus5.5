@@ -7,15 +7,15 @@ const { devMode } = require("../config/config.json"),
 const xpScale = 200;
 
 const globalExcludeChannels = [
-  u.sf.channels.botspam,
-  u.sf.channels.staffCategory,
-  u.sf.channels.muted,
-  u.sf.channels.office
+  u.sf.channels.botSpam,
+  u.sf.channels.team.category,
+  u.sf.channels.mods.muted,
+  u.sf.channels.mods.office
 ];
 
 const Rank = {
   excludeChannels: (devMode ? rankExcludeTesting : rankExclude).concat(globalExcludeChannels),
-  excludeRoles: u.sf.roles.muted,
+  excludeRoles: u.sf.roles.moderation.muted,
   messages: [
     "Your future is looking so bright that I need sunglasses.",
     "Keep being awesome, and I'll keep saying congratulations.",
@@ -51,12 +51,12 @@ const Rank = {
   ],
   /** @param {number | string} xp */
   level: function(xp) {
-    if (typeof xp == 'string') xp = parseInt(xp, 10);
+    if (typeof xp === 'string') xp = parseInt(xp, 10);
     return Math.floor((1 + Math.sqrt(1 + (8 * xp) / xpScale)) / 2);
   },
   /** @param {number | string} level */
   minXp: function(level) {
-    if (typeof level == 'string') level = parseInt(level, 10);
+    if (typeof level === 'string') level = parseInt(level, 10);
     return xpScale * (Math.pow(2 * level - 1, 2) - 1) / 8;
   }
 };

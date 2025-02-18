@@ -1,8 +1,10 @@
 // @ts-check
 const Discord = require("discord.js"),
-  moment = require("moment");
+  moment = require("moment"),
+  config = require("../../config/config.json");
 
 const User = require("../models/User.model");
+const ChannelXP = require("../models/ChannelXP.model");
 
 /**
  * @typedef UserRecord
@@ -10,7 +12,8 @@ const User = require("../models/User.model");
  * @prop {string[]} roles
  * @prop {string[]} badges
  * @prop {number} posts
- * @prop {boolean} excludeXP
+ * @prop {number} voice
+ * @prop {number} trackXP
  * @prop {number} currentXP
  * @prop {number} totalXP
  * @prop {number} priorTenure
@@ -19,7 +22,7 @@ const User = require("../models/User.model");
 
 /**
  * @typedef leaderboardOptions Options for the leaderboard fetch
- * @prop {Discord.Collection<string, Discord.GuildMember> | string[]} [memberIds] Collection or Array of snowflakes to include in the leaderboard
+ * @prop {Discord.Collection<string, Discord.GuildMember> | string[]} memberIds Collection or Array of snowflakes to include in the leaderboard
  * @prop {number} [limit] The number of users to limit the search to
  * @prop {string} [member] A user to include in the results, no matter their ranking.
  * @prop {boolean} [season] Whether to fetch the current season (`true`, default) or lifetime (`false`) leaderboard.
@@ -27,22 +30,39 @@ const User = require("../models/User.model");
 
 const outdated = "Expected a Discord ID but likely recieved an object instead. That's deprecated now!";
 
+const TrackXPEnum = {
+  0: "OFF",
+  1: "SILENT",
+  2: "FULL",
+  "OFF": 0,
+  "SILENT": 1,
+  "FULL": 2
+};
+
 const models = {
+  TrackXPEnum,
   /**
      * Add XP to a set of users
-     * @param {string[]} userIds Users to add XP
-     * @returns {Promise<{users: UserRecord[], xp: number}>}
+     * @param {Discord.Collection<string, import("../../modules/xp").ActiveUser[]>} activity Users to add XP, as well as their multipliers
+     * @returns {Promise<{users: UserRecord[], oldUsers: UserRecord[], xp: number}>}
      */
-  addXp: async function(userIds) {
-    const xp = Math.floor(Math.random() * 11) + 15;
-    const included = (await User.find({ discordId: { $in: userIds }, excludeXP: false }, undefined, { lean: true })).map(u => u.discordId);
+  addXp: async function(activity) {
+    const xpBase = Math.floor(Math.random() * 3) + config.xp.base;
+    const included = await User.find({ discordId: { $in: [...activity.keys()] }, excludeXP: false }, undefined, { lean: true });
+    const uniqueIncluded = new Set(included.map(u => u.discordId));
     await User.bulkWrite(
-      userIds.map(u => {
-        const x = included.includes(u) ? xp : 0;
+      activity.map((val, discordId) => {
+        // add the multiple bonuses together
+        const x = Math.ceil(xpBase * val.reduce((p, c) => c.multiplier + p, 0));
+        const xp = uniqueIncluded.has(discordId) ? x : 0;
+        if (!Number.isFinite(xp)) throw new Error(`${discordId} achieved INFINITE XP!`);
+        if (xp > 500) throw new Error(`${discordId} was going to get ${xp} xp. That doesn't seem safe!\n${JSON.stringify(val)}`);
+        const posts = val.filter(v => v.isMessage).length;
+        const voice = val.filter(v => v.isVoice).length;
         return {
           updateOne: {
-            filter: { discordId: u },
-            update: { $inc: { currentXP: x, totalXP: x, posts: 1 } },
+            filter: { discordId },
+            update: { $inc: { currentXP: xp, totalXP: xp, posts, voice } },
             upsert: true,
             new: true
           }
@@ -50,9 +70,30 @@ const models = {
       })
     );
     const userDocs = await User.find(
-      { discordId: { $in: userIds } }, null, { lean: true }
+      { discordId: { $in: [...activity.keys()] } }, null, { lean: true }
     ).exec();
-    return { users: userDocs, xp };
+    // update channel xp
+    /** @type {Discord.Collection<string, number[]>} */
+    const uniqueChannels = new Discord.Collection();
+    const channels = activity.filter((_, id) => uniqueIncluded.has(id)).map(a => a).flat();
+    for (const val of channels) {
+      uniqueChannels.ensure(val.channelId, () => []).push(val.multiplier);
+    }
+    // no need to wait for it to finish before moving on
+    ChannelXP.bulkWrite(
+      uniqueChannels.map((v, channelId) => {
+        const xp = Math.ceil(xpBase * v.reduce((p, c) => p + c, 0));
+        return {
+          updateOne: {
+            filter: { channelId },
+            update: { $inc: { xp } },
+            upsert: true,
+            new: true
+          }
+        };
+      })
+    );
+    return { users: userDocs, oldUsers: included, xp: xpBase };
   },
   /**
    * Fetch a user record from the database.
@@ -61,37 +102,39 @@ const models = {
    * @returns {Promise<UserRecord | null>}
    */
   fetchUser: async function(discordId, createIfNotFound = true) {
-    if (typeof discordId != "string") throw new TypeError(outdated);
+    if (typeof discordId !== "string") throw new TypeError(outdated);
     return User.findOne({ discordId }, undefined, { lean: true, upsert: createIfNotFound }).exec();
+  },
+  /**
+   * DANGER!!! THIS RESETS ALL CURRENTXP TO 0
+   */
+  resetSeason: function() {
+    return User.updateMany({ currentXP: { $gt: 0 } }, { currentXP: 0 }, { lean: true, new: true }).exec();
   },
   /**
    * Get the top X of the leaderboard
    * @param {leaderboardOptions} options
    * @returns {Promise<(UserRecord & {rank: number})[]>}
    */
-  getLeaderboard: async function(options = {}) {
+  getLeaderboard: async function(options) {
     const members = (options.memberIds instanceof Discord.Collection ? Array.from(options.memberIds.keys()) : options.memberIds);
     const member = options.member;
-    const season = options.season ?? true;
+    const season = options.season;
     const limit = options.limit ?? 10;
 
     // Get top X users first
-    const params = { excludeXP: false };
-    if (members) params.discordId = { $in: members };
-
-    const query = User.find(params, undefined, { lean: true });
+    const query = User.find({ trackXP: { $ne: TrackXPEnum.OFF }, discordId: { $in: members } }, undefined, { lean: true });
     if (season) query.sort({ currentXP: "desc" });
     else query.sort({ totalXP: "desc" });
 
-    if (limit) query.limit(limit);
-    const records = await query.exec();
+    const records = await query.limit(limit).exec();
     /** @type {(UserRecord & {rank: number})[]} */
     const ranked = records.map((r, i) => {
       return { ...r, rank: i + 1 };
     });
 
     // Get requested user
-    const hasMember = ranked.some(r => r.discordId == member);
+    const hasMember = ranked.some(r => r.discordId === member);
     if (member && !hasMember) {
       const record = await models.getRank(member, members);
       if (record) {
@@ -102,26 +145,50 @@ const models = {
     return ranked;
   },
   /**
+   * Get the top X of both leaderboards
+   * @param {Omit<leaderboardOptions, "season">} options
+   * @returns {Promise<{ season: (UserRecord & { rank: number })[], life: (UserRecord & { rank: number })[] }>}
+   */
+  getBothLeaderboards: async function(options) {
+    const members = (options.memberIds instanceof Discord.Collection ? Array.from(options.memberIds.keys()) : options.memberIds);
+    const member = options.member;
+    const limit = options.limit ?? 10;
+
+    /** @param {UserRecord[]} users */
+    const mapper = (users) => users.map((u, i) => ({ ...u, rank: i + 1 }));
+
+    const query = () => User.find({ trackXP: { $ne: TrackXPEnum.OFF }, discordId: { $in: members } }, undefined, { lean: true }).limit(limit);
+    const season = await query().sort({ currentXP: "desc" }).exec().then(mapper);
+    const life = await query().sort({ totalXP: "desc" }).exec().then(mapper);
+
+    // Get requested user
+    const seasonHas = season.some(r => r.discordId === member);
+    const lifeHas = life.some(r => r.discordId === member);
+    if (member && (!seasonHas || !lifeHas)) {
+      const record = await models.getRank(member, members);
+      if (record) {
+        if (!seasonHas) season.push({ ...record, rank: record.rank.season });
+        if (!lifeHas) life.push({ ...record, rank: record.rank.lifetime });
+      }
+    }
+
+    return { season, life };
+  },
+  /**
      * Get a user's rank
-     * @param {string} [discordId] The member whose ranking you want to view.
-     * @param {Discord.Collection<string, Discord.GuildMember>|string[]} [members] Collection or Array of snowflakes to include in the leaderboard
+     * @param {string} discordId The member whose ranking you want to view.
+     * @param {Discord.Collection<string, Discord.GuildMember>|string[]} members Collection or Array of snowflakes to include in the leaderboard
      * @returns {Promise<(UserRecord & {rank: {season: number, lifetime: number}}) | null>}
      */
   getRank: async function(discordId, members) {
-    if (!discordId) return null;
     members = (members instanceof Discord.Collection ? Array.from(members.keys()) : members);
 
     // Get requested user
-    const record = await User.findOne({ discordId }, undefined, { lean: true }).exec();
-    if (!record || record.excludeXP) return null;
+    const record = await User.findOne({ discordId, trackXP: { $ne: TrackXPEnum.OFF } }, undefined, { lean: true }).exec();
+    if (!record) return null;
 
-    const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP } };
-    if (members) seasonParams.discordId = { $in: members };
-    const seasonCount = await User.count(seasonParams);
-
-    const lifetimeParams = { excludeXP: false, totalXP: { $gt: record.totalXP } };
-    if (members) lifetimeParams.discordId = { $in: members };
-    const lifeCount = await User.count(lifetimeParams);
+    const seasonCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, currentXP: { $gt: record.currentXP }, discordId: { $in: members } });
+    const lifeCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, totalXP: { $gt: record.totalXP }, discordId: { $in: members } });
 
     return { ...record, rank: { season: seasonCount + 1, lifetime: lifeCount + 1 } };
   },
@@ -139,22 +206,18 @@ const models = {
    * @returns {Promise<UserRecord|null>}
    */
   newUser: async function(discordId) {
-    if (typeof discordId != "string") throw new TypeError(outdated);
+    if (typeof discordId !== "string") throw new TypeError(outdated);
     return User.findOne({ discordId }, undefined, { upsert: true, lean: true }).exec();
   },
   /**
    * Update a member's track XP preference
    * @param {string} discordId The guild member to update.
-   * @param {boolean} track Whether to track the member's XP.
+   * @param {number} trackXP The new status
    * @returns {Promise<UserRecord | null>}
    */
-  trackXP: function(discordId, track = true) {
-    if (typeof discordId != 'string') throw new Error(outdated);
-    return User.findOneAndUpdate(
-      { discordId },
-      { $set: { excludeXP: !track } },
-      { new: true, upsert: true, lean: true }
-    ).exec();
+  trackXP: function(discordId, trackXP) {
+    if (typeof discordId !== 'string') throw new Error(outdated);
+    return User.findOneAndUpdate({ discordId }, { trackXP }, { new: true, upsert: true, lean: true }).exec();
   },
   /**
    * Update a member's roles in the database
@@ -165,7 +228,7 @@ const models = {
    */
   updateRoles: function(member, roles, backupId) {
     if (member && !(member instanceof Discord.GuildMember)) throw new Error("Expected a GuildMember");
-    if (backupId && typeof backupId != 'string') throw new Error(outdated);
+    if (backupId && typeof backupId !== 'string') throw new Error(outdated);
     return User.findOneAndUpdate(
       { discordId: backupId ?? member?.id },
       { $set: { roles: Array.from(roles ?? member?.roles.cache.keys() ?? []) } },
@@ -192,7 +255,7 @@ const models = {
    * @returns {Promise<UserRecord | null>}
    */
   updateWatch: function(discordId, status = true) {
-    if (typeof discordId != "string") throw new Error(outdated);
+    if (typeof discordId !== "string") throw new Error(outdated);
     return User.findOneAndUpdate(
       { discordId },
       { $set: { watching: status } },

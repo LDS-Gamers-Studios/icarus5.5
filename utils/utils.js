@@ -1,4 +1,5 @@
 // @ts-check
+const { AxiosError } = require("axios");
 const Discord = require("discord.js"),
   { escapeMarkdown, ComponentType } = require('discord.js'),
   sf = require("../config/snowflakes.json"),
@@ -11,11 +12,10 @@ const Discord = require("discord.js"),
 
 const errorLog = new Discord.WebhookClient({ url: config.webhooks.error });
 const { nanoid } = require("nanoid");
-
 /**
  * @typedef ParsedInteraction
  * @property {String | null} command - The command issued, represented as a string.
- * @property {{name: string, value: string|number|boolean|undefined}[]} data - Associated data for the command, such as command options or values selected.
+ * @property {{name: string, value?: string|number|boolean}[]} data - Associated data for the command, such as command options or values selected.
  */
 
 /**
@@ -26,18 +26,25 @@ const { nanoid } = require("nanoid");
 function parseInteraction(int) {
   if (int.isCommand() || int.isAutocomplete()) {
     let command = "";
+    /** @type {Record<any, any> & {name: string, value?: string | number | boolean}[]} */
+    let data = [];
     if (int.isAutocomplete()) command += "Autocomplete for ";
     if (int.isChatInputCommand()) {
       command += `/${int.commandName}`;
       const sg = int.options.getSubcommandGroup(false);
       const sc = int.options.getSubcommand(false);
-      command += int.commandName;
-      if (sg) command += ` ${sg}`;
+      if (sg) {
+        command += ` ${sg}`;
+        data = int.options.data[0]?.options?.[0]?.options?.map(o => ({ name: o.name, value: o.value })) ?? [];
+      }
       if (sc) command += ` ${sc}`;
+    } else {
+      command = int.commandName;
+      data = [...int.options.data];
     }
     return {
       command,
-      data: int.options.data.map(a => ({ name: a.name, value: a.value }))
+      data: data.map(a => ({ name: a.name, value: a.value }))
     };
   } else if (int.isMessageComponent()) {
     const data = [
@@ -58,9 +65,9 @@ function parseInteraction(int) {
       command: `Modal ${int.customId}`,
       data: int.fields.fields.map(f => ({ name: f.data.label, value: f.value }))
     };
-  } else {
-    return { command: null, data: [] };
   }
+  return { command: null, data: [] };
+
 }
 
 const utils = {
@@ -71,15 +78,15 @@ const utils = {
    */
   botSpam: function(msg) {
     if (msg.inGuild() && msg.guild.id === utils.sf.ldsg && // Is in server
-      ![utils.sf.channels.botspam, utils.sf.channels.bottesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
-      msg.channel.parentId !== utils.sf.channels.staffCategory) { // Isn't in the moderation category
+      ![utils.sf.channels.botSpam, utils.sf.channels.botTesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
+      msg.channel.parentId !== utils.sf.channels.team.category) { // Isn't in the moderation category
 
-      msg.reply(`I've placed your results in <#${utils.sf.channels.botspam}> to keep things nice and tidy in here. Hurry before they get cold!`)
+      msg.reply(`I've placed your results in <#${utils.sf.channels.botSpam}> to keep things nice and tidy in here. Hurry before they get cold!`)
         .then(utils.clean);
-      return msg.client.getTextChannel(utils.sf.channels.botspam);
-    } else {
-      return msg.channel;
+      return msg.client.getTextChannel(utils.sf.channels.botSpam);
     }
+    return msg.channel;
+
   },
   /**
    * After the given amount of time, attempts to delete the message.
@@ -154,7 +161,7 @@ const utils = {
 
     if (confirm?.customId === confirmTrue) return true;
     else if (confirm?.customId === confirmFalse) return false;
-    else return null;
+    return null;
   },
   db: db,
   /**
@@ -205,6 +212,38 @@ const utils = {
     return embed;
   },
   /**
+ * @param {Discord.CommandInteraction | null} int
+ * @param {Discord.EmbedBuilder} embed
+ * @param {string[]} lines
+ */
+  pagedEmbeds: async (int, embed, lines, ephemeral = true) => {
+    const descriptions = [];
+    let active = "";
+    lines.forEach((line) => {
+      if (active.length + line.length > 4000) {
+        descriptions.push(active);
+        active = "";
+      }
+      active += `${line}\n`;
+    });
+    descriptions.push(active);
+    if (!int) return descriptions;
+    let i = 0;
+    while (i < descriptions.length) {
+      const desc = descriptions[i];
+      if (!desc) return;
+      const e = utils.embed(embed.toJSON()).setDescription(desc);
+      if (i === 0) {
+        if (int.deferred || int.replied) await int.editReply({ embeds: [e] });
+        else await int.reply({ embeds: [e], ephemeral });
+      } else {
+        await int.followUp({ embeds: [e.setTitle(`${e.data.title ?? ""} Cont.`)], ephemeral });
+      }
+      i++;
+    }
+  },
+  parseInteraction,
+  /**
    * Handles a command exception/error. Most likely called from a catch.
    * Reports the error and lets the user know.
    * @param {Error | null} [error] The error to report.
@@ -212,24 +251,26 @@ const utils = {
    */
   errorHandler: function(error, message = null) {
     if (!error || (error.name === "AbortError")) return;
-
+    /* eslint-disable-next-line no-console*/
     console.error(Date());
 
     const embed = utils.embed().setTitle(error?.name?.toString() ?? "Error");
 
     if (message instanceof Discord.Message) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
+      /* eslint-disable-next-line no-console*/
       console.error(`${message.author.username} in ${loc}: ${message.cleanContent}`);
 
-      message.channel.send("I've run into an error. I've let my devs know.")
+      message.reply("I've run into an error. I've let my devs know.")
         .then(utils.clean);
       embed.addFields(
         { name: "User", value: message.author.username, inline: true },
         { name: "Location", value: loc, inline: true },
-        { name: "Command", value: message.cleanContent || "`undefined`", inline: true }
+        { name: "Command", value: message.cleanContent || "`No Content`", inline: true }
       );
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
+      /* eslint-disable-next-line no-console*/
       console.error(`Interaction by ${message.user.username} in ${loc}`);
       if (message.isRepliable() && (message.deferred || message.replied)) message.editReply("I've run into an error. I've let my devs know.").catch(utils.noop).then(utils.clean);
       else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop).then(utils.clean);
@@ -245,11 +286,19 @@ const utils = {
       }
       embed.addFields({ name: "Interaction", value: descriptionLines.join("\n") });
     } else if (typeof message === "string") {
+      /* eslint-disable-next-line no-console*/
       console.error(message);
       embed.addFields({ name: "Message", value: message });
     }
 
-    console.trace(error);
+    if (error instanceof AxiosError) {
+      /* eslint-disable-next-line no-console*/
+      console.trace({ name: error.name, code: error.code, message: error.message, cause: error.cause });
+    } else {
+      /* eslint-disable-next-line no-console*/
+      console.trace(error);
+    }
+
 
     let stack = (error.stack ? error.stack : error.toString());
     if (stack.length > 4096) stack = stack.slice(0, 4000);
@@ -364,7 +413,32 @@ const utils = {
    * @returns {T[]}
    */
   unique: function(items) {
-    return [...new Set(items)];
+    return Array.from(new Set(items));
+  },
+  /**
+   * @template T
+   * @param {T[]} items
+   * @param {keyof T} key
+   * @returns {T[]}
+   */
+  uniqueObj: function(items, key) {
+    const col = new Discord.Collection(items.map(i => [i[key], i]));
+    return Array.from(col.values());
+  },
+  /** @param {Discord.GuildMember | null} [member]*/
+  getHouseInfo: function(member) {
+    const houseInfo = new Map([
+      [utils.sf.roles.houses.housebb, { name: "Brightbeam", color: 0x00a1da }],
+      [utils.sf.roles.houses.housefb, { name: "Freshbeast", color: 0xfdd023 }],
+      [utils.sf.roles.houses.housesc, { name: "Starcamp", color: 0xe32736 }]
+    ]);
+
+    if (member) {
+      for (const [k, v] of houseInfo) {
+        if (member.roles.cache.has(k)) return v;
+      }
+    }
+    return { name: "Unsorted", color: 0x402a37 };
   }
 };
 

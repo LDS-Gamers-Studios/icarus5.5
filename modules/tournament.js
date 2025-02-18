@@ -4,7 +4,7 @@ const Augur = require("augurbot-ts"),
   axios = require('axios'),
   u = require("../utils/utils"),
   config = require('../config/config.json'),
-  { GoogleSpreadsheet } = require('google-spreadsheet');
+  Module = new Augur.Module();
 
 
 /**
@@ -39,7 +39,7 @@ async function bracket(int) {
     displayTourneys.push(`${displayDate}: [${tournament.name}](${tournament.full_challonge_url})`);
   }
 
-  if (displayTourneys.length == 0) return int.editReply("Looks like there aren't any tourneys scheduled right now.");
+  if (displayTourneys.length === 0) return int.editReply("Looks like there aren't any tourneys scheduled right now.");
   const embed = u.embed()
     .setTitle("Upcoming and Current LDSG Tournaments")
     .setDescription(`\n\nCommunity Tournaments:\n${displayTourneys.join('\n')}`);
@@ -49,30 +49,28 @@ async function bracket(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function champs(int) {
   await int.deferReply({ ephemeral: true });
-  if (!config.google.sheets.config) {
-    int.editReply("Looks like the bot isn't set up right to handle this. Please contact my developers.");
-    return console.log("No Sheets ID");
-  }
   const tName = int.options.getString('tournament');
   const user = (str) => int.options.getMember(str);
-  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr != null));
-  const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
-  await doc.useServiceAccountAuth(config.google.creds);
-  await doc.loadInfo();
-  // @ts-expect-error
-  await doc.sheetsByTitle["Tourney Champions"].addRows(users.map(usr => ({ "Tourney Name": tName, "User ID": usr?.id, "Take Role At": date })));
-  for (const member of users) {
-    member?.roles.add(u.sf.roles.champion);
+  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr !== null));
+  const date = u.moment().add(3, "weeks").valueOf();
+
+  const rows = await u.db.sheets.data.docs?.config.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr?.id ?? "", "Take Role At": date, Key: u.customId(5) })));
+  for (const row of rows ?? []) {
+    u.db.sheets.tourneyChampions.set(row.get("Key"), u.db.sheets.mappers.tourneyChampions(row));
+  }
+  for (const usr of users) {
+    usr?.roles.add(u.sf.roles.tournament.champion);
   }
   const s = users.length > 1 ? 's' : '';
-  Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send(`## Congratulations to our new tournament champion${s}!\n${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
+  const content = `## 🏆 Congratulations to our new tournament champion${s}! 🏆\n` +
+    `${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`;
+  Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send({ content, allowedMentions: { parse: ["users"] } });
   int.editReply("Champions recorded and announced!");
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function participant(int) {
-  const role = int.guild.roles.cache.get(u.sf.roles.tournamentparticipant);
+  const role = int.guild.roles.cache.get(u.sf.roles.tournament.participant);
   await int.deferReply({ ephemeral: true });
   if (!role) return u.errorHandler(new Error("No Tourney Champion Role"), int);
   const reset = int.options.getBoolean('reset');
@@ -97,29 +95,29 @@ async function participant(int) {
       let content = `I removed the ${role} role from ${user}`;
       await user.roles.remove(role.id).catch(() => content = `I couldn't remove the ${role} role from ${user}`);
       return int.editReply(content);
-    } else {
-      return int.editReply(`${user} doesn't have the ${role} role`);
     }
+    return int.editReply(`${user} doesn't have the ${role} role`);
+
   } else if (!user.roles.cache.has(role.id)) {
     let content = `I added the ${role} role to ${user}`;
     await user.roles.add(role.id).catch(() => content = `I couldn't add the ${role} role to ${user}`);
     return int.editReply({ content });
-  } else {
-    return int.editReply(`${user} already has the ${role} role`);
   }
+  return int.editReply(`${user} already has the ${role} role`);
+
 }
 
-const Module = new Augur.Module()
-.addInteraction({ name: "tournament",
+Module.addInteraction({ name: "tournament",
   id: u.sf.commands.slashTournament,
   onlyGuild: true,
   // Only /tournament list is publicly available
-  permissions: (int) => int.options.getSubcommand() == 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
+  permissions: (int) => int.options.getSubcommand() === 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
   process: async (int) => {
     switch (int.options.getSubcommand()) {
       case "list": return bracket(int);
       case "champion": return champs(int);
       case "participant": return participant(int);
+      default: return u.errorHandler(new Error("Unhandled Subcomand"), int);
     }
   }
 });

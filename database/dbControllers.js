@@ -5,7 +5,11 @@ const config = require("../config/config.json"),
 const bank = require("./controllers/bank"),
   ign = require("./controllers/ign"),
   infraction = require("./controllers/infraction"),
-  user = require("./controllers/user");
+  oauth = require("./controllers/oauth"),
+  user = require("./controllers/user"),
+  tournament = require("./controllers/tournament");
+
+const { data, loadData, mappers } = require("./sheets");
 
 mongoose.connect(config.db.db, config.db.settings);
 
@@ -13,5 +17,8 @@ module.exports = {
   bank,
   ign,
   infraction,
-  user
+  oauth,
+  user,
+  tournament,
+  sheets: { ...data, loadData, mappers }
 };

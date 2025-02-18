@@ -4,6 +4,8 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   config = require("../config/config.json"),
+  fs = require("fs"),
+  path = require("path"),
   u = require("../utils/utils");
 
 /**
@@ -20,7 +22,7 @@ function fieldMismatches(obj1, obj2) {
   const m2 = [];
   for (const key of keys1) {
     if (keys2.has(key)) {
-      if (obj1[key] != null && !Array.isArray(obj1[key]) && typeof obj1[key] === "object") {
+      if (obj1[key] !== null && !Array.isArray(obj1[key]) && typeof obj1[key] === "object") {
         const [m_1, m_2] = fieldMismatches(obj1[key], obj2[key]);
         for (const m of m_1) {
           m1.push(key + "." + m);
@@ -36,7 +38,7 @@ function fieldMismatches(obj1, obj2) {
   }
   for (const key of keys2) {
     if (keys1.has(key)) {
-      if (obj1[key] != null && typeof obj1[key] === "object") {
+      if (obj1[key] !== null && typeof obj1[key] === "object") {
         const [m_1, m_2] = fieldMismatches(obj1[key], obj2[key]);
         for (const m of m_1) {
           m1.push(key + "." + m);
@@ -53,9 +55,8 @@ function fieldMismatches(obj1, obj2) {
   return [m1, m2];
 }
 
-
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function goToBed(int) {
+async function slashBotGtb(int) {
   try {
     await int.editReply("Good night! 🛏");
     await int.client.destroy();
@@ -64,16 +65,18 @@ async function goToBed(int) {
     u.errorHandler(error, int);
   }
 }
+
 /**
  * @param {Augur.GuildInteraction<"CommandSlash">} int
  * @param {Discord.InteractionResponse} msg
  */
-async function ping(int, msg) {
+async function slashBotPing(int, msg) {
   const sent = await int.editReply("Pinging...");
   return int.editReply(`Pong! Took ${sent.createdTimestamp - msg.createdTimestamp}ms`);
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function pull(int) {
+async function slashBotPull(int) {
   const spawn = require("child_process").spawn;
   const cmd = spawn("git", ["pull"], { cwd: process.cwd() });
   const stdout = [];
@@ -87,15 +90,16 @@ async function pull(int) {
   });
 
   cmd.on("close", code => {
-    if (code == 0) {
+    if (code === 0) {
       int.editReply(stdout.join("\n") + "\n\nCompleted with code: " + code);
     } else {
       int.editReply(`ERROR CODE ${code}:\n${stderr.join("\n")}`);
     }
   });
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function pulse(int) {
+async function slashBotPulse(int) {
   const client = int.client;
   const uptime = process.uptime();
 
@@ -110,11 +114,9 @@ async function pulse(int) {
     ]);
   return int.editReply({ embeds: [embed] });
 }
-/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function reload(int) {
-  const fs = require("fs"),
-    path = require("path");
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashBotReload(int) {
   let files = int.options.getString("module")?.split(" ") ?? [];
 
   if (!files) files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
@@ -127,8 +129,18 @@ async function reload(int) {
   }
   return int.editReply("Reloaded!");
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function getId(int) {
+async function slashBotSheets(int) {
+  const sheet = int.options.getString("sheet-name") || undefined;
+  if (sheet && !Object.keys(u.db.sheets).includes(sheet)) return int.editReply("That's not one of the sheets I can refresh.");
+  // @ts-expect-error
+  await u.db.sheets.loadData(int.client, true, true, sheet);
+  return int.editReply(`The ${sheet ? `${sheet} sheet has` : "sheets have"} been reloaded!`);
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashBotGetId(int) {
   const mentionable = int.options.getMentionable("mentionable");
   const channel = int.options.getChannel("channel");
   const emoji = int.options.getString("emoji");
@@ -143,6 +155,45 @@ async function getId(int) {
   return int.editReply(`I got the following results:\n${results.map(r => `${r.str}: ${r.id}`).join("\n")}`);
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashBotRegister(int) {
+  const spawn = require("child_process").spawn;
+  const cmd = spawn("node", ["register-commands"], { cwd: process.cwd() });
+  const stderr = [];
+  cmd.stderr.on("data", data => {
+    stderr.push(data);
+  });
+  cmd.on("close", code => {
+    if (code === 0) {
+      int.editReply("Commands registered! Restart the bot to finish.");
+    } else {
+      int.editReply(`ERROR CODE ${code}:\n${stderr.join("\n")}`);
+    }
+  });
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashBotStatus(int) {
+  const stat = int.options.getString("status");
+  if (stat) {
+    // yes, i want to use an array. no, tscheck wont let me
+    if (stat === 'online' || stat === "idle" || stat === "invisible" || stat === "dnd") int.client.user.setActivity(stat);
+  }
+  const name = int.options.getString("activity", false);
+  if (!name && !stat) {
+    int.client.user.setActivity();
+    return int.editReply("Status reset");
+  }
+  if (name) {
+    const t = int.options.getString("type");
+    const type = t ? Discord.ActivityType[t] : undefined;
+    const url = int.options.getString("url") ?? undefined;
+    int.client.user.setActivity({ name, type, url });
+    return int.editReply(`Status set to ${t ?? ""} ${name}`);
+  }
+  return int.editReply("Status updated!");
+}
+
 const Module = new Augur.Module()
 .addInteraction({ name: "bot",
   id: u.sf.commands.slashBot,
@@ -152,24 +203,26 @@ const Module = new Augur.Module()
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
     const subcommand = int.options.getSubcommand(true);
-    const forThePing = await int.deferReply({ ephemeral: true });
-    if (["gotobed", "reload"].includes(subcommand) && !u.perms.isAdmin(int.member)) return int.editReply("That command is only for Bot Admins.");
-    if (subcommand == "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
+    const forThePing = await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.botTesting });
+    if (["gotobed", "reload", "register", "status", "sheets"].includes(subcommand) && !u.perms.calc(int.member, ["botAdmin"])) return int.editReply("That command is only for Bot Admins.");
+    if (subcommand === "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
-      case "gotobed": return goToBed(int);
-      case "ping": return ping(int, forThePing);
-      case "pull": return pull(int);
-      case "pulse": return pulse(int);
-      case "reload": return reload(int);
-      case "getid": return getId(int);
+      case "gotobed": return slashBotGtb(int);
+      case "ping": return slashBotPing(int, forThePing);
+      case "pull": return slashBotPull(int);
+      case "pulse": return slashBotPulse(int);
+      case "reload": return slashBotReload(int);
+      case "getid": return slashBotGetId(int);
+      case "register": return slashBotRegister(int);
+      case "status": return slashBotStatus(int);
+      case "sheets": return slashBotSheets(int);
+      default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },
   autocomplete: (int) => {
-    const fs = require('fs');
-    const path = require("path");
     const option = int.options.getFocused();
-    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js") && file.includes(option));
-    int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
+    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
+    int.respond(files.filter(file => file.includes(option)).slice(0, 24).map(f => ({ name: f, value: f })));
   }
 })
 .addCommand({ name: "mcweb",
@@ -221,3 +274,4 @@ const Module = new Augur.Module()
 .setUnload(() => true);
 
 module.exports = Module;
+

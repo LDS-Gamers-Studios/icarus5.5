@@ -1,5 +1,6 @@
 // @ts-check
 const moment = require('moment-timezone');
+const Discord = require("discord.js");
 
 const Infraction = require("../models/Infraction.model");
 
@@ -26,7 +27,7 @@ module.exports = {
    * @returns {Promise<Infraction | null>}
    */
   getByFlag: function(flagId) {
-    if (typeof flagId != "string") throw new TypeError(outdated);
+    if (typeof flagId !== "string") throw new TypeError(outdated);
     return Infraction.findOne({ flag: flagId }, undefined, { lean: true }).exec();
   },
   /**
@@ -35,7 +36,7 @@ module.exports = {
    * @returns {Promise<Infraction | null>}
    */
   getByMsg: function(message) {
-    if (typeof message != "string") throw new TypeError(outdated);
+    if (typeof message !== "string") throw new TypeError(outdated);
     return Infraction.findOne({ message }, undefined, { lean: true }).exec();
   },
   /**
@@ -44,28 +45,41 @@ module.exports = {
    * @param {Number} [time] The time in days to review.
    */
   getSummary: async function(discordId, time = 28) {
-    if (typeof discordId != "string") throw new TypeError(outdated);
+    if (typeof discordId !== "string") throw new TypeError(outdated);
     const since = moment().tz("America/Denver").subtract(time, "days");
     /** @type {Infraction[]} */
-    const records = (await Infraction.find({ discordId, timestamp: { $gte: since } }, undefined, { lean: true })
-      .exec())
-      // -1 is cleared
-      .filter(r => r.value > -1);
-    return {
-      discordId,
-      count: records.length,
-      points: records.reduce((c, r) => c + r.value, 0),
-      time,
-      detail: records
-    };
+    // -1 is cleared, 0 is unhandled
+    return Infraction.find({ discordId, timestamp: { $gte: since }, value: { $gt: 0 } }, undefined, { lean: true }).exec()
+      .then(/** @param {Infraction[]} records */ records => ({
+        discordId,
+        count: records.length,
+        points: records.reduce((c, r) => c + r.value, 0),
+        time,
+        detail: records
+      }));
   },
   /**
-     * Remove/delete an infraction
-     * @param {String} flag The infraction flag
-     * @return {Promise<Infraction | null>}
-     */
+   * Get the infraction counts for different users
+   * @param {string[]} discordIds
+   * @param {number} time
+   * @returns {Promise<Discord.Collection<string, number>>}
+   */
+  getCounts: async function(discordIds, time = 28) {
+    if (!Array.isArray(discordIds)) throw new TypeError("discordIds must be an array of IDs");
+    const since = moment().tz("America/Denver").subtract(time, "days");
+    const records = await Infraction.aggregate([
+      { $match: { timestamp: { $gte: since }, value: { $gt: 0 } } },
+      { $group: { _id: "$discordId", count: { $sum: 1 } } }
+    ]).exec();
+    return new Discord.Collection(records.map(r => [r._id, r.count]));
+  },
+  /**
+   * Remove/delete an infraction
+   * @param {String} flag The infraction flag
+   * @return {Promise<Infraction | null>}
+   */
   remove: function(flag) {
-    if (typeof flag != "string") throw new TypeError(outdated);
+    if (typeof flag !== "string") throw new TypeError(outdated);
     return Infraction.findOneAndDelete({ flag }, { new: false, lean: true }).exec();
   },
   /**
@@ -74,11 +88,11 @@ module.exports = {
      * @return {Promise<Infraction>}
      */
   save: function(data) {
-    if (data.message && typeof data.message != "string") throw new TypeError(outdated);
-    if (data.channel && typeof data.channel != "string") throw new TypeError(outdated);
-    if (data.flag && typeof data.flag != "string") throw new TypeError(outdated);
-    if (data.mod && typeof data.mod != "string") throw new TypeError(outdated);
-    if (data.handler && typeof data.handler != "string") throw new TypeError(outdated);
+    if (data.message && typeof data.message !== "string") throw new TypeError(outdated);
+    if (data.channel && typeof data.channel !== "string") throw new TypeError(outdated);
+    if (data.flag && typeof data.flag !== "string") throw new TypeError(outdated);
+    if (data.mod && typeof data.mod !== "string") throw new TypeError(outdated);
+    if (data.handler && typeof data.handler !== "string") throw new TypeError(outdated);
 
     return new Infraction(data).save().then(i => i.toObject());
   },

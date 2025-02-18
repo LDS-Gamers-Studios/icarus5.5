@@ -1,21 +1,10 @@
 // @ts-check
-const Augur = require("augurbot-ts"),
-  { GoogleSpreadsheet } = require('google-spreadsheet'),
-  Discord = require("discord.js"),
-  Rank = require("../utils/rankInfo"),
-  config = require('../config/config.json'),
-  u = require("../utils/utils");
-
-const active = new Set();
-
-/**
- * @typedef Role
- * @prop {string} role
- * @prop {number} level
- */
-
-/** @type {Discord.Collection<number, Role>} */
-let rewards = new u.Collection();
+const Augur = require("augurbot-ts");
+const Discord = require("discord.js");
+const u = require("../utils/utils");
+const c = require("../utils/modCommon");
+const Rank = require("../utils/rankInfo");
+const fs = require("fs");
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
 async function slashRankLeaderboard(interaction) {
@@ -47,13 +36,15 @@ async function slashRankTrack(interaction) {
   // Set XP tracking
   try {
     await interaction.deferReply({ ephemeral: true });
-    const track = interaction.options.getBoolean("choice");
-    if (track == null) {
+    const track = interaction.options.getString("status");
+    if (track === null) {
       const status = await u.db.user.fetchUser(interaction.user.id);
-      return interaction.editReply(`You are currently ${status?.excludeXP ? "not " : ""}tracking XP!`);
+      return interaction.editReply(`You are currently ${status?.trackXP === u.db.user.TrackXPEnum.OFF ? "not " : ""}tracking XP${status?.trackXP === u.db.user.TrackXPEnum.FULL ? " with level up notifications" : ""}!`);
     }
-    await u.db.user.trackXP(interaction.user.id, track);
-    await interaction.editReply(`Ok! I'll ${track ? "start" : "stop"} tracking your XP!`);
+    const enumed = u.db.user.TrackXPEnum[track] ?? u.db.user.TrackXPEnum.FULL;
+    await u.db.user.trackXP(interaction.user.id, enumed);
+    const str = track === "FULL" ? "track your XP and notify you of level ups!" : track === "SILENT" ? "silently track your XP!" : "stop tracking your XP.";
+    await interaction.editReply(`Ok! I'll ${str}`);
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
@@ -61,7 +52,7 @@ async function slashRankTrack(interaction) {
 async function slashRankView(interaction) {
   try {
     // View member rankings
-    await interaction.deferReply({ ephemeral: interaction.channelId != u.sf.channels.botspam });
+    await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botSpam });
     const members = interaction.guild.members.cache;
     const member = interaction.options.getMember("user") ?? interaction.member;
     const record = await u.db.user.getRank(member.id, members);
@@ -92,125 +83,129 @@ async function slashRankView(interaction) {
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
-/** @param {Augur.AugurClient} client */
-async function rankClockwork(client) {
+/**
+ * @param {Discord.Message<true>} msg
+ * @param {string} suffix
+*/
+async function rankReset(msg, suffix) {
   try {
-    const response = await u.db.user.addXp([...active]);
-    if (response.users.length > 0) {
-      const ldsg = client.guilds.cache.get(u.sf.ldsg);
-      for (const user of response.users) {
-        const member = ldsg?.members.cache.get(user.discordId) ?? await ldsg?.members.fetch(user.discordId).catch(u.noop);
-        if (!member) continue;
-        try {
-          // Remind mods to trust people!
-          const trustStatus = await u.db.user.fetchUser(member.id);
-          if ((user.posts % 25 == 0) && !member.roles.cache.has(u.sf.roles.trusted) && !trustStatus?.watching) {
-            const modLogs = client.getTextChannel(u.sf.channels.modlogs);
-            modLogs?.send({
-              content: `${member} has had ${user.posts} active minutes in chat without being trusted!`,
-              embeds: [
-                u.embed({ author: member })
-                  .setThumbnail(member.user.displayAvatarURL({ extension: "png" }))
-                  .addFields(
-                    { name: "ID", value: member.id, inline: true },
-                    { name: "Activity", value: `Active Minutes: ${user.posts}`, inline: true },
-                    { name: "Roles", value: member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(r => r).join(", ") },
-                    { name: "Joined", value: u.time(new Date(Math.floor(member.joinedTimestamp ?? 1)), "R") },
-                    { name: "Account Created", value: u.time(new Date(Math.floor(member.user.createdTimestamp)), 'R') }
-                  )
-              ]
-            });
-          }
+    msg.react("🥇").catch(u.noop);
+    // useful vars. Dist should be 10_000 for a normal season length
+    const ember = `<:ember:${u.sf.emoji.ember}>`;
+    const dist = parseInt(suffix, 10) || 0;
 
-          // Grant ranked rewards, if appropriate
-          if (!user.excludeXP) {
-            const lvl = Rank.level(user.totalXP);
-            const oldLvl = Rank.level(user.totalXP - response.xp);
+    // get people who opted in to xp
+    const members = await msg.guild.members.fetch().then(mems => mems.map(m => m.id));
+    const users = await u.db.user.getUsers({ currentXP: { $gt: 0 }, discordId: { $in: members } });
 
-            if (lvl != oldLvl) {
-              let message = `${u.rand(Rank.messages)} ${u.rand(Rank.levelPhrase).replace("%LEVEL%", lvl.toString())}`;
+    // log for backup
+    fs.writeFileSync("./data/rankDetail-.json", JSON.stringify(users.map(usr => ({ discordId: usr.discordId, currentXP: usr.currentXP }))));
 
-              if (rewards.has(lvl)) {
-                const reward = ldsg?.roles.cache.get(rewards.get(lvl)?.role ?? "");
-                if (!reward) throw new Error(`Rank Role ${rewards.get(lvl)} couldn't be found!`);
-                await member.roles.remove(rewards.map(r => r.role));
-                await member.roles.add(reward);
-                message += `\n\nYou have been awarded the **${reward.name}** role!`;
-              }
-              member.send(message).catch(u.noop);
-            }
-          }
-        } catch (error) { u.errorHandler(error, `Member Rank processing (${member.displayName} - ${member.id})`); }
+    // formula for ideal ember distribution
+    const totalXP = users.reduce((p, cur) => p + cur.currentXP, 0);
+    const rate = dist / totalXP;
+
+    // top performers
+    const medals = ["🥇", "🥈", "🥉"];
+    const top3 = users.sort((a, b) => b.currentXP - a.currentXP)
+      .slice(0, 3)
+      .map((usr, i) => `${medals[i]} - <@${usr.discordId}>`)
+      .join("\n");
+
+    // in an ideal world this is if (true)
+    if (dist) {
+      const rewards = ["id,season,life,award"];
+      // award ember to each user and log it in a csv
+      for (const user of users) {
+        const award = Math.round(rate * user.currentXP);
+        if (award) {
+          rewards.push(`${user.discordId},${user.currentXP},${user.totalXP},${award}`);
+          u.db.bank.addCurrency({
+            currency: "em",
+            description: `Chat Rank Reset - ${new Date().toLocaleDateString()}`,
+            discordId: user.discordId,
+            value: award,
+            giver: msg.client.user.id,
+            otherUser: msg.client.user.id,
+            hp: true
+          });
+        }
       }
+      fs.writeFileSync("./data/awardDetail.csv", rewards.join("\n"));
     }
-    active.clear();
+
+    // announce!
+    let announcement = "# CHAT RANK RESET!!!\n\n" +
+    `Another chat season has come to a close! In the most recent season, we've had **${users.length}** active members who are tracking their chatting XP! Altogether, we earned **${totalXP} XP!**\n` +
+    `The three most active members were:\n${top3}`;
+    if (dist > 0) {
+      announcement += `\n\n${ember}${dist} have been distributed among *all* of those ${users.length} XP trackers, proportional to their participation.`;
+    }
+    announcement += "\n\nIf you would like to participate in this season's chat ranks and *haven't* opted in, `/rank track` will get you in the mix. If you've previously used that command, you don't need to do so again.";
+    msg.client.getTextChannel(u.sf.channels.announcements)?.send({ content: announcement, allowedMentions: { parse: ["users"] } })
+      .catch(() => msg.reply("I wasn't able to send the announcement!"));
+
+    // set everyone's xp back to 0
+    u.db.user.resetSeason();
   } catch (error) {
-    u.errorHandler(error, "Rank inner clockwork");
+    u.errorHandler(error, msg);
   }
 }
 
 const Module = new Augur.Module()
-.addInteraction({
-  name: "rank",
-  guildId: u.sf.ldsg,
-  onlyGuild: true,
-  id: u.sf.commands.slashRank,
-  process: async (interaction) => {
-    try {
-      const subcommand = interaction.options.getSubcommand(true);
-      switch (subcommand) {
-        case "view": return slashRankView(interaction);
-        case "leaderboard": return slashRankLeaderboard(interaction);
-        case "track": return slashRankTrack(interaction);
+  .addInteraction({ id: u.sf.commands.slashRank,
+    guildId: u.sf.ldsg,
+    onlyGuild: true,
+    process: async (interaction) => {
+      try {
+        const subcommand = interaction.options.getSubcommand(true);
+        switch (subcommand) {
+          case "view": return slashRankView(interaction);
+          case "leaderboard": return slashRankLeaderboard(interaction);
+          case "track": return slashRankTrack(interaction);
+          default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
+        }
+      } catch (error) {
+        u.errorHandler(error, interaction);
       }
-    } catch (error) {
-      u.errorHandler(error, interaction);
     }
-  }
-})
+  })
+  // these two are technically xp related, but they're also mod related, and also rank related. This file is the least cluttered rn so I put them here
+  .addInteraction({
+    name: "timeModTrust",
+    id: "timeModTrust",
+    type: "Button",
+    onlyGuild: true,
+    permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
+    process: async (int) => {
+      await int.deferReply({ ephemeral: true });
+      const userId = int.message.embeds[0]?.footer?.text;
+      const target = int.guild.members.cache.get(userId ?? "0");
+      if (!target) return int.editReply("I couldn't find that user!");
+      const response = await c.trust(int, target, true);
+      return int.editReply(response);
+    }
+  })
+  .addInteraction({
+    name: "timeModInfo",
+    id: "timeModInfo",
+    type: "Button",
+    onlyGuild: true,
+    permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
+    process: async (int) => {
+      await int.deferReply({ ephemeral: true });
+      const userId = int.message.embeds[0]?.footer?.text;
+      const target = int.guild.members.cache.get(userId ?? "0");
+      if (!target) return int.editReply("I couldn't find that user!");
+      const e = await c.getSummaryEmbed(target);
+      return int.editReply({ embeds: [e] });
+    }
+  })
+  .addCommand({ name: "rankreset",
+    onlyGuild: true,
+    permissions: (msg) => u.perms.calc(msg.member, ["mgr"]),
+    process: rankReset
+  });
 
-.setInit(/** @param {Set<string>} talking */ async (talking) => {
-  if (talking) {
-    for (const user of talking) active.add(user);
-  }
-  if (!config.google.sheets.config) return console.log("No Sheets ID");
-  const doc = new GoogleSpreadsheet(config.google.sheets.config);
-  try {
-    await doc.useServiceAccountAuth(config.google.creds);
-    await doc.loadInfo();
-    /** @type {any[]} */
-    // @ts-ignore cuz google sheets be dumb
-    const roles = await doc.sheetsByTitle["Roles"].getRows();
-    const a = roles.filter(r => r["Type"] == "Rank").map(r => {
-      return {
-        role: r["Base Role ID"],
-        level: parseInt(r["Level"])
-      };
-    });
-
-    rewards = new u.Collection(a.map(r => [r.level, r]));
-  } catch (e) { u.errorHandler(e, "Load Rank Roles"); }
-})
-.setUnload(() => active)
-.addEvent("messageCreate", (msg) => {
-  if (
-    msg.inGuild() && msg.guild.id == u.sf.ldsg && // only in LDSG
-    !active.has(msg.author.id) && // only if they're not already talking
-    !(Rank.excludeChannels.includes(msg.channel.id) || Rank.excludeChannels.includes(msg.channel.parentId ?? "")) && // only if not in an excluded channel/category
-    !msg.member?.roles.cache.hasAny(Rank.excludeRoles) && // only if they don't have an exclude role
-    !msg.webhookId && !msg.author.bot && // only if its an actual user
-    !u.parse(msg) // only if its not a command
-  ) {
-    active.add(msg.author.id);
-  }
-})
-// @ts-ignore it works
-.setClockwork(() => {
-  try {
-    return setInterval(rankClockwork, 60000, Module.client);
-  } catch (error) {
-    u.errorHandler(error, "Rank outer clockwork");
-  }
-});
 
 module.exports = Module;
