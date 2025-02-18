@@ -39,11 +39,12 @@ For the bot to successfully run, you'll need to create or edit a few files first
 ### `config/config.json`
 Required items:
 
+**NOTE: THIS SECTION MIGHT NOT BE UP TO DATE, so please refer to `config-example.json`**
+
 (Just as a general rule of thumb, if there's a placeholder string you should probably change it to the correct value.)
 - `adminId`: put your ID in there.
 - `ownerId`: put your ID there
 - `api.snipcart`: required to run `/bank discount`. Can otherwise be left blank.
-- `api.steam`: required to run `/bank game list`. Can otherwise be left blank, but will create an error message on loading `bank.js`. An API key can be requested [here](https://steamcommunity.com/dev/apikey).
 - `applicationId`: The applicationId you took note of during bot creation
 - `db`: This is the connection info for Mongo. Recall the connection string you noted down earlier. The format is `mongodb+srv://<username>:<password>@<connection>`
 - - `db.db`: `mongodb+srv://<connection>/icarus`
@@ -58,7 +59,7 @@ Required items:
 The provided example can be copied without modification.
 
 ### `config/snowflakes-testing-commands.json`
-The provided example can be copied without modification.
+The provided example can be copied without modification. It will be filled out when you run `node register-commands.js`.
 
 # Contributing
 
@@ -93,5 +94,5 @@ In order for a pull request to be approved, the following requirements have to b
 - All interactions that need registration must follow the style of the existing files in `/registry`
 - All functions must have valid JSDoc describing the types of parameters, as well as the return type if really needed.
 - All new dependencies should be reflected in `package.json` and `package-lock.json`
-- Minimal @ts-check errors (message the Bot Owner if you're having trouble)
+- No @ts-check errors (message the Bot Owner if you're having trouble)
 - No ESLint errors
