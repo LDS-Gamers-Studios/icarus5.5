@@ -9,6 +9,7 @@ const Augur = require("augurbot-ts"),
 async function slashGameMinecraftSkin(int) {
   await int.deferReply();
   const name = int.options.getString("user") ?? int.user.toString();
+
   /** @type {string | undefined | Discord.GuildMember} */
   let user = name;
   let findIgn = false;
@@ -18,9 +19,8 @@ async function slashGameMinecraftSkin(int) {
       user = int.guild.members.cache.get(pingMatch[1])?.id; // yes this is on purpose. it's to see if they're in the server
       findIgn = true;
     }
-  } else {
-    user = int.member.id;
   }
+
   if (!user) return int.editReply(`You need to mention someone or provide a username when using this command.`);
 
   // parsed a user id
