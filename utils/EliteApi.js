@@ -7,7 +7,7 @@ const axios = require("axios");
  */
 function request(path, params) {
   // @ts-ignore
-  return axios(path, { params })
+  return axios(`https://${path}`, { params })
     .then(a => a.data);
 }
 
@@ -86,7 +86,7 @@ async function getSystemInfo(systemName) {
  * @returns {Promise<{ lastUpdate: string, type: string, message: string, status: number }>}
  */
 function getEliteStatus() {
-  return request("/api-status-v1/elite-server");
+  return request("www.edsm.net/api-status-v1/elite-server");
 }
 
 module.exports = {

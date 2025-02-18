@@ -5,47 +5,22 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   u = require("../utils/utils");
 
-
-const Module = new Augur.Module();
-
-/**
- * Send the image as an embed
- * @param {Discord.ChatInputCommandInteraction} int
- * @param {Buffer | String} img
- * @param {String} name
- * @param {String} format
- * @returns {Promise<any>}
- */
-async function sendImg(int, img, name, format = "png") {
-  const image = u.attachment().setFile(img).setName(`image.${format}`);
-  const embed = u.embed().setTitle(name).setImage(`attachment://image.${format}`);
-  return int.reply({ embeds: [embed], files: [image] });
-}
-
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashGameMinecraftSkin(int) {
-  // await inter.deferReply();
+  await int.deferReply();
   const user = int.options.getMember('user') ?? int.user;
-  const name = int.options.getString('username') || (await u.db.ign.find(user?.id, 'minecraft'))?.ign;
-  if (!name) return int.reply({ content: `${user} has not saved an IGN for Minecraft`, ephemeral: true });
+  const name = int.options.getString('username') || (await u.db.ign.findOne(user.id, 'minecraft'))?.ign;
+  if (!name) return int.editReply(`${user.id === int.user.id ? "You haven't" : `${user} hasn't`} saved an IGN for Minecraft. Try using a username instead.`);
   try {
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (compatible; Discordbot/2.0; +https://discord.com)',
-      'Accept-Encoding': 'gzip, deflate',
-      'Accept': '*/*',
-      'Connection': 'keep-alive',
-      'content-type': 'image/png',
-    };
-    const uuid = (await axios.get(`https://api.mojang.com/users/profiles/minecraft/${name}`, { headers }))?.data;
-    if (!uuid?.id) return int.reply({ content: `I couldn't find the player \`${name}\`.`, ephemeral: true });
-    const skinUrl = `https://visage.surgeplay.com/full/512/${uuid.id}.png`;
-    const result = await axios.get(`${skinUrl}`, { headers, responseType: 'arraybuffer' });
+    const result = await axios(`https://starlightskins.lunareclipse.studio/render/walking/${name}/full`, { responseType: "arraybuffer" });
     if (result.status === 200) {
-      return sendImg(int, Buffer.from(result.data, 'binary'), "minecraft_skin.png", "png");
+      const image = new u.Attachment(Buffer.from(result.data, 'binary'), { name: "image.png" });
+      const embed = u.embed().setTitle(name).setImage("attachment://image.png");
+      return int.editReply({ embeds: [embed], files: [image] });
     }
-    return int.reply({ content: "An error occurred obtaining the skin for that player." });
+    return int.editReply({ content: "An error occurred obtaining the skin for that player." });
   } catch (error) {
-    return int.reply({ content: `I couldn't find the player \`${name}\`.`, ephemeral: true });
+    return int.editReply(`I couldn't find the player \`${name}\`.`);
   }
 }
 
@@ -96,7 +71,7 @@ async function slashGameElite(int) {
   if (info === "time") return int.reply(eliteGetTime());
 
   await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.elite });
-  if (info === "status") return int.reply(await eliteGetStatus());
+  if (info === "status") return int.editReply(await eliteGetStatus());
 
   const starSystem = await eliteAPI.getSystemInfo(system);
   if (!starSystem) return int.editReply({ content: "I couldn't find a system with that name." }).then(u.clean);
@@ -115,7 +90,7 @@ async function slashGameElite(int) {
 
 async function eliteGetStatus() {
   const status = await eliteAPI.getEliteStatus();
-  return { content: `The Elite: Dangerous servers are ${status.type === 'success' ? "online" : "offline"}`, ephemeral: true };
+  return `The Elite: Dangerous servers are ${status.type === 'success' ? "online" : "offline"}`;
 }
 
 function eliteGetTime() {
@@ -221,7 +196,8 @@ async function eliteGetBodies(system, embed) {
   return { embeds: [embed] };
 }
 
-Module.addInteraction({
+const Module = new Augur.Module()
+.addInteraction({
   name: "game",
   guildId: u.sf.ldsg,
   id: u.sf.commands.slashGame,

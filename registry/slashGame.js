@@ -13,6 +13,7 @@ const minecraft = new u.sub()
     new u.string()
       .setName("username")
       .setDescription("The username of the Minecraft player")
+      .setMaxLength(16)
   );
 
 const elite = new u.sub()
@@ -23,37 +24,19 @@ const elite = new u.sub()
       .setName("info")
       .setDescription("The information to get")
       .addChoices(
-        {
-          "name": "Status",
-          "value": "status"
-        },
-        {
-          "name": "Time",
-          "value": "time"
-        },
-        {
-          "name": "System",
-          "value": "system"
-        },
-        {
-          "name": "Factions",
-          "value": "factions"
-        },
-        {
-          "name": "Bodies",
-          "value": "bodies"
-        },
-        {
-          "name": "Stations",
-          "value": "stations"
-        }
+        { name: "Status", value: "status" },
+        { name: "Time", value: "time" },
+        { name: "System", value: "system" },
+        { name: "Factions", value: "factions" },
+        { name: "Bodies", value: "bodies" },
+        { name: "Stations", value: "stations" }
       )
       .setRequired(true)
   )
   .addStringOption(
     new u.string()
       .setName("system-name")
-      .setDescription("The name of the system (needed for all but time and status)")
+      .setDescription("The name of the system. Defaults to LDSG's system.")
   );
 
 const playing = new u.sub()
