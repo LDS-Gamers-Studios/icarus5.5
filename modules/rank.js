@@ -35,7 +35,7 @@ async function slashRankLeaderboard(interaction) {
 async function slashRankTrack(interaction) {
   // Set XP tracking
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: ["Ephemeral"]  });
     const track = interaction.options.getString("status");
     if (track === null) {
       const status = await u.db.user.fetchUser(interaction.user.id);
@@ -178,7 +178,7 @@ const Module = new Augur.Module()
     onlyGuild: true,
     permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
     process: async (int) => {
-      await int.deferReply({ ephemeral: true });
+      await int.deferReply({ flags: ["Ephemeral"]  });
       const userId = int.message.embeds[0]?.footer?.text;
       const target = int.guild.members.cache.get(userId ?? "0");
       if (!target) return int.editReply("I couldn't find that user!");
@@ -193,7 +193,7 @@ const Module = new Augur.Module()
     onlyGuild: true,
     permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
     process: async (int) => {
-      await int.deferReply({ ephemeral: true });
+      await int.deferReply({ flags: ["Ephemeral"]  });
       const userId = int.message.embeds[0]?.footer?.text;
       const target = int.guild.members.cache.get(userId ?? "0");
       if (!target) return int.editReply("I couldn't find that user!");

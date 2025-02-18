@@ -22,7 +22,7 @@ async function slashFunColor(int) {
     // make sure it is a valid color, and not just defaulting to black
     if (!["#000000", "black", "#000000FF"].includes(colorCSS)) colorCSS = Jimp.cssColorToHex(colorCSS);
     if (colorCSS === 255) {
-      return int.reply({ content: `Sorry, I couldn't understand the color \`${colorCode}\``, ephemeral: true });
+      return int.reply({ content: `Sorry, I couldn't understand the color \`${colorCode}\``, flags: ["Ephemeral"]  });
     }
     await int.deferReply();
     // make and send the image
@@ -31,7 +31,7 @@ async function slashFunColor(int) {
   } catch (error) {
     const content = `Sorry, I couldn't understand the color \`${colorCode}\``;
     if (int.replied || int.deferred) return int.editReply({ content }).then(u.clean);
-    int.reply({ content, ephemeral: true });
+    int.reply({ content, flags: ["Ephemeral"]  });
   }
 }
 
@@ -55,12 +55,12 @@ async function slashFunHBS(int) {
     if (!storedChoice) {
       storedChooser = chooser;
       storedChoice = choice;
-      int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+      int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, flags: ["Ephemeral"]  });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
       `${chooser} has chosen their fighter and is awaiting a challenger. Respond using </fun hbs:${u.sf.commands.slashFun}>.`);
     } else if (storedChooser === chooser) {
       storedChoice = choice;
-      int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+      int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, flags: ["Ephemeral"]  });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
       `${chooser} has changed their fighter and is awaiting a challenger.  Respond using </fun hbs:${u.sf.commands.slashFun}>.`
       );
@@ -203,7 +203,7 @@ async function slashFunMinesweeper(int) {
   // seperate into rows and emojify and hide if not exposed
   const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
   if (!int.channel?.isSendable()) {
-    return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botSpam}>`, ephemeral: true });
+    return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botSpam}>`, flags: ["Ephemeral"]  });
   }
   await int.reply(`**Mines: ${mineCount}**`);
   const messages = [""];
@@ -235,7 +235,7 @@ async function slashFunRoll(int) {
   const sides = int.options.getInteger('sides') || 6;
   const modifier = int.options.getInteger('modifier') || 0;
   if (dice > 10000) {
-    return int.reply({ content: "I'm not going to roll *that* many dice... 🙄", ephemeral: true });
+    return int.reply({ content: "I'm not going to roll *that* many dice... 🙄", flags: ["Ephemeral"]  });
   }
   // calculate rolls
   /** @type {number[]} */
@@ -264,7 +264,7 @@ async function slashFunRoll(int) {
 async function slashFun8ball(int) {
   const question = int.options.getString("question", true);
   if (!question.endsWith("?")) {
-    return int.reply({ content: "You need to ask me a question, silly.", ephemeral: true });
+    return int.reply({ content: "You need to ask me a question, silly.", flags: ["Ephemeral"]  });
   }
   const outcomes = [
     "It is certain.",
@@ -297,7 +297,7 @@ async function slashFun8ball(int) {
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunRepost(int) {
   if (!int.channel) {
-    return int.reply({ content: "I don't know where here is, so I can't find anything to repost... try in a more normal channel.", ephemeral: true });
+    return int.reply({ content: "I don't know where here is, so I can't find anything to repost... try in a more normal channel.", flags: ["Ephemeral"]  });
   }
   await int.deferReply();
   const latest = (await int.channel.messages.fetch({ limit: 100 })).filter(m => m.attachments.size > 0 || m.embeds.some(embed => embed.image || embed.video)).first();
@@ -376,7 +376,7 @@ async function slashFunChoose(int) {
     const prefixes = ["I choose", "I pick", "I decided"];
     return int.reply(`${u.rand(prefixes)} **${u.rand(options).trim()}**`);
   }
-  return int.reply({ content: 'you need to give me two or more choices! `a | b`', ephemeral: true });
+  return int.reply({ content: 'you need to give me two or more choices! `a | b`', flags: ["Ephemeral"]  });
 
 }
 /**

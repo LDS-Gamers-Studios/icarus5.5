@@ -78,9 +78,9 @@ async function handleButton(inter) {
   try {
     const msg = await inter.message.fetchReference();
     const translated = translate(msg.content);
-    return inter.reply({ content: translated, ephemeral: true });
+    return inter.reply({ content: translated, flags: ["Ephemeral"]  });
   } catch (e) {
-    return inter.reply({ content: "I couldn't find that message! Sorry.", ephemeral: true });
+    return inter.reply({ content: "I couldn't find that message! Sorry.", flags: ["Ephemeral"]  });
   }
 }
 

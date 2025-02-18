@@ -40,7 +40,7 @@ function calcGivePerms(int, level) {
  * @param {Boolean} give
 */
 async function slashRoleAdd(int, give = true) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"]  });
   const input = int.options.getString("role", true);
   const admin = u.perms.calc(int.member, ["mgr"]);
 
@@ -98,7 +98,7 @@ async function slashRoleWhoHas(int) {
 */
 async function slashRoleGive(int, give = true) {
   try {
-    await int.deferReply({ ephemeral: true });
+    await int.deferReply({ flags: ["Ephemeral"]  });
     const recipient = int.options.getMember("user");
     if (!u.perms.calc(int.member, ["team", "mod", "mgr"])) return int.editReply("*Nice try!* This command is for Team+ only.");
     if (!recipient) return int.editReply("I couldn't find that user!");
@@ -126,7 +126,7 @@ async function slashRoleInventory(int) {
     const embed = u.embed({ author: member })
       .setTitle("Equippable Color Inventory")
       .setDescription(`Equip a color role with </role equip:${u.sf.commands.slashRole}>\n\n${inv.join("\n")}`);
-    if (inv.length === 0) int.reply({ content: "You don't have any colors in your inventory!", ephemeral: true });
+    if (inv.length === 0) int.reply({ content: "You don't have any colors in your inventory!", flags: ["Ephemeral"]  });
     else int.reply({ embeds: [embed], ephemeral: int.channel?.id !== u.sf.channels.botSpam });
   } catch (e) { u.errorHandler(e, int); }
 }

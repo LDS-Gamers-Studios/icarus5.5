@@ -151,7 +151,7 @@ const utils = {
     };
 
     if (interaction.replied || interaction.deferred) await interaction.editReply(response);
-    else await interaction.reply({ ...response, ephemeral: true, content: undefined });
+    else await interaction.reply({ ...response, flags: ["Ephemeral"] , content: undefined });
 
     const confirm = await interaction.channel?.awaitMessageComponent({
       filter: (button) => button.user.id === interaction.user.id && (button.customId === confirmTrue || button.customId === confirmFalse),
@@ -273,7 +273,7 @@ const utils = {
       /* eslint-disable-next-line no-console*/
       console.error(`Interaction by ${message.user.username} in ${loc}`);
       if (message.isRepliable() && (message.deferred || message.replied)) message.editReply("I've run into an error. I've let my devs know.").catch(utils.noop).then(utils.clean);
-      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop).then(utils.clean);
+      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", flags: ["Ephemeral"]  }).catch(utils.noop).then(utils.clean);
       embed.addFields(
         { name: "User", value: message.user?.username, inline: true },
         { name: "Location", value: loc, inline: true }
