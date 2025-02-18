@@ -3,17 +3,11 @@ const u = require("./regUtils");
 
 const minecraft = new u.sub()
   .setName("minecraft-skin")
-  .setDescription("Get a picture of someone's Minecraft skin")
-  .addUserOption(
-    new u.user()
-      .setName("user")
-      .setDescription("The Discord user to search for")
-  )
+  .setDescription("Get a picture of someone's Minecraft skin.")
   .addStringOption(
     new u.string()
-      .setName("username")
-      .setDescription("The username of the Minecraft player")
-      .setMaxLength(16)
+      .setName("user")
+      .setDescription("The user to look up. @User or the username of the Minecraft player.")
   );
 
 const elite = new u.sub()

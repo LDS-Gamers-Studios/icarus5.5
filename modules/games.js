@@ -8,14 +8,30 @@ const Augur = require("augurbot-ts"),
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashGameMinecraftSkin(int) {
   await int.deferReply();
-  const user = int.options.getMember('user') ?? int.user;
-  const name = int.options.getString('username') || (await u.db.ign.findOne(user.id, 'minecraft'))?.ign;
-  if (!name) return int.editReply(`${user.id === int.user.id ? "You haven't" : `${user} hasn't`} saved an IGN for Minecraft. Try using a username instead.`);
+  const name = int.options.getString("user") ?? int.user.toString();
+  /** @type {string | undefined | Discord.GuildMember} */
+  let user = name;
+  let findIgn = false;
+  if (name) {
+    const pingMatch = /<@!?([0-9]+)>/.exec(name);
+    if (pingMatch) {
+      user = int.guild.members.cache.get(pingMatch[1])?.id; // yes this is on purpose. it's to see if they're in the server
+      findIgn = true;
+    }
+  } else {
+    user = int.member.id;
+  }
+  if (!user) return int.editReply(`You need to mention someone or provide a username when using this command.`);
+
+  // parsed a user id
+  if (findIgn) user = (await u.db.ign.findOne(user, 'minecraft'))?.ign;
+  if (!user) return int.editReply(`That person hasn't saved an IGN for Minecraft. Try using a username instead.`);
+
   try {
-    const result = await axios(`https://starlightskins.lunareclipse.studio/render/walking/${name}/full`, { responseType: "arraybuffer" });
+    const result = await axios(`https://starlightskins.lunareclipse.studio/render/walking/${user}/full`, { responseType: "arraybuffer" });
     if (result.status === 200) {
       const image = new u.Attachment(Buffer.from(result.data, 'binary'), { name: "image.png" });
-      const embed = u.embed().setTitle(name).setImage("attachment://image.png");
+      const embed = u.embed().setTitle(user).setImage("attachment://image.png");
       return int.editReply({ embeds: [embed], files: [image] });
     }
     return int.editReply({ content: "An error occurred obtaining the skin for that player." });
