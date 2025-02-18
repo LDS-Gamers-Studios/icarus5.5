@@ -20,8 +20,7 @@
 
 ![Clone Repo](https://github.com/LDS-Gamers-Studios/icarus5.5/blob/main/docs/clonerepo.png?raw=true)
 
-4. Run `node register-commands.js` to register all of the interaction commands with the Discord API. Note the IDs of the commands for configuring the bot later.
-5. Create a [local database](https://www.mongodb.com/try/download/community), or try the server based [Atlas Shared Tier](https://www.mongodb.com/cloud/atlas/register). For the sake of this tutorial, I will be using the server based version.
+4. Create a [local database](https://www.mongodb.com/try/download/community), or try the server based [Atlas Shared Tier](https://www.mongodb.com/cloud/atlas/register). For the sake of this tutorial, I will be using the server based version.
     1. Sign up for an Atlas Shared Tier, selecting the free M0 option
     
     ![M0 Free Tier](https://github.com/LDS-Gamers-Studios/icarus5.5/blob/main/docs/mzero.png?raw=true)
@@ -29,8 +28,9 @@
     2. When prompted to connect, choose the Compass option. If you haven't installed Compass yet, it will provide instructions to do so. Installing it is not required, but will help with setup.
     3. Take note of your connection string. It'll have the format of `mongodb+srv://<username>:<password>@<connection>`. You can copy and paste that into Compass and try connecting. Note this somewhere you can come back to later.
     4. Create a new database called `icarus`, and a collection called `bank`. This will act as a base to start, and Icarus should be able to create new collections and records on its own.
-6. Create the following files, based on their matching `-example` file: `config/config.json`, `config/snowflake-testing-commands.json`, and `data/banned.json`. Explanations of these files can be found below.
-7. Within the root folder of the repo, run `npm ci`.
+5. Create the following files, based on their matching `-example` file: `config/config.json`, `config/snowflake-testing-commands.json`, and `data/banned.json`. Explanations of these files can be found below.
+6. Within the root folder of the repo, run `npm ci`.
+7. Run `node register-commands.js` to register all of the interaction commands with the Discord API. Note the IDs of the commands for configuring the bot later.
 8. The start-up command is `node .`. If you want to be fancy, you can start a debugging instance as well.
 
 ## File Explanations
@@ -58,7 +58,7 @@ Required items:
 The provided example can be copied without modification.
 
 ### `config/snowflakes-testing-commands.json`
-Copy all of your command IDs that you registered earlier into the appropriate fields.
+The provided example can be copied without modification.
 
 # Contributing
 
