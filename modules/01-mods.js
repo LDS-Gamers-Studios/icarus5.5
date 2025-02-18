@@ -20,7 +20,7 @@ const molasses = new Map();
 async function watch(msg, oldState, newState) {
   const guild = msg?.guild || oldState?.guild || newState?.guild;
   const member = msg?.member || oldState?.member || newState?.member;
-  if (!guild || !member) return; // make sure vars are defined and in a server;
+  if (!guild || !member || guild.id !== u.sf.ldsg) return; // make sure vars are defined and in a server;
   if (msg && (msg.system || msg.webhookId)) return; // no bot messages
   if (member.user.bot || (member.roles.cache.has(u.sf.roles.moderation.trusted) && !c.watchlist.has(member.id))) return; // filter not in the watchlist
 
