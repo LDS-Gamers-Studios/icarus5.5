@@ -5,6 +5,24 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   u = require("../utils/utils");
 
+const Module = new Augur.Module();
+
+async function updateFactionStatus() {
+  const channel = Module.client.getTextChannel(u.sf.channels.elite);
+  try {
+    const starSystem = await eliteAPI.getSystemInfo("LDS 2314").catch(u.noop);
+    if (!starSystem) return;
+
+    const faction = starSystem.factions.find(f => f.name === "LDS Enterprises");
+    if (!faction) return;
+
+    const influence = Math.round(faction.influence * 10000) / 100;
+
+    // Discord has a topic size limit of 250 characters, but this will never pass that.
+    channel?.setTopic(`[LDS 2314 / LDS Enterprises]  Influence: ${influence}% - State: ${faction.state} - LDS 2314 Controlling Faction: ${starSystem.information.faction}`);
+  } catch (e) { u.errorHandler(e, "Elite Channel Update Error"); }
+}
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashGameMinecraftSkin(int) {
   await int.deferReply();
@@ -212,8 +230,7 @@ async function eliteGetBodies(system, embed) {
   return { embeds: [embed] };
 }
 
-const Module = new Augur.Module()
-.addInteraction({
+Module.addInteraction({
   name: "game",
   guildId: u.sf.ldsg,
   id: u.sf.commands.slashGame,
@@ -230,6 +247,12 @@ const Module = new Augur.Module()
       u.errorHandler(error, interaction);
     }
   }
+})
+.setClockwork(() => {
+  return setTimeout(() => {
+    updateFactionStatus();
+    // every 6 hours seems alright
+  }, 6 * 60 * 60_000);
 });
 
 module.exports = Module;
