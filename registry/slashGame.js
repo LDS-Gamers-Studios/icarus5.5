@@ -12,7 +12,7 @@ const minecraft = new u.sub()
 
 const elite = new u.sub()
   .setName("elite")
-  .setDescription("Elite: Dangerous information")
+  .setDescription("Information for Elite: Dangerous")
   .addStringOption(
     new u.string()
       .setName("info")
