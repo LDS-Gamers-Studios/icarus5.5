@@ -19,7 +19,6 @@ async function slashClockworkTimer(int) {
 
   if (!days && !hours && !minutes) return int.reply({ content: "Your timer is up! (you need to give me a delay!)", flags: ["Ephemeral"] });
 
-  
   await int.deferReply();
 
   const timestamp = u.moment();
