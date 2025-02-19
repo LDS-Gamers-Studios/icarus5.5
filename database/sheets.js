@@ -26,6 +26,8 @@ const data = {
     /** @type {GoogleSpreadsheetRow[]} */
     vcNames: [],
     /** @type {GoogleSpreadsheetRow[]} */
+    wipChannels: [],
+    /** @type {GoogleSpreadsheetRow[]} */
     xpSettings: [],
     /** @type {{ config: GoogleSpreadsheet, games: GoogleSpreadsheet } | null}} */
     docs: null
@@ -58,6 +60,8 @@ const data = {
   tourneyChampions: new Collection(),
   /** @type {string[]} */
   vcNames: [],
+  /** @type {Collection<string, types.PlayingDefault>} */
+  wipChannels: new Collection(),
   /** @type {{ channels: Collection<string, types.ChannelXPSetting>, banned: Set<string> }} */
   xpSettings: { banned: new Set(), channels: new Collection() }
 };
@@ -90,7 +94,8 @@ const sheetMap = {
   sponsors: ["Sponsor Channels", "Sponsor"],
   tourneyChampions: ["Tourney Champions", "Key"],
   vcNames: ["Voice Channel Names", "Name"],
-  xpSettings: ["XP Settings", "ChannelId"]
+  xpSettings: ["XP Settings", "ChannelId"],
+  wipChannels: ["WIP Channel Defaults", "ChannelId"]
 };
 
 const mappers = {
@@ -133,14 +138,27 @@ const mappers = {
   optRoles: (row, client) => {
     const id = row.get("RoleID");
     const role = getServer(client)?.roles.cache.get(id);
-    if (!role) throw new Error(`Sheet Error - Missing Opt-Role: A${row.rowNumber} (${id})`);
+    if (!role) throw new Error(`Sheet Error - Missing Opt-Role: ${row.rowNumber} (${id})`);
     return {
       name: row.get("Role Tag"),
       badge: row.get("Badge") || null,
       role
     };
   },
-
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @param {Client} client
+   * @returns {types.PlayingDefault}
+   */
+  wipChannels: (row, client) => {
+    const id = row.get("ChannelId");
+    const channel = getServer(client)?.channels.cache.get(id);
+    if (!channel) throw new Error(`Sheet Error - Missing WIP Channel: ${row.rowNumber} (${id}, <#${id}>)`);
+    return {
+      channelId: id,
+      name: row.get("Game Name")
+    };
+  },
   /**
    * @param {GoogleSpreadsheetRow} row
    * @param {Client} client
