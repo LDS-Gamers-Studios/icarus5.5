@@ -207,7 +207,7 @@ async function slashBankGameList(interaction) {
       .setTitle("Games Available to Redeem")
       .setDescription(`Redeem ${gb} for game codes with the </bank game redeem:${u.sf.commands.slashBank}> command.\n\n`);
 
-    u.pagedEmbeds(interaction, embed, games);
+    u.pagedEmbedsDescription(interaction, embed, games);
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
