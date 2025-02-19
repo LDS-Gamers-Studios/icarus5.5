@@ -7,6 +7,7 @@ const bank = require("./controllers/bank"),
   infraction = require("./controllers/infraction"),
   oauth = require("./controllers/oauth"),
   user = require("./controllers/user"),
+  reminder = require("./controllers/reminder"),
   tournament = require("./controllers/tournament");
 
 const { data, loadData, mappers } = require("./sheets");
@@ -19,6 +20,7 @@ module.exports = {
   infraction,
   oauth,
   user,
+  reminder,
   tournament,
   sheets: { ...data, loadData, mappers }
 };

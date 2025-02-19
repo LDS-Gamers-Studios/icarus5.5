@@ -20,6 +20,7 @@ const guildCommandFiles = [
   "messageMod.js",
   "slashBank.js",
   "slashBot.js",
+  "slashClockwork.js",
   "slashGame.js",
   "slashGospel.js",
   "slashLdsg.js",
@@ -83,6 +84,7 @@ function displayError(error) {
   } else {
     // Something happened in setting up the request that triggered an Error
     console.log('Error', error.message);
+    console.trace(error);
   }
   process.exit();
 }
