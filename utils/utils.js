@@ -151,7 +151,7 @@ const utils = {
     };
 
     if (interaction.replied || interaction.deferred) await interaction.editReply(response);
-    else await interaction.reply({ ...response, flags: ["Ephemeral"] , content: undefined });
+    else await interaction.reply({ ...response, flags: ["Ephemeral"], content: undefined });
 
     const confirm = await interaction.channel?.awaitMessageComponent({
       filter: (button) => button.user.id === interaction.user.id && (button.customId === confirmTrue || button.customId === confirmFalse),
