@@ -88,7 +88,6 @@ Module.addInteraction({
       case "cakeday": return runCakeday(int);
       case "birthday": return runBirthday(int);
       case "banner": {
-        int.editReply("Setting banner...");
         const response = await setBanner(int.options.getString("file", true));
         if (response) int.editReply(response);
         break;
