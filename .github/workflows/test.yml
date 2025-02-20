@@ -34,7 +34,10 @@ jobs:
           exit 0
 
       - name: Check TypeScript Version
-        run: npx tsc --version
+        run: |
+          npx tsc --version
+          npm ls discord.js
+          npm ls @types/node
       
       - name: Run TSCheck
         run: npm run tscheck
