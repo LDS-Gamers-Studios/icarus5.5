@@ -169,6 +169,9 @@ Module.addEvent("ready", () => {
       u.errorHandler(error, "Birthday Clockwork Error");
     }
   }, 60 * 60 * 1000);
-});
+})
+.addSharedFunction("cakeDays", cakeDays)
+.addSharedFunction("birthdays", birthdays)
+.addSharedFunction("celebrate", celebrate);
 
-module.exports = { ...Module, birthdays, cakeDays, celebrate };
+module.exports = Module;
