@@ -437,7 +437,7 @@ function permComponents(int) {
   ));
 }
 
-/** @param {Augur.GuildInteraction<"ContextBase">} int */
+/** @param {Augur.GuildInteraction<"ContextMessage"|"ContextUser">} int */
 async function sendModMenu(int) {
   await int.deferReply({ flags: ["Ephemeral"] });
   const id = u.customId();
