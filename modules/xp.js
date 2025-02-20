@@ -330,7 +330,7 @@ Module.setUnload(() => active)
     // people can only get xp once per poll. no multiple answers shenanigans
     const voters = new Set();
     const hours = Math.min(24 * 2, Math.max(1, u.moment(msg.poll.expiresTimestamp).diff(msg.createdTimestamp, "hours", false))) / 8;
-    const answers = await Promise.all(newMsg.poll.answers.map(s => s.fetchVoters()));
+    const answers = await Promise.all(newMsg.poll.answers.map(/** @param {Discord.PollAnswer} s */s => s.fetchVoters())); // appeasing the ts overlords with this one
     const voterCount = answers.reduce((p, c) => p + c.size, 0);
 
     // assign xp to people who voted, favoring those with the right answer
