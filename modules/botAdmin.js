@@ -10,15 +10,17 @@ const Augur = require("augurbot-ts"),
 
 /**
  * function fieldMismatches
- * @param {Object} obj1 First object for comparison
- * @param {Object} obj2 Second object for comparison
- * @returns String[] Two-element array. The first contains keys found in first object but not the second. The second contains keys found in the second object but not the first.
+ * @param {Record<string, any>} obj1 First object for comparison
+ * @param {Record<string, any>} obj2 Second object for comparison
+ * @returns {[string[], string[]]} Two-element array. The first contains keys found in first object but not the second. The second contains keys found in the second object but not the first.
  */
 function fieldMismatches(obj1, obj2) {
   const keys1 = new Set(Object.keys(obj1));
   const keys2 = new Set(Object.keys(obj2));
 
+  /** @type {string[]} */
   const m1 = [];
+  /** @type {string[]} */
   const m2 = [];
   for (const key of keys1) {
     if (keys2.has(key)) {
@@ -79,7 +81,9 @@ async function slashBotPing(int, msg) {
 async function slashBotPull(int) {
   const spawn = require("child_process").spawn;
   const cmd = spawn("git", ["pull"], { cwd: process.cwd() });
+  /** @type {string[]} */
   const stdout = [];
+  /** @type {string[]} */
   const stderr = [];
   cmd.stdout.on("data", data => {
     stdout.push(data);
@@ -159,6 +163,7 @@ async function slashBotGetId(int) {
 async function slashBotRegister(int) {
   const spawn = require("child_process").spawn;
   const cmd = spawn("node", ["register-commands"], { cwd: process.cwd() });
+  /** @type {string[]} */
   const stderr = [];
   cmd.stderr.on("data", data => {
     stderr.push(data);
@@ -186,6 +191,7 @@ async function slashBotStatus(int) {
   }
   if (name) {
     const t = int.options.getString("type");
+    // @ts-ignore
     const type = t ? Discord.ActivityType[t] : undefined;
     const url = int.options.getString("url") ?? undefined;
     int.client.user.setActivity({ name, type, url });

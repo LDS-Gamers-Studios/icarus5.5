@@ -9,6 +9,7 @@ const Augur = require("augurbot-ts"),
   RankInfo = require("../utils/rankInfo"),
   Jimp = require("jimp");
 
+/** @type {import("@jimp/plugin-print").Font} */
 let font,
   /** @type {Jimp} */
   cardBackground;

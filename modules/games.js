@@ -19,7 +19,7 @@ async function updateFactionStatus() {
     const influence = Math.round(faction.influence * 10000) / 100;
 
     // Discord has a topic size limit of 250 characters, but this will never pass that.
-    channel?.setTopic(`[LDS 2314 / LDS Enterprises]  Influence: ${influence}% - State: ${faction.state} - LDS 2314 Controlling Faction: ${starSystem.information.faction}`);
+    channel?.setTopic(`[LDS 2314 / LDS Enterprises]  Influence: ${influence}% - State: ${faction.state} - LDS 2314 Controlling Faction: ${starSystem.information?.faction}`);
   } catch (e) { u.errorHandler(e, "Elite Channel Update Error"); }
 }
 
@@ -46,6 +46,7 @@ async function slashGameMinecraftSkin(int) {
   if (!user) return int.editReply(`That person hasn't saved an IGN for Minecraft. Try using a username instead.`);
 
   try {
+    // @ts-ignore
     const result = await axios(`https://starlightskins.lunareclipse.studio/render/walking/${user}/full`, { responseType: "arraybuffer" });
     if (result.status === 200) {
       const image = new u.Attachment(Buffer.from(result.data, 'binary'), { name: "image.png" });
@@ -64,10 +65,10 @@ async function slashGameMinecraftSkin(int) {
  */
 function currentPlayers(int, game) {
   const players = int.guild.members.cache.map(m => {
-    if (m.user.bot) return null;
+    if (m.user.bot) return "";
     const presence = m.presence?.activities?.find(a => a.type === Discord.ActivityType.Playing && a.name.toLowerCase().startsWith(game.toLowerCase()));
-    return presence ? `• ${m}` : null;
-  }).filter(p => p !== null).sort((a, b) => a.localeCompare(b));
+    return presence ? `• ${m}` : "";
+  }).filter(p => p !== "").sort((a, b) => a.localeCompare(b));
   return u.embed().setTitle(`${int.guild.name} members currently playing ${game}`).setDescription(players.length > 0 ? players.join('\n') : `I couldn't find any members playing ${game}`);
 }
 

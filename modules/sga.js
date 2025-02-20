@@ -3,35 +3,35 @@ const Augur = require("augurbot-ts"),
   u = require('../utils/utils'),
   Discord = require("discord.js");
 
-const dict = {
-  "ᔑ": "a",
-  "ʖ": "b",
-  "ᓵ": "c",
-  "↸": "d",
-  "ŀ": "e",
-  "⎓": "f",
-  "ㅓ": "g",
-  "〒": "h",
-  "╎": "i",
-  "፧": "j",
-  "ꖌ": "k",
-  "ꖎ": "l",
-  "ᒲ": "m",
-  "リ": "n",
-  "フ": "o",
-  "¡": "p",
-  "ᑑ": "q",
-  "።": "r",
-  "ነ": "s",
-  "ﬧ": "t",
-  "⚍": "u",
-  "⍊": "v",
-  "∴": "w",
-  "∕": "x",
-  "॥": "y",
-  "∩": "z",
-  "zeroWidthSpace": "​"
-};
+const dict = new Map([
+  ["ᔑ", "a"],
+  ["ʖ", "b"],
+  ["ᓵ", "c"],
+  ["↸", "d"],
+  ["ŀ", "e"],
+  ["⎓", "f"],
+  ["ㅓ", "g"],
+  ["〒", "h"],
+  ["╎", "i"],
+  ["፧", "j"],
+  ["ꖌ", "k"],
+  ["ꖎ", "l"],
+  ["ᒲ", "m"],
+  ["リ", "n"],
+  ["フ", "o"],
+  ["¡", "p"],
+  ["ᑑ", "q"],
+  ["።", "r"],
+  ["ነ", "s"],
+  ["ﬧ", "t"],
+  ["⚍", "u"],
+  ["⍊", "v"],
+  ["∴", "w"],
+  ["∕", "x"],
+  ["॥", "y"],
+  ["∩", "z"],
+]);
+const zeroWidthSpace = "​";
 
 /** @param {String} sga */
 function translate(sga) {
@@ -41,12 +41,13 @@ function translate(sga) {
 
   for (let i = 0; i < sga.length; i++) {
     const c = sga.charAt(i);
-    if (c === dict.zeroWidthSpace) {
+    let f = dict.get(c);
+    if (c === zeroWidthSpace) {
       upper = true;
+      f = zeroWidthSpace;
       continue;
     }
 
-    const f = dict[c];
     to += f ? (upper ? f.toUpperCase() : f) : c;
     upper = false;
   }

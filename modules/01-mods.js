@@ -25,6 +25,7 @@ async function watch(msg, oldState, newState) {
   if (member.user.bot || (member.roles.cache.has(u.sf.roles.moderation.trusted) && !c.watchlist.has(member.id))) return; // filter not in the watchlist
 
   const decorator = !member.roles.cache.has(u.sf.roles.moderation.trusted) ? "🚪" : "👀";
+  /** @type {Discord.WebhookMessageCreateOptions} */
   const payload = {
     username: `${decorator} - ${member.displayName}`.substring(0, 31),
     avatarURL: member.displayAvatarURL(),

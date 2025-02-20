@@ -162,7 +162,10 @@ async function selectUsers(int, action) {
   return received;
 }
 
-/** @param {Augur.GuildInteraction<"Button"|"CommandSlash">} int*/
+/**
+ * @param {Augur.GuildInteraction<"Button"|"CommandSlash">} int
+ * @param {string} string
+ */
 async function getUser(int, string) {
   if (int instanceof Discord.ButtonInteraction) {
     const selected = await selectUsers(int, string);
@@ -286,7 +289,7 @@ async function streamDeny(int, channel) {
 
   const { member, newInt } = user;
   if (!member) return { msg: noUser, int: newInt };
-  if (member.id === user.id) return { msg: `You can't deny yourself from speaking!`, int: newInt };
+  if (member.id === user.member.id) return { msg: `You can't deny yourself from speaking!`, int: newInt };
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id);
   if (!allowedSpeak.includes(member.id)) return { msg: `${member} wasn't able to speak in the first place!`, int: newInt };
 

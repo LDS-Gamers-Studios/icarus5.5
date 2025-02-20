@@ -22,6 +22,7 @@ const nanoid = customAlphabet(chars, 8);
  */
 async function buyGame(game, rawGame, user) {
   // get store assets
+  /** @type {Record<string, { redeem: string, img: string}>} */
   const systems = {
     steam: {
       redeem: "https://store.steampowered.com/account/registerkey?key=",
@@ -84,6 +85,8 @@ async function slashBankGive(interaction) {
   try {
     const giver = interaction.member;
     const recipient = interaction.options.getMember("user");
+    /** @type {"em"|"gb"} */
+    // @ts-ignore
     const currency = interaction.options.getString("currency", true);
     const { coin, MAX } = (currency === "gb" ? { coin: gb, MAX: limit.gb } : { coin: ember, MAX: limit.ember });
 

@@ -111,6 +111,7 @@ function filter(text) {
  */
 async function processMessageLanguage(msg) {
   if (!msg.member) return;
+  /** @type {string[]} */
   let matchedContent = [];
   const reasons = [];
   let warned = false;
@@ -137,6 +138,7 @@ async function processMessageLanguage(msg) {
   const linkMap = (l) => (l.tld ?? "") + l.url;
 
   /** @param {string} prop @param {{tld: string | undefined, url: string}} l */
+  // @ts-ignore
   const linkFilter = (prop, l) => new RegExp(banned[prop].join('|'), 'gi').test(linkMap(l));
 
 
@@ -149,6 +151,7 @@ async function processMessageLanguage(msg) {
   while ((link = hasLink.exec(msg.cleanContent)) !== null) {
     matchedLinks.set((link[3] ?? "") + link[4], { tld: link[3], url: link[4] });
   }
+  const bannedExeced = bannedWords.exec(msg.cleanContent);
   if (matchedLinks.size > 0) {
     const bannedLinks = matchedLinks.filter(l => linkFilter("links", l)).map(linkMap);
     const scamLinks = matchedLinks.filter(l => linkFilter("scam", l)).filter(l => !linkFilter("exception", l)).map(linkMap);
@@ -163,13 +166,13 @@ async function processMessageLanguage(msg) {
       warned = true;
       matchedContent = matchedContent.concat(scamLinks);
       reasons.push("Suspected Scam Links (Auto-Removed)");
-    } else if (bannedWords.exec(msg.cleanContent) && matchedLinks.find(l => l.url.includes("tenor") || l.url.includes("giphy"))) {
+    } else if (bannedExeced && matchedLinks.find(l => l.url.includes("tenor") || l.url.includes("giphy"))) {
       // Bad gif link
       u.clean(msg, 0);
       if (!warned) msg.reply({ content: "Looks like that link might have some harsh language. Please be careful!", failIfNotExists: false }).catch(u.noop);
       warned = true;
       gif = true;
-      matchedContent = matchedContent.concat(matchedLinks.map(linkMap), bannedWords.exec(msg.cleanContent));
+      matchedContent = matchedContent.concat(matchedLinks.map(linkMap), bannedExeced);
       reasons.push("Gif Link Language (Auto-Removed)");
     } else if (!msg.webhookId && !msg.author.bot && !msg.member?.roles.cache.has(u.sf.roles.moderation.trusted)) {
       // General untrusted link flag
@@ -459,7 +462,7 @@ async function processCardAction(interaction) {
 
       const dummy = { value: "" };
       embed.data.fields = embed.data.fields?.filter(f => !f.name || !f.name.startsWith("Jump") && !f.name.startsWith("Reverted"));
-      (embed.data.fields?.find(f => f.name?.startsWith("Infraction")) ?? dummy).vlaue = `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}`;
+      (embed.data.fields?.find(f => f.name?.startsWith("Infraction")) ?? dummy).value = `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}`;
 
       await interaction.editReply({ embeds: [embed], components: [c.revert] }).catch(() => {
         interaction.message.edit({ embeds: [embed], components: [c.revert] }).catch((error) => u.errorHandler(error, interaction));

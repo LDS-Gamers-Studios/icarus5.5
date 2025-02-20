@@ -109,6 +109,7 @@ async function slashGospelVerse(interaction, parsed) {
     .setTitle(bookRef.bookName + " " + chapter.toString() + (text ? ":" + text : ""))
     .setURL(`https://www.churchofjesuschrist.org/study/scriptures/${bookRef.work}/${bookRef.urlAbbrev}/${chapter}${(versesNums[0] ? ("." + text.replace(/ /g, "") + "?lang=eng#p" + versesNums[0]) : "?lang=eng")}`)
     .setColor(0x012b57);
+  // @ts-ignore
   const bookJson = require("../data/gospel/" + works[bookRef.work] + "-reference.json");
   if (!bookJson[bookRef.bookName][chapter]) {
     if (intCheck) interaction.reply({ content: `That chapter doesn't exist in ${bookRef.bookName}!`, flags: ["Ephemeral"] });

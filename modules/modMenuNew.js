@@ -17,14 +17,16 @@ const menuOptions = require("../data/modMenuOptions.json"),
  * @typedef {(int: Augur.GuildInteraction<"SelectMenuString">, message: Discord.Message<true>|null, user: Discord.GuildMember|Discord.User|null, apply?: boolean) => Promise<any>} both
  */
 
+/** @param {Discord.AnySelectMenuInteraction} int */
 function usrErr(int) {
   const content = "I couldn't find the user! They may have left the server.";
-  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [], flags: ["Ephemeral"] });
+  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [] });
 }
 
+/** @param {Discord.AnySelectMenuInteraction} int */
 function msgErr(int) {
   const content = "I couldn't find the message! It might have been deleted.";
-  return int.replied ? edit(int, content) : int.update({ content, flags: ["Ephemeral"] });
+  return int.replied ? edit(int, content) : int.update({ content });
 }
 
 /**

@@ -5,8 +5,10 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   axios = require('axios'),
   Jimp = require('jimp'),
+
   profanityFilter = require("profanity-matcher"),
   buttermelonFacts = require('../data/buttermelonFacts.json'),
+  /** @type {Record<string, string>} */
   emojiKitchenSpecialCodes = require("../data/emojiKitchenSpecialCodes.json"),
   emojiSanitizeHelp = require('node-emoji'),
   mineSweeperEmojis = ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '7⃣', '8⃣', '💣'];
@@ -36,6 +38,7 @@ async function slashFunColor(int) {
 }
 
 // global hbs stuff
+/** @type {Record<string, { emoji: string, beats: string, looses: string }>} */
 const hbsValues = {
   'Buttermelon': { emoji: `<:buttermelon:${u.sf.emoji.buttermelon}>`, beats: "Handicorn", looses: "Sloth" },
   'Handicorn': { emoji: `<:handicorn:${u.sf.emoji.handicorn}>`, beats: "Sloth", looses: "Buttermelon" },
@@ -88,6 +91,7 @@ async function slashFunHBS(int) {
  * @return {string} a summary including who picked what and who won.
  */
 function hbsResult(chooser1, choice1, chooser2, choice2) {
+
   let response = `🤼 ${chooser1} picked ${hbsValues[choice1].emoji}, ${chooser2} picked ${hbsValues[choice2].emoji}.\n### `;
   if (choice1 === choice2) {
     response += "🤝 It's a tie!";
@@ -358,7 +362,7 @@ async function slashFunNamegame(int) {
     const song = /<blockquote>\n(.*)<\/blockquote>/g.exec(response?.data)?.[1]?.replace(/<br ?\/>/g, "\n");
     // make sure its safe
     const pf = new profanityFilter();
-    const profane = pf.scan(song?.toLowerCase().replace("\n", " ")).length;
+    const profane = pf.scan(song?.toLowerCase().replace("\n", " ") ?? "").length;
     if (!song) {
       return int.editReply("I uh... broke my voice box. Try a different name?").then(u.clean);
     } else if (profane > 0) {
@@ -413,6 +417,7 @@ async function slashFunGrow(int) {
 
     // default emoji embiggening
     const e1CP = emojiCodePointify(emoji1);
+    // @ts-ignore
     const image = await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`).catch(u.noop);
     if (image?.status !== 200) return int.editReply(`For some reason I couldn't enlarge ${emojiInput}.`).then(u.clean);
     return int.editReply(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${e1CP}.png`);

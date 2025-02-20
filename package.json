@@ -20,7 +20,11 @@
   },
   "homepage": "https://github.com/BobbyTheCatfish/icarus5.5#readme",
   "dependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.1",
+    "@types/express-ws": "^3.0.5",
+    "@types/passport": "^1.0.17",
     "@types/steamapi": "^2.2.5",
     "augurbot-ts": "^3.3.2",
     "axios": "^1.6.7",
