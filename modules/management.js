@@ -83,7 +83,7 @@ Module.addInteraction({
   permissions: (int) => u.perms.calc(int.member, ["mgr"]),
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
-    await int.deferReply({ flags: ["Ephemeral"]  });
+    await int.deferReply({ flags: ["Ephemeral"] });
     switch (subcommand) {
       case "celebrate": return runCelebrate(int);
       case "cakeday": return runCakeday(int);

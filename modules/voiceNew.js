@@ -312,7 +312,7 @@ async function kickUser(int, channel) {
 Module.addEvent("interactionCreate", async (int) => {
   if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return false;
   const channel = int.member.voice.channel;
-  if (!channel || channel.id !== int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", flags: ["Ephemeral"]  }).catch(u.noop);
+  if (!channel || channel.id !== int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", flags: ["Ephemeral"] }).catch(u.noop);
   await int.deferUpdate();
   let result;
   switch (int.customId) {
@@ -343,7 +343,7 @@ Module.addEvent("interactionCreate", async (int) => {
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
     const channel = int.member.voice.channel;
-    await int.deferReply({ flags: ["Ephemeral"]  });
+    await int.deferReply({ flags: ["Ephemeral"] });
     // handled seperately cuz they might not be able to join
     if (subcommand === "refresh") {
       updateChannels(undefined, undefined, true);

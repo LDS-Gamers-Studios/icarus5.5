@@ -47,7 +47,7 @@ async function watch(msg, oldState, newState) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
 async function slashModWatch(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
   const target = interaction.options.getMember("user");
   const apply = (interaction.options.getString("action") ?? "true") === "true";
   if (!target) return interaction.editReply(noTarget);
@@ -58,7 +58,7 @@ async function slashModWatch(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModBan(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
   const target = interaction.options.getMember("user");
   const reason = interaction.options.getString("reason", true);
   const days = interaction.options.getInteger("clean") ?? 1;
@@ -71,7 +71,7 @@ async function slashModBan(interaction) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModFilter(interaction) {
   const pf = new profanityFilter();
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
 
   const word = interaction.options.getString("word", true).toLowerCase().trim();
   const mod = interaction.member;
@@ -108,7 +108,7 @@ async function slashModFilter(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModSummary(interaction) {
-  await interaction.deferReply({ flags: (interaction.channelId !== u.sf.channels.mods.discussion ? [ "Ephemeral" ]:undefined)});
+  await interaction.deferReply({ flags: (interaction.channelId !== u.sf.channels.mods.discussion ? [ "Ephemeral" ] : undefined) });
   const member = interaction.options.getMember("user") ?? interaction.member;
   const time = interaction.options.getInteger("history") ?? 28;
 
@@ -118,7 +118,7 @@ async function slashModSummary(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModKick(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
   const target = interaction.options.getMember("user");
   const reason = interaction.options.getString("reason", true);
   if (!target) return interaction.editReply(noTarget);
@@ -130,7 +130,7 @@ async function slashModKick(interaction) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModMute(interaction) {
   try {
-    await interaction.deferReply({ flags: ["Ephemeral"]  });
+    await interaction.deferReply({ flags: ["Ephemeral"] });
     const target = interaction.options.getMember("user");
     const apply = (interaction.options.getString("action") ?? "true") === "true";
     const reason = interaction.options.getString("reason") || (apply ? "Violating the Code of Conduct" : "Case Closed");
@@ -146,7 +146,7 @@ async function slashModMute(interaction) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModNote(interaction) {
   try {
-    await interaction.deferReply({ flags: ["Ephemeral"]  });
+    await interaction.deferReply({ flags: ["Ephemeral"] });
     const target = interaction.options.getMember("user") ?? interaction.options.getUser("user", true);
     const note = interaction.options.getString("note", true);
 
@@ -160,7 +160,7 @@ async function slashModNote(interaction) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModOffice(interaction) {
   try {
-    await interaction.deferReply({ flags: ["Ephemeral"]  });
+    await interaction.deferReply({ flags: ["Ephemeral"] });
     const target = interaction.options.getMember("user");
     const reason = interaction.options.getString("reason") || "No reason provided";
     const apply = (interaction.options.getString("action") ?? "true") === "true";
@@ -175,7 +175,7 @@ async function slashModOffice(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModPurge(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
   const number = interaction.options.getInteger("number", true);
   const reason = interaction.options.getString("reason", true);
   const channel = interaction.channel;
@@ -201,7 +201,7 @@ async function slashModPurge(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModRename(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
   const target = interaction.options.getMember("user");
   const newNick = interaction.options.getString("name") ?? c.nameGen();
   const reset = interaction.options.getBoolean("reset") ?? false;
@@ -213,7 +213,7 @@ async function slashModRename(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModWatchlist(interaction) {
-  await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.mods.discussion });
+  await interaction.deferReply({ flags: (interaction.channelId !== u.sf.channels.mods.discussion ? [ "Ephemeral" ] : undefined) });
   c.watchlist = new Set((await u.db.user.getUsers({ watching: true })).map(usr => usr.discordId));
 
   const e = u.embed({ author: interaction.member })
@@ -235,7 +235,7 @@ async function slashModWatchlist(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModSlowmode(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
 
   const duration = interaction.options.getInteger("duration") ?? 10;
   const delay = interaction.options.getInteger("delay") ?? 15;
@@ -290,7 +290,7 @@ async function slashModSlowmode(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModTrust(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
   const member = interaction.options.getMember("user");
   const type = interaction.options.getString("type", true);
   const apply = (interaction.options.getString("action") ?? "true") === "true";
@@ -305,7 +305,7 @@ async function slashModTrust(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModTimeout(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
   const member = interaction.options.getMember("user");
   const time = interaction.options.getInteger("time") ?? 15;
   const reason = interaction.options.getString("reason");
@@ -318,7 +318,7 @@ async function slashModTimeout(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModWarn(interaction) {
-  await interaction.deferReply({ flags: ["Ephemeral"]  });
+  await interaction.deferReply({ flags: ["Ephemeral"] });
   const member = interaction.options.getMember("user");
   const reason = interaction.options.getString("reason", true);
   const value = interaction.options.getInteger("value") ?? 1;
@@ -331,8 +331,8 @@ async function slashModWarn(interaction) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModGrownups(interaction) {
   const time = Math.min(30, interaction.options.getInteger("time") ?? 15);
-  if (!interaction.channel) return interaction.reply({ content: "Well that's awkward, I can't access the channel you're in!", flags: ["Ephemeral"]  });
-  if (interaction.channel.parent?.id !== u.sf.channels.team.category) return interaction.reply({ content: "This command can only be used in the LDSG-Staff Category!", flags: ["Ephemeral"]  });
+  if (!interaction.channel) return interaction.reply({ content: "Well that's awkward, I can't access the channel you're in!", flags: ["Ephemeral"] });
+  if (interaction.channel.parent?.id !== u.sf.channels.team.category) return interaction.reply({ content: "This command can only be used in the LDSG-Staff Category!", flags: ["Ephemeral"] });
   interaction.reply(time === 0 ? `*Whistles and wanders back in*` : `*Whistles and wanders off for ${time} minutes...*`);
 
   if (c.grownups.has(interaction.channel.id)) {

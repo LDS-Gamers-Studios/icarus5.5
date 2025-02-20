@@ -74,7 +74,7 @@ function currentPlayers(int, game) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} inter */
 async function slashGameGetPlaying(inter) {
   const game = inter.options.getString("game") ?? u.db.sheets.wipChannels.get(inter.channelId)?.name;
-  if (game) return inter.reply({ embeds: [currentPlayers(inter, game)], ephemeral: true });
+  if (game) return inter.reply({ embeds: [currentPlayers(inter, game)], flags: ["Ephemeral"] });
   // List *all* games played
   const games = new u.Collection();
   for (const [, member] of inter.guild.members.cache) {
@@ -94,7 +94,7 @@ async function slashGameGetPlaying(inter) {
     .setDescription(`The top ${Math.min(gameList.length, 25)} game${s} currently being played in ${inter.guild.name}:`);
   if (gameList.length > 0) gameList.map((g, i) => i < 25 ? embed.addFields({ name: g.game, value: `${g.players}` }) : null);
   else embed.setDescription("Well, this is awkward ... Nobody is playing anything.");
-  inter.reply({ embeds: [embed], ephemeral: true });
+  inter.reply({ embeds: [embed], flags: ["Ephemeral"] });
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -104,7 +104,7 @@ async function slashGameElite(int) {
 
   if (info === "time") return int.reply(eliteGetTime());
 
-  await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.elite });
+  await int.deferReply({ flags: (int.channelId !== u.sf.channels.elite ? ["Ephemeral"] : undefined) });
   if (info === "status") return int.editReply(await eliteGetStatus());
 
   const starSystem = await eliteAPI.getSystemInfo(system);
@@ -126,11 +126,13 @@ async function eliteGetStatus() {
   const status = await eliteAPI.getEliteStatus();
   return `The Elite: Dangerous servers are ${status.type === 'success' ? "online" : "offline"}`;
 }
-
+/**
+ * @returns InteractionReplyOptions
+ */
 function eliteGetTime() {
   const d = new Date();
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  return { content: `The current date/time in Elite is ${monthNames[d.getUTCMonth()]} ${d.getUTCDate()}, ${(d.getUTCFullYear() + 1286)}, ${d.getUTCHours()}:${d.getUTCMinutes()}. (UTC + 1286 years)`, ephemeral: true };
+  return { content: `The current date/time in Elite is ${monthNames[d.getUTCMonth()]} ${d.getUTCDate()}, ${(d.getUTCFullYear() + 1286)}, ${d.getUTCHours()}:${d.getUTCMinutes()}. (UTC + 1286 years)`, flags: ["Ephemeral"] };
 }
 
 /**
@@ -163,7 +165,7 @@ async function eliteGetSystem(system, embed) {
  * @param {Discord.EmbedBuilder} embed
  */
 async function eliteGetStations(system, embed) {
-  if (system.stations.length <= 0) return { content: "I couldn't find any stations in that system.", ephemeral: true };
+  if (system.stations.length <= 0) return { content: "I couldn't find any stations in that system.", flags: ["Ephemeral"] };
   embed.setTitle(system.name).setURL(system.stationsURL);
 
   /** @type {Discord.Collection<string, eliteAPI.Station[]>} */
@@ -199,7 +201,7 @@ async function eliteGetStations(system, embed) {
  * @param {Discord.EmbedBuilder} embed
  */
 async function eliteGetFactions(system, embed) {
-  if (system.factions.length < 1) return { content: "I couldn't find any factions in that system.", ephemeral: true };
+  if (system.factions.length < 1) return { content: "I couldn't find any factions in that system.", flags: ["Ephemeral"] };
   embed.setTitle(system.name).setURL(system.factionsURL);
 
   for (const faction of system.factions) {
@@ -219,7 +221,7 @@ async function eliteGetFactions(system, embed) {
  * @param {Discord.EmbedBuilder} embed
  */
 async function eliteGetBodies(system, embed) {
-  if (system.bodies.length < 1) return { content: "I couldn't find any bodies in that system.", ephemeral: true };
+  if (system.bodies.length < 1) return { content: "I couldn't find any bodies in that system.", flags: ["Ephemeral"] };
   embed.setTitle(system.name).setURL(system.bodiesURL);
 
   for (const body of system.bodies) {

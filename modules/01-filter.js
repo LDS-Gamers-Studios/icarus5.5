@@ -291,7 +291,7 @@ async function processCardAction(interaction) {
     const flag = interaction.message;
     // Prevent double-processing
     if (processing.has(flag.id)) {
-      interaction.reply({ content: "Someone is already processing this flag!", flags: ["Ephemeral"]  });
+      interaction.reply({ content: "Someone is already processing this flag!", flags: ["Ephemeral"] });
       return;
     }
 
@@ -328,14 +328,14 @@ async function processCardAction(interaction) {
       return processing.delete(flag.id);
     }
     if (!infraction) {
-      interaction.reply({ content: "I couldn't find that flag!", flags: ["Ephemeral"]  });
+      interaction.reply({ content: "I couldn't find that flag!", flags: ["Ephemeral"] });
       return processing.delete(flag.id);
     }
 
     if (interaction.customId === "modCardInfo") {
       // Don't count this as processing
       processing.delete(flag.id);
-      await interaction.deferReply({ flags: ["Ephemeral"]  });
+      await interaction.deferReply({ flags: ["Ephemeral"] });
       const member = await interaction.guild.members.fetch(infraction.discordId);
       let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
       if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
@@ -350,7 +350,7 @@ async function processCardAction(interaction) {
     } else if (interaction.customId === "modCardLink") {
       // LINK TO #MODDISCUSSION
       const md = interaction.client.getTextChannel(u.sf.channels.mods.discussion);
-      await interaction.reply({ content: `Sending the flag over to ${md}...`, flags: ["Ephemeral"]  });
+      await interaction.reply({ content: `Sending the flag over to ${md}...`, flags: ["Ephemeral"] });
 
       embed.setFooter({ text: `Linked by ${u.escapeText(mod.displayName)}` });
       md?.send({ embeds: [embed] }).catch(u.noop);
@@ -359,7 +359,7 @@ async function processCardAction(interaction) {
 
     // The buttons after this actually need mod filtering
     if (infraction && mod.id === infraction.discordId) {
-      await interaction.reply({ content: "You can't handle your own flag!", flags: ["Ephemeral"]  });
+      await interaction.reply({ content: "You can't handle your own flag!", flags: ["Ephemeral"] });
       return processing.delete(flag.id);
     }
 
@@ -375,7 +375,7 @@ async function processCardAction(interaction) {
       await interaction.editReply({ embeds: [embed], components: [c.revert] });
     } else if (interaction.customId === "modCardRetract") {
       // Only the person who acted on the card (or someone in management) can retract an action
-      if (infraction.handler !== mod.id && !u.perms.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", flags: ["Ephemeral"]  });
+      if (infraction.handler !== mod.id && !u.perms.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", flags: ["Ephemeral"] });
       await interaction.deferUpdate();
       const verbal = embed.data.fields?.find(f => f.value.includes("verbal"));
       const revertedMsg = "The offending message can't be restored" + (infraction.value > 9 ? " and the Muted role may have to be removed and the user unwatched." : ".");
@@ -490,7 +490,7 @@ const Module = new Augur.Module()
   if (!['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
     .includes(int.customId.replace("modCard", "").toLowerCase())) return;
   if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
-    return int.reply({ content: "You don't have permissions to interact with this flag!", flags: ["Ephemeral"]  });
+    return int.reply({ content: "You don't have permissions to interact with this flag!", flags: ["Ephemeral"] });
   }
   processCardAction(int);
 })

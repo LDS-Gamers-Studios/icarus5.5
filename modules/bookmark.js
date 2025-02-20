@@ -10,7 +10,7 @@ const Module = new Augur.Module()
   type: "ContextMessage",
   process: async (interaction) => {
     try {
-      await interaction.deferReply({ flags: ["Ephemeral"]  });
+      await interaction.deferReply({ flags: ["Ephemeral"] });
       const message = await interaction.channel?.messages.fetch(interaction.targetId).catch(u.noop);
       if (message) {
         await interaction.editReply("I'm sending you a DM!");

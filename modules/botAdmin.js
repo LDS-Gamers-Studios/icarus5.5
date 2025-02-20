@@ -203,7 +203,7 @@ const Module = new Augur.Module()
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
     const subcommand = int.options.getSubcommand(true);
-    const forThePing = await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.botTesting });
+    const forThePing = await int.deferReply({ flags: (int.channelId !== u.sf.channels.botTesting ? [ "Ephemeral" ] : undefined) });
     if (["gotobed", "reload", "register", "status", "sheets"].includes(subcommand) && !u.perms.calc(int.member, ["botAdmin"])) return int.editReply("That command is only for Bot Admins.");
     if (subcommand === "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {
