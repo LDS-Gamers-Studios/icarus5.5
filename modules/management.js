@@ -4,7 +4,6 @@ const Augur = require("augurbot-ts"),
   banners = require('../data/banners.json'),
   fs = require('fs'),
   path = require('path'),
-  cake = require('./cake'),
   Module = new Augur.Module();
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -15,9 +14,9 @@ function runCakeday(int) {
     const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-    cake.cakeDays(new Date(), date);
+    int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays(new Date(), date);
   } else {
-    cake.cakeDays();
+    int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays();
   }
   return int.editReply("Cakeday run!");
 }
@@ -30,9 +29,9 @@ function runBirthday(int) {
     const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-    cake.birthdays(undefined, date);
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays(undefined, date);
   } else {
-    cake.birthdays();
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays();
   }
   return int.editReply("Birthday run!");
 }
@@ -40,7 +39,7 @@ function runBirthday(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runCelebrate(int) {
   // @ts-ignore
-  cake.celebrate(true);
+  int.client.moduleManager.shared.get("cake.js")?.shared.celebrate(true);
   return int.editReply("Celebrate run!");
 }
 

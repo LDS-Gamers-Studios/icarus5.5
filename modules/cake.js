@@ -170,8 +170,6 @@ Module.addEvent("ready", () => {
     }
   }, 60 * 60 * 1000);
 })
-.addSharedFunction("cakeDays", cakeDays)
-.addSharedFunction("birthdays", birthdays)
-.addSharedFunction("celebrate", celebrate);
+.addShared("cake.js", { cakeDays, birthdays, celebrate });
 
 module.exports = Module;
