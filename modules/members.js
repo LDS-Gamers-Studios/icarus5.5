@@ -68,7 +68,7 @@ async function slashUserInfo(interaction, user) {
   // un-mod-ifying it
     .setTitle(`About ${user.displayName}`)
     .setColor(parseInt(config.color));
-  return interaction.reply({ embeds: [embed], ephemeral: interaction.channelId !== u.sf.channels.botSpam });
+  return interaction.reply({ embeds: [embed], flags: (interaction.channelId !== u.sf.channels.botSpam ? ["Ephemeral"] : undefined) });
 }
 
 /**
@@ -77,7 +77,7 @@ async function slashUserInfo(interaction, user) {
  * @param {Discord.GuildMember} user The user to get the profile card for.
  */
 async function slashUserProfile(interaction, user) {
-  await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.botSpam });
+  await interaction.deferReply({ flags: (interaction.channelId !== u.sf.channels.botSpam ? ["Ephemeral"] : undefined) });
   const card = await makeProfileCard(user);
   if (!card) return; // error handled
   return interaction.editReply({ files: [card] });

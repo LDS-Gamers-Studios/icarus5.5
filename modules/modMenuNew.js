@@ -19,12 +19,12 @@ const menuOptions = require("../data/modMenuOptions.json"),
 
 function usrErr(int) {
   const content = "I couldn't find the user! They may have left the server.";
-  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [], flags: ["Ephemeral"]  });
+  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [], flags: ["Ephemeral"] });
 }
 
 function msgErr(int) {
   const content = "I couldn't find the message! It might have been deleted.";
-  return int.replied ? edit(int, content) : int.update({ content, flags: ["Ephemeral"]  });
+  return int.replied ? edit(int, content) : int.update({ content, flags: ["Ephemeral"] });
 }
 
 /**
@@ -437,7 +437,7 @@ function permComponents(int) {
 
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
 async function sendModMenu(int) {
-  await int.deferReply({ flags: ["Ephemeral"]  });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const id = u.customId();
   const components = permComponents(int);
   const actionRow = u.MessageActionRow()
