@@ -94,9 +94,10 @@ async function slashGospelVerse(interaction, parsed) {
     ({ book, chapter, verses } = getScriptureMastery(abbreviationTable.get(book?.toLowerCase() ?? "")?.bookName, chapter?.toString()));
   }
 
+  const intCheck = !parsed && interaction instanceof Discord.ChatInputCommandInteraction;
   const bookRef = abbreviationTable.get(book.toLowerCase());
   if (!bookRef) {
-    if (!parsed) interaction.reply({ content: "I don't understand what book you're mentioning.", flags: ["Ephemeral"] });
+    if (intCheck) interaction.reply({ content: "I don't understand what book you're mentioning.", flags: ["Ephemeral"] });
     return;
   }
 
@@ -110,7 +111,7 @@ async function slashGospelVerse(interaction, parsed) {
     .setColor(0x012b57);
   const bookJson = require("../data/gospel/" + works[bookRef.work] + "-reference.json");
   if (!bookJson[bookRef.bookName][chapter]) {
-    if (!parsed) interaction.reply({ content: `That chapter doesn't exist in ${bookRef.bookName}!`, flags: ["Ephemeral"] });
+    if (intCheck) interaction.reply({ content: `That chapter doesn't exist in ${bookRef.bookName}!`, flags: ["Ephemeral"] });
     return;
   }
   if (versesNums.length > 0) {
@@ -122,7 +123,7 @@ async function slashGospelVerse(interaction, parsed) {
     }
     const verseJoinedContent = verseContent.join("\n\n");
     if (verses && verseJoinedContent.length === 0) {
-      if (!parsed) interaction.reply({ content: "The verse(s) you requested weren't found.", flags: ["Ephemeral"] });
+      if (intCheck) interaction.reply({ content: "The verse(s) you requested weren't found.", flags: ["Ephemeral"] });
       return;
     }
     embed.setDescription(verseJoinedContent.length > 2048 ? verseJoinedContent.slice(0, 2048) + "…" : verseJoinedContent);

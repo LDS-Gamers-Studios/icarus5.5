@@ -27,7 +27,7 @@
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
-    "discord.js": "^14.16.3",
+    "discord.js": "^14.18.0",
     "express": "^4.21.1",
     "express-fileupload": "^1.5.1",
     "express-rate-limit": "^7.4.1",

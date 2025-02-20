@@ -73,5 +73,5 @@ module.exports = new u.cmd()
   .addSubcommand(who)
   .addSubcommand(equip)
   .addSubcommand(list)
-  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel)
+  .setContexts(u.contexts.Guild)
   .toJSON();

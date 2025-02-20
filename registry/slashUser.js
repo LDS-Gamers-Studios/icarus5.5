@@ -26,5 +26,5 @@ module.exports = new u.cmd()
   .setDescription("Member information")
   .addSubcommand(info)
   .addSubcommand(profile)
-  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel)
+  .setContexts(u.contexts.Guild)
   .toJSON();

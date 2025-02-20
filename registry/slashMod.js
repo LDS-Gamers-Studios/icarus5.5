@@ -221,6 +221,6 @@ module.exports = new u.cmd()
   .addSubcommand(timeout)
   .addSubcommand(warn)
   .addSubcommand(watch)
-  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel)
+  .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.devMode)
   .toJSON();

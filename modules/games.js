@@ -119,7 +119,9 @@ async function slashGameElite(int) {
     case "system": reply = await eliteGetSystem(starSystem, embed) ; break;
     default: throw new Error("Unhandled Option - Games/Elite");
   }
-  return int.editReply(reply);
+  return int.editReply(reply).then(() => {
+    if (typeof reply === "string") u.clean(int);
+  });
 }
 
 async function eliteGetStatus() {
@@ -127,7 +129,7 @@ async function eliteGetStatus() {
   return `The Elite: Dangerous servers are ${status.type === 'success' ? "online" : "offline"}`;
 }
 /**
- * @returns InteractionReplyOptions
+ * @returns {Discord.InteractionReplyOptions}
  */
 function eliteGetTime() {
   const d = new Date();
@@ -165,7 +167,7 @@ async function eliteGetSystem(system, embed) {
  * @param {Discord.EmbedBuilder} embed
  */
 async function eliteGetStations(system, embed) {
-  if (system.stations.length <= 0) return { content: "I couldn't find any stations in that system.", flags: ["Ephemeral"] };
+  if (system.stations.length <= 0) return "I couldn't find any stations in that system.";
   embed.setTitle(system.name).setURL(system.stationsURL);
 
   /** @type {Discord.Collection<string, eliteAPI.Station[]>} */
@@ -201,7 +203,7 @@ async function eliteGetStations(system, embed) {
  * @param {Discord.EmbedBuilder} embed
  */
 async function eliteGetFactions(system, embed) {
-  if (system.factions.length < 1) return { content: "I couldn't find any factions in that system.", flags: ["Ephemeral"] };
+  if (system.factions.length < 1) return "I couldn't find any factions in that system.";
   embed.setTitle(system.name).setURL(system.factionsURL);
 
   for (const faction of system.factions) {
@@ -221,7 +223,7 @@ async function eliteGetFactions(system, embed) {
  * @param {Discord.EmbedBuilder} embed
  */
 async function eliteGetBodies(system, embed) {
-  if (system.bodies.length < 1) return { content: "I couldn't find any bodies in that system.", flags: ["Ephemeral"] };
+  if (system.bodies.length < 1) return "I couldn't find any bodies in that system.";
   embed.setTitle(system.name).setURL(system.bodiesURL);
 
   for (const body of system.bodies) {

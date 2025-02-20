@@ -55,5 +55,5 @@ module.exports = new u.cmd()
   .addSubcommand(list)
   .addSubcommand(champion)
   .addSubcommand(participant)
-  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel)
+  .setContexts(u.contexts.Guild)
   .toJSON();
