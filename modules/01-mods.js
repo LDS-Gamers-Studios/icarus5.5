@@ -108,7 +108,7 @@ async function slashModFilter(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModSummary(interaction) {
-  await interaction.deferReply({ ephemeral: interaction.channelId !== u.sf.channels.mods.discussion });
+  await interaction.deferReply({ flags: (interaction.channelId !== u.sf.channels.mods.discussion ? [ "Ephemeral" ]:undefined)});
   const member = interaction.options.getMember("user") ?? interaction.member;
   const time = interaction.options.getInteger("history") ?? 28;
 
