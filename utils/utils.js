@@ -330,8 +330,12 @@ const utils = {
   /**
    * Shortcut to moment with the correct UTC offset (Mountain Time)
    * @param {moment.MomentInput} [input]
+   * @param {string} [format]
    */
-  moment: (input) => moment.tz(input, "America/Denver"),
+  moment: (input, format) => {
+    if (input && format) return moment.tz(input?.toString(), format, "America/Denver");
+    return moment.tz(input, "America/Denver");
+  },
   /**
    * This task is extremely complicated.
    * You need to understand it perfectly to use it.

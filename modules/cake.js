@@ -1,4 +1,5 @@
 // @ts-check
+// ! Functions here are called in management.js. Make sure to test those calls as well
 const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
@@ -34,7 +35,7 @@ async function birthdays(testDate, testMember) {
     const guild = Module.client.guilds.cache.get(u.sf.ldsg);
     if (!guild) return;
 
-    const now = u.moment(testDate ? new Date(testDate) : undefined);
+    const now = u.moment(testDate ? testDate : undefined);
 
     // Birthday Blast
     const birthdayLangs = require("../data/birthday.json");
@@ -42,9 +43,10 @@ async function birthdays(testDate, testMember) {
 
     const bdays = testMember ?? await u.db.ign.findMany(guild.members.cache.map(m => m.id), "birthday");
     const celebrating = [];
+    const year = new Date().getFullYear();
     for (const birthday of bdays) {
       try {
-        const date = u.moment(birthday.ign + "T15:00");
+        const date = u.moment(`${birthday.ign} ${year} 15`, "MMM D YYYY-HH");
         if (checkDate(date, now, false)) {
           const member = guild.members.cache.get(birthday.discordId);
           celebrating.push(member);
@@ -148,7 +150,8 @@ Module.addEvent("ready", () => {
   enabled: config.devMode,
   hidden: true,
   process: (msg) => {
-    birthdays(new Date(), [{ discordId: msg.author.id, ign: new Date() }]);
+    const date = u.moment().format("MMM D YYYY HH");
+    birthdays(new Date(), [{ discordId: msg.author.id, ign: date }]);
   }
 })
 .addCommand({ name: "cakeday",
@@ -156,7 +159,7 @@ Module.addEvent("ready", () => {
   hidden: true,
   process: (msg, suffix) => {
     const date = u.moment();
-    if (suffix) date.subtract(parseInt(suffix), "year");
+    date.subtract(parseInt(suffix || "1"), "year");
     cakeDays(new Date(), date.toDate(), new u.Collection().set(msg.author.id, msg.member));
   }
 })
