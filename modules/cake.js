@@ -8,8 +8,8 @@ const Augur = require("augurbot-ts"),
 
 function celebrate(test = false) {
   if (u.moment().hours() === 15 || test) {
-    birthDays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Birthdays"));
-    cakeDays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Cake Days"));
+    birthdays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Birthdays"));
+    cakedays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Cake Days"));
   }
 }
 
@@ -29,7 +29,7 @@ function checkDate(date, today, checkYear) {
  * @param {Date|string} [testDate] fake date
  * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  */
-async function birthDays(testDate, testMember) {
+async function birthdays(testDate, testMember) {
   // Send Birthday Messages, if saved by member
   try {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
@@ -75,7 +75,7 @@ async function birthDays(testDate, testMember) {
  * @param {Date} [testDate]
  * @param {Discord.Collection<string, Discord.GuildMember>} [testMember]
  */
-async function cakeDays(testDate, testJoinDate, testMember) {
+async function cakedays(testDate, testJoinDate, testMember) {
   try {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     const now = testDate ?? new Date();
@@ -146,7 +146,7 @@ Module.addEvent("ready", () => {
     enabled: config.devMode,
     hidden: true,
     process: (msg) => {
-      birthDays(new Date(), [{ discordId: msg.author.id, ign: new Date() }]);
+      birthdays(new Date(), [{ discordId: msg.author.id, ign: new Date() }]);
     }
   })
   .addCommand({
@@ -156,7 +156,7 @@ Module.addEvent("ready", () => {
     process: (msg, suffix) => {
       const date = u.moment();
       if (suffix) date.subtract(parseInt(suffix), "year");
-      cakeDays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
+      cakedays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
     }
   })
   .setClockwork(() => {
@@ -168,6 +168,6 @@ Module.addEvent("ready", () => {
       }
     }, 60 * 60 * 1000);
   })
-  .addShared("cake.js", { cakeDays, birthDays: birthDays, celebrate });
+  .addShared("cake.js", { cakedays, birthdays, celebrate });
 
 module.exports = Module;

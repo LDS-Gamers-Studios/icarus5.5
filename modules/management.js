@@ -13,9 +13,9 @@ function runCakeday(int) {
     const date = new Date(dateInput);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("Sorry, but I couldn't understand that date.");
-    int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays(date);
+    int.client.moduleManager.shared.get("cake.js")?.shared.cakedays(date);
   } else {
-    int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays();
+    int.client.moduleManager.shared.get("cake.js")?.shared.cakedays();
   }
   return int.editReply("Cakeday run!");
 }
@@ -27,9 +27,9 @@ function runBirthday(int) {
     const date = new Date(dateInput);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("Sorry, but I couldn't understand that date.");
-    int.client.moduleManager.shared.get("cake.js")?.shared.birthDays(date);
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays(date);
   } else {
-    int.client.moduleManager.shared.get("cake.js")?.shared.birthDays();
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays();
   }
   return int.editReply("Birthday run!");
 }
