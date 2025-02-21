@@ -27,9 +27,9 @@ function runBirthday(int) {
     const date = new Date(dateInput);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("Sorry, but I couldn't understand that date.");
-    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays(date);
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthDays(date);
   } else {
-    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays();
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthDays();
   }
   return int.editReply("Birthday run!");
 }

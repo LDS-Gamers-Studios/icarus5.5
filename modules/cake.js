@@ -8,7 +8,7 @@ const Augur = require("augurbot-ts"),
 
 function celebrate(test = false) {
   if (u.moment().hours() === 15 || test) {
-    birthdays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Birthdays"));
+    birthDays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Birthdays"));
     cakeDays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Cake Days"));
   }
 }
@@ -29,26 +29,25 @@ function checkDate(date, today, checkYear) {
  * @param {Date|string} [testDate] fake date
  * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  */
-async function birthdays(testDate, testMember) {
+async function birthDays(testDate, testMember) {
   // Send Birthday Messages, if saved by member
   try {
-    const guild = Module.client.guilds.cache.get(u.sf.ldsg);
-    if (!guild) return;
-
-    const now = u.moment(testDate ? testDate : undefined);
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+    if (!ldsg) throw new Error("birthDays couldn't access ldsg");
+    const now = u.moment(testDate ?? new Date());
 
     // Birthday Blast
     const birthdayLangs = require("../data/birthday.json");
     const flair = ["🎉", "🎊", "🎂", "🎁", "🍰"];
 
-    const bdays = testMember ?? await u.db.ign.findMany(guild.members.cache.map(m => m.id), "birthday");
+    const bdays = testMember ?? await u.db.ign.findMany(ldsg.members.cache.map(m => m.id), "birthday");
     const celebrating = [];
     const year = new Date().getFullYear();
     for (const birthday of bdays) {
       try {
         const date = u.moment(`${birthday.ign} ${year} 15`, "MMM D YYYY-HH");
         if (checkDate(date, now, false)) {
-          const member = guild.members.cache.get(birthday.discordId);
+          const member = ldsg.members.cache.get(birthday.discordId);
           celebrating.push(member);
           const msgs = birthdayLangs.map(lang => member?.send(`${u.rand(flair)} ${lang}`));
           Promise.all(msgs).then(() => {
@@ -65,7 +64,7 @@ async function birthdays(testDate, testMember) {
         .setTitle("Happy Birthday!")
         .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Emoji_u1f389.svg/128px-Emoji_u1f389.svg.png")
         .setDescription("Happy birthday to these fantastic people!\n\n" + celebrating.join("\n"));
-      guild.client.getTextChannel(u.sf.channels.general)?.send({ content: celebrating.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
+      ldsg.client.getTextChannel(u.sf.channels.general)?.send({ content: celebrating.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
     }
   } catch (e) { u.errorHandler(e, "Birthday Error"); }
 }
@@ -138,7 +137,7 @@ Module.addEvent("ready", () => {
     enabled: config.devMode,
     hidden: true,
     process: (msg) => {
-      birthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
+      birthDays(new Date(), [{ discordId: msg.author.id, ign: new Date() }]);
     }
   })
   .addCommand({
@@ -160,6 +159,6 @@ Module.addEvent("ready", () => {
       }
     }, 60 * 60 * 1000);
   })
-  .addShared("cake.js", { cakeDays, birthdays, celebrate });
+  .addShared("cake.js", { cakeDays, birthDays: birthDays, celebrate });
 
 module.exports = Module;
