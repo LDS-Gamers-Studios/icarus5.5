@@ -82,10 +82,10 @@ async function cakedays(testDate, testJoinDate, testMember) {
     const trusted = await ldsg?.roles.fetch(u.sf.roles.moderation.trusted);
     const membersToCheck = testMember ? testMember : trusted?.members ?? [];
     /** @type {Discord.Collection<string, number>} */
-    const memberPreviousJoinPeriodsAkaPrevTenure = new u.Collection();
+    const preRejoinTimes = new u.Collection();
     (await u.db.user.getUsers({ discordId: { $in: [...membersToCheck.keys()] }, priorTenure: { $gt: 0 } }))
       .forEach((value) => {
-        memberPreviousJoinPeriodsAkaPrevTenure.set(value.discordId, value.priorTenure);
+        preRejoinTimes.set(value.discordId, value.priorTenure);
       });
     /** @type {Discord.Collection<Discord.Role, Discord.GuildMember[]>} */
     const cantRoleRemErrors = new u.Collection();
@@ -96,29 +96,31 @@ async function cakedays(testDate, testJoinDate, testMember) {
     /** @type {Discord.GuildMember[][]} */
     const celebrating = [];
     for (const [memberId, member] of membersToCheck) {
-      const joinDate = u.moment(testJoinDate ?? member.joinedAt ?? now);
+      const joinDate = u.moment(testJoinDate ?? member.joinedAt);
+      if (!joinDate.isValid) { continue; }
       const timeSinceLastReJoin = u.moment(now).diff(joinDate, "days");
-      const priorTime = memberPreviousJoinPeriodsAkaPrevTenure.get(memberId) ?? 0;// days
-      const totalTime = timeSinceLastReJoin + priorTime;
+      const totalTime = timeSinceLastReJoin + (preRejoinTimes.get(memberId) ?? 0);
       const years = Math.floor(totalTime / 365.0);
-      const daysIntoThisYear = totalTime - (years * 365);
-      if (daysIntoThisYear < 1 && years > 0) {
-        const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
-        const previousYearRole = u.db.sheets.roles.year.get(years - 1)?.base;
-        if (currentYearRole === undefined && years !== 0) { () => !missingRoleErrors.has(years) ? missingRoleErrors.set(years, [member]) : missingRoleErrors.get(years)?.push(member); }
-        if (currentYearRole && !currentYearRole.members.has(memberId)) {
-          member.roles.add(currentYearRole).catch(() => !cantRoleAddErrors.has(currentYearRole) ? cantRoleAddErrors.set(currentYearRole, [member]) : cantRoleAddErrors.get(currentYearRole)?.push(member));
-          if (previousYearRole) (member.roles.remove(previousYearRole).catch(() => !cantRoleRemErrors.has(previousYearRole) ? cantRoleRemErrors.set(previousYearRole, [member]) : cantRoleRemErrors.get(currentYearRole)?.push(member)));
-        }
+      if (totalTime - (years * 365) < 1 && years > 0) {
         celebrating.length = Math.max(celebrating.length, years + 1);
         if (celebrating[years]) {
           celebrating[years].push(member);
-        } else {celebrating[years] = [member];}
+        } else { celebrating[years] = [member]; }
+        const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
+        const previousYearRole = u.db.sheets.roles.year.get(years - 1)?.base;
+        if (currentYearRole === undefined && years !== 0) {missingRoleErrors.ensure(years, () => []).push(member);}
+        if (currentYearRole && !currentYearRole.members.has(memberId)) {
+          await member.roles.add(currentYearRole).catch(() => {cantRoleAddErrors.ensure(currentYearRole, () => []).push(member);});
+          if (previousYearRole) (await member.roles.remove(previousYearRole).catch(() => {cantRoleRemErrors.ensure(previousYearRole, () => []).push(member);}));
+        }
       }// maybe check if they have all of the year roles and such and yell at someone if they don't
-      if (cantRoleAddErrors.size > 0) {cantRoleAddErrors.forEach((members, role) => u.errorHandler(new Error("Cakedays Couldn't upgrade the following members to the " + role.toString() + " Role: \n" + members.map((m) => m.toString()).join("\n"))));}
-      if (cantRoleRemErrors.size > 0) {cantRoleRemErrors.forEach((members, role) => u.errorHandler(new Error("Cakedays Couldn't remove the following members from the " + role.toString() + " Role: \n" + members.map((m) => m.toString()).join("\n"))));}
-      if (missingRoleErrors.size > 0) {missingRoleErrors.forEach((members, year) => u.errorHandler(new Error("Cakedays Couldn't find the Year role number " + year + " to give to these people: \n" + members.map((m) => m.toString()).join("\n"))));}
     }
+    console.log(cantRoleAddErrors);
+    console.log(cantRoleRemErrors);
+    console.log(missingRoleErrors);
+    if (cantRoleAddErrors.size > 0) { cantRoleAddErrors.forEach((members, role) => u.errorHandler(new Error("Cakedays Couldn't upgrade the following members to the " + role.toString() + " Role: \n" + members.map((m) => m.toString()).join("\n")))); }
+    if (cantRoleRemErrors.size > 0) { cantRoleRemErrors.forEach((members, role) => u.errorHandler(new Error("Cakedays Couldn't remove the following members from the " + role.toString() + " Role: \n" + members.map((m) => m.toString()).join("\n")))); }
+    if (missingRoleErrors.size > 0) { missingRoleErrors.forEach((members, year) => u.errorHandler(new Error("Cakedays Couldn't find the Year role number " + year + " to give to these members: \n" + members.map((m) => m.toString()).join("\n")))); }
     if (celebrating.length >= 1) {
       const embed = u.embed()
         .setTitle("Cake Days!")
