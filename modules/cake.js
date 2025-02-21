@@ -1,4 +1,5 @@
 // @ts-check
+// ! Functions here are called in management.js. Make sure to test those calls as well
 const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
@@ -25,38 +26,33 @@ function checkDate(date, today, checkYear) {
 
 /**
  * Provide testing parameters for testing which days work
- * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  * @param {Date|string} [testDate] fake date
+ * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  */
-async function birthdays(testMember, testDate) {
+async function birthdays(testDate, testMember) {
   // Send Birthday Messages, if saved by member
   try {
     const guild = Module.client.guilds.cache.get(u.sf.ldsg);
     if (!guild) return;
 
-    const now = u.moment(testDate ? new Date(testDate) : undefined);
+    const now = u.moment(testDate ? testDate : undefined);
 
     // Birthday Blast
     const birthdayLangs = require("../data/birthday.json");
-    const flair = [
-      ":tada: ",
-      ":confetti_ball: ",
-      ":birthday: ",
-      ":gift: ",
-      ":cake: "
-    ];
+    const flair = ["🎉", "🎊", "🎂", "🎁", "🍰"];
 
     const bdays = testMember ?? await u.db.ign.findMany(guild.members.cache.map(m => m.id), "birthday");
     const celebrating = [];
+    const year = new Date().getFullYear();
     for (const birthday of bdays) {
       try {
-        const date = u.moment(new Date(birthday.ign + " 5:PM"));
+        const date = u.moment(`${birthday.ign} ${year} 15`, "MMM D YYYY-HH");
         if (checkDate(date, now, false)) {
           const member = guild.members.cache.get(birthday.discordId);
           celebrating.push(member);
-          const msgs = birthdayLangs.map(lang => member?.send(u.rand(flair) + lang));
+          const msgs = birthdayLangs.map(lang => member?.send(`${u.rand(flair)} ${lang}`));
           Promise.all(msgs).then(() => {
-            member?.send(":birthday: :confetti_ball: :tada: A very happy birthday to you, from LDS Gamers! :tada: :confetti_ball: :birthday:").catch(u.noop);
+            member?.send("🎂 🎊 🎉 A very happy birthday to you, from LDS Gamers! 🎉 🎊 🎂").catch(u.noop);
           }).catch(u.noop);
         }
       } catch (e) {
@@ -80,7 +76,7 @@ async function birthdays(testMember, testDate) {
  * @param {Date} [testDate]
  * @param {Discord.Collection<string, Discord.GuildMember>} [testMember]
  */
-async function cakeDays(testJoinDate, testDate, testMember) {
+async function cakeDays(testDate, testJoinDate, testMember) {
   try {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     const now = testDate ?? new Date();
@@ -120,6 +116,7 @@ async function cakeDays(testJoinDate, testDate, testMember) {
         .setTitle("Cake Days!")
         .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
         .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
+      if (testDate) embed.setDescription((embed.data.description ?? "") + " (Sorry if we're a bit late!)");
 
       for (let years = 0; years < celebrating.length; years++) {
         const cakeMembers = celebrating[years];
