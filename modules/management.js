@@ -8,13 +8,12 @@ const Augur = require("augurbot-ts"),
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runCakeday(int) {
-  const month = int.options.getString("month");
-  const day = int.options.getInteger("day");
-  if (month && day) {
-    const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
+  const dateInput = int.options.getString("date");
+  if (dateInput) {
+    const date = new Date(dateInput);
     date.setHours(10);
-    if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-    int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays(new Date(), date);
+    if (isNaN(date.valueOf())) return int.editReply("Sorry, but I couldn't understand that date.");
+    int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays(date);
   } else {
     int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays();
   }
@@ -23,13 +22,12 @@ function runCakeday(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runBirthday(int) {
-  const month = int.options.getString("month", true);
-  const day = int.options.getInteger("day", true);
-  if (month && day) {
-    const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
+  const dateInput = int.options.getString("date", true);
+  if (dateInput) {
+    const date = new Date(dateInput);
     date.setHours(10);
-    if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays(undefined, date);
+    if (isNaN(date.valueOf())) return int.editReply("Sorry, but I couldn't understand that date.");
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays(date);
   } else {
     int.client.moduleManager.shared.get("cake.js")?.shared.birthdays();
   }

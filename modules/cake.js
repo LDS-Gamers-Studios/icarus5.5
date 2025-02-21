@@ -25,10 +25,10 @@ function checkDate(date, today, checkYear) {
 
 /**
  * Provide testing parameters for testing which days work
- * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  * @param {Date|string} [testDate] fake date
+ * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  */
-async function birthdays(testMember, testDate) {
+async function birthdays(testDate, testMember) {
   // Send Birthday Messages, if saved by member
   try {
     const guild = Module.client.guilds.cache.get(u.sf.ldsg);
@@ -80,7 +80,7 @@ async function birthdays(testMember, testDate) {
  * @param {Date} [testDate]
  * @param {Discord.Collection<string, Discord.GuildMember>} [testMember]
  */
-async function cakeDays(testJoinDate, testDate, testMember) {
+async function cakeDays(testDate, testJoinDate, testMember) {
   try {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     const now = u.moment(testDate);
@@ -105,8 +105,12 @@ async function cakeDays(testJoinDate, testDate, testMember) {
           if (role) {
             const oldRole = u.db.sheets.roles.year.find(r => member.roles.cache.has(r.base.id) && r.base.id !== role.base.id);
             const roles = member.roles.cache.clone();
+
             if (oldRole) roles.delete(oldRole.base.id);
-            await member.roles.set([...roles.keys(), role.base.id]).catch(e => {
+            const newRoles = [...roles.keys()];
+            if (!roles.has(role.base.id)) newRoles.push(role.base.id);
+
+            await member.roles.set(newRoles).catch(e => {
               u.errorHandler(e, `Tenure Role Set (${member.displayName} - ${memberId})`);
               // eslint-disable-next-line no-console
               console.log([...roles.keys(), role.base.id]);
@@ -131,6 +135,7 @@ async function cakeDays(testJoinDate, testDate, testMember) {
         .setTitle("Cake Days!")
         .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
         .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
+      if (testDate) embed.setDescription((embed.data.description ?? "") + " (Sorry if we're a bit late!)");
 
       for (const [years, cakeMembers] of celebrating.sort((v1, v2, k1, k2) => k2 - k1)) {
         embed.addFields({ name: `${years} ${years > 1 ? "Years" : "Year"}`, value: cakeMembers.join("\n") });
@@ -149,7 +154,7 @@ Module.addEvent("ready", () => {
   enabled: config.devMode,
   hidden: true,
   process: (msg) => {
-    birthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
+    birthdays(new Date(), [{ discordId: msg.author.id, ign: new Date() }]);
   }
 })
 .addCommand({ name: "cakeday",
@@ -158,7 +163,7 @@ Module.addEvent("ready", () => {
   process: (msg, suffix) => {
     const date = u.moment();
     if (suffix) date.subtract(parseInt(suffix), "year");
-    cakeDays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
+    cakeDays(new Date(), date.toDate(), new u.Collection().set(msg.author.id, msg.member));
   }
 })
 .setClockwork(() => {
