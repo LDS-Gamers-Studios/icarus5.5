@@ -48,7 +48,7 @@ const models = {
      */
   addXp: async function(activity) {
     const xpBase = Math.floor(Math.random() * 3) + config.xp.base;
-    const included = await User.find({ discordId: { $in: [...activity.keys()] }, excludeXP: false }, undefined, { lean: true });
+    const included = await User.find({ discordId: { $in: [...activity.keys()] }, trackXP: { $ne: TrackXPEnum.OFF } }, undefined, { lean: true });
     const uniqueIncluded = new Set(included.map(u => u.discordId));
     await User.bulkWrite(
       activity.map((val, discordId) => {

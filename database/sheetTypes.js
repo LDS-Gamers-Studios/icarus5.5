@@ -68,4 +68,10 @@ const Discord = require("discord.js");
  * @prop { boolean } preferMedia
  */
 
+/**
+ * @typedef PlayingDefault
+ * @prop {string} channelId
+ * @prop {string} name
+ */
+
 module.exports = {};

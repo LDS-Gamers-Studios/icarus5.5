@@ -34,7 +34,8 @@ const works = {
 const manuals = new u.Collection([
   [2022, "old-testament-2022"],
   [2023, "new-testament-2023"],
-  [2024, "book-of-mormon-2024"]
+  [2024, "book-of-mormon-2024"],
+  [2025, "doctrine-and-covenants-2025"]
 ]);
 
 /**

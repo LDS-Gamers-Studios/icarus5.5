@@ -95,7 +95,7 @@ async function featherCheck(msg) {
     }).catch(u.noop);
 
     // oop we got a hit!
-    await reaction.users.remove(msg.client.user.id);
+    await reaction.remove();
     const finder = userReact?.first()?.users.cache.find(usr => !usr.bot);
     if (finder) {
       // give em ember if they didn't buy their way in
@@ -118,7 +118,7 @@ async function featherCheck(msg) {
           )
           .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in ${msg.url} and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
-        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed] });
+        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed], allowedMentions: { parse: ["users"] } });
       }
 
       // give em xp
@@ -328,23 +328,22 @@ Module.setUnload(() => active)
     if (!msg.inGuild() || !msg.poll || !(!msg.poll.resultsFinalized && newMsg.poll?.resultsFinalized) || msg.channel.type === Discord.ChannelType.GuildVoice) return;
 
     // people can only get xp once per poll. no multiple answers shenanigans
-    const sorted = [...newMsg.poll.answers.values()].sort((a, b) => a.voteCount - b.voteCount);
     const voters = new Set();
-    const hours = Math.max(1, u.moment(msg.poll.expiresTimestamp).diff(msg.createdTimestamp, "hours", false));
-    const voterCount = newMsg.poll.answers.reduce((p, c) => p + c.voteCount, 0);
+    const hours = Math.min(24 * 2, Math.max(1, u.moment(msg.poll.expiresTimestamp).diff(msg.createdTimestamp, "hours", false))) / 8;
+    const answers = await Promise.all(newMsg.poll.answers.map(s => s.fetchVoters()));
+    const voterCount = answers.reduce((p, c) => p + c.size, 0);
 
     // assign xp to people who voted, favoring those with the right answer
-    for (let i = 0; i < sorted.length; i++) {
-      const answer = sorted[i];
-      const people = await answer.fetchVoters();
-      if (answer.voteCount === 0) continue;
-      for (const [id, user] of people) {
-        if (!voters.has(user.id) && !user.bot && !user.system) {
-          voters.add(user.id);
+    for (const answer of answers) {
+      if (answer.size === 0) continue;
+      const percentage = answer.size / voterCount;
+      for (const [id, user] of answer) {
+        if (!voters.has(id) && !user.bot && !user.system) {
+          voters.add(id);
           // factor in the percentage of voters who voted for this and how long the poll lasted
           // for example, a 24hr 2 option poll with 1/3 voters for an option would give 11.8 to that person
           // the same situation with a a 1hr poll would give 1.45 to that person
-          const mult = (i + 1) * 0.3 * hours * ((people.size / voterCount) + 1) + 1;
+          const mult = hours * percentage + 1;
           addXp(id, mult, msg.channelId);
         }
       }
