@@ -32,5 +32,5 @@ module.exports = new u.cmd()
   .setDescription("See someone's avatar or apply a filter to it.")
   .addUserOption(user)
   .addStringOption(filter)
-  .setDMPermission(true)
+  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel, u.contexts.BotDM)
   .toJSON();

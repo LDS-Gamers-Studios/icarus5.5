@@ -78,7 +78,9 @@ function targetImg(int, size = 256) {
  */
 async function basicFilter(int, image, filter, params) {
   const { name, img } = image;
+  // @ts-ignore
   if (params) img[filter.toLowerCase()](...params);
+  // @ts-ignore
   else img[filter.toLowerCase()]();
   const output = await img.getBufferAsync(Jimp.MIME_PNG);
   return await sendImg(int, output, `${filter} ${name}`);

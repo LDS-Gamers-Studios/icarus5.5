@@ -8,7 +8,7 @@ const axios = require("axios");
 function request(path, params) {
   // @ts-ignore
   return axios(`https://${path}`, { params })
-    .then(a => a.data);
+    .then((/** @type {{ data: any }} */ a) => a.data);
 }
 
 /**
@@ -31,11 +31,7 @@ function request(path, params) {
  * @prop {string} name
  * @prop {number} id
  * @prop {boolean} requirePermit
- * @prop {Object | null} information
- * @prop {string} information.faction
- * @prop {string} information.allegiance
- * @prop {string} information.government
- * @prop {number} information.population
+ * @prop {{ faction: string, allegiance: string, government: string, population: string } | null} information
  * @prop {{ isScoopable: boolean, type: string, name: string }} primaryStar
  * @prop {Body[]} bodies
  * @prop {Station[]} stations
