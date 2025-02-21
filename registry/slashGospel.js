@@ -25,9 +25,10 @@ const verse = new u.sub()
       .setRequired(false)
   );
 
-const comefollowme = new u.sub()
-  .setName("comefollowme")
-  .setDescription("Get the current Come Follow Me lesson");
+// broken unless we want to maintain a JSON of links
+// const comefollowme = new u.sub()
+//   .setName("comefollowme")
+//   .setDescription("Get the current Come Follow Me lesson");
 
 const news = new u.sub()
   .setName("news")
@@ -37,6 +38,6 @@ module.exports = new u.cmd()
   .setName("gospel")
   .setDescription("Search gospel topics")
   .addSubcommand(verse)
-  .addSubcommand(comefollowme)
+  // .addSubcommand(comefollowme)
   .addSubcommand(news)
   .toJSON();
