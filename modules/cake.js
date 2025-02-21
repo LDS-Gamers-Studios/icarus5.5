@@ -38,25 +38,19 @@ async function birthdays(testDate, testMember) {
 
     // Birthday Blast
     const birthdayLangs = require("../data/birthday.json");
-    const flair = [
-      ":tada: ",
-      ":confetti_ball: ",
-      ":birthday: ",
-      ":gift: ",
-      ":cake: "
-    ];
+    const flair = ["🎉", "🎊", "🎂", "🎁", "🍰"];
 
     const bdays = testMember ?? await u.db.ign.findMany(guild.members.cache.map(m => m.id), "birthday");
     const celebrating = [];
     for (const birthday of bdays) {
       try {
-        const date = u.moment(new Date(birthday.ign + " 5:PM"));
+        const date = u.moment(birthday.ign + "T15:00");
         if (checkDate(date, now, false)) {
           const member = guild.members.cache.get(birthday.discordId);
           celebrating.push(member);
-          const msgs = birthdayLangs.map(lang => member?.send(u.rand(flair) + lang));
+          const msgs = birthdayLangs.map(lang => member?.send(`${u.rand(flair)} ${lang}`));
           Promise.all(msgs).then(() => {
-            member?.send(":birthday: :confetti_ball: :tada: A very happy birthday to you, from LDS Gamers! :tada: :confetti_ball: :birthday:").catch(u.noop);
+            member?.send("🎂 🎊 🎉 A very happy birthday to you, from LDS Gamers! 🎉 🎊 🎂").catch(u.noop);
           }).catch(u.noop);
         }
       } catch (e) {
