@@ -115,9 +115,6 @@ async function cakedays(testDate, testJoinDate, testMember) {
         }
       }// maybe check if they have all of the year roles and such and yell at someone if they don't
     }
-    console.log(cantRoleAddErrors);
-    console.log(cantRoleRemErrors);
-    console.log(missingRoleErrors);
     if (cantRoleAddErrors.size > 0) { cantRoleAddErrors.forEach((members, role) => u.errorHandler(new Error("Cakedays Couldn't upgrade the following members to the " + role.toString() + " Role: \n" + members.map((m) => m.toString()).join("\n")))); }
     if (cantRoleRemErrors.size > 0) { cantRoleRemErrors.forEach((members, role) => u.errorHandler(new Error("Cakedays Couldn't remove the following members from the " + role.toString() + " Role: \n" + members.map((m) => m.toString()).join("\n")))); }
     if (missingRoleErrors.size > 0) { missingRoleErrors.forEach((members, year) => u.errorHandler(new Error("Cakedays Couldn't find the Year role number " + year + " to give to these members: \n" + members.map((m) => m.toString()).join("\n")))); }
