@@ -83,60 +83,51 @@ async function birthdays(testMember, testDate) {
 async function cakeDays(testJoinDate, testDate, testMember) {
   try {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
-    const now = u.moment(testDate);
-    if (!ldsg) return u.errorHandler(new Error("LDSG is unavailable???"));
-
-    const members = testMember ?? await ldsg.members.fetch().catch(u.noop) ?? ldsg.members.cache;
-    const offsets = await u.db.user.getUsers({ discordId: { $in: [...members.keys()] }, priorTenure: { $gt: 0 } });
-
-    /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
-    const celebrating = new u.Collection();
-
-    const unknownYears = new Set();
-    const unapplied = [];
-    for (const [memberId, member] of members.filter(m => m.roles.cache.has(u.sf.roles.moderation.trusted))) {
-      try {
-        const offset = offsets.find(o => o.discordId === memberId);
-        const join = u.moment(testJoinDate ?? member.joinedAt ?? 0).subtract(offset?.priorTenure || 0, "days");
-        if (checkDate(join, now, true)) {
-          const years = now.year() - join.year();
-          // yell at devs if not
-          const role = u.db.sheets.roles.year.get(years);
-          if (role) {
-            const oldRole = u.db.sheets.roles.year.find(r => member.roles.cache.has(r.base.id) && r.base.id !== role.base.id);
-            const roles = member.roles.cache.clone();
-            if (oldRole) roles.delete(oldRole.base.id);
-            await member.roles.set([...roles.keys(), role.base.id]).catch(e => {
-              u.errorHandler(e, `Tenure Role Set (${member.displayName} - ${memberId})`);
-              // eslint-disable-next-line no-console
-              console.log([...roles.keys(), role.base.id]);
-            });
-          } else {
-            unknownYears.add(years);
-            unapplied.push(member);
-          }
-          if (celebrating.has(years)) celebrating.get(years)?.push(member);
-          else celebrating.set(years, [member]);
+    const now = testDate ?? new Date();
+    const trusted = await ldsg?.roles.fetch(u.sf.roles.moderation.trusted);
+    const membersToCheck = testMember ? testMember : trusted?.members ?? [];
+    /** @type {Discord.Collection<string, number>} */
+    const memberPreviousJoinPeriodsAkaPrevTenure = new u.Collection();
+    (await u.db.user.getUsers({ discordId: { $in: [...membersToCheck.keys()] }, priorTenure: { $gt: 0 } }))
+      .forEach((value) => {
+        memberPreviousJoinPeriodsAkaPrevTenure.set(value.discordId, value.priorTenure);
+      });
+    /** @type {Discord.GuildMember[][]} */
+    const celebrating = [];
+    for (const [memberId, member] of membersToCheck) {
+      const joinDate = u.moment(testJoinDate ?? member.joinedAt ?? now);
+      const timeSinceLastReJoin = u.moment(now).diff(joinDate, "days");
+      const priorTime = memberPreviousJoinPeriodsAkaPrevTenure.get(memberId) ?? 0;// days
+      const totalTime = timeSinceLastReJoin + priorTime;
+      const years = Math.floor(totalTime / 365.0);
+      const daysIntoThisYear = totalTime - (years * 365);
+      if (daysIntoThisYear < 1 && years > 0) {
+        const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
+        const previousYearRole = u.db.sheets.roles.year.get(years - 1)?.base;
+        if (currentYearRole === undefined && years !== 0) { throw new Error("It is currently " + new Date() + " and " + member.user.username + " has been here " + years + " years and there isn't a role for them."); }
+        if (currentYearRole && !currentYearRole.members.has(memberId)) {
+          member.roles.add(currentYearRole).catch(() => u.errorHandler(new Error("Cakedays Couldn't upgrade <@" + member + "> to the " + currentYearRole.toString() + " Role")));
+          if (previousYearRole) (member.roles.remove(previousYearRole).catch(() => u.errorHandler(new Error("Cakedays Couldn't remove <@" + member + "> from their old " + previousYearRole.toString() + " Role"))));
         }
-      } catch (e) {
-        u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`);
-        continue;
-      }
+        celebrating.length = Math.max(celebrating.length, years + 1);
+        if (celebrating[years]) {
+          celebrating[years].push(member);
+        } else {celebrating[years] = [member];}
+      }// maybe check if they have all of the year roles and such and yell at someone if they don't
     }
-    if (unknownYears.size > 0) {
-      ldsg.client.getTextChannel(u.sf.channels.botTesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
-    }
-    if (celebrating.size > 0) {
+    if (celebrating.length >= 1) {
       const embed = u.embed()
         .setTitle("Cake Days!")
         .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
         .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
 
-      for (const [years, cakeMembers] of celebrating.sort((v1, v2, k1, k2) => k2 - k1)) {
-        embed.addFields({ name: `${years} ${years > 1 ? "Years" : "Year"}`, value: cakeMembers.join("\n") });
+      for (let years = 0; years < celebrating.length; years++) {
+        const cakeMembers = celebrating[years];
+        if (cakeMembers) {
+          embed.addFields({ name: `${years} ${years < 1 ? "Years, First Day!!!" : years < 2 ? "Year" : "Years"}`, value: cakeMembers.join("\n") });
+        }
       }
-
-      const allMentions = [...celebrating.values()].flat().map(c => c.toString());
+      const allMentions = [...celebrating.values()].flat().map(c => c?.toString());
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ content: allMentions.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
     }
   } catch (e) { u.errorHandler(e, "Cake Days"); }
@@ -145,31 +136,33 @@ async function cakeDays(testJoinDate, testDate, testMember) {
 Module.addEvent("ready", () => {
   celebrate();
 })
-.addCommand({ name: "bday",
-  enabled: config.devMode,
-  hidden: true,
-  process: (msg) => {
-    birthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
-  }
-})
-.addCommand({ name: "cakeday",
-  enabled: config.devMode,
-  hidden: true,
-  process: (msg, suffix) => {
-    const date = u.moment();
-    if (suffix) date.subtract(parseInt(suffix), "year");
-    cakeDays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
-  }
-})
-.setClockwork(() => {
-  return setInterval(() => {
-    try {
-      celebrate();
-    } catch (error) {
-      u.errorHandler(error, "Birthday Clockwork Error");
+  .addCommand({
+    name: "bday",
+    enabled: config.devMode,
+    hidden: true,
+    process: (msg) => {
+      birthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
     }
-  }, 60 * 60 * 1000);
-})
-.addShared("cake.js", { cakeDays, birthdays, celebrate });
+  })
+  .addCommand({
+    name: "cakeday",
+    enabled: config.devMode,
+    hidden: true,
+    process: (msg, suffix) => {
+      const date = u.moment();
+      if (suffix) date.subtract(parseInt(suffix), "year");
+      cakeDays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
+    }
+  })
+  .setClockwork(() => {
+    return setInterval(() => {
+      try {
+        celebrate();
+      } catch (error) {
+        u.errorHandler(error, "Birthday Clockwork Error");
+      }
+    }, 60 * 60 * 1000);
+  })
+  .addShared("cake.js", { cakeDays, birthdays, celebrate });
 
 module.exports = Module;

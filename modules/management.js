@@ -14,7 +14,7 @@ function runCakeday(int) {
     const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-    int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays(new Date(), date);
+    int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays(undefined, date);
   } else {
     int.client.moduleManager.shared.get("cake.js")?.shared.cakeDays();
   }
