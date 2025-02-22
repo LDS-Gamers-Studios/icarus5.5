@@ -3,13 +3,16 @@
 const config = require("./config/config.json"),
   path = require("path"),
   fs = require("fs"),
+  Discord = require("discord.js"),
   axios = require("axios");
 
+/** @type {string} */
 const ldsg = require(`./config/snowflakes${config.devMode ? "-testing" : ""}.json`).ldsg;
 
 /************************
  * BEGIN "CONFIG" BLOCK *
  ************************/
+
 const globalCommandFiles = [
   "messageBookmark.js",
   "slashAvatar.js",
@@ -18,6 +21,7 @@ const globalCommandFiles = [
 
 const guildCommandFiles = [
   "messageMod.js",
+  "messageEdit.js",
   "slashBank.js",
   "slashBot.js",
   "slashGame.js",
@@ -33,16 +37,19 @@ const guildCommandFiles = [
   "userMod.js"
 ];
 
-// haven't made this yet
-// if (!config.devMode) guildCommandFiles.push("slashBotHidden-.js"); // secret commands >:)
-
 /**********************
  * END "CONFIG" BLOCK *
  **********************/
 
 /**
- * @typedef ReturnedCommand
- * @prop {{type: number, id: string, name: string}[]} data
+ * @typedef RegisteredCommand
+ * @prop {number} type
+ * @prop {string} id
+ * @prop {string} name
+ */
+
+/**
+ * @typedef {Discord.RESTPostAPIChatInputApplicationCommandsJSONBody | Discord.RESTPostAPIContextMenuApplicationCommandsJSONBody} RegFile
  */
 
 /** @param {number} typeId */
@@ -87,65 +94,73 @@ function displayError(error) {
   process.exit();
 }
 
+/**
+ * @param {string[]} filepaths
+ * @param {boolean} global
+ */
+async function patch(filepaths, global) {
+  const commandPath = path.resolve(require.main ? path.dirname(require.main.filename) : process.cwd(), "./registry");
+
+  /** @type {RegFile[]} */
+  const data = [];
+  for (const file of filepaths) {
+    /** @type {RegFile} */
+    const load = require(path.resolve(commandPath, file));
+    data.push(load);
+  }
+
+  /** @type {{ data: RegisteredCommand[] } | void} */
+  // @ts-expect-error
+  const registered = await axios({
+    method: "put",
+    url: `https://discord.com/api/v8/applications/${config.applicationId}${global ? "" : `/guilds/${ldsg}`}/commands`,
+    headers: { Authorization: `Bot ${config.token}` },
+    data
+  }).catch(displayError);
+
+  if (registered) {
+    console.log(`=====${global ? "Global" : "Guild"} commands registered=====`);
+    const cmds = registered.data;
+    console.log(cmds.map(c => {
+      const commandType = getCommandType(c.type);
+      return `${c.name} (${commandType}): ${c.id}`;
+    }));
+  }
+
+  return registered?.data;
+}
+
 async function register() {
   const applicationId = config.applicationId;
   if (!applicationId) return console.log("Please put your application ID in config/config.json\nYou can find the ID here:\nhttps://discord.com/developers/applications");
-  const commandPath = path.resolve(require.main ? path.dirname(require.main.filename) : process.cwd(), "./registry");
 
-  const guildCommandLoads = [];
-  for (const command of guildCommandFiles) {
-    const load = require(path.resolve(commandPath, command));
-    guildCommandLoads.push(load);
-  }
-  // @ts-expect-error
-  const guild = await axios({
-    method: "put",
-    url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${ldsg}/commands`,
-    headers: { Authorization: `Bot ${config.token}` },
-    data: guildCommandLoads
-  }).catch(displayError);
-  if (guild) {
-    console.log("=====Guild commands registered=====");
-    const cmds = guild.data;
-    for (const c of cmds) {
-      const commandType = getCommandType(c.type);
-      console.log(`${c.name} (${commandType}): ${c.id}`);
-    }
-  }
+  const guild = await patch(guildCommandFiles, false) ?? [];
+  const global = await patch(globalCommandFiles, true) ?? [];
 
-  const globalCommandLoads = [];
-  for (const command of globalCommandFiles) {
-    const load = require(path.resolve(commandPath, command));
-    globalCommandLoads.push(load);
-  }
-  /** @type {ReturnedCommand|void} */
-  // @ts-expect-error
-  const global = await axios({
-    method: "put",
-    url: `https://discord.com/api/v8/applications/${applicationId}/commands`,
-    headers: { Authorization: `Bot ${config.token}` },
-    data: globalCommandLoads
-  }).catch(displayError);
-  if (global) {
-    console.log("=====Global commands registered=====");
-    const cmds = global.data;
-    for (const c of cmds) {
-      const commandType = getCommandType(c.type);
-      console.log(`${c.name} (${commandType}): ${c.id}`);
-    }
-  }
-  const files = { commands: Object.fromEntries((global?.data ?? []).concat(guild?.data ?? []).map(cmd => {
-    return [
-      `${getCommandType(cmd.type)}${cmd.name[0].toUpperCase()}${cmd.name.substring(1).toLowerCase()}`,
-      cmd.id
-    ];
-  }).sort((a, b) => a[0].localeCompare(b[0]))) };
-  fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands.json"), JSON.stringify(files, null, 2));
+  /** @type {Record<string, string>} */
+  const commands = Object.fromEntries(
+    global.concat(guild)
+      // turn into camel case
+      .map(cmd => {
+        const name = cmd.name.split(" ")
+          .map(n => n[0].toUpperCase() + n.slice(1).toLowerCase())
+          .join("");
+        return [`${getCommandType(cmd.type)}${name}`, cmd.id];
+      })
+      .sort((a, b) => a[0].localeCompare(b[0]))
+  );
+
+  fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands.json"), JSON.stringify({ commands }, null, 2));
+
+  // write new example file commands only if there are new ones
+  // this prevents weirdness with git
   const oldExample = require("./config/snowflakes-commands-example.json");
   const oldKeys = Object.keys(oldExample.commands);
-  const newKeys = Object.keys(files.commands);
+  const newKeys = Object.keys(commands);
   const diff = oldKeys.filter(c => !newKeys.includes(c)).concat(newKeys.filter(c => !oldKeys.includes(c)));
+
   if (diff.length > 0) fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands-example.json"), JSON.stringify({ commands: Object.fromEntries(newKeys.map(f => [f, ""])) }, null, 2));
+
   console.log("Command snowflake files updated");
   process.exit();
 }

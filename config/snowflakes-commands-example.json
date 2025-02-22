@@ -1,6 +1,7 @@
 {
   "commands": {
     "messageBookmark": "",
+    "messageEditMessage": "",
     "messageModeration": "",
     "slashAvatar": "",
     "slashBank": "",
