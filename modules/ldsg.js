@@ -4,8 +4,9 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   /** @type {string[]} */
   banned = require("../data/banned.json").features.suggestions;
-const hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/,
-  affiliateLinks = {
+
+const hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/;
+const affiliateLinks = {
   //  amazon: { //Functionality can be renabled if amazon will let us get a affiliate
     //  site: "Amazon",
     //  affiliate: "Amazon Affiliate",
