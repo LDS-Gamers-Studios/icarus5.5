@@ -2,6 +2,7 @@ name: Update from Upstream
 on:
   workflow_dispatch:
   push:
+    branches: toPrivateRickAndSteph
 jobs:
   update:
     name: Pull current status
