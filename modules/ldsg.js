@@ -7,28 +7,28 @@ const Augur = require("augurbot-ts"),
 
 const hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/;
 const affiliateLinks = {
-  //  amazon: { //Functionality can be renabled if amazon will let us get a affiliate
-    //  site: "Amazon",
-    //  affiliate: "Amazon Affiliate",
-    //  test: /amazon\.(com|co\.uk)\/(\w+(-\w+)*\/)?(gp\/product|dp)\/(\w+)/i,
-    //  tag: /tag=ldsgamers-20/,
-    //  link: (match) => `https://www.${match[0]}?tag=ldsgamers-20`
+// amazon: { //Functionality can be renabled if amazon will let us get a affiliate
+  //  site: "Amazon",
+  //  affiliate: "Amazon Affiliate",
+  //  test: /amazon\.(com|co\.uk)\/(\w+(-\w+)*\/)?(gp\/product|dp)\/(\w+)/i,
+  //  tag: /tag=ldsgamers-20/,
+  //  link: (match) => `https://www.${match[0]}?tag=ldsgamers-20`
   //  },
-    cdkeys: {
-      site: "CDKeys.com",
-      affiliate: "CDKeys Affiliate",
-      test: /cdkeys\.com(\/\w+(-\w+)*)*/i,
-      tag: /mw_aref=LDSGamers/i,
-      link: match => `https://www.${match[0]}?mw_aref=LDSGamers`
-    },
-  // humblebundle: {
-    // site: "Humble Bundle",
-    //  affiliate: "Humble Bundle Partner",
-    //  test: /humblebundle\.com(\/\w+(-\w+)*)*/i,
-    //  tag: /partner=ldsgamers/i,
-    //  link: (match) => `https://www.${match[0]}?partner=ldsgamers`
-  // },
-  };
+  cdkeys: {
+    site: "CDKeys.com",
+    affiliate: "CDKeys Affiliate",
+    test: /cdkeys\.com(\/\w+(-\w+)*)*/i,
+    tag: /mw_aref=LDSGamers/i,
+    link: match => `https://www.${match[0]}?mw_aref=LDSGamers`
+  },
+// humblebundle: {
+  // site: "Humble Bundle",
+  //  affiliate: "Humble Bundle Partner",
+  //  test: /humblebundle\.com(\/\w+(-\w+)*)*/i,
+  //  tag: /partner=ldsgamers/i,
+  //  link: (match) => `https://www.${match[0]}?partner=ldsgamers`
+// },
+};
 function processLinks(msg) {
   for (const x in affiliateLinks) {
     const site = affiliateLinks[x];
