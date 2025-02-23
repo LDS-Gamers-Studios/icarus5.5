@@ -206,11 +206,11 @@ const Module = new Augur.Module()
       default: return;
     }
   })
-    .addEvent("messageCreate", (msg) => {
-      if (hasLink.test(msg.cleanContent)) {
-        processLinks(msg);
-      }
-    });
+  .addEvent("messageCreate", (msg) => {
+    if (hasLink.test(msg.cleanContent)) {
+      processLinks(msg);
+    }
+  });
 
 module.exports = Module;
 
