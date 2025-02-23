@@ -1,0 +1,59 @@
+name: Update from Upstream
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  update:
+    name: Pull current status
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with: 
+        fetch-depth: 0
+    - name: Check and merge from upstream
+      run: |
+        # This is where the magic happens
+        date
+        echo Configuring Git
+        git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/Steph
+        git config --global user.email "${{ secrets.EMAIL }}"
+        git config --global user.name "upstreamPuller"
+      
+        echo Fetching
+        git fetch origin main
+      
+        echo Upstream
+        git remote add upstream https://github.com/LDS-Gamers-Studios/icarus5.5.git
+      
+        echo Fetching
+        git fetch upstream
+      
+        echo TryMerge
+        git merge --no-commit upstream/main 2>&1
+        # and recording the output for in a moment
+        merge_result=$(git merge --no-commit upstream/main 2>&1) # Use upstream/main
+        
+        echo Results...
+        if [[ "$merge_result" =~ "Automatic merge failed" || "$merge_result" =~ "CONFLICT" ]]; then
+          echo "Conflicts detected during simulated merge with upstream main."
+          echo "$merge_result" # Print the merge result (including conflicts)
+          echo "Performing action for conflicts..."
+          # I would potentially email the owner or something here
+          # Create a pull request (more complex, requires GitHub API)
+          
+        elif [[ "$merge_result" =~ "Already up to date" ]]; then
+          echo "No upstream changes detected, this was all useless."
+          echo "If someone wants to make this eventuality not happen, perhaps let workflows run when an update to another repository happens."
+          
+        else
+          echo "No conflicts detected during sim. Actually merging..."
+          git merge upstream/main || { echo "Error: Merge failed."; exit 1; }
+          git commit -m "Merged from upstream on "$(date) || { echo "Error: Commit failed."; exit 1; }
+          git push origin main || { echo "Error: Push failed."; exit 1; } # Push to your repo
+      
+          echo "Performing action for no conflicts..."
+          # Example: Run tests (replace with your desired command)
+          # I would potentially build and release here, but thats hard.
+          # ...
+      
+        fi
