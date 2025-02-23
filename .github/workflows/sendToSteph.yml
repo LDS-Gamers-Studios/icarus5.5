@@ -15,7 +15,7 @@ jobs:
         # This is where the magic happens
         date
         echo Configuring Git
-        git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/Steph
+        git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/j-romchain/Steph
         git config --global user.email "${{ secrets.EMAIL }}"
         git config --global user.name "upstreamPuller"
       
