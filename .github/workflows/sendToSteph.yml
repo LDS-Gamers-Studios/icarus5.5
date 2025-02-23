@@ -1,33 +1,31 @@
-name: Update from Upstream
+name: Send to Steph
 on:
   workflow_dispatch:
   push:
     branches: toPrivateRickAndSteph
 jobs:
   update:
-    name: Pull current status
+    name: SendToSteph
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with: 
-        fetch-depth: 0
-    - name: Check and merge from upstream
+    - name: Merge to Steph
       run: |
         # This is where the magic happens
         date
-        echo Configuring Git
-        git remote set-url origin https://github.com/j-romchain/Steph.git
+        echo Configuring
         #${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@
         git config --global user.email "${{ secrets.EMAIL }}"
         git config --global user.name "upstreamPuller"
-      
-        echo Fetching
-        git fetch origin main
-      
-        echo Upstream
+
+        echo Cloning Steph
+        git clone https://github.com/j-romchain/Steph.git
+        echo CDing
+        cd Steph
+          
+        echo Adding Self as upstream
         git remote add upstream https://github.com/LDS-Gamers-Studios/icarus5.5.git
       
-        echo Fetching
+        echo Fetching Self
         git fetch upstream
       
         echo TryMerge
@@ -50,7 +48,7 @@ jobs:
         else
           echo "No conflicts detected during sim. Actually merging..."
           git merge upstream/main || { echo "Error: Merge failed."; exit 1; }
-          git commit -m "Merged from upstream on "$(date) || { echo "Error: Commit failed."; exit 1; }
+          git commit -m "Merged from icarus5.5 on "$(date) || { echo "Error: Commit failed."; exit 1; }
           git push origin main || { echo "Error: Push failed."; exit 1; } # Push to your repo
       
           echo "Performing action for no conflicts..."
