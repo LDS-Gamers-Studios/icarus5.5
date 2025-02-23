@@ -4,6 +4,39 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   /** @type {string[]} */
   banned = require("../data/banned.json").features.suggestions;
+const hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/,
+  affiliateLinks = {
+  //  amazon: { //Functionality can be renabled if amazon will let us get a affiliate
+    //  site: "Amazon",
+    //  affiliate: "Amazon Affiliate",
+    //  test: /amazon\.(com|co\.uk)\/(\w+(-\w+)*\/)?(gp\/product|dp)\/(\w+)/i,
+    //  tag: /tag=ldsgamers-20/,
+    //  link: (match) => `https://www.${match[0]}?tag=ldsgamers-20`
+  //  },
+    cdkeys: {
+      site: "CDKeys.com",
+      affiliate: "CDKeys Affiliate",
+      test: /cdkeys\.com(\/\w+(-\w+)*)*/i,
+      tag: /mw_aref=LDSGamers/i,
+      link: match => `https://www.${match[0]}?mw_aref=LDSGamers`
+    },
+  // humblebundle: {
+    // site: "Humble Bundle",
+    //  affiliate: "Humble Bundle Partner",
+    //  test: /humblebundle\.com(\/\w+(-\w+)*)*/i,
+    //  tag: /partner=ldsgamers/i,
+    //  link: (match) => `https://www.${match[0]}?partner=ldsgamers`
+  // },
+  };
+function processLinks(msg) {
+  for (const x in affiliateLinks) {
+    const site = affiliateLinks[x];
+    const match = site.test.exec(msg.cleanContent);
+    if (match && !site.tag.test(msg.cleanContent)) {
+      msg.channel.send(`You can help LDSG by using our ${site.affiliate} [Link](${site.link(match)})`);
+    }
+  }
+}
 
 // suggestion modals
 const replyModal = new u.Modal().addComponents(
@@ -172,7 +205,12 @@ const Module = new Augur.Module()
       case "suggestionManage": return suggestManage(int);
       default: return;
     }
-  });
+  })
+    .addEvent("messageCreate", (msg) => {
+      if (hasLink.test(msg.cleanContent)) {
+        processLinks(msg);
+      }
+    });
 
 module.exports = Module;
 
