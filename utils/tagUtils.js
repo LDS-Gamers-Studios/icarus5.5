@@ -13,7 +13,7 @@ function encodeTag(tag, msg, int) {
   let response = tag.response;
   const user = msg?.inGuild() ? msg.member : int?.inCachedGuild() ? int.member : int?.user ?? msg?.author ?? null;
   const origin = msg ?? int;
-  if (!user || !origin) return "I couldn't process that command!";
+  if (!user || !origin) return { content: "I couldn't process that command!" };
   let target = msg?.mentions.members?.first() || msg?.mentions.users.first();
   if (response) {
     const randomChannels = origin.guild ? origin.guild.channels.cache.filter(c =>
@@ -34,7 +34,7 @@ function encodeTag(tag, msg, int) {
 
     if ((/(<@target>)|(<@targetname>)/ig).test(response)) {
       if (!origin.guild) target ??= origin.client.user;
-      if (!target) return "You need to `@mention` a user with that command!";
+      if (!target) return { content: "You need to `@mention` a user with that command!" };
       response = response
         .replace(/<@target>/ig, target.toString())
         .replace(/<@targetname>/ig, target.displayName);

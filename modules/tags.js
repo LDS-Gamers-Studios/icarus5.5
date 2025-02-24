@@ -32,7 +32,7 @@ function runTag(msg) {
   if (!tag) return;
 
   const encoded = tu.encodeTag(tag, msg);
-  msg.channel.send(encoded).then((/** @type {Discord.Message} */ m) => {
+  msg.reply({ ...encoded, allowedMentions: { parse: [] } }).then((/** @type {Discord.Message} */ m) => {
     if (typeof encoded === "string") u.clean(m);
   }).catch(u.noop);
 }
