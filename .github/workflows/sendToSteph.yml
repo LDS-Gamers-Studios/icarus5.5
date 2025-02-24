@@ -30,13 +30,13 @@ jobs:
         git fetch upstream
       
         echo TryMerge
-        git merge --no-commit upstream/main 2>&1
+        git merge --no-commit upstream/toPrivateRickAndSteph 2>&1
         # and recording the output for in a moment
-        merge_result=$(git merge --no-commit upstream/main 2>&1) # Use upstream/main
+        merge_result=$(git merge --no-commit upstream/toPrivateRickAndSteph 2>&1) # Use upstream/toPrivateRickAndSteph
         
         echo Results...
         if [[ "$merge_result" =~ "Automatic merge failed" || "$merge_result" =~ "CONFLICT" ]]; then
-          echo "Conflicts detected during simulated merge with upstream main."
+          echo "Conflicts detected during simulated merge with upstream toPrivateRickAndSteph."
           echo "$merge_result" # Print the merge result (including conflicts)
           echo "Performing action for conflicts..."
           # I would potentially email the owner or something here
@@ -48,7 +48,7 @@ jobs:
           
         else
           echo "No conflicts detected during sim. Actually merging..."
-          git merge upstream/main || { echo "Error: Merge failed."; exit 1; }
+          git merge upstream/toPrivateRickAndSteph || { echo "Error: Merge failed."; exit 1; }
           git commit -m "Merged from icarus5.5 on "$(date) || { echo "Error: Commit failed."; exit 1; }
           git push origin main || { echo "Error: Push failed."; exit 1; } # Push to your repo
       
