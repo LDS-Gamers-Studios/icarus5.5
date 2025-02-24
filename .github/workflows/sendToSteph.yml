@@ -24,7 +24,7 @@ jobs:
         cd Steph
           
         echo Adding Self as upstream
-        git remote add upstream https://github.com/LDS-Gamers-Studios/icarus5.5.git
+        git remote add upstream https://github.com/j-romchain/icarus5.5.git
       
         echo Fetching Self
         git fetch upstream
