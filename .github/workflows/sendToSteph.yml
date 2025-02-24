@@ -23,8 +23,9 @@ jobs:
         echo CDing
         cd Steph
           
-        echo Adding Self as upstream
+        echo Adding Self as upstream and a copy of remote fork as forky
         git remote add upstream https://github.com/j-romchain/icarus5.5.git
+        git remote add forky "https://${{ secrets.GHTOKEN }}@github.com/j-romchain/Steph.git"
       
         echo Fetching Self
         git fetch upstream
@@ -50,7 +51,7 @@ jobs:
           echo "No conflicts detected during sim. Actually merging..."
           git merge upstream/toPrivateRickAndSteph || { echo "Error: Merge failed."; exit 1; }
           git commit -m "Merged from icarus5.5 on $(date)" || { echo "Error: Commit failed."; exit 1; }
-          git push origin main || { echo "Error: Push failed."; exit 1; } # Push to your repo
+          git push forky main || { echo "Error: Push failed."; exit 1; } # Push to your repo
       
           echo "Performing action for no conflicts..."
           # Example: Run tests (replace with your desired command)
