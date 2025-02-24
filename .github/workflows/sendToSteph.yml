@@ -19,7 +19,7 @@ jobs:
         git config --global user.name "upstreamPuller"
 
         echo Cloning Steph
-        git clone "https://{{ secrets.GHTOKEN }}@github.com/j-romchain/Steph.git"
+        git clone "https://${{ secrets.GHTOKEN }}@github.com/j-romchain/Steph.git"
         echo CDing
         cd Steph
           
