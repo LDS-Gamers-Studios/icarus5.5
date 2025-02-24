@@ -48,8 +48,8 @@ jobs:
           
         else
           echo "No conflicts detected during sim. Actually merging..."
-          git merge upstream/toPrivateRickAndSteph || { echo "Error: Merge failed."; exit 1; }
-          git commit -m "Merged from icarus5.5 on "$(date) || { echo "Error: Commit failed."; exit 1; }
+          # git merge upstream/toPrivateRickAndSteph || { echo "Error: Merge failed."; exit 1; }
+          git commit -m "Merged from icarus5.5 on $(date)" || { echo "Error: Commit failed."; exit 1; }
           git push origin main || { echo "Error: Push failed."; exit 1; } # Push to your repo
       
           echo "Performing action for no conflicts..."
