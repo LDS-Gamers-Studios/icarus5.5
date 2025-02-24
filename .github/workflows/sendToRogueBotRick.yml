@@ -1,0 +1,61 @@
+name: Send to RogueBotRick
+on:
+  workflow_dispatch:
+  push:
+    branches: toPrivateRickAndSteph
+jobs:
+  update:
+    name: SendToRogueBotRick
+    runs-on: ubuntu-latest
+    steps:
+    - name: Merge to RogueBotRick
+      run: |
+        # This is where the magic happens
+        date
+        echo Configuring
+        #${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@
+        #${{ secrets.GHTOKEN }}@
+        git config --global user.email "${{ secrets.EMAIL }}"
+        git config --global user.name "upstreamPuller"
+
+        echo Cloning RogueBotRick
+        git clone "https://${{ secrets.GHTOKEN }}@github.com/j-romchain/RogueBotRick.git"
+        echo CDing
+        cd RogueBotRick
+          
+        echo Adding Self as upstream and a copy of remote fork as forky
+        git remote add upstream https://github.com/j-romchain/icarus5.5.git
+        git remote add forky "https://${{ secrets.GHTOKEN }}@github.com/j-romchain/RogueBotRick.git"
+      
+        echo Fetching Self
+        git fetch upstream
+      
+        echo TryMerge
+        # git merge --no-commit upstream/toPrivateRickAndSteph 2>&1
+        # and recording the output for in a moment
+        merge_result=$(git merge -m "Merged from icarus5.5 on $(date)" upstream/toPrivateRickAndSteph 2>&1) # Use upstream/toPrivateRickAndSteph
+        echo $merge_result
+        echo Results...
+        if [[ "$merge_result" =~ "Automatic merge failed" || "$merge_result" =~ "CONFLICT" ]]; then
+          echo "Conflicts detected during simulated merge with upstream toPrivateRickAndSteph."
+          echo "$merge_result" # Print the merge result (including conflicts)
+          echo "Performing action for conflicts..."
+          # I would potentially email the owner or something here
+          # Create a pull request (more complex, requires GitHub API)
+          
+        elif [[ "$merge_result" =~ "Already up to date" ]]; then
+          echo "No upstream changes detected, this was all useless."
+          echo "If someone wants to make this eventuality not happen, perhaps let workflows run when an update to another repository happens."
+          
+        else
+          echo "No conflicts detected during sim. Actually merging..."
+          # git merge upstream/toPrivateRickAndSteph || { echo "Error: Merge failed."; exit 1; }
+          # git commit -m "Merged from icarus5.5 on $(date)" || { echo "Error: Commit failed."; exit 1; }
+          git push forky main || { echo "Error: Push failed."; exit 1; } # Push to your repo
+      
+          echo "Performing action for no conflicts..."
+          # Example: Run tests (replace with your desired command)
+          # I would potentially build and release here, but thats hard.
+          # ...
+      
+        fi
