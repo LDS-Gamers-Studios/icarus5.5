@@ -1,9 +1,12 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
+  config = require("../config/config.json"),
   Discord = require("discord.js"),
+  tu = require("../utils/tagUtils"),
   /** @type {string[]} */
   banned = require("../data/banned.json").features.suggestions;
+
 
 // suggestion modals
 const replyModal = new u.Modal().addComponents(
@@ -152,12 +155,20 @@ const Module = new Augur.Module()
   .addInteraction({
     name: "ldsg",
     id: u.sf.commands.slashLdsg,
+    options: { registry: "slashLdsg" },
     process: async (interaction) => {
       const subcommand = interaction.options.getSubcommand(true);
       switch (subcommand) {
         case "members": return slashLdsgMembers(interaction);
         case "suggest": return slashLdsgSuggest(interaction);
-        default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
+        default: {
+          const tag = tu.tags.find(t => t.tag.toLowerCase() === subcommand.toLowerCase());
+          if (!tag) return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
+          const encoded = tu.encodeTag(tag, null, interaction);
+          if (typeof encoded === "string") return interaction.reply({ content: encoded, ephemeral: true });
+          encoded.content = (encoded.content ?? "") + `\n-# This command can also be run via \`${config.prefix}${subcommand}\``;
+          return interaction.reply(encoded);
+        }
       }
     }
   })
