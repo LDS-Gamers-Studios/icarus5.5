@@ -30,10 +30,10 @@ jobs:
         git fetch upstream
       
         echo TryMerge
-        git merge --no-commit upstream/toPrivateRickAndSteph 2>&1
+        # git merge --no-commit upstream/toPrivateRickAndSteph 2>&1
         # and recording the output for in a moment
         merge_result=$(git merge --no-commit upstream/toPrivateRickAndSteph 2>&1) # Use upstream/toPrivateRickAndSteph
-        
+        echo $merge_result
         echo Results...
         if [[ "$merge_result" =~ "Automatic merge failed" || "$merge_result" =~ "CONFLICT" ]]; then
           echo "Conflicts detected during simulated merge with upstream toPrivateRickAndSteph."
