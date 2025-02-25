@@ -9,7 +9,7 @@ const config = require("../config/config.json");
 /**
  * @typedef XPDropSettings
  * @prop {Date} [cooltime]
- * @prop {any} [cooldown] it's actually a timeout
+ * @prop {NodeJS.Timeout} [cooldown]
  * @prop {number} count
  * @prop {boolean} drop
  */
@@ -37,7 +37,6 @@ const active = new u.Collection();
 
 // Feather drop settings
 let cooltime = new Date();
-// eslint-disable-next-line jsdoc/no-undefined-types
 /** @type {NodeJS.Timeout} */
 let cooldown;
 let dropCode = false;

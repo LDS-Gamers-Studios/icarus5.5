@@ -6,39 +6,39 @@ const Augur = require("augurbot-ts"),
   banned = require("../data/banned.json").features.suggestions;
 
 const hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/;
-const affiliateLinks = {
-// amazon: { //Functionality can be renabled if amazon will let us get a affiliate
+const affiliateLinks = [
+  // { //Functionality can be renabled if amazon will let us get a affiliate
   //  site: "Amazon",
   //  affiliate: "Amazon Affiliate",
   //  test: /amazon\.(com|co\.uk)\/(\w+(-\w+)*\/)?(gp\/product|dp)\/(\w+)/i,
   //  tag: /tag=ldsgamers-20/,
+  /** @param {string} match */
   //  link: (match) => `https://www.${match[0]}?tag=ldsgamers-20`
-  //  },
-  cdkeys: {
+  // },
+  {
     site: "CDKeys.com",
     affiliate: "CDKeys Affiliate",
     test: /cdkeys\.com(\/\w+(-\w+)*)*/i,
     tag: /mw_aref=LDSGamers/i,
-    // eslint-disable-next-line jsdoc/no-undefined-types
-    /** @param {RegExpExecArray} match */
-    link: match => `https://www.${match[0]}?mw_aref=LDSGamers`
+    /** @param {string} match */
+    link: match => `https://www.${match}?mw_aref=LDSGamers`
   },
-// humblebundle: {
-  // site: "Humble Bundle",
+  // {
+  //  site: "Humble Bundle",
   //  affiliate: "Humble Bundle Partner",
   //  test: /humblebundle\.com(\/\w+(-\w+)*)*/i,
   //  tag: /partner=ldsgamers/i,
+  /** @param {string} match */
   //  link: (match) => `https://www.${match[0]}?partner=ldsgamers`
-// },
-};
+  // },
+];
 
 /** @param {Discord.Message} msg */
 function processLinks(msg) {
-  for (const x in affiliateLinks) {
-    const site = affiliateLinks[x];
+  for (const site of affiliateLinks) {
     const match = site.test.exec(msg.cleanContent);
     if (match && !site.tag.test(msg.cleanContent)) {
-      msg.reply(`You can help LDSG by using our [${site.affiliate} Link](${site.link(match)})`);
+      msg.reply(`You can help LDSG by using our [${site.affiliate} Link](${site.link(match[0])})`);
     }
   }
 }

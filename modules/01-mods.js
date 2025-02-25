@@ -9,7 +9,7 @@ const Augur = require("augurbot-ts"),
 
 const noTarget = "The user you provided was invalid. They may have left the server.";
 
-/** @type {Map<string, any>} */
+/** @type {Map<string, { limit: number, timeout: NodeJS.Timeout }>} */
 const molasses = new Map();
 
 /**
@@ -249,7 +249,7 @@ async function slashModSlowmode(interaction) {
     await ch.setRateLimitPerUser(0).catch(e => u.errorHandler(e, interaction));
     const old = molasses.get(ch.id);
     if (old) {
-      clearTimeout(old);
+      clearTimeout(old.timeout);
       molasses.delete(ch.id);
     }
 
@@ -266,7 +266,7 @@ async function slashModSlowmode(interaction) {
     const prev = molasses.get(ch.id);
     if (prev) clearTimeout(prev.timeout);
 
-    const limit = prev ? prev.limit : ch.rateLimitPerUser;
+    const limit = prev ? prev.limit : ch.rateLimitPerUser ?? 0;
     await ch.send(`Let's slow down for a bit.\nReason: ${reason}`).catch(u.noop);
     await ch.setRateLimitPerUser(delay);
 
