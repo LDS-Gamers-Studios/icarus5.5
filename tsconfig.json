@@ -2,22 +2,17 @@
   "compilerOptions": {
     "allowUmdGlobalAccess": true,
     "target": "ES2016",
-    "typeRoots": [
-      "./node_modules/@types",
-      "./site/backend/types"
-    ],
+    "skipLibCheck": true,
     "noEmit": true,
     "checkJs": true,
     "allowJs": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node10",
     "module": "CommonJS",
     "useUnknownInCatchVariables": false,
     "resolveJsonModule": true,
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
   },
-  "include": ["./*"],
   "exclude": [
     "site/frontend",
     "node_modules"

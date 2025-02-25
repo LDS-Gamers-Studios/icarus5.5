@@ -55,5 +55,5 @@ module.exports = new u.cmd()
   .addSubcommand(list)
   .addSubcommand(champion)
   .addSubcommand(participant)
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild)
   .toJSON();

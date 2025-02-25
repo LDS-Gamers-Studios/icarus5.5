@@ -1,0 +1,1 @@
+Banners go in this folder
