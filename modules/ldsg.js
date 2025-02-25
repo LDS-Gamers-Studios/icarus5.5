@@ -36,7 +36,7 @@ function processLinks(msg) {
     const site = affiliateLinks[x];
     const match = site.test.exec(msg.cleanContent);
     if (match && !site.tag.test(msg.cleanContent)) {
-      msg.channel.send(`You can help LDSG by using our [${site.affiliate} Link](${site.link(match)})`);
+      msg.reply(`You can help LDSG by using our [${site.affiliate} Link](${site.link(match)})`);
     }
   }
 }
