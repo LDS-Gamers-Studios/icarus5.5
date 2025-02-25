@@ -29,6 +29,8 @@ const affiliateLinks = {
   //  link: (match) => `https://www.${match[0]}?partner=ldsgamers`
 // },
 };
+
+/** @param {Discord.Message} msg */
 function processLinks(msg) {
   for (const x in affiliateLinks) {
     const site = affiliateLinks[x];
