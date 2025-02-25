@@ -19,6 +19,8 @@ const affiliateLinks = {
     affiliate: "CDKeys Affiliate",
     test: /cdkeys\.com(\/\w+(-\w+)*)*/i,
     tag: /mw_aref=LDSGamers/i,
+    // eslint-disable-next-line jsdoc/no-undefined-types
+    /** @param {RegExpExecArray} match */
     link: match => `https://www.${match[0]}?mw_aref=LDSGamers`
   },
 // humblebundle: {
