@@ -31,7 +31,11 @@ if (config.siteOn) {
   // token storage setup
   app.use(session({
     secret: siteConfig.sessionSecret,
-    cookie: { maxAge: 60000 * 60 * 24 * 3 },
+    cookie: { 
+      maxAge: 60000 * 60 * 24 * 3,
+      secure: true,
+      httpOnly: true
+    },
     resave: false,
     saveUninitialized: false,
     store: Store.create({
