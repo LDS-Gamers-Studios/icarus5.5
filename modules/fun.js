@@ -358,7 +358,7 @@ async function slashFunNamegame(int) {
     const song = /<blockquote>\n(.*)<\/blockquote>/g.exec(response?.data)?.[1]?.replace(/<br ?\/>/g, "\n");
     // make sure its safe
     const pf = new profanityFilter();
-    const profane = pf.scan(song?.toLowerCase().replace("\n", " ")).length;
+    const profane = pf.scan(song?.toLowerCase().replace(/\n/g, " ")).length;
     if (!song) {
       return int.editReply("I uh... broke my voice box. Try a different name?").then(u.clean);
     } else if (profane > 0) {
