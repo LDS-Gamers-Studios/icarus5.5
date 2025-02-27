@@ -65,7 +65,7 @@ const Module = new Augur.Module()
     name: "send",
     id: u.sf.commands.slashSend,
     // @ts-ignore
-    permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin", "management", "manager", "management", "publicaffairs"]) || u.sf.other.includes(int.member.id) || u.perms.isOwner(int.member),
+    permissions: (int) => u.sf.canSend.includes(int.member.id) || u.perms.isOwner(int.member),
     process: async (interaction) => {
       await interaction.deferReply({ ephemeral: true });
       const category = interaction.options.getString('category', true);
