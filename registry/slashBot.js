@@ -2,9 +2,19 @@
 const u = require('./regUtils');
 const Discord = require("discord.js");
 
+const startagain = new u.bool()
+.setName("startagain")
+.setDescription("whether or not to start the bot again as it kills itself");
+
+const update = new u.sub()
+  .setName("update")
+  .setDescription("[OWNER] /bot pull /bot register and /bot gotobed.")
+  .addBooleanOption(startagain);
+
 const gotobed = new u.sub()
   .setName("gotobed")
-  .setDescription("[ADMIN] Restarts the bot.");
+  .setDescription("[ADMIN] Stops the bot. (It'll probably get restarted by something)")
+  .addBooleanOption(startagain);
 
 const ping = new u.sub()
   .setName("ping")
@@ -102,6 +112,7 @@ const status = new u.sub()
 module.exports = new u.cmd()
   .setName("bot")
   .setDescription("Control the bot! Some actions are limited based on role.")
+  .addSubcommand(update)
   .addSubcommand(gotobed)
   .addSubcommand(ping)
   .addSubcommand(pull)
