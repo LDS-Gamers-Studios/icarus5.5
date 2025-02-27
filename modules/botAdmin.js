@@ -6,6 +6,7 @@ const Augur = require("augurbot-ts"),
   config = require("../config/config.json"),
   fs = require("fs"),
   path = require("path"),
+  spawn = require('child_process').spawn,
   u = require("../utils/utils");
 
 /**
@@ -55,17 +56,80 @@ function fieldMismatches(obj1, obj2) {
   return [m1, m2];
 }
 
+/** @param {Discord.Client} client */
+async function stop(client) {
+  await client.destroy();
+  process.exit();
+}
+
+/** @param {Discord.Client} client */
+async function restart(client) {
+  await client.destroy();
+  const subprocess = spawn("node", ["icarus"], { detached: true, stdio: ['ignore', process.stdout, process.stderr] });
+  subprocess.unref();
+  process.exit();
+}
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashBotGtb(int) {
+  const startagain = int.options.getBoolean("startagain") ?? false;
   try {
-    await int.editReply("Good night! 🛏");
-    await int.client.destroy();
-    process.exit();
+    await int.editReply(startagain ? "ZZZZZzzzzz 🛏" : "Good night! 🛏");
+    startagain ? restart(int.client) : stop(int.client);
   } catch (error) {
     u.errorHandler(error, int);
   }
 }
 
+async function slashBotUpdate(int) {
+  const startagain = int.options.getBoolean("startagain") ?? false;
+  update(int, startagain);
+}
+
+/** @param {import("child_process").ChildProcessWithoutNullStreams} process*/
+/** @return {Promise<{ out: string; err: string; exit: number; }>} */
+async function captureRun(process) {
+  const stdout = [];
+  const stderr = [];
+  process.stdout.on("data", data => {
+    stdout.push(data);
+  });
+  process.stderr.on("data", data => {
+    stderr.push(data);
+  });
+  await new Promise((exit) => process.on("close", () => exit({ success: true })));
+  // while (!pullCmd.exitCode) {await u.wait(100);}
+  return { out: stdout.join(""), err: stderr.join(""), exit: process.exitCode };
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+/** @param {boolean} startagain*/
+async function update(int, startagain) {
+  try {
+    let reply = "# Updating (with" + (startagain ? "" : "out") + " restart)...\n## Pulling...\n";
+    int.editReply(reply);
+    const pullResults = await captureRun(spawn("git", ["pull"], { cwd: process.cwd() }));
+    reply += pullResults?.out;
+    if (pullResults?.exit !== 0) {
+      int.editReply(reply + `# ERROR CODE while pulling: \n${pullResults.exit}:\n${pullResults?.err}`);
+      return;
+    }
+    reply += "## Pull Completed with code: " + pullResults.exit + "\n ## Registering...\n";
+    int.editReply(reply);
+    const regResults = await captureRun(spawn("node", ["register-commands"], { cwd: process.cwd() }));
+    reply += regResults.out;
+    if (regResults.exit !== 0) {
+      int.editReply(reply + `# ERROR CODE while registering: \n${regResults.exit}:\n${regResults?.err}`);
+      return;
+    }
+    reply += "## Commands registered! \n## " + (startagain ? "Restarting" : "Stopping") + " the bot to finish.\n";
+    int.editReply(reply);
+    await int.editReply(reply + (startagain ? "ZZZZZzzzzz 🛏" : "Good night! 🛏"));
+    startagain ? restart(int.client) : stop(int.client);
+  } catch (error) {
+    u.errorHandler(error, int);
+  }
+}
 /**
  * @param {Augur.GuildInteraction<"CommandSlash">} int
  * @param {Discord.InteractionResponse} msg
@@ -77,25 +141,12 @@ async function slashBotPing(int, msg) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashBotPull(int) {
-  const spawn = require("child_process").spawn;
-  const cmd = spawn("git", ["pull"], { cwd: process.cwd() });
-  const stdout = [];
-  const stderr = [];
-  cmd.stdout.on("data", data => {
-    stdout.push(data);
-  });
-
-  cmd.stderr.on("data", data => {
-    stderr.push(data);
-  });
-
-  cmd.on("close", code => {
-    if (code === 0) {
-      int.editReply(stdout.join("\n") + "\n\nCompleted with code: " + code);
-    } else {
-      int.editReply(`ERROR CODE ${code}:\n${stderr.join("\n")}`);
-    }
-  });
+  const results = await captureRun(spawn("git", ["pull"], { cwd: process.cwd() }));
+  if (results.exit === 0) {
+    int.editReply(results.out + "\n\nCompleted with code: " + results.exit);
+  } else {
+    int.editReply(`ERROR CODE ${results.exit}:\n${results.err}`);
+  }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
@@ -157,19 +208,12 @@ async function slashBotGetId(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashBotRegister(int) {
-  const spawn = require("child_process").spawn;
-  const cmd = spawn("node", ["register-commands"], { cwd: process.cwd() });
-  const stderr = [];
-  cmd.stderr.on("data", data => {
-    stderr.push(data);
-  });
-  cmd.on("close", code => {
-    if (code === 0) {
-      int.editReply("Commands registered! Restart the bot to finish.");
-    } else {
-      int.editReply(`ERROR CODE ${code}:\n${stderr.join("\n")}`);
-    }
-  });
+  const results = await captureRun(spawn("node", ["register-commands"], { cwd: process.cwd() }));
+  if (results.exit === 0) {
+    int.editReply("Commands registered! Restart the bot to finish.");
+  } else {
+    int.editReply(`ERROR CODE ${results.err}:\n${results.err}`);
+  }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
@@ -195,83 +239,90 @@ async function slashBotStatus(int) {
 }
 
 const Module = new Augur.Module()
-.addInteraction({ name: "bot",
-  id: u.sf.commands.slashBot,
-  onlyGuild: true,
-  hidden: true,
-  permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin"]),
-  process: async (int) => {
-    if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
-    const subcommand = int.options.getSubcommand(true);
-    const forThePing = await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.botTesting });
-    if (["gotobed", "reload", "register", "status", "sheets"].includes(subcommand) && !u.perms.calc(int.member, ["botAdmin"])) return int.editReply("That command is only for Bot Admins.");
-    if (subcommand === "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
-    switch (subcommand) {
-      case "gotobed": return slashBotGtb(int);
-      case "ping": return slashBotPing(int, forThePing);
-      case "pull": return slashBotPull(int);
-      case "pulse": return slashBotPulse(int);
-      case "reload": return slashBotReload(int);
-      case "getid": return slashBotGetId(int);
-      case "register": return slashBotRegister(int);
-      case "status": return slashBotStatus(int);
-      case "sheets": return slashBotSheets(int);
-      default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
+  .addInteraction({
+    name: "bot",
+    id: u.sf.commands.slashBot,
+    onlyGuild: true,
+    hidden: true,
+    permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin"]),
+    process: async (int) => {
+      if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
+      const subcommand = int.options.getSubcommand(true);
+      const forThePing = await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.botTesting });
+      if (["gotobed", "reload", "register", "status", "sheets"].includes(subcommand) && !u.perms.calc(int.member, ["botAdmin"])) return int.editReply("That command is only for Bot Admins.");
+      if (["pull", "update"].includes(subcommand) && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
+      switch (subcommand) {
+        case "update": return slashBotUpdate(int);
+        case "gotobed": return slashBotGtb(int);
+        case "ping": return slashBotPing(int, forThePing);
+        case "pull": return slashBotPull(int);
+        case "pulse": return slashBotPulse(int);
+        case "reload": return slashBotReload(int);
+        case "getid": return slashBotGetId(int);
+        case "register": return slashBotRegister(int);
+        case "status": return slashBotStatus(int);
+        case "sheets": return slashBotSheets(int);
+        default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
+      }
+    },
+    autocomplete: (int) => {
+      const option = int.options.getFocused();
+      const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
+      int.respond(files.filter(file => file.includes(option)).slice(0, 24).map(f => ({ name: f, value: f })));
     }
-  },
-  autocomplete: (int) => {
-    const option = int.options.getFocused();
-    const files = fs.readdirSync(path.resolve(__dirname)).filter(file => file.endsWith(".js"));
-    int.respond(files.filter(file => file.includes(option)).slice(0, 24).map(f => ({ name: f, value: f })));
-  }
-})
-.addCommand({ name: "mcweb",
-  hidden: true,
-  permissions: () => config.devMode,
-  process: (msg, suffix) => {
-    if (!config.webhooks.mcTesting) return msg.reply("Make sure to set a webhook for mcTestingWebhook! You need it to run this command.");
-    const webhook = new Discord.WebhookClient({ url: config.webhooks.mcTesting });
-    webhook.send(suffix);
-  }
-})
+  })
+  .addCommand({
+    name: "mcweb",
+    hidden: true,
+    permissions: () => config.devMode,
+    process: (msg, suffix) => {
+      if (!config.webhooks.mcTesting) return msg.reply("Make sure to set a webhook for mcTestingWebhook! You need it to run this command.");
+      const webhook = new Discord.WebhookClient({ url: config.webhooks.mcTesting });
+      webhook.send(suffix);
+    }
+  })
 
-// When the bot is fully online, fetch all the ldsg members, since it will only autofetch for small servers and we want them all.
-.addEvent("ready", () => {
-  Module.client.guilds.cache.get(u.sf.ldsg)?.members.fetch({ withPresences: true });
-})
-.setInit(async (reloaded) => {
-  try {
-    if (!reloaded && !config.silentMode) {
-      u.errorLog.send({ embeds: [ u.embed().setDescription("Bot is ready!") ] });
-    }
-    const testingDeploy = [
-      ["../config/config.json", "../config/config-example.json"],
-      ["../config/snowflakes-testing.json", "../config/snowflakes.json"],
-      ["../config/snowflakes-commands.json", "../config/snowflakes-commands-example.json"],
-      ["../data/banned.json", "../data/banned-example.json"]
-    ];
-    for (const filename of testingDeploy) {
-      const prod = require(filename[1]);
-      const repo = require(filename[0]);
-      const [m1, m2] = fieldMismatches(prod, repo);
-      if (m1.length > 0 && !config.silentMode) {
-        u.errorLog.send({ embeds: [
-          u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m1.join("`, `")}\` in file ${filename[1]} but not ${filename[0]} file.` })
-        ] });
+  // When the bot is fully online, fetch all the ldsg members, since it will only autofetch for small servers and we want them all.
+  .addEvent("ready", () => {
+    Module.client.guilds.cache.get(u.sf.ldsg)?.members.fetch({ withPresences: true });
+  })
+  .setInit(async (reloaded) => {
+    try {
+      if (!reloaded && !config.silentMode) {
+        u.errorLog.send({ embeds: [u.embed().setDescription("Bot is ready!")] });
       }
-      if (m2.length > 0 && !config.silentMode) {
-        u.errorLog.send({ embeds: [
-          u.embed()
-          .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in ${filename[0]} file but not ${filename[1]}` })
-        ] });
+      const testingDeploy = [
+        ["../config/config.json", "../config/config-example.json"],
+        ["../config/snowflakes-testing.json", "../config/snowflakes.json"],
+        ["../config/snowflakes-commands.json", "../config/snowflakes-commands-example.json"],
+        ["../data/banned.json", "../data/banned-example.json"]
+      ];
+      for (const filename of testingDeploy) {
+        const prod = require(filename[1]);
+        const repo = require(filename[0]);
+        const [m1, m2] = fieldMismatches(prod, repo);
+        if (m1.length > 0 && !config.silentMode) {
+          u.errorLog.send({
+            embeds: [
+              u.embed()
+                .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m1.join("`, `")}\` in file ${filename[1]} but not ${filename[0]} file.` })
+            ]
+          });
+        }
+        if (m2.length > 0 && !config.silentMode) {
+          u.errorLog.send({
+            embeds: [
+              u.embed()
+                .addFields({ name: "Config file and example do not match.", value: `Field(s) \`${m2.join("`, `")}\` in ${filename[0]} file but not ${filename[1]}` })
+            ]
+          });
+        }
       }
+    } catch (e) {
+      u.errorHandler(e, "Error in botAdmin.setInit.");
     }
-  } catch (e) {
-    u.errorHandler(e, "Error in botAdmin.setInit.");
-  }
-})
-.setUnload(() => true);
+  })
+  .setUnload(() => true);
 
 module.exports = Module;
 
