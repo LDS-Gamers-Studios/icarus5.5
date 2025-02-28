@@ -100,7 +100,6 @@ async function cakedays(testDate, testJoinDate, testMember) {
       const timeSinceLastReJoin = u.moment(now).diff(joinDate, "days");
       const totalTime = timeSinceLastReJoin + (preRejoinTimes.get(memberId) ?? 0);
       const years = Math.floor(totalTime / 365.0);
-      console.log(member.user.username + "-" + years + "-" + totalTime);
       if (totalTime - (years * 365) < 1 && years > 0) {
         celebrating.ensure(years, () => []).push(member);
         const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
@@ -130,8 +129,7 @@ async function cakedays(testDate, testJoinDate, testMember) {
         .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
       if (testDate) embed.setDescription((embed.data.description ?? "") + " (Sorry if we're a bit late!)");
 
-      for (let years = 0; years < celebrating.size; years++) {
-        const cakeMembers = celebrating.get(years);
+      for (const [years, cakeMembers] of celebrating) {
         if (cakeMembers) {
           embed.addFields({ name: `${years} ${years < 1 ? "Years, First Day!!!" : years < 2 ? "Year" : "Years"}`, value: cakeMembers.join("\n") });
         }
