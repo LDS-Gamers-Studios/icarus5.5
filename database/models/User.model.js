@@ -44,6 +44,10 @@ const UserSchema = new Schema({
   watching: {
     type: Boolean,
     default: false
+  },
+  sendBdays: {
+    type: Number,
+    default: 2
   }
 });
 

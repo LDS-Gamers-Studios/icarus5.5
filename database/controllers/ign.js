@@ -20,7 +20,7 @@ module.exports = {
   },
   /**
    * Find a specific IGN
-   * @param {string | string[]} discordId
+   * @param {string} discordId
    * @param {string} system
    * @returns {Promise<IGN | null>}
    */
