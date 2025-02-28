@@ -8,7 +8,7 @@ const Augur = require("augurbot-ts"),
   profanityFilter = require("profanity-matcher"),
   buttermelonFacts = require('../data/buttermelonFacts.json'),
   emojiKitchenSpecialCodes = require("../data/emojiKitchenSpecialCodes.json"),
-  emojilib = require('node-emoji'),
+  emojiSanitizeHelp = require('node-emoji'),
   mineSweeperEmojis = ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '7⃣', '8⃣', '💣'];
 
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -49,18 +49,18 @@ async function slashFunHBS(int) {
   const mode = int.options.getString("mode") || "user";
   const choice = int.options.getString("choice", true);
   const chooser = int.user.toString();
-  const botLobby = int.client.getTextChannel(u.sf.channels.botspam);
+  const botLobby = int.client.getTextChannel(u.sf.channels.botSpam);
   let challenged;
   if (mode === "user") {
     if (!storedChoice) {
       storedChooser = chooser;
       storedChoice = choice;
-      int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+      int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
       `${chooser} has chosen their fighter and is awaiting a challenger. Respond using </fun hbs:${u.sf.commands.slashFun}>.`);
     } else if (storedChooser === chooser) {
       storedChoice = choice;
-      int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botspam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+      int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
       `${chooser} has changed their fighter and is awaiting a challenger.  Respond using </fun hbs:${u.sf.commands.slashFun}>.`
       );
@@ -202,8 +202,9 @@ async function slashFunMinesweeper(int) {
   }
   // seperate into rows and emojify and hide if not exposed
   const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
-  if (!int.channel) {
-    return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botspam}>`, ephemeral: true });
+
+  if (!int.channel?.isSendable()) {
+    return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botSpam}>`, ephemeral: true });
   }
   await int.reply(`**Mines: ${mineCount}**`);
   const messages = [""];
@@ -221,11 +222,11 @@ async function slashFunMinesweeper(int) {
   });
   // send the messages in order
   let i = 0;
-  do {
+  while (i < messages.length) {
     const msg = messages[i];
     await int.channel.send(msg);
     i++;
-  } while (i < messages.length);
+  }
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -320,6 +321,7 @@ async function slashFunButtermelon(int) {
 async function slashFunQuote(int) {
   const url = "https://zenquotes.io/api/random";
   await int.deferReply();
+  // @ts-ignore
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error(`axios error: ${e.status}\n${e.message}`);
   });
@@ -373,7 +375,7 @@ async function slashFunChoose(int) {
   if (optionsArg && optionsArg.includes("|")) {
     const options = optionsArg.split("|");
     const prefixes = ["I choose", "I pick", "I decided"];
-    return int.reply(`${u.rand(prefixes)} **${u.rand(options).trim()}**`);
+    return int.reply(`Out of the options \`${optionsArg}\`, ${u.rand(prefixes)} **${u.rand(options).trim()}**`);
   }
   return int.reply({ content: 'you need to give me two or more choices! `a | b`', ephemeral: true });
 
@@ -382,19 +384,54 @@ async function slashFunChoose(int) {
  * @param {string} emoji unsanitized/irregular emoji input
  */
 function emojiSanitize(emoji) {
-  let ucode = emojilib.find(emoji)?.emoji ?? emoji;
+  let ucode = emojiSanitizeHelp.find(emoji)?.emoji ?? emoji;
   ucode = emojiKitchenSpecialCodes[ucode] ?? ucode;
   return ucode;
 }
+/** @param {string} emoji */
+function emojiCodePointify(emoji) {
+  return (emojiSanitizeHelp.find(emoji)?.emoji ?? emoji)
+    .split(/\u200D/)
+    .map(char => char.codePointAt(0)?.toString(16)).join("-");
+}
 
 /** @param {Discord.ChatInputCommandInteraction} int */
-async function slashFunEmoji(int) {
+async function slashFunGrow(int) {
   try {
+    // get the inputs
+    await int.deferReply();
+    const emojiInput = int.options.getString("emoji", true);
+    const emoji1 = emojiSanitize(emojiInput);
+    // custom emoji embiggening
+    const idExtractRegx = /^<(a?):(.*):(\d+)>/i;
+    const match = idExtractRegx.exec(emojiInput);
+    if (match) {
+      // eslint-disable-next-line no-unused-vars
+      const [_, gif, name, id] = match;
+      return int.editReply({ files: [{ attachment: `https://cdn.discordapp.com/emojis/${id}.${gif ? 'gif' : 'png'}?size=512`, name: name + "Fullres." + (gif ? 'gif' : 'png') }] });
+    }
+
+    // default emoji embiggening
+    const e1CP = emojiCodePointify(emoji1);
+    const image = await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`).catch(u.noop);
+    if (image?.status !== 200) return int.editReply(`For some reason I couldn't enlarge ${emojiInput}.`).then(u.clean);
+    return int.editReply(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${e1CP}.png`);
+  } catch (error) {
+    u.errorHandler(error);
+  }
+}
+
+/** @param {Discord.ChatInputCommandInteraction} int */
+async function slashFunMerge(int) {
+  try {
+    // get the inputs
     await int.deferReply();
     const emoji1input = int.options.getString("emoji1", true).trim();
     const emoji2input = int.options.getString("emoji2", true).trim();
     const emoji1 = emojiSanitize(emoji1input);
+    // attempt to merge
     const emoji2 = emojiSanitize(emoji2input);
+    // @ts-ignore
     const results = await axios(`https://tenor.googleapis.com/v2/featured?key=${config.api.tenor}&client_key=emoji_kitchen_funbox&q=${emoji1}_${emoji2}&collection=emoji_kitchen_v6&contentfilter=high`).catch(u.noop);
     const url = results?.data?.results[0]?.url;
     if (url) {
@@ -412,7 +449,7 @@ function buttermelonEdit(msg) {
   if (msg.channel.isDMBased() && (msg.cleanContent?.toLowerCase() === "test")) {
     msg.reply((Math.random() < 0.8 ? "pass" : "fail"));
   }
-  const exclude = [u.sf.channels.minecraftcategory];
+  const exclude = [u.sf.channels.minecraft.category];
   const roll = Math.random();
   if (roll < 0.3 && !msg.author?.bot && !exclude.includes(msg.channel.id)) {
     // let banana = /[bß8ƥɓϐβбБВЬЪвᴮᴯḃḅḇÞ][a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+([nⁿńňŋƞǹñϰпНhийӣӥѝνṅṇṉṋ]+[a@∆æàáâãäåāăȁȃȧɑαдӑӓᴀᴬᵃᵅᶏᶐḁạảấầẩẫậắằẳẵặ4Λ]+){2}/ig;
@@ -453,7 +490,8 @@ const Module = new Augur.Module()
       case "quote": return slashFunQuote(int);
       case "namegame": return slashFunNamegame(int);
       case "choose": return slashFunChoose(int);
-      case "emoji": return slashFunEmoji(int);
+      case "grow": return slashFunGrow(int);
+      case "merge": return slashFunMerge(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   }

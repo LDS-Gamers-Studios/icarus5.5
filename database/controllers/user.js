@@ -22,7 +22,7 @@ const ChannelXP = require("../models/ChannelXP.model");
 
 /**
  * @typedef leaderboardOptions Options for the leaderboard fetch
- * @prop {Discord.Collection<string, Discord.GuildMember> | string[]} [memberIds] Collection or Array of snowflakes to include in the leaderboard
+ * @prop {Discord.Collection<string, Discord.GuildMember> | string[]} memberIds Collection or Array of snowflakes to include in the leaderboard
  * @prop {number} [limit] The number of users to limit the search to
  * @prop {string} [member] A user to include in the results, no matter their ranking.
  * @prop {boolean} [season] Whether to fetch the current season (`true`, default) or lifetime (`false`) leaderboard.
@@ -48,7 +48,7 @@ const models = {
      */
   addXp: async function(activity) {
     const xpBase = Math.floor(Math.random() * 3) + config.xp.base;
-    const included = await User.find({ discordId: { $in: [...activity.keys()] }, excludeXP: false }, undefined, { lean: true });
+    const included = await User.find({ discordId: { $in: [...activity.keys()] }, trackXP: { $ne: TrackXPEnum.OFF } }, undefined, { lean: true });
     const uniqueIncluded = new Set(included.map(u => u.discordId));
     await User.bulkWrite(
       activity.map((val, discordId) => {
@@ -116,22 +116,18 @@ const models = {
    * @param {leaderboardOptions} options
    * @returns {Promise<(UserRecord & {rank: number})[]>}
    */
-  getLeaderboard: async function(options = {}) {
+  getLeaderboard: async function(options) {
     const members = (options.memberIds instanceof Discord.Collection ? Array.from(options.memberIds.keys()) : options.memberIds);
     const member = options.member;
-    const season = options.season ?? true;
+    const season = options.season;
     const limit = options.limit ?? 10;
 
     // Get top X users first
-    const params = { excludeXP: false };
-    if (members) params.discordId = { $in: members };
-
-    const query = User.find(params, undefined, { lean: true });
+    const query = User.find({ trackXP: { $ne: TrackXPEnum.OFF }, discordId: { $in: members } }, undefined, { lean: true });
     if (season) query.sort({ currentXP: "desc" });
     else query.sort({ totalXP: "desc" });
 
-    if (limit) query.limit(limit);
-    const records = await query.exec();
+    const records = await query.limit(limit).exec();
     /** @type {(UserRecord & {rank: number})[]} */
     const ranked = records.map((r, i) => {
       return { ...r, rank: i + 1 };
@@ -149,26 +145,50 @@ const models = {
     return ranked;
   },
   /**
+   * Get the top X of both leaderboards
+   * @param {Omit<leaderboardOptions, "season">} options
+   * @returns {Promise<{ season: (UserRecord & { rank: number })[], life: (UserRecord & { rank: number })[] }>}
+   */
+  getBothLeaderboards: async function(options) {
+    const members = (options.memberIds instanceof Discord.Collection ? Array.from(options.memberIds.keys()) : options.memberIds);
+    const member = options.member;
+    const limit = options.limit ?? 10;
+
+    /** @param {UserRecord[]} users */
+    const mapper = (users) => users.map((u, i) => ({ ...u, rank: i + 1 }));
+
+    const query = () => User.find({ trackXP: { $ne: TrackXPEnum.OFF }, discordId: { $in: members } }, undefined, { lean: true }).limit(limit);
+    const season = await query().sort({ currentXP: "desc" }).exec().then(mapper);
+    const life = await query().sort({ totalXP: "desc" }).exec().then(mapper);
+
+    // Get requested user
+    const seasonHas = season.some(r => r.discordId === member);
+    const lifeHas = life.some(r => r.discordId === member);
+    if (member && (!seasonHas || !lifeHas)) {
+      const record = await models.getRank(member, members);
+      if (record) {
+        if (!seasonHas) season.push({ ...record, rank: record.rank.season });
+        if (!lifeHas) life.push({ ...record, rank: record.rank.lifetime });
+      }
+    }
+
+    return { season, life };
+  },
+  /**
      * Get a user's rank
-     * @param {string} [discordId] The member whose ranking you want to view.
-     * @param {Discord.Collection<string, Discord.GuildMember>|string[]} [members] Collection or Array of snowflakes to include in the leaderboard
+     * @param {string} discordId The member whose ranking you want to view.
+     * @param {Discord.Collection<string, Discord.GuildMember>|string[]} members Collection or Array of snowflakes to include in the leaderboard
      * @returns {Promise<(UserRecord & {rank: {season: number, lifetime: number}}) | null>}
      */
   getRank: async function(discordId, members) {
-    if (!discordId) return null;
     members = (members instanceof Discord.Collection ? Array.from(members.keys()) : members);
 
     // Get requested user
-    const record = await User.findOne({ discordId }, undefined, { lean: true }).exec();
-    if (!record || record.trackXP === TrackXPEnum.OFF) return null;
+    const record = await User.findOne({ discordId, trackXP: { $ne: TrackXPEnum.OFF } }, undefined, { lean: true }).exec();
+    if (!record) return null;
 
-    const seasonParams = { excludeXP: false, currentXP: { $gt: record.currentXP } };
-    if (members) seasonParams.discordId = { $in: members };
-    const seasonCount = await User.count(seasonParams);
-
-    const lifetimeParams = { excludeXP: false, totalXP: { $gt: record.totalXP } };
-    if (members) lifetimeParams.discordId = { $in: members };
-    const lifeCount = await User.count(lifetimeParams);
+    const seasonCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, currentXP: { $gt: record.currentXP }, discordId: { $in: members } });
+    const lifeCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, totalXP: { $gt: record.totalXP }, discordId: { $in: members } });
 
     return { ...record, rank: { season: seasonCount + 1, lifetime: lifeCount + 1 } };
   },
@@ -197,11 +217,7 @@ const models = {
    */
   trackXP: function(discordId, trackXP) {
     if (typeof discordId !== 'string') throw new Error(outdated);
-    return User.findOneAndUpdate(
-      { discordId },
-      { $set: { trackXP } },
-      { new: true, upsert: true, lean: true }
-    ).exec();
+    return User.findOneAndUpdate({ discordId }, { trackXP }, { new: true, upsert: true, lean: true }).exec();
   },
   /**
    * Update a member's roles in the database

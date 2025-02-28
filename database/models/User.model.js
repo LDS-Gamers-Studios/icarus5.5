@@ -27,7 +27,7 @@ const UserSchema = new Schema({
   },
   trackXP: {
     type: Number,
-    default: 2
+    default: 1
   },
   currentXP: {
     type: Number,

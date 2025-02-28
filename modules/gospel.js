@@ -34,7 +34,8 @@ const works = {
 const manuals = new u.Collection([
   [2022, "old-testament-2022"],
   [2023, "new-testament-2023"],
-  [2024, "book-of-mormon-2024"]
+  [2024, "book-of-mormon-2024"],
+  [2025, "doctrine-and-covenants-2025"]
 ]);
 
 /**
@@ -255,7 +256,7 @@ const Module = new Augur.Module()
   }
 })
 .addCommand({ name: "debugcfm",
-  permissions: (msg) => u.perms.isAdmin(msg.member),
+  permissions: (msg) => u.perms.calc(msg.member, ["botAdmin"]),
   process: (msg) => {
     const fakeDay = new Date("Dec 31 2023");
     let i = 0;

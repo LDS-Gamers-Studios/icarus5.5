@@ -55,7 +55,7 @@ async function setBanner(holiday) {
     await ldsg.setBanner(bannerPath);
   } catch (error) {
     if (holiday) return "I couldn't set the banner.";
-    Module.client.getTextChannel(u.sf.channels.logistics)?.send({
+    Module.client.getTextChannel(u.sf.channels.team.logistics)?.send({
       content: `Failed to set banner, please do this manually.`,
       files: [bannerPath]
     });
