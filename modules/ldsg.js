@@ -44,14 +44,14 @@ function processLinks(msg) {
 }
 
 // suggestion modals
-const replyModal = new u.Modal().addComponents(
+const replyModal = (user = true) => new u.Modal().addComponents(
   u.ModalActionRow().addComponents([
     new u.TextInput()
       .setCustomId("update")
       .setLabel("Message")
       .setStyle(Discord.TextInputStyle.Short)
       .setRequired(true)
-      .setPlaceholder("Send an update to the user")
+      .setPlaceholder(`Send an update to ${user ? "the user" : "Team"}`)
   ])
 ).setCustomId("suggestionReplyModal").setTitle("Suggestion Reply");
 
@@ -68,9 +68,11 @@ async function slashLdsgMembers(interaction) {
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
+const sTeamReply = new u.Button().setCustomId("suggestionTeamReply").setEmoji("🗨️").setLabel("Reply to user").setStyle(Discord.ButtonStyle.Primary);
+const sUserReply = new u.Button().setCustomId("suggestionUserReply").setEmoji("🗨️").setLabel("Respond").setStyle(Discord.ButtonStyle.Primary);
 const replyOption = [
   u.MessageActionRow().setComponents([
-    new u.Button().setCustomId("suggestionReply").setEmoji("🗨️").setLabel("Reply to user").setStyle(Discord.ButtonStyle.Primary),
+    sTeamReply,
     new u.Button().setCustomId("suggestionManage").setEmoji("✏️").setLabel("Manage Ticket").setStyle(Discord.ButtonStyle.Primary),
   ])
 ];
@@ -80,40 +82,97 @@ async function slashLdsgSuggest(int) {
   if (banned.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
   const suggestion = int.options.getString("suggestion", true);
   await int.deferReply({ ephemeral: true });
+
+  // create the thread
+  const thread = await int.client.getForumChannel(u.sf.channels.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user.displayName}`, message: { content: suggestion, components: replyOption } }).catch(u.noop);
+  if (!thread) return int.editReply("Sorry, I ran into an error while submitting your suggestion.");
+
+  // create the embed with the correct footer
   const embed = u.embed({ author: int.user })
     .setTitle("Suggestion")
     .setDescription(suggestion)
-    .setFooter({ text: int.user.id });
-  await int.client.getForumChannel(u.sf.channels.team.suggestionBox)?.threads.create({ name: `Suggestion from ${int.user.displayName}`, message: { content: suggestion, embeds: [embed], components: replyOption } });
+    .setFooter({ text: `${int.user.id} ${thread.id}` });
+
+  // edit the message
+  const msg = await thread.fetchStarterMessage();
+  msg?.edit({ embeds: [embed] });
+
   int.editReply("Sent!");
-  return int.user.send({ content: "You have sent the following suggestion to the LDSG Team for review:", embeds: [embed] });
+  return int.user.send({
+    content: "You have sent the following suggestion to the LDSG Team for review:",
+    embeds: [embed],
+    components: [u.MessageActionRow().setComponents(sUserReply)]
+  });
 }
 
-/** @param {Discord.ButtonInteraction<"cached">} int */
-async function suggestReply(int) {
+/**
+ * For messages from team to suggesters
+ * @param {Discord.ButtonInteraction<"cached">} int
+*/
+async function suggestTeamReply(int) {
   const embed = u.embed(int.message.embeds[0]);
+
   // get user input
-  await int.showModal(replyModal);
+  await int.showModal(replyModal());
   const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionReplyModal" }).catch(u.noop);
   if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
   await submitted.deferUpdate();
 
+  const reply = submitted.fields.getTextInputValue("update");
+
+  // generate reply embed
+  const em = u.embed({ author: int.user })
+    .setTitle("📥 Message from Team")
+    .setDescription(embed.data.description ?? null)
+    .addFields({ name: "Update:", value: reply })
+    .setFooter({ text: embed.data.footer?.text ?? "" });
+
+  // send the reply
+  const userId = (embed?.data.footer?.text ?? "").split(" ")[0];
+  const member = int.guild.members.cache.get(userId);
+  if (!member) return int.channel?.send("I could not find that member");
+
+  try {
+    await member.send({ embeds: [em], components: [u.MessageActionRow().setComponents(sUserReply)] });
+    em.setTitle("📤 Message to Requester")
+      .addFields({ name: "Prior Message", value: int.message.url });
+    return int.channel?.send({ content: `Message sent to ${member.displayName}`, embeds: [em], components: [u.MessageActionRow().setComponents(sTeamReply)] });
+  } catch (e) {
+    return int.channel?.send(`Failed to message ${member}, they may have me blocked. You will need to reach out to them on your own this time!`);
+  }
+}
+
+/**
+ * For messages from the requester to team
+ * @param {Discord.ButtonInteraction} int
+ */
+async function suggestionUserReply(int) {
+  const embed = u.embed(int.message.embeds[0]);
+
+  // get user input
+  await int.showModal(replyModal(false));
+  const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionReplyModal" }).catch(u.noop);
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
+  await submitted.deferReply();
+
+  const threadId = (embed.data.footer?.text ?? "").split(" ")[1];
+  const thread = await int.client.channels.fetch(threadId).catch(u.noop);
+  if (!thread || !thread.isThread()) return submitted.editReply("I could not find your suggestion thread.");
+
   // generate reply embed
   const reply = submitted.fields.getTextInputValue("update");
   const em = u.embed({ author: int.user })
-    .setTitle("Suggestion Update")
-    .setDescription(embed.data.description ?? "")
-    .addFields({ name: "Update:", value: reply })
-    .setFooter({ text: `-LDSG Team` });
+    .setTitle("📥 Message from Requester")
+    .addFields({ name: "Message:", value: reply })
+    .setFooter({ text: embed.data.footer?.text ?? "" });
 
   // send the reply
-  const member = int.guild.members.cache.get(embed.data.footer?.text ?? "");
-  if (!member) return int.channel?.send("I could not find that member");
   try {
-    member.send({ embeds: [em] });
-    return int.channel?.send({ content: `Message sent to ${member.displayName}:\n${int.message.url}`, embeds: [em] });
+    await thread.send({ embeds: [em], components: [u.MessageActionRow().setComponents([sTeamReply])] });
+    em.setTitle("📤 Message to Team");
+    return submitted.editReply({ embeds: [em], components: [u.MessageActionRow().setComponents([sUserReply])] });
   } catch (e) {
-    return int.channel?.send(`Failed to message ${member}, they may have me blocked. You will need to reach out to them on your own this time!`);
+    return submitted.editReply("Failed to message the thread");
   }
 }
 
@@ -200,13 +259,15 @@ const Module = new Augur.Module()
     }
   })
   .addEvent("interactionCreate", (int) => {
-    if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
+    if (!int.isButton()) return;
+    if (int.customId === "suggestionUserReply" && !int.inGuild()) return suggestionUserReply(int);
+    if (!int.inCachedGuild() || int.guild.id !== u.sf.ldsg) return;
     if (!int.customId.startsWith("suggestion")) return;
     if (!u.perms.calc(int.member, ["team", "mgr"])) {
       return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
     }
     switch (int.customId) {
-      case "suggestionReply": return suggestReply(int);
+      case "suggestionTeamReply": return suggestTeamReply(int);
       case "suggestionManage": return suggestManage(int);
       default: return;
     }
