@@ -212,11 +212,11 @@ const utils = {
     return embed;
   },
   /**
- * @param {Discord.CommandInteraction | null} int
- * @param {Discord.EmbedBuilder} embed
- * @param {string[]} lines
- */
-  pagedEmbeds: async (int, embed, lines, ephemeral = true) => {
+   * @param {Discord.CommandInteraction | null} int
+   * @param {Discord.EmbedBuilder} embed
+   * @param {string[]} lines
+   */
+  pagedEmbedsDescription: async (int, embed, lines, ephemeral = true) => {
     const descriptions = [];
     let active = "";
     lines.forEach((line) => {
@@ -238,6 +238,63 @@ const utils = {
         else await int.reply({ embeds: [e], ephemeral });
       } else {
         await int.followUp({ embeds: [e.setTitle(`${e.data.title ?? ""} Cont.`)], ephemeral });
+      }
+      i++;
+    }
+  },
+  /**
+   * @param {Discord.CommandInteraction | null} int
+   * @param {Discord.EmbedBuilder} embed
+   * @param {Map<string, string[]>} lines Map of field names to values
+   */
+  pagedEmbedFields: async (int, embed, lines, ephemeral = true) => {
+    const embeds = [];
+    let fields = [];
+    let em = embed.toJSON();
+    const embedLength = () => {
+      return (em.title?.length ?? 0) +
+        (em.author?.name.length ?? 0) +
+        (em.description?.length ?? 0) +
+        (em.footer?.text.length ?? 0);
+    };
+    let strTotal = embedLength();
+    for (const [fieldName, fieldLines] of lines) {
+      let field = "";
+      let name = fieldName;
+      for (const line of fieldLines) {
+        // reset
+        if (strTotal + line.length > 5500 || fields.length === 25) {
+          if (!em.fields) em.fields = [];
+          em.fields.push(...fields);
+          embeds.push(em);
+          em = embed.toJSON();
+          if (em.title) em.title = em.title + " (Cont.)";
+          fields = [];
+          strTotal = embedLength();
+        }
+        if (field.length + line.length > 1200) {
+          fields.push({ name, value: field });
+          field = "";
+          name = fieldName + " (Cont.)";
+        }
+
+        field += `${line}\n`;
+        strTotal += line.length + 2;
+      }
+      fields.push({ name, value: field });
+    }
+    if (!em.fields) em.fields = [];
+    em.fields.push(...fields);
+    embeds.push(em);
+    if (!int) return embeds;
+    let i = 0;
+    while (i < embeds.length) {
+      const e = embeds[i];
+      if (i === 0) {
+        if (int.deferred || int.replied) await int.editReply({ embeds: [e] });
+        else await int.reply({ embeds: [e], ephemeral });
+      } else {
+        await int.followUp({ embeds: [e] });
       }
       i++;
     }

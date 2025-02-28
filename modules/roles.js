@@ -76,7 +76,7 @@ async function slashRoleList(int) {
   lines.push("\n**Available to Add**");
   if (without.size > 0) lines = lines.concat([...without.values()]);
   else lines.push("You already have all the opt-in roles!");
-  return u.pagedEmbeds(int, embed, lines, ephemeral);
+  return u.pagedEmbedsDescription(int, embed, lines, ephemeral);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -88,7 +88,7 @@ async function slashRoleWhoHas(int) {
     if (role.id === u.sf.ldsg) return int.editReply("Everyone has that role, silly!");
     const members = role.members.map(m => m.displayName).sort();
     if (members.length === 0) return int.editReply("I couldn't find any members with that role. :shrug:");
-    return u.pagedEmbeds(int, u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`), members, ephemeral);
+    return u.pagedEmbedsDescription(int, u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`), members, ephemeral);
   } catch (error) { u.errorHandler(error, int); }
 }
 
