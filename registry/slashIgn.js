@@ -18,6 +18,33 @@ const set = new u.sub()
       .setRequired(true)
   );
 
+const birthday = new u.sub()
+  .setName("birthday")
+  .setDescription("Set your birthday and get Icarus alerts!")
+  .addStringOption(
+    new u.string()
+      .setName("month")
+      .setDescription("What month is your birthday in?")
+      .setChoices(u.months)
+  )
+  .addIntegerOption(
+    new u.int()
+      .setName("day")
+      .setDescription("What day is your birthday on?")
+      .setMinValue(1)
+      .setMaxValue(31)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("notifications")
+      .setDescription("Change your birthday DMs setting")
+      .addChoices(
+        { name: "Full Blast", value: "FULL" },
+        { name: "One Blast", value: "ONE" },
+        { name: "Silence", value: "OFF" }
+      )
+  );
+
 const remove = new u.sub()
   .setName("remove")
   .setDescription("Remove an IGN")
@@ -79,6 +106,7 @@ module.exports = new u.cmd()
   .setDescription("Save and view various game system IGNs or social network names")
   .setDMPermission(true)
   .addSubcommand(set)
+  .addSubcommand(birthday)
   .addSubcommand(remove)
   .addSubcommand(view)
   .addSubcommand(whoplays)

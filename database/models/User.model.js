@@ -27,7 +27,7 @@ const UserSchema = new Schema({
   },
   trackXP: {
     type: Number,
-    default: 2
+    default: 1
   },
   currentXP: {
     type: Number,
@@ -44,6 +44,10 @@ const UserSchema = new Schema({
   watching: {
     type: Boolean,
     default: false
+  },
+  sendBdays: {
+    type: Number,
+    default: 2
   }
 });
 
