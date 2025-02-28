@@ -82,19 +82,20 @@ async function cakedays(testDate, testJoinDate, testMember) {
     const trusted = await ldsg?.roles.fetch(u.sf.roles.moderation.trusted);
     const membersToCheck = testMember ? testMember : trusted?.members ?? [];
     /** @type {Discord.Collection<string, number>} */
-    const preRejoinTimes = new u.Collection();
-    (await u.db.user.getUsers({ discordId: { $in: [...membersToCheck.keys()] }, priorTenure: { $gt: 0 } }))
-      .forEach((value) => {
-        preRejoinTimes.set(value.discordId, value.priorTenure);
-      });
+    const preRejoinTimes = await u.db.user.getUsers({ discordId: { $in: [...membersToCheck.keys()] }, priorTenure: { $gt: 0 } })
+    .then((rawresults) =>
+      new u.Collection(rawresults.map((value) => [value.discordId, value.priorTenure]))
+    );
+
     /** @type {Discord.Collection<Discord.Role, Discord.GuildMember[]>} */
     const cantRoleRemErrors = new u.Collection();
     /** @type {Discord.Collection<Discord.Role, Discord.GuildMember[]>} */
     const cantRoleAddErrors = new u.Collection();
     /** @type {Discord.Collection<number,Discord.GuildMember[]>} */
     const missingRoleErrors = new u.Collection();
-    /** @type {Discord.GuildMember[][]} */
-    const celebrating = [];
+
+    /** @type {Discord.Collection<number,Discord.GuildMember[]>} */
+    const celebrating = new u.Collection();
     for (const [memberId, member] of membersToCheck) {
       const joinDate = u.moment(testJoinDate ?? member.joinedAt);
       if (!joinDate.isValid) { continue; }
@@ -102,10 +103,7 @@ async function cakedays(testDate, testJoinDate, testMember) {
       const totalTime = timeSinceLastReJoin + (preRejoinTimes.get(memberId) ?? 0);
       const years = Math.floor(totalTime / 365.0);
       if (totalTime - (years * 365) < 1 && years > 0) {
-        celebrating.length = Math.max(celebrating.length, years + 1);
-        if (celebrating[years]) {
-          celebrating[years].push(member);
-        } else { celebrating[years] = [member]; }
+        celebrating.ensure(years, () => []).push(member);
         const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
         const previousYearRole = u.db.sheets.roles.year.get(years - 1)?.base;
         if (currentYearRole === undefined && years !== 0) {missingRoleErrors.ensure(years, () => []).push(member);}
@@ -118,15 +116,15 @@ async function cakedays(testDate, testJoinDate, testMember) {
     if (cantRoleAddErrors.size > 0) { cantRoleAddErrors.forEach((members, role) => u.errorHandler(new Error("Cakedays Couldn't upgrade the following members to the " + role.toString() + " Role: \n" + members.map((m) => m.toString()).join("\n")))); }
     if (cantRoleRemErrors.size > 0) { cantRoleRemErrors.forEach((members, role) => u.errorHandler(new Error("Cakedays Couldn't remove the following members from the " + role.toString() + " Role: \n" + members.map((m) => m.toString()).join("\n")))); }
     if (missingRoleErrors.size > 0) { missingRoleErrors.forEach((members, year) => u.errorHandler(new Error("Cakedays Couldn't find the Year role number " + year + " to give to these members: \n" + members.map((m) => m.toString()).join("\n")))); }
-    if (celebrating.length >= 1) {
+    if (celebrating.size >= 1) {
       const embed = u.embed()
         .setTitle("Cake Days!")
         .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
         .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
       if (testDate) embed.setDescription((embed.data.description ?? "") + " (Sorry if we're a bit late!)");
 
-      for (let years = 0; years < celebrating.length; years++) {
-        const cakeMembers = celebrating[years];
+      for (let years = 0; years < celebrating.size; years++) {
+        const cakeMembers = celebrating.get(years);
         if (cakeMembers) {
           embed.addFields({ name: `${years} ${years < 1 ? "Years, First Day!!!" : years < 2 ? "Year" : "Years"}`, value: cakeMembers.join("\n") });
         }
