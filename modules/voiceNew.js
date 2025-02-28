@@ -162,7 +162,10 @@ async function selectUsers(int, action) {
   return received;
 }
 
-/** @param {Augur.GuildInteraction<"Button"|"CommandSlash">} int*/
+/**
+ * @param {Augur.GuildInteraction<"Button"|"CommandSlash">} int
+ * @param {string} string
+ */
 async function getUser(int, string) {
   if (int instanceof Discord.ButtonInteraction) {
     const selected = await selectUsers(int, string);
@@ -286,7 +289,7 @@ async function streamDeny(int, channel) {
 
   const { member, newInt } = user;
   if (!member) return { msg: noUser, int: newInt };
-  if (member.id === user.id) return { msg: `You can't deny yourself from speaking!`, int: newInt };
+  if (member.id === user.member.id) return { msg: `You can't deny yourself from speaking!`, int: newInt };
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id);
   if (!allowedSpeak.includes(member.id)) return { msg: `${member} wasn't able to speak in the first place!`, int: newInt };
 
@@ -312,7 +315,7 @@ async function kickUser(int, channel) {
 Module.addEvent("interactionCreate", async (int) => {
   if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return false;
   const channel = int.member.voice.channel;
-  if (!channel || channel.id !== int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true }).catch(u.noop);
+  if (!channel || channel.id !== int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", flags: ["Ephemeral"] }).catch(u.noop);
   await int.deferUpdate();
   let result;
   switch (int.customId) {
@@ -343,7 +346,7 @@ Module.addEvent("interactionCreate", async (int) => {
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
     const channel = int.member.voice.channel;
-    await int.deferReply({ ephemeral: true });
+    await int.deferReply({ flags: ["Ephemeral"] });
     // handled seperately cuz they might not be able to join
     if (subcommand === "refresh") {
       updateChannels(undefined, undefined, true);

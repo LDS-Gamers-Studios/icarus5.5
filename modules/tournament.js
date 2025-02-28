@@ -20,12 +20,12 @@ async function getTournaments(state) {
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error("Tournament API Call Error " + e.status);
   });
-  return response.data.map(t => t.tournament);
+  return response.data.map((/** @type {{ tournament: any }} */ t) => t.tournament);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function bracket(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const responses = await Promise.all([
     getTournaments("pending"),
     getTournaments("in_progress")
@@ -48,8 +48,9 @@ async function bracket(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function champs(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const tName = int.options.getString('tournament');
+  /** @param {string} str */
   const user = (str) => int.options.getMember(str);
   const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr !== null));
   const date = u.moment().add(3, "weeks").valueOf();
@@ -71,7 +72,7 @@ async function champs(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function participant(int) {
   const role = int.guild.roles.cache.get(u.sf.roles.tournament.participant);
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   if (!role) return u.errorHandler(new Error("No Tourney Champion Role"), int);
   const reset = int.options.getBoolean('reset');
   const remove = int.options.getBoolean('remove');

@@ -7,6 +7,7 @@ module.exports = {
   cmd: Discord.SlashCommandBuilder,
   userContext: () => new Discord.ContextMenuCommandBuilder().setType(2),
   msgContext: () => new Discord.ContextMenuCommandBuilder().setType(3),
+  contexts: Discord.InteractionContextType,
   sub: Discord.SlashCommandSubcommandBuilder,
   user: Discord.SlashCommandUserOption,
   bool: Discord.SlashCommandBooleanOption,
