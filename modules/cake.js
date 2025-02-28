@@ -103,18 +103,17 @@ async function cakedays(testDate, testJoinDate, testMember) {
       if (totalTime - (years * 365) < 1 && years > 0) {
         celebrating.ensure(years, () => []).push(member);
         const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
-        const previousYearRole = u.db.sheets.roles.year.get(years - 1)?.base;
-        const userRoles = [ ...member.roles.cache.clone().keys() ];
-        if (!currentYearRole) {missingRoleErrors.ensure(years, () => []).push(member); continue;}
-        if (userRoles.includes(previousYearRole?.id + "")) {
-          userRoles[userRoles.findIndex((id) => id === previousYearRole?.id + "")] = userRoles.includes(currentYearRole.id) ? "":currentYearRole.id;
-        } else {
-          userRoles.push(currentYearRole.id);
+        if (!currentYearRole) {
+          missingRoleErrors.ensure(years, () => []).push(member);
+          continue;
         }
+        const previousYearRole = u.db.sheets.roles.year.get(years - 1)?.base;
+        const userRoles = member.roles.cache.clone();
+        userRoles.delete(previousYearRole + "");
+        userRoles.ensure(currentYearRole.id, () => currentYearRole);
         await member.roles.set(userRoles).catch(() => {
           cantRoleSetErrors.ensure([previousYearRole + "", currentYearRole + ""], () => []).push(member);
         });
-        }
       }// maybe check if they have all of the year roles and such and yell at someone if they don't
     }
     cantRoleSetErrors.forEach((members, role) =>
