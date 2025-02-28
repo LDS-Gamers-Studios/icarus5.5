@@ -31,7 +31,7 @@ module.exports = {
    * Find a list of all IGNs for a given system
    * @function getList
    * @param {string | string[]} discordId
-   * @param {string} [system] Which system list to fetch
+   * @param {string | null} [system] Which system list to fetch
    * @returns {Promise<IGN[]>}
    */
   findMany: function(discordId, system) {

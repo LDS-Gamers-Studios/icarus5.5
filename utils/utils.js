@@ -212,42 +212,33 @@ const utils = {
     return embed;
   },
   /**
-   * @param {Discord.CommandInteraction | null} int
    * @param {Discord.EmbedBuilder} embed
    * @param {string[]} lines
    */
-  pagedEmbedsDescription: async (int, embed, lines, ephemeral = true) => {
-    const descriptions = [];
+  pagedEmbedsDescription: (embed, lines) => {
+    /** @type {Discord.APIEmbed[]} */
+    const embeds = [];
+    let currentEmbed = embed.toJSON();
     let active = "";
     lines.forEach((line) => {
       if (active.length + line.length > 4000) {
-        descriptions.push(active);
+        currentEmbed.description = (currentEmbed.description ?? "") + active;
+        embeds.push(currentEmbed);
+        currentEmbed = embed.toJSON();
+        currentEmbed.title = (embed.data.title ?? "") + " (Cont.)";
         active = "";
       }
       active += `${line}\n`;
     });
-    descriptions.push(active);
-    if (!int) return descriptions;
-    let i = 0;
-    while (i < descriptions.length) {
-      const desc = descriptions[i];
-      if (!desc) return;
-      const e = utils.embed(embed.toJSON()).setDescription(desc);
-      if (i === 0) {
-        if (int.deferred || int.replied) await int.editReply({ embeds: [e] });
-        else await int.reply({ embeds: [e], ephemeral });
-      } else {
-        await int.followUp({ embeds: [e.setTitle(`${e.data.title ?? ""} Cont.`)], ephemeral });
-      }
-      i++;
-    }
+    currentEmbed.description = (currentEmbed.description ?? "") + active;
+    embeds.push(currentEmbed);
+    return embeds;
   },
   /**
-   * @param {Discord.CommandInteraction | null} int
    * @param {Discord.EmbedBuilder} embed
    * @param {Map<string, string[]>} lines Map of field names to values
    */
-  pagedEmbedFields: async (int, embed, lines, ephemeral = true) => {
+  pagedEmbedFields: (embed, lines, inline = false) => {
     const embeds = [];
     let fields = [];
     let em = embed.toJSON();
@@ -273,7 +264,7 @@ const utils = {
           strTotal = embedLength();
         }
         if (field.length + line.length > 1200) {
-          fields.push({ name, value: field });
+          fields.push({ name, value: field, inline });
           field = "";
           name = fieldName + " (Cont.)";
         }
@@ -281,22 +272,30 @@ const utils = {
         field += `${line}\n`;
         strTotal += line.length + 2;
       }
-      fields.push({ name, value: field });
+      fields.push({ name, value: field, inline });
     }
     if (!em.fields) em.fields = [];
     em.fields.push(...fields);
     embeds.push(em);
-    if (!int) return embeds;
-    let i = 0;
-    while (i < embeds.length) {
-      const e = embeds[i];
+    return embeds;
+  },
+  /**
+   * @typedef {Discord.MessagePayload & { flags: Discord.BitFieldResolvable<"SuppressEmbeds"> }} payload
+   */
+  /**
+   * For when just one reply won't cut it.
+   * @param {Discord.ChatInputCommandInteraction | Discord.ButtonInteraction} int
+   * @param {(Discord.InteractionEditReplyOptions & Discord.InteractionReplyOptions) []} payloads
+   */
+  manyReplies: async (int, payloads, ephemeral = int.ephemeral ?? true) => {
+    for (let i = 0; i < payloads.length; i++) {
+      const payload = payloads[i];
       if (i === 0) {
-        if (int.deferred || int.replied) await int.editReply({ embeds: [e] });
-        else await int.reply({ embeds: [e], ephemeral });
+        if (int.deferred || int.replied) await int.editReply(payload);
+        else await int.reply({ ...payload, flags: ephemeral ? ["Ephemeral"] : undefined });
       } else {
-        await int.followUp({ embeds: [e] });
+        await int.followUp({ ...payload, flags: ephemeral ? ["Ephemeral"] : undefined });
       }
-      i++;
     }
   },
   parseInteraction,
