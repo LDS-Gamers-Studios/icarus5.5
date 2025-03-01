@@ -78,9 +78,9 @@ async function birthdays(testDate, testMember) {
 async function cakedays(testDate, testJoinDate, testMember) {
   try {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
-    const now = testDate ?? new Date();
+    const now = u.moment(testDate) ?? u.moment();
     const trusted = await ldsg?.roles.fetch(u.sf.roles.moderation.trusted);
-    const membersToCheck = testMember ? testMember : trusted?.members ?? [];
+    const membersToCheck = testMember ?? trusted?.members ?? [];
     /** @type {Discord.Collection<string, number>} */
     const preRejoinTimes = await u.db.user.getUsers({ discordId: { $in: [...membersToCheck.keys()] }, priorTenure: { $gt: 0 } })
     .then((rawresults) =>
@@ -96,11 +96,13 @@ async function cakedays(testDate, testJoinDate, testMember) {
     const celebrating = new u.Collection();
     for (const [memberId, member] of membersToCheck) {
       const joinDate = u.moment(testJoinDate ?? member.joinedAt);
-      if (!joinDate.isValid) { continue; }
-      const timeSinceLastReJoin = u.moment(now).diff(joinDate, "days");
-      const totalTime = timeSinceLastReJoin + (preRejoinTimes.get(memberId) ?? 0);
-      const years = Math.floor(totalTime / 365.0);
-      if (totalTime - (years * 365) < 1 && years > 0) {
+      if (!joinDate.isValid()) {
+        continue;
+      }
+      // this moves back the join date to simulate them having joined earlier to account for preRejoinTime
+      const continuousJoinDate = joinDate.subtract(preRejoinTimes.get(memberId) ?? 0, "days");
+      if (checkDate(joinDate, now, false)) {
+        const years = continuousJoinDate.diff(now, "years");
         celebrating.ensure(years, () => []).push(member);
         const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
         if (!currentYearRole) {
