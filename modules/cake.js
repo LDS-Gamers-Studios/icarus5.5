@@ -106,7 +106,7 @@ async function cakedays(testDate, testJoinDate, testMember) {
       joinDate.subtract(preRejoinTimes.get(memberId) ?? 0, "days");
 
       if (checkDate(joinDate, now, false)) {
-        const years = now.diff(joinDate, "years");
+        const years = Math.round(now.diff(joinDate, "years", true));
         celebrating.ensure(years, () => []).push(member);
 
         const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
@@ -120,7 +120,6 @@ async function cakedays(testDate, testJoinDate, testMember) {
         const userRoles = member.roles.cache.clone();
         userRoles.delete(previousYearRole?.id ?? "");
         userRoles.set(currentYearRole.id, currentYearRole);
-        userRoles.set("1", currentYearRole);
 
         await member.roles.set(userRoles).catch(() => {
           cantRoleSetErrors.ensure(years, () => []).push(member);
