@@ -124,7 +124,7 @@ async function cakedays(testDate, testJoinDate, testMember) {
     missingRoleErrors.forEach((members, year) =>
       u.errorHandler(new Error("Cakedays Couldn't find the Year role number " + year + " to give to these members: \n"), members.join("\n"))
     );
-    if (celebrating.size >= 1) {
+    if (celebrating.size > 0) {
       const embed = u.embed()
         .setTitle("Cake Days!")
         .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
