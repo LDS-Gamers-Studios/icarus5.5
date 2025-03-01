@@ -3,8 +3,7 @@ const u = require('./regUtils');
 
 const date = new u.string()
 .setName("date")
-.setDescription("The date to run it for")
-.setRequired(true);
+.setDescription("The date to run it for");
 
 const cakeday = new u.sub()
   .setName("cakeday")
@@ -14,7 +13,12 @@ const cakeday = new u.sub()
 const birthday = new u.sub()
   .setName("birthday")
   .setDescription("Run birthday for a specific Date")
-  .addStringOption(date);
+  .addStringOption(date)
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Run birthdays for someone specific")
+  );
 
 const celebrate = new u.sub()
   .setName("celebrate")

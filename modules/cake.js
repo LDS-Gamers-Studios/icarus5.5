@@ -45,7 +45,7 @@ async function birthdays(testDate, testMember) {
     const year = new Date().getFullYear();
     for (const birthday of bdays) {
       try {
-        const date = u.moment(`${birthday.ign} ${year} 15`, "MMM D YYYY-HH");
+        const date = u.moment(`${birthday.ign} ${year}-15`, "MMM D YYYY-HH");
         if (checkDate(date, now, false)) {
           const member = ldsg.members.cache.get(birthday.discordId);
           celebrating.push(member);
@@ -162,7 +162,7 @@ Module.addEvent("ready", () => {
     enabled: config.devMode,
     hidden: true,
     process: (msg) => {
-      birthdays(new Date(), [{ discordId: msg.author.id, ign: new Date() }]);
+      birthdays(new Date(), [{ discordId: msg.author.id, ign: u.moment().format("MMM D YYYY-HH") }]);
     }
   })
   .addCommand({

@@ -22,8 +22,12 @@ function runCakeday(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runBirthday(int) {
-  const dateInput = int.options.getString("date", true);
-  if (dateInput) {
+  const dateInput = int.options.getString("date");
+  const user = int.options.getMember("user") ?? int.options.getUser("user");
+  if (user) {
+    if (!int.guild.members.cache.has(user.id)) return int.editReply("That person isn't in the server!");
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays(undefined, [{ discordId: user.id, ign: u.moment().format("MMM D YYYY-HH") }]);
+  } else if (dateInput) {
     const date = new Date(dateInput);
     date.setHours(10);
     if (isNaN(date.valueOf())) return int.editReply("Sorry, but I couldn't understand that date.");
