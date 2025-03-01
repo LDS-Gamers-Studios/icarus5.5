@@ -90,7 +90,7 @@ async function cakedays(testDate, testJoinDate, testMember) {
 
     /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
     const missingRoleErrors = new u.Collection();
-    /** @type {Discord.Collection<[String, String], Discord.GuildMember[]>} */
+    /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
     const cantRoleSetErrors = new u.Collection();
 
     /** @type {Discord.Collection<number,Discord.GuildMember[]>} */
@@ -106,7 +106,7 @@ async function cakedays(testDate, testJoinDate, testMember) {
       joinDate.subtract(preRejoinTimes.get(memberId) ?? 0, "days");
 
       if (checkDate(joinDate, now, false)) {
-        const years = joinDate.diff(now, "years");
+        const years = now.diff(joinDate, "years");
         celebrating.ensure(years, () => []).push(member);
 
         const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
@@ -120,15 +120,16 @@ async function cakedays(testDate, testJoinDate, testMember) {
         const userRoles = member.roles.cache.clone();
         userRoles.delete(previousYearRole?.id ?? "");
         userRoles.set(currentYearRole.id, currentYearRole);
+        userRoles.set("1", currentYearRole);
 
         await member.roles.set(userRoles).catch(() => {
-          cantRoleSetErrors.ensure([previousYearRole + "", currentYearRole + ""], () => []).push(member);
+          cantRoleSetErrors.ensure(years, () => []).push(member);
         });
       }// maybe check if they have all of the year roles and such and yell at someone if they don't
     }
 
-    cantRoleSetErrors.forEach((members, role) =>
-      u.errorHandler(new Error(`Cakedays - Couldn't upgrade the following members from the ${role[0]} role to the ${role[1]} role`), members.join("\n"))
+    cantRoleSetErrors.forEach((members, year) =>
+      u.errorHandler(new Error(`Cakedays - Couldn't upgrade the following members ${year > 1 ? `from the ${year - 1} year role ` : ""}to the ${year} year role`), members.join("\n"))
     );
     missingRoleErrors.forEach((members, year) =>
       u.errorHandler(new Error(`Cakedays - Couldn't find the year role for ${year} year(s)`), members.join("\n"))
