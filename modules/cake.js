@@ -100,9 +100,9 @@ async function cakedays(testDate, testJoinDate, testMember) {
         continue;
       }
       // this moves back the join date to simulate them having joined earlier to account for preRejoinTime
-      const continuousJoinDate = joinDate.subtract(preRejoinTimes.get(memberId) ?? 0, "days");
+      joinDate.subtract(preRejoinTimes.get(memberId) ?? 0, "days");
       if (checkDate(joinDate, now, false)) {
-        const years = continuousJoinDate.diff(now, "years");
+        const years = joinDate.diff(now, "years");
         celebrating.ensure(years, () => []).push(member);
         const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
         if (!currentYearRole) {
