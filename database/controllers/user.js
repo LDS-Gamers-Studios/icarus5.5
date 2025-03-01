@@ -13,6 +13,7 @@ const ChannelXP = require("../models/ChannelXP.model");
  * @prop {string[]} badges
  * @prop {number} posts
  * @prop {number} voice
+ * @prop {number} sendBdays
  * @prop {number} trackXP
  * @prop {number} currentXP
  * @prop {number} totalXP

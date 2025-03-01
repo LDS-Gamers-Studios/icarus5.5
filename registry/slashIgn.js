@@ -14,7 +14,7 @@ const set = new u.sub()
   .addStringOption(
     new u.string()
       .setName("ign")
-      .setDescription("The IGN for that system")
+      .setDescription("The IGN for that system. Don't include a URL, I'll take care of that.")
       .setRequired(true)
   );
 
@@ -69,7 +69,7 @@ const view = new u.sub()
   .addUserOption(
     new u.user()
       .setName("target")
-      .setDescription("The person to veiw (default: you)")
+      .setDescription("The person to veiw (Default: you)")
       .setRequired(false)
   );
 
@@ -92,6 +92,7 @@ const whois = new u.sub()
       .setName("ign")
       .setDescription("The IGN you want to find")
       .setRequired(true)
+      .setMinLength(4)
   )
   .addStringOption(
     new u.string()

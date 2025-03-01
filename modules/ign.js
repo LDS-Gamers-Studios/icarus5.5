@@ -56,7 +56,7 @@ function embedsIGN(user, igns, paged) {
 
   metaIgns.map(i => {
     const ign = ignFieldMap(i);
-    embed.addFields({ name: ign[0], value: ign[1][0], inline: true });
+    embed.addFields({ ...ign, inline: true });
   });
   return { embed, fields: new Map() };
 }
@@ -76,11 +76,17 @@ async function slashIgnSet(int) {
   const found = findSystem(system);
   if (!found) return int.editReply("Sorry, I didn't recognize that IGN system.");
 
+  if (/(https?:\/\/)?twitch.tv\//.test(ign) && found.system === "twitch") {
+    return int.editReply("It looks like you've included a URL in your IGN. We take care of that on our end, so please leave it out.");
+  }
+
   const newIgn = await u.db.ign.save(int.user.id, found.system, ign);
   if (!newIgn) return int.editReply("Sorry, I had a problem saving your IGN.");
 
   const embed = embedsIGN(int.user, [newIgn], false);
-  return int.editReply({ content: "Your IGN has been saved!", embeds: embed ? [embed.embed] : undefined });
+  let content = "Your IGN has been saved!";
+  if (found.link) content += " This IGN has a link associated with it. If you included a link in your IGN, please set it without the link.";
+  return int.editReply({ content, embeds: embed ? [embed.embed] : undefined });
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -92,9 +98,18 @@ async function slashIgnBirthday(int) {
   const day = int.options.getInteger("day");
   const setting = int.options.getString("notifications");
 
-  if (!month && !day && !setting) return int.editReply("You didn't give me anything to set!").then(u.clean);
-
   const en = u.db.user.BirthdayEnum;
+
+  if (!month && !day && !setting) {
+    const ign = await u.db.ign.findOne(int.user.id, "birthday");
+    if (ign) {
+      const profile = await u.db.user.fetchUser(int.user.id);
+      return int.editReply(`I have your birthday stored as \`${ign.ign}\` and notifications set to \`${en[profile?.sendBdays || 2]}\`!`);
+    }
+    return int.editReply("You didn't give me anything to set!").then(u.clean);
+  }
+
+
   if (setting) {
     await u.db.user.bdayMsgs(int.user.id, en[setting]);
   }
@@ -143,7 +158,7 @@ async function slashIgnView(int) {
   const found = findSystem(system);
   if (system && !found) return int.editReply("Sorry, I didn't recognize that IGN system.");
 
-  const igns = await u.db.ign.findMany(int.user.id, found?.system);
+  const igns = await u.db.ign.findMany(member.id, found?.system);
   const embeds = embedsIGN(member, igns, true);
 
   if (!embeds) {
@@ -152,7 +167,7 @@ async function slashIgnView(int) {
   }
 
   const processedEmbeds = u.pagedEmbedFields(embeds.embed, embeds.fields, true).map(e => ({ embeds: [e] }));
-  return u.manyInteractions(int, processedEmbeds, int.channelId !== u.sf.channels.botSpam);
+  return u.manyReplies(int, processedEmbeds, int.channelId !== u.sf.channels.botSpam);
 }
 
 /** @param {Discord.ChatInputCommandInteraction} int */
@@ -181,7 +196,7 @@ async function slashIgnWhoPlays(int) {
 
   const embed = u.embed().setTitle(`IGNs for ${found.name}`);
   const processedEmbeds = u.pagedEmbedsDescription(embed, lines).map(e => ({ embeds: [e] }));
-  return u.manyInteractions(int, processedEmbeds, int.channelId !== u.sf.channels.botSpam);
+  return u.manyReplies(int, processedEmbeds, int.channelId !== u.sf.channels.botSpam);
 }
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashIgnWhoIs(int) {
@@ -194,40 +209,44 @@ async function slashIgnWhoIs(int) {
   const members = int.client.guilds.cache.get(u.sf.ldsg)?.members.cache;
   if (!members) return int.editReply("I got lost trying to find LDSG. Sorry!");
 
-  const igns = await u.db.ign.findMany([...members.keys()], inputSystem);
-  const lines = [];
+  const igns = await u.db.ign.findMany([...members.keys()], found?.system);
+
+  /** @type {Discord.Collection<string, { score: number, igns: { ign: string, system: string, score: number }[] }>} */
+  const lines = new u.Collection();
 
   // do a fuzzy search
   for (const i of igns) {
     const pass = fuzzy.single(inputIgn, i.ign);
-    const member = members.get(i.discordId);
 
-    if (pass && pass.score > 0.4 && member) {
-      const system = (found ?? u.db.sheets.igns.get(lines[0].system))?.name ?? lines[0].system;
+    if (pass && pass.score > 0.4) {
+      const system = (found ?? u.db.sheets.igns.get(i.system))?.name ?? i.system;
       const ign = pass.highlight("**", "**");
       const withoutLinkEmbed = ign.startsWith("http") ? `<${ign}>` : ign;
-      lines.push({
-        name: member.displayName,
-        ign,
-        score: pass.score,
+      const line = lines.ensure(i.discordId, () => ({ igns: [], score: 0 }));
+      line.igns.push({
+        ign: withoutLinkEmbed,
         system,
-        str: `· **${u.escapeText(member.displayName)}**: ${u.escapeText(withoutLinkEmbed)}`
+        score: pass.score
       });
+      line.score += pass.score;
     }
   }
 
   lines.sort((a, b) => b.score - a.score);
 
-  if (lines.length === 0) return int.editReply("I couldn't find anyone by that name.");
+  if (lines.size === 0) return int.editReply("I couldn't find anyone by that name.");
 
-  if (lines.length === 1) {
-    return int.editReply(`\`${inputIgn}\` is ${lines[0].name}'s IGN for ${lines[0].system}`);
-  }
+  const embed = u.embed().setTitle(`${found?.name ?? ""} IGN Lookup for "${inputIgn}"`);
 
-  const embed = u.embed().setTitle(`IGN Lookup for "${inputIgn}"`);
+  const mappedLines = lines.map((l, id) => {
+    const names = l.igns
+      .sort((a, b) => b.score - a.score)
+      .map(i => `· ${i.system}: ${i.ign}`);
+    return `${members.get(id)?.displayName}\n${names.join("\n")}\n`;
+  });
 
-  const processedEmbeds = u.pagedEmbedsDescription(embed, lines.map(l => l.str)).map(e => ({ embeds: [e] }));
-  return u.manyInteractions(int, processedEmbeds, int.channelId !== u.sf.channels.botSpam);
+  const processedEmbeds = u.pagedEmbedsDescription(embed, mappedLines).map(e => ({ embeds: [e] }));
+  return u.manyReplies(int, processedEmbeds, int.channelId !== u.sf.channels.botSpam);
 }
 
 const Module = new Augur.Module()
@@ -243,6 +262,22 @@ const Module = new Augur.Module()
       case "whoplays": return slashIgnWhoPlays(int);
       case "whois": return slashIgnWhoIs(int);
       default: u.errorHandler(new Error("Unhandled Subcommand"), int);
+    }
+  },
+  autocomplete: (int) => {
+    const option = int.options.getFocused(true);
+    if (option.name === "system") {
+      /** @type {{name: string, value: string}[]} */
+      const systems = [];
+      const val = option.value.toLowerCase();
+      for (const [system, ign] of u.db.sheets.igns) {
+        if (
+          system.toLowerCase().includes(val) ||
+          ign.name.toLowerCase().includes(val) ||
+          ign.aliases.find(a => a.includes(val))
+        ) systems.push({ name: ign.name, value: ign.name });
+      }
+      int.respond(systems.slice(0, 24));
     }
   }
 });
