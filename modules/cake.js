@@ -132,9 +132,7 @@ async function cakedays(testDate, testJoinDate, testMember) {
       if (testDate) embed.setDescription((embed.data.description ?? "") + " (Sorry if we're a bit late!)");
 
       for (const [years, cakeMembers] of celebrating) {
-        if (cakeMembers) {
-          embed.addFields({ name: `${years} ${years < 1 ? "Years, First Day!!!" : years < 2 ? "Year" : "Years"}`, value: cakeMembers.join("\n") });
-        }
+        embed.addFields({ name: `${years} ${years < 1 ? "Years, First Day!!!" : years < 2 ? "Year" : "Years"}`, value: cakeMembers.join("\n") });
       }
       const allMentions = [...celebrating.values()].flat().map(c => c?.toString());
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ content: allMentions.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
