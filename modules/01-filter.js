@@ -113,6 +113,7 @@ async function processMessageLanguage(msg) {
   if (!msg.member) return;
   /** @type {string[]} */
   let matchedContent = [];
+  /** @type {string[]} */
   const reasons = [];
   let warned = false;
   let pingMods = false;

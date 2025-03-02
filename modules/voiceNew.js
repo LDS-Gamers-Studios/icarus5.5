@@ -4,7 +4,9 @@ const Augur = require('augurbot-ts'),
   u = require('../utils/utils'),
   Module = new Augur.Module();
 
-/** @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">}|Discord.Interaction<"cached">|false>} voice */
+/**
+ * @typedef {{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">} | Discord.Interaction<"cached">| false} VoiceReturn
+ * @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<VoiceReturn>} voice */
 
 /**
  * @param {updates} options
@@ -247,6 +249,7 @@ async function streamLock(int, channel, trying = false) {
   await channel.permissionOverwrites.set(newPerms);
   return int;
 }
+
 /** @type {voice} */
 async function streamUnlock(int, channel, trying = false) {
   if (!isStreamLocked(channel)) {
@@ -263,6 +266,7 @@ async function streamUnlock(int, channel, trying = false) {
   await channel.permissionOverwrites.set(newPerms);
   return int;
 }
+
 /** @type {voice} */
 async function streamAllow(int, channel) {
   if (!isStreamLocked(channel)) return { msg: "Your voice channel isn't stream locked!", int };
@@ -280,6 +284,7 @@ async function streamAllow(int, channel) {
   await channel.permissionOverwrites.set(newPerms);
   return newInt;
 }
+
 /** @type {voice} */
 async function streamDeny(int, channel) {
   if (!isStreamLocked(channel)) return { msg: "Your voice channel isn't stream locked!" + (isLocked(channel) ? " Try the button for kicking users." : ""), int };
@@ -353,6 +358,7 @@ Module.addEvent("interactionCreate", async (int) => {
       return int.editReply("I've added empty voice channels if there weren't before.");
     }
     if (!channel) return int.editReply("You need to be in a voice channel to run these commands!");
+    /** @type {VoiceReturn} */
     let result;
     const user = int.options.getUser("user");
     switch (subcommand) {

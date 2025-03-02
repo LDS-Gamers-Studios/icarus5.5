@@ -16,6 +16,7 @@ async function getTournaments(state) {
   // parameters for the url
   const urlParams = `api_key=${encodeURIComponent(config.api.challonge)}&state=${encodeURIComponent(state)}&subdomain=ldsg`;
   const url = "https://api.challonge.com/v1/tournaments.json?" + urlParams;
+
   // @ts-ignore... it can be called lol
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error("Tournament API Call Error " + e.status);
@@ -33,6 +34,7 @@ async function bracket(int) {
 
   const tournaments = responses.flat().sort((a, b) => (new Date(a.start_at)).valueOf() - (new Date(b.start_at).valueOf()));
 
+  /** @type {string[]} */
   const displayTourneys = [];
   for (const tournament of tournaments) {
     const displayDate = (tournament.start_at ? u.time(new Date(tournament.start_at), "D") : "Unscheduled");

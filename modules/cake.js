@@ -8,8 +8,8 @@ const Augur = require("augurbot-ts"),
 
 function celebrate(test = false) {
   if (u.moment().hours() === 15 || test) {
-    birthdays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Birthdays"));
-    cakedays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + "Cake Days"));
+    birthdays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + " Birthdays"));
+    cakedays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + " Cake Days"));
   }
 }
 
@@ -33,7 +33,8 @@ async function birthdays(testDate, testMember) {
   // Send Birthday Messages, if saved by member
   try {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
-    if (!ldsg) throw new Error("birthDays couldn't access ldsg");
+    if (!ldsg) throw new Error("Birthdays couldn't access LDSG");
+
     const now = u.moment(testDate ?? new Date());
 
     // Birthday Blast
@@ -41,6 +42,8 @@ async function birthdays(testDate, testMember) {
     const flair = ["🎉", "🎊", "🎂", "🎁", "🍰"];
 
     const bdays = testMember ?? await u.db.ign.findMany(ldsg.members.cache.map(m => m.id), "birthday");
+
+    /** @type {(Discord.GuildMember | undefined)[]} */
     const celebrating = [];
     const year = new Date().getFullYear();
     for (const birthday of bdays) {
@@ -81,9 +84,9 @@ async function cakedays(testDate, testJoinDate, testMember) {
 
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     const trusted = await ldsg?.roles.fetch(u.sf.roles.moderation.trusted);
-    const membersToCheck = testMember ?? trusted?.members ?? [];
+    const membersToCheck = testMember ?? trusted?.members ?? new u.Collection();
 
-    const preRejoinTimes = await u.db.user.getUsers({ discordId: { $in: [...membersToCheck.keys()] }, priorTenure: { $gt: 0 } })
+    const priorTenures = await u.db.user.getUsers({ discordId: { $in: [...membersToCheck.keys()] }, priorTenure: { $gt: 0 } })
       .then((rawresults) => {
         return new u.Collection(rawresults.map((value) => [value.discordId, value.priorTenure]));
       });
@@ -93,7 +96,7 @@ async function cakedays(testDate, testJoinDate, testMember) {
     /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
     const cantRoleSetErrors = new u.Collection();
 
-    /** @type {Discord.Collection<number,Discord.GuildMember[]>} */
+    /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
     const celebrating = new u.Collection();
 
     for (const [memberId, member] of membersToCheck) {
@@ -102,10 +105,10 @@ async function cakedays(testDate, testJoinDate, testMember) {
         continue;
       }
 
-      // this moves back the join date to simulate them having joined earlier to account for preRejoinTime
-      joinDate.subtract(preRejoinTimes.get(memberId) ?? 0, "days");
+      // this moves back the join date to simulate them having joined earlier to account for their prior tenure
+      joinDate.subtract(priorTenures.get(memberId) ?? 0, "days");
 
-      if (checkDate(joinDate, now, false)) {
+      if (checkDate(joinDate, now, true)) {
         const years = Math.round(now.diff(joinDate, "years", true));
         celebrating.ensure(years, () => []).push(member);
 
@@ -124,15 +127,17 @@ async function cakedays(testDate, testJoinDate, testMember) {
         await member.roles.set(userRoles).catch(() => {
           cantRoleSetErrors.ensure(years, () => []).push(member);
         });
-      }// maybe check if they have all of the year roles and such and yell at someone if they don't
+      }
     }
 
+    // yell at the devs
     cantRoleSetErrors.forEach((members, year) =>
       u.errorHandler(new Error(`Cakedays - Couldn't upgrade the following members ${year > 1 ? `from the ${year - 1} year role ` : ""}to the ${year} year role`), members.join("\n"))
     );
     missingRoleErrors.forEach((members, year) =>
       u.errorHandler(new Error(`Cakedays - Couldn't find the year role for ${year} year(s)`), members.join("\n"))
     );
+
     if (celebrating.size > 0) {
       const embed = u.embed()
         .setTitle("Cake Days!")

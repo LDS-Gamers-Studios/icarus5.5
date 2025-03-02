@@ -149,6 +149,7 @@ async function slashBotGetId(int) {
   const channel = int.options.getChannel("channel");
   const emoji = int.options.getString("emoji");
 
+  /** @type {{ str: string, id: string }[]} */
   const results = [];
   if (mentionable) results.push({ str: mentionable.toString(), id: mentionable.id });
   if (channel) results.push({ str: channel.toString(), id: channel.id });
@@ -209,7 +210,7 @@ const Module = new Augur.Module()
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
     const subcommand = int.options.getSubcommand(true);
-    const forThePing = await int.deferReply({ flags: (int.channelId !== u.sf.channels.botTesting ? [ "Ephemeral" ] : undefined) });
+    const forThePing = await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.botTesting) });
     if (["gotobed", "reload", "register", "status", "sheets"].includes(subcommand) && !u.perms.calc(int.member, ["botAdmin"])) return int.editReply("That command is only for Bot Admins.");
     if (subcommand === "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {

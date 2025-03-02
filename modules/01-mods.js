@@ -109,7 +109,7 @@ async function slashModFilter(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModSummary(interaction) {
-  await interaction.deferReply({ flags: (interaction.channelId !== u.sf.channels.mods.discussion ? [ "Ephemeral" ] : undefined) });
+  await interaction.deferReply({ flags: u.ephemeralChannel(interaction, u.sf.channels.mods.discussion) });
   const member = interaction.options.getMember("user") ?? interaction.member;
   const time = interaction.options.getInteger("history") ?? 28;
 
@@ -214,7 +214,7 @@ async function slashModRename(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModWatchlist(interaction) {
-  await interaction.deferReply({ flags: (interaction.channelId !== u.sf.channels.mods.discussion ? [ "Ephemeral" ] : undefined) });
+  await interaction.deferReply({ flags: u.ephemeralChannel(interaction, u.sf.channels.mods.discussion) });
   c.watchlist = new Set((await u.db.user.getUsers({ watching: true })).map(usr => usr.discordId));
 
   const e = u.embed({ author: interaction.member })

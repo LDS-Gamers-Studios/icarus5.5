@@ -177,6 +177,8 @@ async function suggestManage(int) {
     const user = int.guild.members.cache.get(em.data.footer?.text ?? "")?.displayName ?? em.data.footer?.text;
     await int.channel.setName(`Suggestion from ${user}`);
   }
+
+  /** @type {{ name: string, value: string }[]} */
   const fields = [];
   if (issue) fields.push({ name: "Issue", value: issue });
   if (plans) fields.push({ name: "Plans", value: plans });
