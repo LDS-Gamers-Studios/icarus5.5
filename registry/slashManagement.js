@@ -1,30 +1,28 @@
 // @ts-check
 const u = require('./regUtils');
 
-const month = new u.string()
-.setName("month")
-.setDescription("The month to run it for")
-.setChoices(u.months)
-.setRequired(true);
-
-const day = new u.int()
-.setName("day")
-.setDescription("The day to run it for")
-.setRequired(true)
-.setMinValue(1)
-.setMaxValue(31);
+const date = new u.string()
+.setName("date")
+.setDescription("The date to run it for");
 
 const cakeday = new u.sub()
   .setName("cakeday")
   .setDescription("Run cakeday (tenure) for a specific Date")
-  .addStringOption(month)
-  .addIntegerOption(day);
+  .addStringOption(date);
 
 const birthday = new u.sub()
   .setName("birthday")
   .setDescription("Run birthday for a specific Date")
-  .addStringOption(month)
-  .addIntegerOption(day);
+  .addStringOption(date)
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Run birthdays for someone specific")
+  );
+
+const celebrate = new u.sub()
+  .setName("celebrate")
+  .setDescription("Run birthday and cakeday celebrations");
 
 const banner = new u.sub()
   .setName("banner")
@@ -63,8 +61,9 @@ const team = new u.sub()
 module.exports = new u.cmd()
   .setName("management")
   .setDescription("Management Commands")
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.devMode)
+  .addSubcommand(celebrate)
   .addSubcommand(cakeday)
   .addSubcommand(banner)
   .addSubcommand(birthday)

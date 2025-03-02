@@ -93,6 +93,7 @@ async function register() {
   if (!applicationId) return console.log("Please put your application ID in config/config.json\nYou can find the ID here:\nhttps://discord.com/developers/applications");
   const commandPath = path.resolve(require.main ? path.dirname(require.main.filename) : process.cwd(), "./registry");
 
+  /** @type {any[]} */
   const guildCommandLoads = [];
   for (const command of guildCommandFiles) {
     const load = require(path.resolve(commandPath, command));
@@ -114,6 +115,7 @@ async function register() {
     }
   }
 
+  /** @type {any[]} */
   const globalCommandLoads = [];
   for (const command of globalCommandFiles) {
     const load = require(path.resolve(commandPath, command));

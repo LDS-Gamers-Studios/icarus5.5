@@ -35,7 +35,9 @@ module.exports = {
    * @returns {Promise<IGN[]>}
    */
   findMany: function(discordId, system) {
+    /** @type {string[] | string | { $in: string[] }} */
     let ids;
+    /** @type {any} */
     let query;
     if (Array.isArray(discordId)) ids = { $in: discordId };
     else ids = discordId;

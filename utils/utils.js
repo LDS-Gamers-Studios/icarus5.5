@@ -2,13 +2,15 @@
 const { AxiosError } = require("axios");
 const Discord = require("discord.js"),
   { escapeMarkdown, ComponentType } = require('discord.js'),
-  sf = require("../config/snowflakes.json"),
+  rsf = require("../config/snowflakes.json"),
   tsf = require("../config/snowflakes-testing.json"),
   csf = require("../config/snowflakes-commands.json"),
   db = require("../database/dbControllers.js"),
   p = require('./perms.js'),
   moment = require('moment-timezone'),
   config = require("../config/config.json");
+
+const sf = { ...(config.devMode ? tsf : rsf), ...csf };
 
 const errorLog = new Discord.WebhookClient({ url: config.webhooks.error });
 const { nanoid } = require("nanoid");
@@ -77,13 +79,13 @@ const utils = {
    * @returns {Discord.TextBasedChannel | null}
    */
   botSpam: function(msg) {
-    if (msg.inGuild() && msg.guild.id === utils.sf.ldsg && // Is in server
-      ![utils.sf.channels.botSpam, utils.sf.channels.botTesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
-      msg.channel.parentId !== utils.sf.channels.team.category) { // Isn't in the moderation category
+    if (msg.inGuild() && msg.guild.id === sf.ldsg && // Is in server
+      ![sf.channels.botSpam, sf.channels.botTesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
+      msg.channel.parentId !== sf.channels.team.category) { // Isn't in the moderation category
 
-      msg.reply(`I've placed your results in <#${utils.sf.channels.botSpam}> to keep things nice and tidy in here. Hurry before they get cold!`)
+      msg.reply(`I've placed your results in <#${sf.channels.botSpam}> to keep things nice and tidy in here. Hurry before they get cold!`)
         .then(utils.clean);
-      return msg.client.getTextChannel(utils.sf.channels.botSpam);
+      return msg.client.getTextChannel(sf.channels.botSpam);
     }
     return msg.channel;
 
@@ -151,7 +153,7 @@ const utils = {
     };
 
     if (interaction.replied || interaction.deferred) await interaction.editReply(response);
-    else await interaction.reply({ ...response, ephemeral: true, content: undefined });
+    else await interaction.reply({ ...response, flags: ["Ephemeral"], content: undefined });
 
     const confirm = await interaction.channel?.awaitMessageComponent({
       filter: (button) => button.user.id === interaction.user.id && (button.customId === confirmTrue || button.customId === confirmFalse),
@@ -329,11 +331,12 @@ const utils = {
       /* eslint-disable-next-line no-console*/
       console.error(`Interaction by ${message.user.username} in ${loc}`);
       if (message.isRepliable() && (message.deferred || message.replied)) message.editReply("I've run into an error. I've let my devs know.").catch(utils.noop).then(utils.clean);
-      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop).then(utils.clean);
+      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", flags: ["Ephemeral"] }).catch(utils.noop).then(utils.clean);
       embed.addFields(
         { name: "User", value: message.user?.username, inline: true },
         { name: "Location", value: loc, inline: true }
       );
+      /** @type {string[]} */
       const descriptionLines = [];
       const { command, data } = parseInteraction(message);
       if (command) descriptionLines.push(command);
@@ -386,9 +389,12 @@ const utils = {
   /**
    * Shortcut to moment with the correct UTC offset (Mountain Time)
    * @param {moment.MomentInput} [input]
-   * @param {boolean} [strict]
+   * @param {string} [format]
    */
-  moment: (input, strict) => moment(input, strict).tz("America/Denver"),
+  moment: (input, format) => {
+    if (input && format) return moment.tz(input?.toString(), format, "America/Denver");
+    return moment.tz(input, "America/Denver");
+  },
   /**
    * This task is extremely complicated.
    * You need to understand it perfectly to use it.
@@ -451,7 +457,7 @@ const utils = {
   /**
    * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
    */
-  sf: { ...(config.devMode ? tsf : sf), ...csf },
+  sf,
 
   /**
    * Returns a promise that will fulfill after the given amount of time.
@@ -484,9 +490,9 @@ const utils = {
   /** @param {Discord.GuildMember | null} [member]*/
   getHouseInfo: function(member) {
     const houseInfo = new Map([
-      [utils.sf.roles.houses.housebb, { name: "Brightbeam", color: 0x00a1da }],
-      [utils.sf.roles.houses.housefb, { name: "Freshbeast", color: 0xfdd023 }],
-      [utils.sf.roles.houses.housesc, { name: "Starcamp", color: 0xe32736 }]
+      [sf.roles.houses.housebb, { name: "Brightbeam", color: 0x00a1da }],
+      [sf.roles.houses.housefb, { name: "Freshbeast", color: 0xfdd023 }],
+      [sf.roles.houses.housesc, { name: "Starcamp", color: 0xe32736 }]
     ]);
 
     if (member) {
@@ -495,6 +501,15 @@ const utils = {
       }
     }
     return { name: "Unsorted", color: 0x402a37 };
+  },
+  /**
+   * @param {Discord.Interaction} int
+   * @param {string} [channelId]
+   * @returns {["Ephemeral"] | undefined}
+   */
+  ephemeralChannel: function(int, channelId = sf.channels.botSpam) {
+    if (int.inGuild() && int.channelId !== channelId) return ["Ephemeral"];
+    return undefined;
   }
 };
 
