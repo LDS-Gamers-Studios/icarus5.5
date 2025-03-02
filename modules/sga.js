@@ -3,7 +3,7 @@ const Augur = require("augurbot-ts"),
   u = require('../utils/utils'),
   Discord = require("discord.js");
 
-const dict = new Map([
+const dict = new u.Collection([
   ["ᔑ", "a"],
   ["ʖ", "b"],
   ["ᓵ", "c"],
@@ -39,16 +39,14 @@ function translate(sga) {
 
   let upper = false;
 
-  for (let i = 0; i < sga.length; i++) {
-    const c = sga.charAt(i);
-    let f = dict.get(c);
-    if (c === zeroWidthSpace) {
+  for (const char of sga) {
+    const f = dict.get(char);
+    if (char === zeroWidthSpace) {
       upper = true;
-      f = zeroWidthSpace;
       continue;
     }
 
-    to += f ? (upper ? f.toUpperCase() : f) : c;
+    to += f ? (upper ? f.toUpperCase() : f) : char;
     upper = false;
   }
 
@@ -57,17 +55,17 @@ function translate(sga) {
 
 /** @param {Discord.Message} msg */
 async function handleMessage(msg) {
-  if (msg.author.bot || !([...msg.content].some(char => Object.keys(dict).includes(char)))) {
+  if (msg.author.bot || !dict.hasAny(...msg.content)) {
     return;
   }
 
   const row = u.MessageActionRow()
-  .addComponents(
-    new u.Button()
-      .setCustomId('sgaTranslate')
-      .setLabel('Translate')
-      .setStyle(Discord.ButtonStyle.Primary),
-  );
+    .addComponents(
+      new u.Button()
+        .setCustomId('sgaTranslate')
+        .setLabel('Translate')
+        .setStyle(Discord.ButtonStyle.Primary),
+    );
 
   return await msg.reply({
     components: [row]

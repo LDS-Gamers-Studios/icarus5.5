@@ -53,6 +53,7 @@ async function slashFunHBS(int) {
   const choice = int.options.getString("choice", true);
   const chooser = int.user.toString();
   const botLobby = int.client.getTextChannel(u.sf.channels.botSpam);
+  /** @type {{ user: string, choice: string }} */
   let challenged;
   if (mode === "user") {
     if (!storedChoice) {
@@ -91,7 +92,6 @@ async function slashFunHBS(int) {
  * @return {string} a summary including who picked what and who won.
  */
 function hbsResult(chooser1, choice1, chooser2, choice2) {
-
   let response = `🤼 ${chooser1} picked ${hbsValues[choice1].emoji}, ${chooser2} picked ${hbsValues[choice2].emoji}.\n### `;
   if (choice1 === choice2) {
     response += "🤝 It's a tie!";
@@ -109,6 +109,8 @@ async function slashFunAcronym(int) {
   // input or number between 3 and 5
   const len = int.options.getInteger("length") || Math.floor(Math.random() * 3) + 3;
   const pf = new profanityFilter();
+
+  /** @type {string[]} */
   let wordgen = [];
 
   // try a bunch of times
@@ -362,7 +364,7 @@ async function slashFunNamegame(int) {
     const song = /<blockquote>\n(.*)<\/blockquote>/g.exec(response?.data)?.[1]?.replace(/<br ?\/>/g, "\n");
     // make sure its safe
     const pf = new profanityFilter();
-    const profane = pf.scan(song?.toLowerCase().replace("\n", " ") ?? "").length;
+    const profane = pf.scan(song?.toLowerCase().replace(/\n/g, " ") ?? "").length;
     if (!song) {
       return int.editReply("I uh... broke my voice box. Try a different name?").then(u.clean);
     } else if (profane > 0) {

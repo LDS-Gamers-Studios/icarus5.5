@@ -105,12 +105,13 @@ async function slashGameElite(int) {
 
   if (info === "time") return int.reply(eliteGetTime());
 
-  await int.deferReply({ flags: (int.channelId !== u.sf.channels.elite ? ["Ephemeral"] : undefined) });
+  await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.elite) });
   if (info === "status") return int.editReply(await eliteGetStatus());
 
   const starSystem = await eliteAPI.getSystemInfo(system);
   if (!starSystem) return int.editReply({ content: "I couldn't find a system with that name." }).then(u.clean);
 
+  /** @type {string | Discord.InteractionEditReplyOptions } */
   let reply;
   const embed = u.embed().setThumbnail("https://i.imgur.com/Ud8MOzY.png").setAuthor({ name: "EDSM", iconURL: "https://i.imgur.com/4NsBfKl.png" });
   switch (info) {
@@ -254,7 +255,7 @@ Module.addInteraction({
   }
 })
 .setClockwork(() => {
-  return setTimeout(() => {
+  return setInterval(() => {
     updateFactionStatus();
     // every 6 hours seems alright
   }, 6 * 60 * 60_000);

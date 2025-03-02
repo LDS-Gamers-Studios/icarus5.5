@@ -117,6 +117,7 @@ async function slashGospelVerse(interaction, parsed) {
     return;
   }
   if (versesNums.length > 0) {
+    /** @type {string[]} */
     const verseContent = [];
     for (const num of versesNums) {
       if (bookJson[bookRef.bookName][chapter][num]) {

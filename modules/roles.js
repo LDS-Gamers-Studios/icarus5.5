@@ -45,6 +45,7 @@ async function slashRoleAdd(int, give = true) {
   const admin = u.perms.calc(int.member, ["mgr"]);
 
   // role finding!
+  /** @type {Discord.Role | undefined} */
   let role;
   if (admin) role = int.guild.roles.cache.find(r => r.name.toLowerCase() === input.toLowerCase());
   else role = u.db.sheets.optRoles.find(r => r.role.name.toLowerCase() === input.toLowerCase())?.role;
@@ -71,11 +72,12 @@ async function slashRoleList(int) {
   const ephemeral = int.channel?.id !== u.sf.channels.botSpam;
   const embed = u.embed().setTitle("Opt-In Roles")
     .setDescription(`You can add these roles with </role add:${u.sf.commands.slashRole}> to recieve pings and access to certain channels`);
-    /** @type {string[]} */
-  let lines = [];
-  if (has.size > 0) lines = [ "**Already Have**\n", ...has.map(h => h.toString())];
+
+  /** @type {string[]} */
+  const lines = [];
+  if (has.size > 0) lines.push("**Already Have**\n", ...has.map(h => h.toString()));
   lines.push("\n**Available to Add**");
-  if (without.size > 0) lines = lines.concat(...without.map(w => w.toString()));
+  if (without.size > 0) lines.push(...without.map(w => w.toString()));
   else lines.push("You already have all the opt-in roles!");
   return u.pagedEmbeds(int, embed, lines, ephemeral);
 }
@@ -128,14 +130,14 @@ async function slashRoleInventory(int) {
       .setTitle("Equippable Color Inventory")
       .setDescription(`Equip a color role with </role equip:${u.sf.commands.slashRole}>\n\n${inv.join("\n")}`);
     if (inv.length === 0) int.reply({ content: "You don't have any colors in your inventory!", flags: ["Ephemeral"] });
-    else int.reply({ embeds: [embed], flags: (int.channel?.id !== u.sf.channels.botSpam ? ["Ephemeral"] : undefined) });
+    else int.reply({ embeds: [embed], flags: u.ephemeralChannel(int) });
   } catch (e) { u.errorHandler(e, int); }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashRoleEquip(int) {
   try {
-    await int.deferReply({ flags: (int.channel?.id !== u.sf.channels.botSpam ? ["Ephemeral"] : undefined) });
+    await int.deferReply({ flags: u.ephemeralChannel(int) });
 
     const input = int.options.getString("color")?.toLowerCase() || null;
     const passed = await roleInfo.equip(int.member, input);
@@ -196,6 +198,7 @@ Module.addInteraction({
       }
       // /role add/remove
       const adding = sub === "add";
+      /** @type {string[]} */
       let roles;
       if (u.perms.calc(interaction.member, ["mgr"])) {
         roles = interaction.guild.roles.cache.filter(r => addFilter(interaction, r, input, adding))
