@@ -37,11 +37,10 @@ const birthday = new u.sub()
   .addStringOption(
     new u.string()
       .setName("notifications")
-      .setDescription("Change your birthday DMs setting")
+      .setDescription("Do you want to recieve birthday DMs?")
       .addChoices(
-        { name: "Full Blast", value: "FULL" },
-        { name: "One Blast", value: "ONE" },
-        { name: "Silence", value: "OFF" }
+        { name: "Yes", value: "FULL" },
+        { name: "No", value: "OFF" }
       )
   );
 
@@ -105,7 +104,7 @@ const whois = new u.sub()
 module.exports = new u.cmd()
   .setName("ign")
   .setDescription("Save and view various game system IGNs or social network names")
-  .setContexts(u.contexts.Guild)
+  .setContexts(u.contexts.Guild, u.contexts.BotDM, u.contexts.PrivateChannel)
   .addSubcommand(set)
   .addSubcommand(birthday)
   .addSubcommand(remove)

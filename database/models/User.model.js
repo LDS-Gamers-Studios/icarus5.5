@@ -46,8 +46,8 @@ const UserSchema = new Schema({
     default: false
   },
   sendBdays: {
-    type: Number,
-    default: 2
+    type: Boolean,
+    default: true
   }
 });
 

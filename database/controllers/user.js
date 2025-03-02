@@ -13,11 +13,11 @@ const ChannelXP = require("../models/ChannelXP.model");
  * @prop {string[]} badges
  * @prop {number} posts
  * @prop {number} voice
- * @prop {number} sendBdays
  * @prop {number} trackXP
  * @prop {number} currentXP
  * @prop {number} totalXP
  * @prop {number} priorTenure
+ * @prop {boolean} sendBdays
  * @prop {boolean} watching
  */
 
@@ -40,18 +40,9 @@ const TrackXPEnum = {
   FULL: 2
 };
 
-const BirthdayEnum = {
-  0: "OFF",
-  1: "ONE",
-  2: "FULL",
-  "OFF": 0,
-  "ONE": 1,
-  "FULL": 2
-};
 
 const models = {
   TrackXPEnum,
-  BirthdayEnum,
   /**
      * Add XP to a set of users
      * @param {Discord.Collection<string, import("../../modules/xp").ActiveUser[]>} activity Users to add XP, as well as their multipliers
@@ -233,7 +224,7 @@ const models = {
   /**
    * Update a member's birthday notification preference
    * @param {string} discordId The guild member to update.
-   * @param {number} sendBdays The new status
+   * @param {boolean} sendBdays The new status
    * @returns {Promise<UserRecord | null>}
    */
   bdayMsgs: function(discordId, sendBdays) {

@@ -98,20 +98,18 @@ async function slashIgnBirthday(int) {
   const day = int.options.getInteger("day");
   const setting = int.options.getString("notifications");
 
-  const en = u.db.user.BirthdayEnum;
-
   if (!month && !day && !setting) {
     const ign = await u.db.ign.findOne(int.user.id, "birthday");
     if (ign) {
       const profile = await u.db.user.fetchUser(int.user.id);
-      return int.editReply(`I have your birthday stored as \`${ign.ign}\` and notifications set to \`${en[profile?.sendBdays || 2]}\`!`);
+      return int.editReply(`I have your birthday stored as \`${ign.ign}\`, with your preference set to ${(profile?.sendBdays === false) ? "no birthday DMs." : "a bunch of birthday DMs!"}`);
     }
     return int.editReply("You didn't give me anything to set!").then(u.clean);
   }
 
 
   if (setting) {
-    await u.db.user.bdayMsgs(int.user.id, en[setting]);
+    await u.db.user.bdayMsgs(int.user.id, setting === "FULL");
   }
 
   if (month && day) {
@@ -120,10 +118,8 @@ async function slashIgnBirthday(int) {
 
     let str = "I've set your birthday!";
     switch (setting) {
-      case en[0]: str += " I won't send you any DMs though."; break;
-      case en[1]: str += " I'll also send you a few DMs on your special day."; break;
-      case en[2]: str += " I'll also send you plenty of DMs on your special day."; break;
-      default: break;
+      case "OFF": str += " I won't send you any DMs though."; break;
+      default: str += " I'll also send you plenty of DMs on your special day."; break;
     }
 
     const embed = embedsIGN(int.user, [newIgn], false);
