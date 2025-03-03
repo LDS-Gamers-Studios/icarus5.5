@@ -4,12 +4,13 @@ const u = require("./regUtils");
 
 const create = new u.sub()
   .setName("create")
-  .setDescription("Create a new tag.")
+  .setDescription("Create a new tag. Content is entered after sending the command.")
   .addStringOption(
     new u.string()
       .setName("name")
       .setDescription("The name of the tag.")
       .setRequired(true)
+      .setMaxLength(20)
   )
   .addAttachmentOption(
     new u.attachment()
@@ -70,6 +71,6 @@ module.exports = new u.cmd()
   .addSubcommand(del)
   .addSubcommand(variables)
   .addSubcommand(value)
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.devMode)
   .toJSON();

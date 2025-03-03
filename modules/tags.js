@@ -63,8 +63,8 @@ function encodeTag(tag, msg, int) {
     }
 
     response = response
-      .replace(/<@channel>/ig, origin.channel?.toString() ?? "Here")
-      .replace(/<@randomchannel>/, u.rand(randomChannels) ?? origin.channel?.toString() ?? "Here")
+      .replace(/<#channel>/ig, origin.channel?.toString() ?? "Here")
+      .replace(/<#randomchannel>/ig, u.rand(randomChannels) ?? origin.channel?.toString() ?? "Here")
       .replace(/<@author>/ig, user.toString())
       .replace(/<@authorname>/ig, user.displayName);
 
@@ -125,10 +125,13 @@ async function slashTagCreate(int) {
   if (attachment) saveAttachment(attachment, command);
 
   tags.set(command.tag, command);
+
+  let description = `${int.member} added the tag \`${name}\``;
+  if (command.response) description += `\n\n**Tag Content:**\n${command.response}`;
+
   const embed = u.embed({ author: int.member })
     .setTitle("Tag created")
-    .setDescription(`${int.member} added the tag \`${name}\``);
-  if (command.response) embed.addFields({ name: "Response", value: command.response });
+    .setDescription(description);
 
   try {
     // report the tag creation
@@ -167,18 +170,16 @@ async function slashTagModify(int) {
   if (attachment) saveAttachment(attachment, command);
 
   tags.set(command.tag, command);
+
+  let description = `${int.member} modified the tag \`${name}\``;
+  if (command.response !== currentTag.response) description += `\n\n**Old Tag Content:**\n${currentTag.response || "None"}\n\n**New Tag Content:**\n${command.response || "None"}`;
+
   const embed = u.embed({ author: int.member })
     .setTitle("Tag modified")
-    .setDescription(`${int.member} modified the tag \`${name}\``);
+    .setDescription(description);
 
   // log the modification
   try {
-    if (command.response !== currentTag.response) {
-      embed.addFields(
-        { name: "Old Response", value: currentTag.response ?? 'None' },
-        { name: "New Response", value: command.response ?? 'None' }
-      );
-    }
     const value = currentTag.attachment ? attachment ? "Replaced" : "Removed" : attachment ? "Added" : "Unchanged";
     if (command.attachment !== currentTag.attachment) embed.addFields({ name: "Attachment Status", value });
 
@@ -200,12 +201,14 @@ async function slashTagDelete(int) {
   if (!command) return int.editReply("I wasn't able to delete that. Please try again later or contact a dev to see what went wrong.");
   tags.delete(name);
 
+  let description = `${int.member} deleted the tag \`${name}\``;
+  if (command.response) description += `\n\n**Tag Content:**\n${command.response}`;
+
   const embed = u.embed({ author: int.member })
     .setTitle("Tag Deleted")
-    .setDescription(`${int.member} removed the tag \`${name}\``);
+    .setDescription(description);
 
   try {
-    if (command.response) embed.addFields({ name: "Response", value: command.response });
     if (command.attachment) {
       embed.addFields({ name: "Attachment", value: "[Deleted]" });
       fs.rmSync(process.cwd() + `/media/tags/${command._id.toString()}`);
@@ -226,8 +229,8 @@ async function slashTagVariables(int) {
     "`<@authorname>`: The user's nickname",
     "`<@target>`: Pings someone who is pinged by the user",
     "`<@targetname>`: The nickname of someone who is pinged by the user",
-    "`<@channel>`: The channel the command is used in",
-    "`<@randomchannel>` A random public channel",
+    "`<#channel>`: The channel the command is used in",
+    "`<#randomchannel>` A random public channel",
     "`<@random [item1|item2|item3...]>`: Randomly selects one of the items. Separate with `|`. (No, there can't be `<@random>`s inside of `<@random>`s)",
     "",
     "Example: <@target> took over <@channel>, but <@author> <@random [is complicit|might have something to say about it]>."
