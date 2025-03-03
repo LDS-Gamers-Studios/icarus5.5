@@ -3,9 +3,10 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   config = require("../config/config.json"),
   Discord = require("discord.js"),
-  tu = require("../utils/tagUtils"),
   /** @type {string[]} */
   banned = require("../data/banned.json").features.suggestions;
+
+/** @typedef {import("../database/controllers/tag").tag} tag */
 
 const hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/;
 const affiliateLinks = [
@@ -201,8 +202,17 @@ const Module = new Augur.Module()
         case "members": return slashLdsgMembers(interaction);
         case "suggest": return slashLdsgSuggest(interaction);
         default: {
-          const tag = tu.tags.find(t => t.tag.toLowerCase() === subcommand.toLowerCase());
+          /**
+           * @type {{
+           *  tags: Discord.Collection<string, tag>,
+           *  encodeTag: (tag: tag,  msg: Discord.Message | null, int?: Discord.ChatInputCommandInteraction) => Discord.InteractionReplyOptions
+           * } | undefined}
+           */
+          const tu = interaction.client.moduleManager.shared.get("tags.js")?.shared;
+          const tag = tu?.tags.find(t => t.tag.toLowerCase() === subcommand.toLowerCase());
           if (!tag) return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
+          if (!tu) return u.errorHandler(new Error("Couldn't get Tag Utils"), interaction);
+
           const encoded = tu.encodeTag(tag, null, interaction);
           if (typeof encoded === "string") return interaction.reply({ content: encoded, ephemeral: true });
           encoded.content = (encoded.content ?? "") + `\n-# This command can also be run via \`${config.prefix}${subcommand}\``;

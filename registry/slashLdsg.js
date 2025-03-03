@@ -33,11 +33,11 @@ const store = new u.sub()
 
 const youtube = new u.sub()
   .setName("socials")
-  .setDescription("Check out our other social platforms");
+  .setDescription("Check out our other social platforms!");
 
 const invite = new u.sub()
   .setName("invite")
-  .setDescription("Get the link to invite someone to our Discord server");
+  .setDescription("Get the link to invite someone to our Discord server!");
 
 module.exports = new u.cmd()
   .setName("ldsg")
