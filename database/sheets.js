@@ -340,7 +340,7 @@ async function loadData(client, loggedIn = true, justRows = false, sheet) {
     return data;
   }
 
-
+  /** @type {Promise<void>[]} */
   const promises = [];
   for (const key in sheetMap) {
     /** @type {keyof typeof sheetMap} */

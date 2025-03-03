@@ -10,15 +10,17 @@ const Augur = require("augurbot-ts"),
 
 /**
  * function fieldMismatches
- * @param {Object} obj1 First object for comparison
- * @param {Object} obj2 Second object for comparison
- * @returns String[] Two-element array. The first contains keys found in first object but not the second. The second contains keys found in the second object but not the first.
+ * @param {Record<string, any>} obj1 First object for comparison
+ * @param {Record<string, any>} obj2 Second object for comparison
+ * @returns {[string[], string[]]} Two-element array. The first contains keys found in first object but not the second. The second contains keys found in the second object but not the first.
  */
 function fieldMismatches(obj1, obj2) {
   const keys1 = new Set(Object.keys(obj1));
   const keys2 = new Set(Object.keys(obj2));
 
+  /** @type {string[]} */
   const m1 = [];
+  /** @type {string[]} */
   const m2 = [];
   for (const key of keys1) {
     if (keys2.has(key)) {
@@ -79,7 +81,9 @@ async function slashBotPing(int, msg) {
 async function slashBotPull(int) {
   const spawn = require("child_process").spawn;
   const cmd = spawn("git", ["pull"], { cwd: process.cwd() });
+  /** @type {string[]} */
   const stdout = [];
+  /** @type {string[]} */
   const stderr = [];
   cmd.stdout.on("data", data => {
     stdout.push(data);
@@ -109,7 +113,7 @@ async function slashBotPulse(int) {
     .addFields([
       { name: "Uptime", value: `Discord: ${Math.floor(client.uptime / (24 * 60 * 60 * 1000))} days, ${Math.floor(client.uptime / (60 * 60 * 1000)) % 24} hours, ${Math.floor(client.uptime / (60 * 1000)) % 60} minutes\nProcess: ${Math.floor(uptime / (24 * 60 * 60))} days, ${Math.floor(uptime / (60 * 60)) % 24} hours, ${Math.floor(uptime / (60)) % 60} minutes`, inline: true },
       { name: "Reach", value: `${client.guilds.cache.size} Servers\n${client.channels.cache.size} Channels\n${client.users.cache.size} Users`, inline: true },
-      { name: "Commands Used", value: `${client.commands.commandCount} (${(client.commands.commandCount / (client.uptime / (60 * 1000))).toFixed(2)}/min)`, inline: true },
+      { name: "Commands Used", value: `${client.moduleManager.commands.commandCount} (${(client.moduleManager.commands.commandCount / (client.uptime / (60 * 1000))).toFixed(2)}/min)`, inline: true },
       { name: "Memory", value: `${Math.round(process.memoryUsage().rss / 1024 / 1000)}MB`, inline: true }
     ]);
   return int.editReply({ embeds: [embed] });
@@ -145,6 +149,7 @@ async function slashBotGetId(int) {
   const channel = int.options.getChannel("channel");
   const emoji = int.options.getString("emoji");
 
+  /** @type {{ str: string, id: string }[]} */
   const results = [];
   if (mentionable) results.push({ str: mentionable.toString(), id: mentionable.id });
   if (channel) results.push({ str: channel.toString(), id: channel.id });
@@ -159,6 +164,7 @@ async function slashBotGetId(int) {
 async function slashBotRegister(int) {
   const spawn = require("child_process").spawn;
   const cmd = spawn("node", ["register-commands"], { cwd: process.cwd() });
+  /** @type {string[]} */
   const stderr = [];
   cmd.stderr.on("data", data => {
     stderr.push(data);
@@ -186,6 +192,7 @@ async function slashBotStatus(int) {
   }
   if (name) {
     const t = int.options.getString("type");
+    // @ts-ignore
     const type = t ? Discord.ActivityType[t] : undefined;
     const url = int.options.getString("url") ?? undefined;
     int.client.user.setActivity({ name, type, url });
@@ -205,7 +212,7 @@ const Module = new Augur.Module()
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol
     const subcommand = int.options.getSubcommand(true);
-    const forThePing = await int.deferReply({ ephemeral: int.channelId !== u.sf.channels.botTesting });
+    const forThePing = await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.botTesting) });
     if (["gotobed", "reload", "register", "status", "sheets"].includes(subcommand) && !u.perms.calc(int.member, ["botAdmin"])) return int.editReply("That command is only for Bot Admins.");
     if (subcommand === "pull" && !u.perms.isOwner(int.member)) return int.editReply("That command is only for the Bot Owner.");
     switch (subcommand) {

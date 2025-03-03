@@ -11,7 +11,6 @@ const Augur = require("augurbot-ts"),
  * @callback filterFunction
  * @param {Discord.ChatInputCommandInteraction} int
  * @param {{name: string, img: Jimp}} img
- * @returns {Promise<any>}
  *
  * @callback process
  * @param {number} x
@@ -47,7 +46,6 @@ async function jimpRead(url) {
  * @param {Buffer | String} img
  * @param {String} name
  * @param {String} format
- * @returns {Promise<any>}
  */
 async function sendImg(int, img, name, format = "png") {
   const image = new u.Attachment(img, { name: `image.${format}` });
@@ -74,11 +72,13 @@ function targetImg(int, size = 256) {
  * @param {Discord.ChatInputCommandInteraction} int
  * @param {string} filter filter to apply
  * @param {{name: string, img: Jimp}} image
- * @param {any[]?} params array of params to pass into the filter function
+ * @param {Record<any, any> | number[]} [params] array of params to pass into the filter function
  */
 async function basicFilter(int, image, filter, params) {
   const { name, img } = image;
+  // @ts-ignore
   if (params) img[filter.toLowerCase()](...params);
+  // @ts-ignore
   else img[filter.toLowerCase()]();
   const output = await img.getBufferAsync(Jimp.MIME_PNG);
   return await sendImg(int, output, `${filter} ${name}`);
@@ -176,7 +176,6 @@ async function personal(int, image) {
 
 /**
  * @param {Discord.ChatInputCommandInteraction} int
- * @returns {Promise<any>}
  */
 async function petpet(int) {
   const target = targetImg(int);
@@ -228,8 +227,8 @@ const Module = new Augur.Module()
       case "popart": return popart(interaction, i);
 
       // basic filters
-      case "fisheye": return basicFilter(interaction, i, 'Fisheye', null);
-      case "invert": return basicFilter(interaction, i, 'Invert', null);
+      case "fisheye": return basicFilter(interaction, i, 'Fisheye');
+      case "invert": return basicFilter(interaction, i, 'Invert');
       case "blur": return basicFilter(interaction, i, 'Blur', [5]);
       case "blurple": return basicFilter(interaction, i, 'Color', [[{ apply: "desaturate", params: [100] }, { apply: "saturate", params: [47.7] }, { apply: "hue", params: [227] }]]);
       case "grayscale": return basicFilter(interaction, i, 'Color', [[{ apply: "desaturate", params: [100] }]]);
