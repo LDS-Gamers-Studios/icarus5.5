@@ -41,7 +41,7 @@ const Module = new Augur.Module()
   process: async (int) => {
     /** @type {import("./tags").SharedTags} */
     const tu = int.client.moduleManager.shared.get("tags.js")?.shared;
-    if (!tu || tu.tags.size === 0) return int.reply({ content: "I couldn't find any tags. Try again later!", ephemeral: true });
+    if (!tu || tu.tags.size === 0) return int.reply({ content: "I couldn't find any tags. Try again later!", flags: ["Ephemeral"] });
 
     const ldsg = int.client.guilds.cache.get(u.sf.ldsg);
     const embed = u.embed({ author: int.client.user })
@@ -94,7 +94,7 @@ const Module = new Augur.Module()
       .flat();
 
     await u.pagedEmbeds(int, embed, ints.concat(commands).concat(miscFeatures), true);
-    await int.followUp({ components: [u.MessageActionRow().addComponents(tagButton)], ephemeral: true });
+    await int.followUp({ components: [u.MessageActionRow().addComponents(tagButton)], flags: ["Ephemeral"] });
   }
 });
 

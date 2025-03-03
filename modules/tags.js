@@ -105,13 +105,13 @@ async function slashTagCreate(int) {
   // Get and validate input
   const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
   const attachment = int.options.getAttachment('attachment');
-  if (tags.has(name)) return int.reply({ content: `Looks like that tag already exists. Try </tag modify:${u.sf.commands.slashTag}> or </tag delete:${u.sf.commands.slashTag}> instead.`, ephemeral: true });
+  if (tags.has(name)) return int.reply({ content: `Looks like that tag already exists. Try </tag modify:${u.sf.commands.slashTag}> or </tag delete:${u.sf.commands.slashTag}> instead.`, flags: ["Ephemeral"] });
 
   await int.showModal(contentModal());
   const content = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(u.noop);
-  if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", ephemeral: true });
+  if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", flags: ["Ephemeral"] });
 
-  await content.deferReply({ ephemeral: true });
+  await content.deferReply({ flags: ["Ephemeral"] });
   if (!content.fields.getTextInputValue("content") && !attachment) return content.editReply("I either need content or a file.");
 
   // Create the tag
@@ -145,13 +145,13 @@ async function slashTagModify(int) {
   // get and validate inputs
   const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
   const currentTag = tags.get(name);
-  if (!currentTag) return int.reply({ content: `I couldn't find that tag.`, ephemeral: true });
+  if (!currentTag) return int.reply({ content: `I couldn't find that tag.`, flags: ["Ephemeral"] });
 
   await int.showModal(contentModal(currentTag.response ?? ""));
   const content = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(u.noop);
-  if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", ephemeral: true });
+  if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", flags: ["Ephemeral"] });
 
-  await content.deferReply({ ephemeral: true });
+  await content.deferReply({ flags: ["Ephemeral"] });
   const response = content.fields.getTextInputValue("content") || null;
   const attachment = int.options.getAttachment('attachment');
   if (!response && !attachment) return content.editReply(`I need a response, a file, or both. If you want to delete the tag, use </tag delete:${u.sf.commands.slashTag}>.`);
@@ -192,7 +192,7 @@ async function slashTagModify(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagDelete(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
   if (!tags.get(name)) return int.editReply(`Looks like that tag doesn't exist.`);
 
@@ -220,7 +220,7 @@ async function slashTagDelete(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagVariables(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const placeholderDescriptions = [
     "`<@author>`: Pings the user",
     "`<@authorname>`: The user's nickname",
@@ -238,7 +238,7 @@ async function slashTagVariables(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagValue(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
 
   const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
   const tag = tags.get(name);
