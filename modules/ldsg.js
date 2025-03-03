@@ -202,12 +202,7 @@ const Module = new Augur.Module()
         case "members": return slashLdsgMembers(interaction);
         case "suggest": return slashLdsgSuggest(interaction);
         default: {
-          /**
-           * @type {{
-           *  tags: Discord.Collection<string, tag>,
-           *  encodeTag: (tag: tag,  msg: Discord.Message | null, int?: Discord.ChatInputCommandInteraction) => Discord.InteractionReplyOptions
-           * } | undefined}
-           */
+          /** @type {import("./tags").SharedTags} */
           const tu = interaction.client.moduleManager.shared.get("tags.js")?.shared;
           const tag = tu?.tags.find(t => t.tag.toLowerCase() === subcommand.toLowerCase());
           if (!tag) return u.errorHandler(new Error("Unhandled Subcommand"), interaction);

@@ -21,7 +21,8 @@ async function saveAttachment(attachment, cmd) {
   response.data.pipe(fs.createWriteStream(process.cwd() + "/media/tags/" + cmd._id.toString()));
 }
 
-/** @type {Discord.Collection<string, import("../database/controllers/tag").tag>} */
+/** @typedef {import("../database/controllers/tag").tag} tag */
+/** @type {Discord.Collection<string, tag>} */
 const tags = new Discord.Collection();
 
 /** @param {Discord.Message} msg */
@@ -283,5 +284,12 @@ const Module = new Augur.Module()
   } catch (error) { u.errorHandler(error, "Load Custom Tags"); }
 })
 .addShared("tags.js", { tags, encodeTag });
+
+/**
+ * @typedef {{
+*  tags: Discord.Collection<string, tag>,
+*  encodeTag: (tag: tag,  msg: Discord.Message | null, int?: Discord.ChatInputCommandInteraction) => Discord.InteractionReplyOptions
+* } | undefined} SharedTags
+*/
 
 module.exports = Module;

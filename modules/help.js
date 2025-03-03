@@ -3,7 +3,6 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   fs = require("fs"),
   config = require("../config/config.json"),
-  tu = require("../utils/tagUtils"),
   u = require("../utils/utils");
 
 const miscFeatures = [
@@ -40,7 +39,9 @@ const Module = new Augur.Module()
   id: "helpTags",
   type: "Button",
   process: async (int) => {
-    if (tu.tags.size === 0) return int.reply({ content: "I couldn't find any tags. Try again later!", ephemeral: true });
+    /** @type {import("./tags").SharedTags} */
+    const tu = int.client.moduleManager.shared.get("tags.js")?.shared;
+    if (!tu || tu.tags.size === 0) return int.reply({ content: "I couldn't find any tags. Try again later!", ephemeral: true });
 
     const ldsg = int.client.guilds.cache.get(u.sf.ldsg);
     const embed = u.embed({ author: int.client.user })
@@ -62,7 +63,7 @@ const Module = new Augur.Module()
       .setURL("https://my.ldsgamers.com/commands")
       .setThumbnail(int.client.user?.displayAvatarURL() || null);
 
-    const commands = [...Module.client.commands.values()]
+    const commands = [...Module.client.moduleManager.commands.values()]
       .filter(c => isAvailable(c, int))
       .map(c => {
         let str = `### ${config.prefix}${c.name}`;
@@ -72,7 +73,7 @@ const Module = new Augur.Module()
         return str;
       });
 
-    const ints = Module.client.interactions.filter(c => c.type === "CommandSlash" && isAvailable(c, int))
+    const ints = Module.client.moduleManager.interactions.filter(c => c.type === "CommandSlash" && isAvailable(c, int))
       .map(i => {
         const reg = i.options?.registry;
         if (!reg || !fs.existsSync(`registry/${reg}.js`)) return [];
