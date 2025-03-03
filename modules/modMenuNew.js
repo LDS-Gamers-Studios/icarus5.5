@@ -468,15 +468,15 @@ async function sendModMenu(int) {
 }
 const Module = new Augur.Module()
   .addInteraction({
-    id: u.sf.commands.messageModeration,
     name: "msgModMenu",
+    id: u.sf.commands.messageModeration,
     type: "ContextMessage",
     onlyGuild: true,
     process: sendModMenu
   })
   .addInteraction({
-    id: u.sf.commands.userModeration,
     name: "usrModMenu",
+    id: u.sf.commands.userModeration,
     type: "ContextUser",
     onlyGuild: true,
     process: sendModMenu

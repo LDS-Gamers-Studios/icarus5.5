@@ -208,6 +208,7 @@ const Module = new Augur.Module()
 .addInteraction({
   name: "avatar",
   id: u.sf.commands.slashAvatar,
+  options: { registry: "slashAvatar" },
   process: async (interaction) => {
     await interaction.deferReply();
 
