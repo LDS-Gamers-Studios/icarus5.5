@@ -146,6 +146,8 @@ async function cakedays(testDate, testJoinDate, testMember) {
 
       if (testDate) embed.setDescription((embed.data.description ?? "") + " (Sorry if we're a bit late!)");
 
+      celebrating.sort((a, b, y1, y2) => y2 - y1);
+
       for (const [years, cakeMembers] of celebrating) {
         embed.addFields({
           name: `${years} ${years < 1 ? "Years, First Day!!!" : years < 2 ? "Year" : "Years"}`,
