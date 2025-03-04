@@ -17,9 +17,6 @@ if (config.siteOn) {
   const socket = require("express-ws")(express());
   const app = socket.app;
 
-  const TOURNEY_DEPLOYMENT_READY = false;
-  const DEPLOY_BUILD = false;
-
   // encoders
   app.use(express.json())
     .use(express.urlencoded({ extended: false }))
@@ -57,7 +54,7 @@ if (config.siteOn) {
   // app.use('/tags', express.static('media/tags'));
 
   // Handle all other routes by serving the React index.html file
-  if (DEPLOY_BUILD) {
+  if (siteConfig.deployBuild) {
     const path = require("path");
     const frontFiles = path.resolve(__dirname, '../site/frontend/build');
 
@@ -68,7 +65,7 @@ if (config.siteOn) {
     });
   }
 
-  if (TOURNEY_DEPLOYMENT_READY) {
+  if (siteConfig.tournamentReady) {
     // tournament websocket handler
     app.ws("/ws/tournaments/:id/listen", (ws, req) => {
       tourneyWS.listen(ws, req);

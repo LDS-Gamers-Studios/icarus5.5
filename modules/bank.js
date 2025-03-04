@@ -371,6 +371,7 @@ Module.addInteraction({ name: "bank",
       default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   }
-});
+})
+.addShared("bank.js", buyGame);
 
-module.exports = { buyGame, ...Module };
+module.exports = Module;
