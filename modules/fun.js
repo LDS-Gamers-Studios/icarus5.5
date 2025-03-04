@@ -5,8 +5,10 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   axios = require('axios'),
   Jimp = require('jimp'),
+
   profanityFilter = require("profanity-matcher"),
   buttermelonFacts = require('../data/buttermelonFacts.json'),
+  /** @type {Record<string, string>} */
   emojiKitchenSpecialCodes = require("../data/emojiKitchenSpecialCodes.json"),
   emojiSanitizeHelp = require('node-emoji'),
   mineSweeperEmojis = ['0⃣', '1⃣', '2⃣', '3⃣', '4⃣', '5⃣', '6⃣', '7⃣', '8⃣', '💣'];
@@ -22,7 +24,7 @@ async function slashFunColor(int) {
     // make sure it is a valid color, and not just defaulting to black
     if (!["#000000", "black", "#000000FF"].includes(colorCSS)) colorCSS = Jimp.cssColorToHex(colorCSS);
     if (colorCSS === 255) {
-      return int.reply({ content: `Sorry, I couldn't understand the color \`${colorCode}\``, ephemeral: true });
+      return int.reply({ content: `Sorry, I couldn't understand the color \`${colorCode}\``, flags: ["Ephemeral"] });
     }
     await int.deferReply();
     // make and send the image
@@ -31,11 +33,12 @@ async function slashFunColor(int) {
   } catch (error) {
     const content = `Sorry, I couldn't understand the color \`${colorCode}\``;
     if (int.replied || int.deferred) return int.editReply({ content }).then(u.clean);
-    int.reply({ content, ephemeral: true });
+    int.reply({ content, flags: ["Ephemeral"] });
   }
 }
 
 // global hbs stuff
+/** @type {Record<string, { emoji: string, beats: string, looses: string }>} */
 const hbsValues = {
   'Buttermelon': { emoji: `<:buttermelon:${u.sf.emoji.buttermelon}>`, beats: "Handicorn", looses: "Sloth" },
   'Handicorn': { emoji: `<:handicorn:${u.sf.emoji.handicorn}>`, beats: "Sloth", looses: "Buttermelon" },
@@ -50,17 +53,18 @@ async function slashFunHBS(int) {
   const choice = int.options.getString("choice", true);
   const chooser = int.user.toString();
   const botLobby = int.client.getTextChannel(u.sf.channels.botSpam);
+  /** @type {{ user: string, choice: string }} */
   let challenged;
   if (mode === "user") {
     if (!storedChoice) {
       storedChooser = chooser;
       storedChoice = choice;
-      int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+      int.reply({ content: `Your fighter has been picked! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, flags: ["Ephemeral"] });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
       `${chooser} has chosen their fighter and is awaiting a challenger. Respond using </fun hbs:${u.sf.commands.slashFun}>.`);
     } else if (storedChooser === chooser) {
       storedChoice = choice;
-      int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, ephemeral: true });
+      int.reply({ content: `Your fighter has been updated! ${int.channelId !== u.sf.channels.botSpam ? `Check ${botLobby} to see the results!` : ""}`, flags: ["Ephemeral"] });
       return botLobby?.send("## Handicorn, Buttermelon, Sloth, Fight!\n" +
       `${chooser} has changed their fighter and is awaiting a challenger.  Respond using </fun hbs:${u.sf.commands.slashFun}>.`
       );
@@ -105,6 +109,8 @@ async function slashFunAcronym(int) {
   // input or number between 3 and 5
   const len = int.options.getInteger("length") || Math.floor(Math.random() * 3) + 3;
   const pf = new profanityFilter();
+
+  /** @type {string[]} */
   let wordgen = [];
 
   // try a bunch of times
@@ -204,7 +210,7 @@ async function slashFunMinesweeper(int) {
   const rowStrings = board.map(row => row.map(num => num < 0 ? mineSweeperEmojis[-num - 1] : `||${mineSweeperEmojis[Math.min(num, 9)]}||`).join(""));
 
   if (!int.channel?.isSendable()) {
-    return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botSpam}>`, ephemeral: true });
+    return int.reply({ content: `I can't figure out where to put the board in here, try again in another channel like <#${u.sf.channels.botSpam}>`, flags: ["Ephemeral"] });
   }
   await int.reply(`**Mines: ${mineCount}**`);
   const messages = [""];
@@ -236,7 +242,7 @@ async function slashFunRoll(int) {
   const sides = int.options.getInteger('sides') || 6;
   const modifier = int.options.getInteger('modifier') || 0;
   if (dice > 10000) {
-    return int.reply({ content: "I'm not going to roll *that* many dice... 🙄", ephemeral: true });
+    return int.reply({ content: "I'm not going to roll *that* many dice... 🙄", flags: ["Ephemeral"] });
   }
   // calculate rolls
   /** @type {number[]} */
@@ -265,7 +271,7 @@ async function slashFunRoll(int) {
 async function slashFun8ball(int) {
   const question = int.options.getString("question", true);
   if (!question.endsWith("?")) {
-    return int.reply({ content: "You need to ask me a question, silly.", ephemeral: true });
+    return int.reply({ content: "You need to ask me a question, silly.", flags: ["Ephemeral"] });
   }
   const outcomes = [
     "It is certain.",
@@ -298,7 +304,7 @@ async function slashFun8ball(int) {
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashFunRepost(int) {
   if (!int.channel) {
-    return int.reply({ content: "I don't know where here is, so I can't find anything to repost... try in a more normal channel.", ephemeral: true });
+    return int.reply({ content: "I don't know where here is, so I can't find anything to repost... try in a more normal channel.", flags: ["Ephemeral"] });
   }
   await int.deferReply();
   const latest = (await int.channel.messages.fetch({ limit: 100 })).filter(m => m.attachments.size > 0 || m.embeds.some(embed => embed.image || embed.video)).first();
@@ -358,7 +364,7 @@ async function slashFunNamegame(int) {
     const song = /<blockquote>\n(.*)<\/blockquote>/g.exec(response?.data)?.[1]?.replace(/<br ?\/>/g, "\n");
     // make sure its safe
     const pf = new profanityFilter();
-    const profane = pf.scan(song?.toLowerCase().replace("\n", " ")).length;
+    const profane = pf.scan(song?.toLowerCase().replace(/\n/g, " ") ?? "").length;
     if (!song) {
       return int.editReply("I uh... broke my voice box. Try a different name?").then(u.clean);
     } else if (profane > 0) {
@@ -377,7 +383,7 @@ async function slashFunChoose(int) {
     const prefixes = ["I choose", "I pick", "I decided"];
     return int.reply(`Out of the options \`${optionsArg}\`, ${u.rand(prefixes)} **${u.rand(options).trim()}**`);
   }
-  return int.reply({ content: 'you need to give me two or more choices! `a | b`', ephemeral: true });
+  return int.reply({ content: 'you need to give me two or more choices! `a | b`', flags: ["Ephemeral"] });
 
 }
 /**
@@ -413,6 +419,7 @@ async function slashFunGrow(int) {
 
     // default emoji embiggening
     const e1CP = emojiCodePointify(emoji1);
+    // @ts-ignore
     const image = await axios(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${e1CP}.svg`).catch(u.noop);
     if (image?.status !== 200) return int.editReply(`For some reason I couldn't enlarge ${emojiInput}.`).then(u.clean);
     return int.editReply(`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${e1CP}.png`);

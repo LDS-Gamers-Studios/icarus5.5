@@ -89,10 +89,10 @@ const Module = new Augur.Module()
       if (channel.permissionsFor(channel.client.user)?.has(["ViewChannel", "ManageChannels"])) {
         // muted role
         channel.permissionOverwrites.create(u.sf.roles.moderation.muted, mutedPerms, { reason: "New channel permissions update" })
-        .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
+        .catch(/** @param {Error} e */e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
         // duct tape role
         channel.permissionOverwrites.create(u.sf.roles.moderation.ductTape, mutedPerms, { reason: "New channel permissions update" })
-          .catch(e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
+          .catch(/** @param {Error} e */e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
       } else {
         channel.client.getTextChannel(u.sf.channels.team.logistics)?.send({ embeds: [
           u.embed({
@@ -146,6 +146,7 @@ const Module = new Augur.Module()
         .setThumbnail(member.user.displayAvatarURL({ extension: "png" }))
         .setFooter({ text: member.id });
 
+      /** @type {string} */
       let welcomeString;
 
       // Member is returning

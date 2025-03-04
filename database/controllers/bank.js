@@ -96,6 +96,7 @@ module.exports = {
         return;
       }
       const split = a.description.split(": ");
+      /** @type {string} */
       let reason;
       if (split[0].endsWith("Spicy McPie") || split[0].endsWith("Spicy McArchives") && (split[1].toLowerCase().endsWith("trash") || ["verified homie", "Trash Gift Giver", "Single compost", "Goody two shoes"].includes(split[1]))) {
         reason = split.slice(2).join(": ");
