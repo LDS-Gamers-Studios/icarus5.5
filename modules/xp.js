@@ -175,7 +175,7 @@ async function reactionXp(reaction, user, add = true) {
   ) return;
 
   // more reactions means more xp for the poster. If it was removed we have to get the pre-removal count
-  const countMultiplier = await reaction.users.fetch().then(usrs => (Math.min(8, usrs.size) + (add ? 0 : 1)) * 1.3);
+  const countMultiplier = await reaction.users.fetch().then(usrs => (Math.min(5, usrs.size) + (add ? 0 : 1)) * 1.3).catch(u.noop) ?? 1;
 
   // reactions should mean more or less depending on the channel
   const channelMultiplier = settings?.posts ?? 1;
