@@ -7,8 +7,14 @@
 	"parserOptions": {
 		"ecmaVersion": 2021
 	},
+	"globals": {
+		"NodeJS": true
+	},
 	"plugins": [
-		"jsdoc"
+		"jsdoc",
+		"import",
+		"node",
+		"promise"
 	],
 	"rules": {
 		"arrow-spacing": ["warn", { "before": true, "after": true }],

@@ -9,7 +9,7 @@ const config = require("../config/config.json");
 /**
  * @typedef XPDropSettings
  * @prop {Date} [cooltime]
- * @prop {any} [cooldown] it's actually a timeout
+ * @prop {NodeJS.Timeout} [cooldown]
  * @prop {number} count
  * @prop {boolean} drop
  */
@@ -37,7 +37,6 @@ const active = new u.Collection();
 
 // Feather drop settings
 let cooltime = new Date();
-// eslint-disable-next-line jsdoc/no-undefined-types
 /** @type {NodeJS.Timeout} */
 let cooldown;
 let dropCode = false;
@@ -176,7 +175,7 @@ async function reactionXp(reaction, user, add = true) {
   ) return;
 
   // more reactions means more xp for the poster. If it was removed we have to get the pre-removal count
-  const countMultiplier = await reaction.users.fetch().then(usrs => (Math.min(8, usrs.size) + (add ? 0 : 1)) * 1.3);
+  const countMultiplier = await reaction.users.fetch().then(usrs => (Math.min(5, usrs.size) + (add ? 0 : 1)) * 1.3).catch(u.noop) ?? 1;
 
   // reactions should mean more or less depending on the channel
   const channelMultiplier = settings?.posts ?? 1;
@@ -330,7 +329,8 @@ Module.setUnload(() => active)
     // people can only get xp once per poll. no multiple answers shenanigans
     const voters = new Set();
     const hours = Math.min(24 * 2, Math.max(1, u.moment(msg.poll.expiresTimestamp).diff(msg.createdTimestamp, "hours", false))) / 8;
-    const answers = await Promise.all(newMsg.poll.answers.map(s => s.fetchVoters()));
+    /** @type {Discord.Collection<string, Discord.User>[]} */
+    const answers = await Promise.all(newMsg.poll.answers.map(/** @param {Discord.PollAnswer} s */s => s.fetchVoters()));
     const voterCount = answers.reduce((p, c) => p + c.size, 0);
 
     // assign xp to people who voted, favoring those with the right answer
