@@ -14,7 +14,8 @@ const globalCommandFiles = [
   "messageBookmark.js",
   "slashAvatar.js",
   "slashFun.js",
-  "slashSend.js"
+  "slashSend.js",
+  "slashChain.js"
 ];
 
 const guildCommandFiles = [

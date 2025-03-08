@@ -48,7 +48,7 @@ const choose = new u.sub()
   );
 
 const merge = new u.sub()
-  .setName("merge")
+  .setName("emerge")
   .setDescription("Combines two emoji.")
   .addStringOption(
     new u.string()
@@ -64,7 +64,7 @@ const merge = new u.sub()
   );
 
 const grow = new u.sub()
-  .setName("grow")
+  .setName("emlargen")
   .setDescription("Enlarges an emoji")
   .addStringOption(
     new u.string()

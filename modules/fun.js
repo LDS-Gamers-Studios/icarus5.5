@@ -278,12 +278,12 @@ async function slashFun8ball(int) {
     "Outlook good.",
     "Yes.",
     "Signs point to yes.",
-    // the following were removed due to complaints
-    // "Reply hazy, try again.",
-    // "Ask again later.",
-    // "Better not tell you now.",
-    // "Cannot predict now.",
-    // "Concentrate and ask again.",
+    // the following were removed from normal due to complaints
+    "Reply hazy, try again.",
+    "Ask again later.",
+    "Better not tell you now.",
+    "Cannot predict now.",
+    "Concentrate and ask again.",
     "Don't count on it.",
     "My reply is no.",
     "My sources say no.",
@@ -306,7 +306,7 @@ async function slashFunRepost(int) {
     return int.editReply("I couldn't find anything in the last 100 messages to repost.").then(u.clean);
   }
   return int.editReply({
-    content: 'repost that? ok!',
+    content: '🚨🚨🚨 Repost alert! repost alert! 🚨🚨🚨',
     files: latest.attachments.map(a => a.url),
     embeds: latest.embeds.filter(embed => embed.image || embed.video)
   });
@@ -377,7 +377,7 @@ async function slashFunChoose(int) {
     const prefixes = ["I choose", "I pick", "I decided"];
     return int.reply(`Out of the options \`${optionsArg}\`, ${u.rand(prefixes)} **${u.rand(options).trim()}**`);
   }
-  return int.reply({ content: 'you need to give me two or more choices! `a | b`', ephemeral: true });
+  return int.reply({ content: 'you need to give me two or more choices! "a | b"', ephemeral: true });
 
 }
 /**
@@ -446,7 +446,7 @@ async function slashFunMerge(int) {
 
 /** @param {Discord.Message|Discord.PartialMessage} msg */
 function buttermelonEdit(msg) {
-  if (msg.channel.isDMBased() && (msg.cleanContent?.toLowerCase() === "test")) {
+  if (msg.cleanContent?.toLowerCase() == "test") {
     msg.reply((Math.random() < 0.8 ? "pass" : "fail"));
   }
   const exclude = [u.sf.channels.minecraft.category];
@@ -490,8 +490,8 @@ const Module = new Augur.Module()
       case "quote": return slashFunQuote(int);
       case "namegame": return slashFunNamegame(int);
       case "choose": return slashFunChoose(int);
-      case "grow": return slashFunGrow(int);
-      case "merge": return slashFunMerge(int);
+      case "emlargen": return slashFunGrow(int);
+      case "emerge": return slashFunMerge(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   }
