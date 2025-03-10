@@ -5,6 +5,44 @@ const Augur = require("augurbot-ts"),
   /** @type {string[]} */
   banned = require("../data/banned.json").features.suggestions;
 
+const hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/;
+const affiliateLinks = [
+  // { //Functionality can be renabled if amazon will let us get a affiliate
+  //  site: "Amazon",
+  //  affiliate: "Amazon Affiliate",
+  //  test: /amazon\.(com|co\.uk)\/(\w+(-\w+)*\/)?(gp\/product|dp)\/(\w+)/i,
+  //  tag: /tag=ldsgamers-20/,
+  /** @param {string} match */
+  //  link: (match) => `https://www.${match[0]}?tag=ldsgamers-20`
+  // },
+  {
+    site: "CDKeys.com",
+    affiliate: "CDKeys Affiliate",
+    test: /cdkeys\.com(\/\w+(-\w+)*)*/i,
+    tag: /mw_aref=LDSGamers/i,
+    /** @param {string} match */
+    link: match => `https://www.${match}?mw_aref=LDSGamers`
+  },
+  // {
+  //  site: "Humble Bundle",
+  //  affiliate: "Humble Bundle Partner",
+  //  test: /humblebundle\.com(\/\w+(-\w+)*)*/i,
+  //  tag: /partner=ldsgamers/i,
+  /** @param {string} match */
+  //  link: (match) => `https://www.${match[0]}?partner=ldsgamers`
+  // },
+];
+
+/** @param {Discord.Message} msg */
+function processLinks(msg) {
+  for (const site of affiliateLinks) {
+    const match = site.test.exec(msg.cleanContent);
+    if (match && !site.tag.test(msg.cleanContent)) {
+      msg.reply(`You can help LDSG by using our [${site.affiliate} Link](${site.link(match[0])})`);
+    }
+  }
+}
+
 // suggestion modals
 const replyModal = new u.Modal().addComponents(
   u.ModalActionRow().addComponents([
@@ -41,7 +79,7 @@ const replyOption = [
 async function slashLdsgSuggest(int) {
   if (banned.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
   const suggestion = int.options.getString("suggestion", true);
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const embed = u.embed({ author: int.user })
     .setTitle("Suggestion")
     .setDescription(suggestion)
@@ -57,7 +95,7 @@ async function suggestReply(int) {
   // get user input
   await int.showModal(replyModal);
   const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionReplyModal" }).catch(u.noop);
-  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", flags: ["Ephemeral"] });
   await submitted.deferUpdate();
 
   // generate reply embed
@@ -82,8 +120,8 @@ async function suggestReply(int) {
 /** @param {Discord.ButtonInteraction<"cached">} int */
 async function suggestManage(int) {
   // make sure everything is good
-  if (!int.channel) return int.reply({ content: "I couldn't access the channel you're in!", ephemeral: true });
-  if (int.channel.parentId !== u.sf.channels.team.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.team.suggestionBox}>!`, ephemeral: true });
+  if (!int.channel) return int.reply({ content: "I couldn't access the channel you're in!", flags: ["Ephemeral"] });
+  if (int.channel.parentId !== u.sf.channels.team.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.team.suggestionBox}>!`, flags: ["Ephemeral"] });
 
   // create modal
   const oldFields = (int.message.embeds[0]?.fields || []);
@@ -120,8 +158,8 @@ async function suggestManage(int) {
   // get user input
   await int.showModal(manageModal);
   const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionManageModal" }).catch(u.noop);
-  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
-  await submitted.deferReply({ ephemeral: true });
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", flags: ["Ephemeral"] });
+  await submitted.deferReply({ flags: ["Ephemeral"] });
   const title = submitted.fields.getTextInputValue("title");
   const issue = submitted.fields.getTextInputValue("issue");
   const plans = submitted.fields.getTextInputValue("plans");
@@ -139,6 +177,8 @@ async function suggestManage(int) {
     const user = int.guild.members.cache.get(em.data.footer?.text ?? "")?.displayName ?? em.data.footer?.text;
     await int.channel.setName(`Suggestion from ${user}`);
   }
+
+  /** @type {{ name: string, value: string }[]} */
   const fields = [];
   if (issue) fields.push({ name: "Issue", value: issue });
   if (plans) fields.push({ name: "Plans", value: plans });
@@ -165,12 +205,17 @@ const Module = new Augur.Module()
     if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
     if (!int.customId.startsWith("suggestion")) return;
     if (!u.perms.calc(int.member, ["team", "mgr"])) {
-      return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
+      return int.reply({ content: "You don't have permissions to interact with this suggestion!", flags: ["Ephemeral"] });
     }
     switch (int.customId) {
       case "suggestionReply": return suggestReply(int);
       case "suggestionManage": return suggestManage(int);
       default: return;
+    }
+  })
+  .addEvent("messageCreate", (msg) => {
+    if (hasLink.test(msg.cleanContent)) {
+      processLinks(msg);
     }
   });
 

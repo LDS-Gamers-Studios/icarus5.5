@@ -4,7 +4,9 @@ const config = require("../config/config.json");
 
 if (config.siteOn) {
   // require modules!
+  // @ts-ignore
   require("../site/backend/utils/strategy");
+  // @ts-ignore
   const siteConfig = require("../config/siteConfig.json");
   const passport = require("passport");
   const express = require("express");
@@ -12,7 +14,9 @@ if (config.siteOn) {
   const mongoose = require("mongoose");
   const cors = require("cors");
   const Store = require("connect-mongo");
+  // @ts-ignore
   const routes = require("../site/backend/routes");
+  // @ts-ignore
   const tourneyWS = require('../site/backend/routes/tournament/WS');
   const socket = require("express-ws")(express());
   const app = socket.app;

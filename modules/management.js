@@ -4,33 +4,46 @@ const Augur = require("augurbot-ts"),
   banners = require('../data/banners.json'),
   fs = require('fs'),
   path = require('path'),
-  cake = require('./cake'),
   Module = new Augur.Module();
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runCakeday(int) {
-  const month = int.options.getString("month", true);
-  const day = int.options.getInteger("day", true);
-  const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
-  date.setHours(10);
-  if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-  // @ts-expect-error we're doing janky stuff here :)
-  cake.unload(date, "cake");
+  const dateInput = int.options.getString("date");
+  if (dateInput) {
+    const date = new Date(dateInput);
+    date.setHours(10);
+    if (isNaN(date.valueOf())) return int.editReply("Sorry, but I couldn't understand that date.");
+    int.client.moduleManager.shared.get("cake.js")?.shared.cakedays(date);
+  } else {
+    int.client.moduleManager.shared.get("cake.js")?.shared.cakedays();
+  }
   return int.editReply("Cakeday run!");
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 function runBirthday(int) {
-  const month = int.options.getString("month", true);
-  const day = int.options.getInteger("day", true);
-  const date = new Date(`${month} ${day} ${new Date().getFullYear()}`);
-  date.setHours(10);
-  if (isNaN(date.valueOf())) return int.editReply("I'm not sure how, but that date didn't work...");
-  // @ts-expect-error we're doing janky stuff here :)
-  cake.unload(date, "bday");
+  const dateInput = int.options.getString("date");
+  const user = int.options.getMember("user") ?? int.options.getUser("user");
+  if (user) {
+    if (!int.guild.members.cache.has(user.id)) return int.editReply("That person isn't in the server!");
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays(undefined, [{ discordId: user.id, ign: u.moment().format("MMM D YYYY-HH") }]);
+  } else if (dateInput) {
+    const date = new Date(dateInput);
+    date.setHours(10);
+    if (isNaN(date.valueOf())) return int.editReply("Sorry, but I couldn't understand that date.");
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays(date);
+  } else {
+    int.client.moduleManager.shared.get("cake.js")?.shared.birthdays();
+  }
   return int.editReply("Birthday run!");
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+function runCelebrate(int) {
+  // @ts-ignore
+  int.client.moduleManager.shared.get("cake.js")?.shared.celebrate(true);
+  return int.editReply("Celebrate run!");
+}
 
 /** @param {string} [holiday] */
 async function setBanner(holiday) {
@@ -71,12 +84,12 @@ Module.addInteraction({
   permissions: (int) => u.perms.calc(int.member, ["mgr"]),
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
-    await int.deferReply({ ephemeral: true });
+    await int.deferReply({ flags: ["Ephemeral"] });
     switch (subcommand) {
+      case "celebrate": return runCelebrate(int);
       case "cakeday": return runCakeday(int);
       case "birthday": return runBirthday(int);
       case "banner": {
-        int.editReply("Setting banner...");
         const response = await setBanner(int.options.getString("file", true));
         if (response) int.editReply(response);
         break;
@@ -93,7 +106,7 @@ Module.addInteraction({
   }
 })
 .setClockwork(() =>
-  setInterval(() => setBanner(), 1000 * 60 * 60 * 24)
+  setInterval(() => setBanner(), 24 * 60 * 60_000)
 );
 
 module.exports = Module;

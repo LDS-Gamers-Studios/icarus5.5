@@ -3,5 +3,5 @@ const u = require("./regUtils");
 
 module.exports = u.userContext()
   .setName("Moderation")
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild)
   .toJSON();

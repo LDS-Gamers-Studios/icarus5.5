@@ -30,13 +30,13 @@ const ChannelXP = require("../models/ChannelXP.model");
 
 const outdated = "Expected a Discord ID but likely recieved an object instead. That's deprecated now!";
 
+/**
+ * @enum {number}
+ */
 const TrackXPEnum = {
-  0: "OFF",
-  1: "SILENT",
-  2: "FULL",
-  "OFF": 0,
-  "SILENT": 1,
-  "FULL": 2
+  OFF: 0,
+  SILENT: 1,
+  FULL: 2
 };
 
 const models = {
