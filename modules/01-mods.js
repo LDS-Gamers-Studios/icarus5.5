@@ -380,6 +380,7 @@ Module.addEvent("guildMemberAdd", async (member) => {
   guildId: u.sf.ldsg,
   id: u.sf.commands.slashMod,
   onlyGuild: true,
+  options: { registry: "slashMod" },
   permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
   process: (interaction) => {
     try {

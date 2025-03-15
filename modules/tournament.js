@@ -110,9 +110,11 @@ async function participant(int) {
 
 }
 
-Module.addInteraction({ name: "tournament",
+Module.addInteraction({
+  name: "tournament",
   id: u.sf.commands.slashTournament,
   onlyGuild: true,
+  options: { registry: "slashTournament" },
   // Only /tournament list is publicly available
   permissions: (int) => int.options.getSubcommand() === 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
   process: async (int) => {
