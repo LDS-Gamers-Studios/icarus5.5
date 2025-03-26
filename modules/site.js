@@ -18,26 +18,61 @@ if (config.siteOn) {
   const routes = require("../site/backend/routes");
   // @ts-ignore
   const tourneyWS = require('../site/backend/routes/tournament/WS');
-  const socket = require("express-ws")(express());
-  const app = socket.app;
+  const app = express();
+  const socket = require("express-ws")(app);
 
   // encoders
+
+  const globalLimit = require("express-rate-limit").rateLimit({
+    limit: 5,
+    windowMs: 3_000,
+    message: { msg: "You're going too fast! Slow down!" }
+  });
+
   app.use(express.json())
     .use(express.urlencoded({ extended: false }))
     .use(cors({
-      origin: [siteConfig.frontend],
+      origin: [siteConfig.frontend, "http://www.localhost:3006", siteConfig.backend],
       credentials: true,
-    }));
+    }))
+    .use((req, res, next) => {
+      res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+      res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+      // res.setHeader("Content-Security-Policy",
+      //   "default-src 'self';" +
+      //   "img-src 'self' https://cdn.discordapp.com www.googletagmanager.com;" +
+      //   "script-src 'self' https://www.googletagmanager.com 'sha256-Qd6+faWlnwkBZbbbFLbqjA+BEsuDCPHd1GjyEeeE7fU=';" +
+      //   "style-src-elem 'self' https://fonts.googleapis.com;" +
+      //   "unsafe-inline https://fonts.googleapis.com;" +
+      //   "font-src 'self' https://fonts.gstatic.com;" +
+      //   "connect-src 'self' www.googletagmanager.com"
+      // );
+      next();
+    });
+
+  app.use('/static', express.static('site/backend/public', { setHeaders: (res, path) => {
+    // we want these to be direct downloads
+    if (path.includes("wallpapers")) {
+      res.setHeader("Content-Disposition", "attachment");
+    }
+    res.setHeader("Cache-Control", "public, max-age=259200");
+    return res;
+  } }));
 
   // token storage setup
   app.use(session({
     secret: siteConfig.sessionSecret,
-    cookie: { maxAge: 60000 * 60 * 24 * 3 },
+    cookie: {
+      maxAge: 60000 * 60 * 24 * 3,
+      secure: siteConfig.deployBuild,
+      httpOnly: true,
+      sameSite: "strict"
+    },
     resave: false,
     saveUninitialized: false,
     store: Store.create({
       // @ts-expect-error
-      client: mongoose.connection.getClient()
+      client: mongoose.connection.getClient(),
     })
   }));
 
@@ -45,14 +80,11 @@ if (config.siteOn) {
     .use(passport.session());
 
   // expose backend routes
-  app.use('/api', routes);
-  app.use('/static', express.static('site/backend/public', { setHeaders: (res, path) => {
-    // we want these to be direct downloads
-    if (path.includes("wallpapers")) {
-      res.setHeader("Content-Disposition", "attachment");
-    }
-    return res;
-  } }));
+  app.use('/api', globalLimit, (req, res, next) => {
+    // eslint-disable-next-line no-console
+    if (config.devMode) console.log("request inbound!");
+    next();
+  }, routes);
 
   // not quite ready, waiting for tag migration
   // app.use('/tags', express.static('media/tags'));
@@ -71,7 +103,7 @@ if (config.siteOn) {
 
   if (siteConfig.tournamentReady) {
     // tournament websocket handler
-    app.ws("/ws/tournaments/:id/listen", (ws, req) => {
+    socket.app.ws("/ws/tournaments/:id/listen", (ws, req) => {
       tourneyWS.listen(ws, req);
     });
   }
