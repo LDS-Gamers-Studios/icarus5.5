@@ -10,5 +10,12 @@
   "backend": "http://localhost:3000",
   "frontend": "http://localhost:3006",
   "tournamentReady": false,
-  "deployBuild": false
+  "deployBuild": false,
+  "allowedCorsOrigins": [
+    "http://localhost:3006"
+  ],
+  "cspHeaders": [
+    "default-src 'self';"
+  ],
+  "maxCookieDays": 3
 }

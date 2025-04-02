@@ -50,10 +50,11 @@
     "typescript": "^5.4.3"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/express-fileupload": "^1.5.1",
     "@types/express-session": "^1.18.1",
     "@types/express-ws": "^3.0.5",
-    "@types/express-fileupload": "^1.5.1",
     "@types/passport": "^1.0.17",
     "eslint": "^8.52.0",
     "eslint-config-standard": "^17.1.0",

@@ -14,10 +14,13 @@ if (config.siteOn) {
   const mongoose = require("mongoose");
   const cors = require("cors");
   const Store = require("connect-mongo");
+
   // @ts-ignore
   const routes = require("../site/backend/routes");
+
   // @ts-ignore
   const tourneyWS = require('../site/backend/routes/tournament/WS');
+
   const app = express();
   const socket = require("express-ws")(app);
 
@@ -32,21 +35,13 @@ if (config.siteOn) {
   app.use(express.json())
     .use(express.urlencoded({ extended: false }))
     .use(cors({
-      origin: [siteConfig.frontend, "http://www.localhost:3006", siteConfig.backend],
+      origin: siteConfig.allowedCorsOrigins,
       credentials: true,
     }))
     .use((req, res, next) => {
       res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
       res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-      // res.setHeader("Content-Security-Policy",
-      //   "default-src 'self';" +
-      //   "img-src 'self' https://cdn.discordapp.com www.googletagmanager.com;" +
-      //   "script-src 'self' https://www.googletagmanager.com 'sha256-Qd6+faWlnwkBZbbbFLbqjA+BEsuDCPHd1GjyEeeE7fU=';" +
-      //   "style-src-elem 'self' https://fonts.googleapis.com;" +
-      //   "unsafe-inline https://fonts.googleapis.com;" +
-      //   "font-src 'self' https://fonts.gstatic.com;" +
-      //   "connect-src 'self' www.googletagmanager.com"
-      // );
+      // res.setHeader("Content-Security-Policy", siteConfig.cspHeaders.join("");
       next();
     });
 
@@ -63,7 +58,7 @@ if (config.siteOn) {
   app.use(session({
     secret: siteConfig.sessionSecret,
     cookie: {
-      maxAge: 60000 * 60 * 24 * 3,
+      maxAge: 60000 * 60 * 24 * siteConfig.maxCookieDays,
       secure: siteConfig.deployBuild,
       httpOnly: true,
       sameSite: "strict"
