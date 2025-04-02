@@ -1,4 +1,5 @@
 // @ts-check
+const moment = require("moment");
 const Bank = require("../models/Bank.model");
 const Discord = require("discord.js");
 /**
@@ -24,6 +25,18 @@ module.exports = {
   getAll: async function(discordId) {
     if (typeof discordId !== "string") throw new TypeError(outdated);
     return Bank.find({ discordId }, undefined, { lean: true }).exec();
+  },
+  /**
+   * @param {string[]} discordIds
+   * @return {Promise<CurrencyRecord[]>}
+   */
+  getReport: async function(discordIds) {
+    return Bank.find({
+      discordId: { $in: discordIds },
+      currency: "em",
+      hp: true,
+      timestamp: { $lte: moment().subtract(3, "months") }
+    }, { lean: true }).exec();
   },
   /**
    * Gets a user's current balance for a given currency.
