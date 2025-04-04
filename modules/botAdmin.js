@@ -57,9 +57,20 @@ function fieldMismatches(obj1, obj2) {
   return [m1, m2];
 }
 
+let warned = false;
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashBotGtb(int) {
   try {
+    // prevent double cakedays if possible
+    if (!warned && u.moment().hours() === 15) {
+      await int.editReply("It's cakeday and birthday hour! If you really need to restart, run this again.");
+
+      warned = true;
+      return setTimeout(() => {
+        warned = false;
+      }, 5 * 60_000);
+    }
     await int.editReply("Good night! 🛏");
     await int.client.destroy();
     process.exit();
