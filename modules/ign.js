@@ -74,7 +74,7 @@ async function slashIgnSet(int) {
   const ign = int.options.getString("ign", true);
 
   const found = findSystem(system);
-  if (!found) return int.editReply("Sorry, I didn't recognize that IGN system.");
+  if (!found || found.system === "birthday") return int.editReply("Sorry, I didn't recognize that IGN system.");
 
   if (/twitch.tv\//.test(ign) && found.system === "twitch") {
     return int.editReply("It looks like you've included a URL in your IGN. We take care of that on our end, so please leave it out.");
