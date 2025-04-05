@@ -28,10 +28,12 @@ function giveableRole(int, role) {
  * @param {string} level
  */
 function calcGivePerms(int, level) {
-  /** @type {("mgr"|"mod"|"team")[]} */
+  /** @type {("mgr"|"mod"|"team"|"destinyManager"|"destinyValiantAdmin")[]} */
   const permArr = ['mgr'];
   if (['team', 'mod'].includes(level)) permArr.push("mod");
   if (level === 'team') permArr.push("team");
+  if (level === "destinyManager") permArr.push("destinyManager");
+  if (level === "destinyValiantAdmin") permArr.push("destinyValiantAdmin");
   return u.perms.calc(int.member, permArr);
 }
 
