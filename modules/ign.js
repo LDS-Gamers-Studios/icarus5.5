@@ -9,15 +9,13 @@ const fuzzy = require("fuzzysort");
  * @typedef {import("../database/controllers/ign").IGN} StoredIGN
  */
 
-const hasLink = /(http(s?):\/\/)?(\w+\.)+\w+\//ig;
-
 /**
  * @param {IGN & { ign: string }} ign
  */
 function ignFieldMap(ign) {
   let value = ign.ign;
 
-  if (ign.link && !hasLink.test(value)) {
+  if (ign.link) {
     const url = ign.link.replace(/{ign}/ig, encodeURIComponent(value));
     value = `[${value}](${url})`;
   }
@@ -78,7 +76,7 @@ async function slashIgnSet(int) {
   const found = findSystem(system);
   if (!found) return int.editReply("Sorry, I didn't recognize that IGN system.");
 
-  if (/(https?:\/\/)?twitch.tv\//.test(ign) && found.system === "twitch") {
+  if (/twitch.tv\//.test(ign) && found.system === "twitch") {
     return int.editReply("It looks like you've included a URL in your IGN. We take care of that on our end, so please leave it out.");
   }
 
