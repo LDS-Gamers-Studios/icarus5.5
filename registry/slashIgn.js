@@ -91,7 +91,7 @@ const whois = new u.sub()
       .setName("ign")
       .setDescription("The IGN you want to find")
       .setRequired(true)
-      .setMinLength(4)
+      .setMinLength(3)
   )
   .addStringOption(
     new u.string()
