@@ -16,10 +16,12 @@ const hasLink = /(http(s?):\/\/)?(\w+\.)+\w+\//ig;
  */
 function ignFieldMap(ign) {
   let value = ign.ign;
+
   if (ign.link && !hasLink.test(value)) {
     const url = ign.link.replace(/{ign}/ig, encodeURIComponent(value));
     value = `[${value}](${url})`;
   }
+
   if (value.length > 100) value = value.substring(0, 100) + " ...";
   return { name: ign.name, value };
 }
@@ -33,10 +35,10 @@ function ignFieldMap(ign) {
 function embedsIGN(user, igns, paged) {
   if (igns.length === 0) return null;
 
-  const metaIgns = igns
+  const populatedIgns = igns
     .map(i => {
-      const meta = u.db.sheets.igns.get(i.system) ?? { name: i.system, link: null, aliases: [], category: "", system: i.system };
-      return { ...meta, ign: i.ign };
+      const details = u.db.sheets.igns.get(i.system) ?? { name: i.system, link: null, aliases: [], category: "", system: i.system };
+      return { ...details, ign: i.ign };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -45,7 +47,7 @@ function embedsIGN(user, igns, paged) {
 
   if (paged === true) {
     const fields = new Map(
-      metaIgns.map(i => {
+      populatedIgns.map(i => {
         const form = ignFieldMap(i);
         return [form.name, [form.value]];
       })
@@ -54,7 +56,7 @@ function embedsIGN(user, igns, paged) {
     return { embed, fields };
   }
 
-  metaIgns.map(i => {
+  populatedIgns.map(i => {
     const ign = ignFieldMap(i);
     embed.addFields({ ...ign, inline: true });
   });
