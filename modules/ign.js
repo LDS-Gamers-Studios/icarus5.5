@@ -245,34 +245,62 @@ async function slashIgnWhoIs(int) {
   return u.manyReplies(int, processedEmbeds, int.channelId !== u.sf.channels.botSpam);
 }
 
+/** @type {Discord.Collection<string, { systems: Set<string>, expires: number }>} */
+const autocompleteCache = new u.Collection();
+
 const Module = new Augur.Module()
 .addInteraction({
   id: u.sf.commands.slashIgn,
   process: async (int) => {
     await int.deferReply({ flags: int.channelId !== u.sf.channels.botSpam ? ["Ephemeral"] : [] });
     switch (int.options.getSubcommand(true)) {
-      case "set": return slashIgnSet(int);
+      case "set":
+        autocompleteCache.delete(int.user.id); // delete cache for write actions
+        return slashIgnSet(int);
       case "birthday": return slashIgnBirthday(int);
-      case "remove": return slashIgnRemove(int);
+      case "remove":
+        autocompleteCache.delete(int.user.id); // delete cache for write actions
+        return slashIgnRemove(int);
       case "view": return slashIgnView(int);
       case "whoplays": return slashIgnWhoPlays(int);
       case "whois": return slashIgnWhoIs(int);
       default: u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },
-  autocomplete: (int) => {
+  autocomplete: async (int) => {
     const option = int.options.getFocused(true);
     if (option.name === "system") {
       /** @type {{name: string, value: string}[]} */
       const systems = [];
       const val = option.value.toLowerCase();
-      for (const [system, ign] of u.db.sheets.igns) {
+      let igns = u.db.sheets.igns;
+
+      // filter IGN systems they can remove. Uses a cache so that it's not calling the db every 5 seconds
+      if (int.options.getSubcommand() === "remove") {
+        /** @type {Set<string>} */
+        let sys;
+        const cache = autocompleteCache.get(int.user.id);
+
+        if (cache && cache.expires > Date.now()) {
+          sys = cache.systems;
+        } else {
+          const existing = await u.db.ign.findMany(int.user.id);
+          sys = new Set(existing.map(e => e.system));
+          autocompleteCache.set(int.user.id, { systems: sys, expires: Date.now() + 60_000 });
+        }
+
+        igns = u.db.sheets.igns.filter(i => sys.has(i.system));
+      }
+
+      for (const [system, ign] of igns) {
+        if (system === "birthday" && int.options.getSubcommand() === "set") continue;
         if (
           system.toLowerCase().includes(val) ||
           ign.name.toLowerCase().includes(val) ||
           ign.aliases.find(a => a.includes(val))
         ) systems.push({ name: ign.name, value: ign.name });
       }
+      systems.sort((a, b) => a.name.localeCompare(b.name));
       int.respond(systems.slice(0, 24));
     }
   }
