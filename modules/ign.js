@@ -183,9 +183,10 @@ async function slashIgnWhoPlays(int) {
       const url = found.link.replace(/{ign}/ig, encodeURIComponent(ig.ign));
       ig.ign = `[${ig.ign}](${url})`;
     }
+    const member = members.get(ig.discordId);
     return {
       ...ig,
-      name: members.get(ig.discordId)?.toString() ?? "Unknown User"
+      name: member ? `${member} (${member.displayName})` : "Unknown User"
     };
   });
 
@@ -254,7 +255,9 @@ async function slashIgnWhoIs(int) {
         }
         return `· ${i.system}: ${i.ign}`;
       });
-    return `${members.get(id)}\n${names.join("\n")}\n`;
+    const member = members.get(id);
+    const name = member ? `${member} (${member.displayName})` : "Unknown User";
+    return `${name}\n${names.join("\n")}\n`;
   });
 
   const processedEmbeds = u.pagedEmbedsDescription(embed, mappedLines).map(e => ({ embeds: [e] }));
