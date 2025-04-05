@@ -13,7 +13,7 @@ const fuzzy = require("fuzzysort");
  * @param {IGN & { ign: string }} ign
  */
 function ignFieldMap(ign) {
-  let value = ign.ign;
+  let value = u.escapeText(ign.ign);
 
   if (ign.link) {
     const url = ign.link.replace(/{ign}/ig, encodeURIComponent(value));
@@ -179,6 +179,7 @@ async function slashIgnWhoPlays(int) {
   if (igns.length === 0) return int.editReply("Looks like nobody has an IGN set for that yet.").then(u.clean);
 
   const withName = igns.map(ig => {
+    ig.ign = u.escapeText(ig.ign);
     if (found.link) {
       const url = found.link.replace(/{ign}/ig, encodeURIComponent(ig.ign));
       ig.ign = `[${ig.ign}](${url})`;
@@ -249,6 +250,7 @@ async function slashIgnWhoIs(int) {
       .sort((a, b) => b.score - a.score)
       .map(i => {
         const f = findSystem(i.system);
+        i.ign = u.escapeText(i.ign);
         if (f?.link) {
           const url = f.link.replace(/{ign}/ig, encodeURIComponent(i.ign));
           i.ign = `[${i.ign}](${url})`;
