@@ -20,7 +20,7 @@ function ignFieldMap(ign) {
     value = `[${value}](${url})`;
   }
 
-  if (value.length > 100) value = value.substring(0, 100) + " ...";
+  if (value.length > 1000) value = value.substring(0, 1000) + " ...";
   return { name: ign.name, value };
 }
 
@@ -178,7 +178,16 @@ async function slashIgnWhoPlays(int) {
   const igns = await u.db.ign.findMany([...(members.keys() ?? [])], found.system);
   if (igns.length === 0) return int.editReply("Looks like nobody has an IGN set for that yet.").then(u.clean);
 
-  const withName = igns.map(ig => ({ ...ig, name: members.get(ig.discordId)?.displayName ?? "Unknown User" }));
+  const withName = igns.map(ig => {
+    if (found.link) {
+      const url = found.link.replace(/{ign}/ig, encodeURIComponent(ig.ign));
+      ig.ign = `[${ig.ign}](${url})`;
+    }
+    return {
+      ...ig,
+      name: members.get(ig.discordId)?.toString() ?? "Unknown User"
+    };
+  });
 
   // sort
   if (system === "birthday") withName.sort((a, b) => new Date(a.ign).valueOf() - new Date(b.ign).valueOf());
@@ -237,8 +246,15 @@ async function slashIgnWhoIs(int) {
   const mappedLines = lines.map((l, id) => {
     const names = l.igns
       .sort((a, b) => b.score - a.score)
-      .map(i => `· ${i.system}: ${i.ign}`);
-    return `${members.get(id)?.displayName}\n${names.join("\n")}\n`;
+      .map(i => {
+        const f = findSystem(i.system);
+        if (f?.link) {
+          const url = f.link.replace(/{ign}/ig, encodeURIComponent(i.ign));
+          i.ign = `[${i.ign}](${url})`;
+        }
+        return `· ${i.system}: ${i.ign}`;
+      });
+    return `${members.get(id)}\n${names.join("\n")}\n`;
   });
 
   const processedEmbeds = u.pagedEmbedsDescription(embed, mappedLines).map(e => ({ embeds: [e] }));
