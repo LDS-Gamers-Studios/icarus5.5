@@ -17,5 +17,6 @@
   "cspHeaders": [
     "default-src 'self';"
   ],
-  "maxCookieDays": 3
+  "maxCookieDays": 3,
+  "monitoring": true
 }

@@ -41,6 +41,7 @@ if (config.siteOn) {
     .use((req, res, next) => {
       res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
       res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+      res.setHeader("X-Frame-Options", "DENY");
       // res.setHeader("Content-Security-Policy", siteConfig.cspHeaders.join("");
       next();
     });
@@ -76,8 +77,10 @@ if (config.siteOn) {
 
   // expose backend routes
   app.use('/api', globalLimit, (req, res, next) => {
-    // eslint-disable-next-line no-console
-    if (config.devMode) console.log("request inbound!");
+    if (siteConfig.monitoring) {
+      // eslint-disable-next-line no-console
+      console.log(`${req.user?.displayName ?? "Unauthorized User"} [${req.method}] ${req.path}`);
+    }
     next();
   }, routes);
 
