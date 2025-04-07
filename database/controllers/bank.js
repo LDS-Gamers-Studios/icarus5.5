@@ -35,8 +35,8 @@ module.exports = {
       discordId: { $in: discordIds },
       currency: "em",
       hp: true,
-      timestamp: { $lte: moment().subtract(3, "months") }
-    }, { lean: true }).exec();
+      timestamp: { $gte: moment().subtract(3, "months") }
+    }, undefined, { lean: true }).exec();
   },
   /**
    * Gets a user's current balance for a given currency.
