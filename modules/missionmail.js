@@ -3,37 +3,19 @@ const u = require("../utils/utils");
 const c = require("../config/config.json");
 const send = require("nodemailer");
 const receive = require("imapflow");
-const interpret = require("mailparser-mit")
+const interpret = require("mailparser-mit");
 const Augur = require("augurbot-ts");
 const XOAuth2 = require("nodemailer/lib/xoauth2");
+const { ButtonStyle, Message } = require("discord.js");
+const { AugurInteraction } = require("augurbot-ts/dist/structures/AugurInteraction");
 
 /** @type {send.Transporter | undefined} */
 let sender;
 /** @type {receive.ImapFlow | undefined} */
 let receiver;
-/**
- * @type {import("discord.js").TextChannel | null}
- */
-let missionPrep;
-/**
- * @type {import("discord.js").TextChannel | null}
- */
-let missionMail;
-/**
- * @type {import("discord.js").TextChannel | null}
- */
-let missionMailApprovals;
-/**
- * @type {Map<string,{mailUid:string, mail:{parsed:interpret.ParsedEmail,raw:receive.FetchMessageObject}, int:import("discord.js").Interaction}>}
- */
-const sendMails = new Map();
-function loadChannels() {
-  missionPrep = Module.client.getTextChannel(u.sf.channels.missionPrep);
-  missionMail = Module.client.getTextChannel(u.sf.channels.missionMail);
-  missionMailApprovals = Module.client.getTextChannel(u.sf.channels.missionMailApprovals);
-}
+/** @type {Map<string,{approve:function, reject:function}>} */
+const sendMailPendingApprovals = new Map();
 async function init() {
-  loadChannels();  
   if (!c.google.missionMail.enabled) {
     return;
   }
@@ -51,13 +33,13 @@ async function init() {
         },
       });
       sender.on("token", (token) => updateReceiver(token, creds.email));
-      await sender.verify()
-      console.log(`Mailer sender initialized for ${creds.email}`);
+      await sender.verify();
+      // console.log(`Mailer sender initialized for ${creds.email}`);
     }
     if (!receiver) {
       // Create receiver only if sender is successfully initialized
       if (!sender) {
-        console.warn("Sender not initialized, receiver will not be created.");
+        u.errorHandler(new Error("Sender was not able to be initialized, receiver will not be created."));
       }
     }
   } catch (e) {
@@ -81,9 +63,9 @@ async function updateReceiver(accessToken, email) {
       host: 'imap.gmail.com',
       port: 993,
     });
-    await receiver.connect()
-    await receiver.mailboxOpen("INBOX")
-    console.log(`Mailer receiver initialized for ${email}`);
+    await receiver.connect();
+    await receiver.mailboxOpen("INBOX");
+    // console.log(`Mailer receiver initialized for ${email}`);
   } catch (error) {
     u.errorHandler(error, `updateReceiver for ${email}`);
     receiver = undefined;
@@ -91,51 +73,108 @@ async function updateReceiver(accessToken, email) {
 }
 /**
  * @param {interpret.ParsedEmail} email
+ * @param {(int:Augur.GuildInteraction<"Button">) => void} approve
+ * @param {(int:Augur.GuildInteraction<"Button">) => void} reject
+ */
+async function forwardEmail(email, approve, reject) {
+  askMods({ embeds: [u.embed({
+    title: "incoming mishmail from " + email.from?.map(from => from.name.length > 0 ? from.name : from.group ?? from.address)?.join() + " - " + email.subject,
+    description: email.text,
+    timestamp: email.receivedDate
+  })] }, approve, reject);
+}
+/**
+ * @param {string | import("discord.js").MessageCreateOptions} msg
  * @param {function} approve
  * @param {function} reject
  */
-async function forwardEmail(email,approve,reject) {
-  if (!missionMailApprovals || !missionMail || !missionPrep) { loadChannels(); }
-  console.log(email)
-  // missionMailApprovals
-  missionMailApprovals?.send({embeds:[u.embed({
-    title: email.from?.map(from => from.name.length > 0 ? from.name:from.group ?? from.address)?.join() + " - " + email.subject,
-    description: email.text,
-    timestamp: email.receivedDate
-  })]})
+async function askMods(msg, approve, reject) {
+  const requestUUID = crypto.randomUUID();
+  const [approveId, rejectId] = ["approvemishmail" + requestUUID, "rejectmishmail" + requestUUID];
+  let componentMsg;
+  // console.log(email);
+  const missionMailApprovals = module.exports.client.getTextChannel(u.sf.channels.missionMailApprovals);
+  const approveBtn = new u.Button().setCustomId(approveId).setLabel("Approve").setStyle(ButtonStyle.Primary);
+  const rejectBtn = new u.Button().setCustomId(rejectId).setLabel("Reject").setStyle(ButtonStyle.Danger);
+  const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
+  if (typeof msg === "string") {
+    componentMsg = { content: msg };
+  } else { componentMsg = msg; }
+  // if (!componentMsg.components) {componentMsg.components = [];}
+  componentMsg.components = (componentMsg.components ?? []).concat(actionRow);
+  // sendMailPendingApprovals.set(email.messageId + "", { approve, reject });
+  missionMailApprovals?.send(componentMsg);
+  module.exports.client.moduleManager.interactions.set(approveId, new AugurInteraction({
+    type: "Button",
+    id: approveId,
+    process: (int) => {
+      /** @type {Message} */
+      // @ts-ignore
+      const message = int.message;
+      message.edit({
+        content: message.content + `\n(approved by ${int.user})`,
+        components: message.components.filter(row =>
+          !row.components.some(component => component.customId === approveId) &&
+          !row.components.some(component => component.customId === rejectId)
+        )
+      });
+      approve();
+    }
+  }, module.exports.client));
+  module.exports.client.moduleManager.interactions.set(rejectId, new AugurInteraction({
+    type: "Button",
+    id: rejectId,
+    process: (int) => {
+      /** @type {Message} */
+      // @ts-ignore
+      const message = int.message;
+      message.edit({
+        content: message.content + `\n(rejected by ${int.user})`,
+        components: message.components.filter(row =>
+          !row.components.some(component => component.customId === approveId) &&
+          !row.components.some(component => component.customId === rejectId)
+        )
+      });
+      reject();
+    }
+  }, module.exports.client));
+  // ],
+  //     client: module.exports.client,
+  //    filepath: module.exports.filepath
+
 }
 async function sendUnsent() {
   if (receiver?.usable) {
     try {
-      const messageIds = (await receiver.search({ seen: false, from:"*@missionary.org" })).filter(msgId => {
-        return sendMails.has(msgId+"") ? undefined: msgId;
+      const messageIds = (await receiver.search({ seen: false, from: "*@missionary.org" })).filter(msgId => {
+        return sendMailPendingApprovals.has(msgId + "") ? undefined : msgId;
       }
-      )
+      );
       /** @type {{parsed:interpret.ParsedEmail, raw:receive.FetchMessageObject}[]} */
-      const messages = await Promise.all((await receiver.fetchAll(messageIds, {source: true})).map(async raw => {return {parsed:await parse(raw),raw}}));
-      console.log(messages)
-      console.log("Checking for new emails:", messages?.length);
+      const messages = await Promise.all((await receiver.fetchAll(messageIds, { source: true })).map(async raw => {return { parsed: await parse(raw), raw };}));
+      // console.log(messages);
+      // console.log("Checking for new emails:", messages?.length);
       messages.forEach(pair => forwardEmail(
         pair.parsed,
         () => {
-          receiver?.messageFlagsAdd([pair.raw.uid],["\\Seen"])
-          missionMail?.send({embeds:[u.embed({
-            title: pair.parsed.from?.map(from => from.name.length > 0 ? from.name:from.group ?? from.address)?.join() + " - " + pair.parsed.subject,
+          receiver?.messageFlagsAdd([pair.raw.uid], ["\\Seen"]);
+          module.exports.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
+            title: pair.parsed.from?.map(from => from.name.length > 0 ? from.name : from.group ?? from.address)?.join() + " - " + pair.parsed.subject,
             description: pair.parsed.text,
             timestamp: pair.parsed.receivedDate
-          })]})
+          })] });
         },
-        () => receiver?.messageFlagsAdd([pair.raw.uid],["\\Seen"])
+        () => { receiver?.messageFlagsAdd([pair.raw.uid], ["\\Seen"]); }
       ));
     } catch (error) {
       u.errorHandler(error, "sendUnsent");
     }
   } else {
-    console.warn("Receiver not usable, cannot check for new emails.");
+    u.errorHandler(new Error("MishMail Receiver not usable, cannot check for new emails."));
   }
 }
 /**
- * @param {receive.FetchMessageObject} email 
+ * @param {receive.FetchMessageObject} email
  * @returns {Promise<interpret.ParsedEmail>}
  */
 async function parse(email) {
@@ -145,12 +184,12 @@ async function parse(email) {
   // return await parser.
   return await new Promise((resolve) => {
     const parser = new interpret.MailParser();
-    parser.on("end",email => resolve(email))
-    parser.write(email.source)
-    parser.end()
+    parser.on("end", parsed => resolve(parsed));
+    parser.write(email.source);
+    parser.end();
   });
 }
-
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailReInit(int) {
   sender?.close();
   sender?.removeAllListeners();
@@ -159,62 +198,92 @@ async function slashMishMailReInit(int) {
   receiver?.removeAllListeners();
   receiver = undefined;
   await init();
-  await int.editReply({ content: "Mailer reinitialized.", flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+  await int.editReply("Mailer reinitialized.");
 }
-
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailRegister(int) {
   // todo forward to a mod channel to request register, then register if approved.
-  await int.editReply({ content: "Register command executed (placeholder)", flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+  const user = int.options.getUser("user", false) ?? int.member;
+  const email = int.options.getString("email", true);
+  if (!email.endsWith("@missionary.org")) {return int.editReply("missionary emails must be part of @missionary.org");}
+  // if (!u.perms.calc(int.member,["mod"]) && user.id != int.member.id) {
+  //   return int.editReply("")
+  u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
+  u.db.sheets.loadData(int.client, true, false, "missionaries");
+  await int.editReply(`Register command executed for ${user.displayName} setting email ${email}`);
 }
-
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailRemove(int) {
   // todo remove.
-  sender?.close();
-  sender?.removeAllListeners();
-  sender = undefined;
-  receiver?.close();
-  receiver?.removeAllListeners();
-  receiver = undefined;
-  await int.editReply({ content: "Mailer removed.", flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+  const user = int.options.getUser("user", false) ?? int.member;
+  u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.delete();
+  u.db.sheets.loadData(int.client, true, false, "missionaries");
+  await int.editReply("Mission Mailer removed.");
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashMishMailCheck(int) {
+  // todo remove.
+  const user = int.options.getUser("user", false) ?? int.member;
+  return int.editReply(user + " has the following mish email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailPull(int) {
   // todo this should just manual trigger a function that clockwork runs every 15 minutes or so.
   // await receiver?.connect()
   if (receiver?.usable) {
     try {
       // Example: Check for new emails
-      const messages = await receiver.search({ seen: false });
-      await sendUnsent()
-      await int.editReply({ content: `Found ${messages.length} new emails. (Placeholder)`, flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+      const messageIds = (await receiver.search({ seen: false, from: "*@missionary.org" })).filter(msgId => {
+        return sendMailPendingApprovals.has(msgId + "") ? undefined : msgId;
+      });
+      await sendUnsent();
+      await int.editReply(`Found ${messageIds.length} new emails.`);
       // Implement further logic to process these emails
     } catch (error) {
       u.errorHandler(error, "slashMishMailPull");
-      await int.editReply({ content: "Error pulling emails.", flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+      await int.editReply("Error pulling emails.");
     }
   } else {
-    await int.editReply({ content: "Mailer receiver is not ready.", flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+    await int.editReply("Mailer receiver is not ready.");
   }
 }
-
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailSend(int) {
+  const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
+  const pingMatch = /<@!?([0-9]+)>/.exec(int.options.getString("missionary", true));
+  if (!pingMatch || !pingMatch[1]) { return int.editReply("You need to @ mention a registered missionaries discord account."); }
+  const missionaryDiscord = await ldsg.members.fetch(pingMatch[1]);
+  const content = int.options.getString("content", true);
+  const email = u.db.sheets.missionaries.get(missionaryDiscord.id);
+  if (!email) {
+    return int.editReply(missionaryDiscord.user.toString() + " isn't a registered missionary. have them get in contact with a mod to link their missionary email.");
+  }
+
   // todo forward to a mod channel to request send, then send if approved.
   if (sender) {
     try {
-      // Example: Sending a test email
-      await sender.sendMail({
-        to: c.google.missionMail.email,
-        // to: "recipient@example.com", // Replace with actual recipient
-        subject: "Test Email from Discord Bot",
-        text: "This is a test email sent from the bot!",
+      askMods({ embeds: [u.embed({
+        title: `outgoing mishmail from ${int.member.user.username} to ${missionaryDiscord.user.username}(${email})`,
+        description: content
+      })] }, () => {
+        sender?.sendMail({
+          to: email,
+          // to: "recipient@example.com", // Replace with actual recipient
+          subject: "LDSG Mishmail from " + int.member.user.username,
+          text: content,
+        });
+        int.member.send(`Your Requested Mishmail to ${missionaryDiscord.user.toString()} was approved and sent!\nContent:${content}`);
+      }, () => {
+        int.member.send(`Your Requested Mishmail to ${missionaryDiscord.user.toString()} was rejected.\nContent:${content}`);
       });
-      await int.editReply({ content: "Test email sent (placeholder).", flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+      await int.editReply("Asking mods if its good to send.");
     } catch (error) {
       u.errorHandler(error, "slashMishMailSend");
-      await int.editReply({ content: "Error sending email.", flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+      await int.editReply("Error sending email.");
     }
   } else {
-    await int.editReply({ content: "Mailer sender is not initialized.", flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+    await int.editReply("Mailer sender is not initialized.");
   }
 }
 
@@ -230,7 +299,7 @@ const Module = new Augur.Module()
           u.errorHandler(error, "Clockwork email check");
         }
       } else {
-        console.warn("Mailer receiver not usable for periodic check.");
+        u.errorHandler(new Error("MishMail Receiver not usable for periodic check."));
       }
     }, 15 * 60 * 1000); // Every 15 minutes
   })
@@ -242,26 +311,51 @@ const Module = new Augur.Module()
     permissions: (int) => u.perms.calc(int.member, ["trusted"]),
     process: async (int) => {
       const subcommand = int.options.getSubcommand(true);
-      const forThePing = await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
-
+      await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
+      if (subcommand !== "send" && !u.perms.calc(int.member, ["mod"])) return int.editReply("That command is only for mods.");
       switch (subcommand) {
         case "send":
           return slashMishMailSend(int);
-        case "pull":
-          return slashMishMailPull(int);
         case "remove":
           return slashMishMailRemove(int);
+        case "check":
+          return slashMishMailCheck(int);
         case "register":
           return slashMishMailRegister(int);
+        case "pull":
+          return slashMishMailPull(int);
         case "reinit":
           return slashMishMailReInit(int);
         default:
           return u.errorHandler(new Error("Unhandled Subcommand"), int);
       }
     },
-    // autocomplete: (int) => {
-    //   // Implement autocomplete logic if needed
-    // }
+    autocomplete: async (int) => {
+      const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
+      console.log(u.db.sheets.missionaries);
+      const ret = await Promise.all(u.db.sheets.missionaries.map((_email, uid) => ldsg.members.fetch(uid).then(m => { return { name: m.user.username, value: m.user.toString() + "" };})));
+      console.log(ret);
+      await int.respond(ret);
+      return ret;
+    }
+  })
+  .addCommand({
+    name: "mishmailunread",
+    permissions: () => c.devMode, // perms.calc(msg.member, ["mod"]),
+    process: async function(message) {
+      return message.reply(
+        (await receiver?.messageFlagsRemove([4], ["\\Seen"])) ? "Success" : "Fail"
+      );
+    }
   });
+  // .addEvent("interactionCreate", (int) => {
+  //   if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
+  //   if (int.customId.startsWith("approvemishmail")) {
+  //     sendMailPendingApprovals.get(int.customId.substring("approvemishmail".length))?.approve();
+  //   }
+  //   if (int.customId.startsWith("rejectmishmail")) {
+  //     sendMailPendingApprovals.get(int.customId.substring("rejectmishmail".length))?.reject();
+  //   }
+  // });
 
 module.exports = Module;

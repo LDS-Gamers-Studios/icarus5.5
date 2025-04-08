@@ -4,11 +4,12 @@ const u = require("./regUtils");
 const send = new u.sub()
   .setName("send")
   .setDescription("sends a registered missionary an email.")
-  .addMentionableOption(
-    new u.mentionable()
+  .addStringOption(
+    new u.string()
       .setName("missionary")
       .setDescription("the registered missionary that you wish to send mail to.")
       .setRequired(true)
+      .setAutocomplete(true)
   )
   .addStringOption(
     new u.string()
@@ -35,7 +36,7 @@ const register = new u.sub()
       .setName("user")
       .setDescription("Who do you wish to register this email to? (needs mod for other than yourself)")
       .setRequired(false)
-  );;
+  );
 
 const remove = new u.sub()
   .setName("remove")
@@ -44,6 +45,15 @@ const remove = new u.sub()
     new u.user()
       .setName("user")
       .setDescription("Whose email do you wish to un-register (needs mod for other than yourself)")
+      .setRequired(false)
+  );
+const check = new u.sub()
+  .setName("check")
+  .setDescription("check a missionary email")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Whose email do you wish to check (needs mod for other than yourself)")
       .setRequired(false)
   );
 
@@ -55,4 +65,5 @@ module.exports = new u.cmd()
   .addSubcommand(pull)
   .addSubcommand(remove)
   .addSubcommand(register)
+  .addSubcommand(check)
   .toJSON();
