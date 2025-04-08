@@ -78,6 +78,7 @@ if (config.siteOn) {
   // expose backend routes
   app.use('/api', globalLimit, (req, res, next) => {
     if (siteConfig.monitoring) {
+      // @ts-ignore sometimes it picks on some nonsense
       // eslint-disable-next-line no-console
       console.log(`${req.user?.displayName ?? "Unauthorized User"} [${req.method}] ${req.path}`);
     }
