@@ -29,6 +29,8 @@ const data = {
     wipChannels: [],
     /** @type {GoogleSpreadsheetRow[]} */
     xpSettings: [],
+    /** @type {GoogleSpreadsheetRow[]} */
+    missionaries: [],
     /** @type {{ config: GoogleSpreadsheet, games: GoogleSpreadsheet } | null}} */
     docs: null
   },
@@ -63,7 +65,9 @@ const data = {
   /** @type {Collection<string, types.PlayingDefault>} */
   wipChannels: new Collection(),
   /** @type {{ channels: Collection<string, types.ChannelXPSetting>, banned: Set<string> }} */
-  xpSettings: { banned: new Set(), channels: new Collection() }
+  xpSettings: { banned: new Set(), channels: new Collection() },
+  /** @type {Collection<string, string>} */
+  missionaries: new Collection()
 };
 
 /** @param {string} [sheetId] */
@@ -95,7 +99,8 @@ const sheetMap = {
   tourneyChampions: ["Tourney Champions", "Key"],
   vcNames: ["Voice Channel Names", "Name"],
   xpSettings: ["XP Settings", "ChannelId"],
-  wipChannels: ["WIP Channel Defaults", "ChannelId"]
+  wipChannels: ["WIP Channel Defaults", "ChannelId"],
+  missionaries: ["Mail", "UserId"]
 };
 
 const mappers = {
@@ -235,6 +240,10 @@ const mappers = {
       posts: isNaN(posts) ? 1 : posts,
       preferMedia: row.get("PreferMedia") === "TRUE"
     };
+  },
+  /** @param {GoogleSpreadsheetRow} row */
+  missionaries: (row) => {
+    return row.get("Email");
   }
 };
 
@@ -307,7 +316,7 @@ async function setData(sheet, doc, client) {
     const key = datum.get(sheetMap[sheet][1]);
     if (key) {
       if (sheet === "vcNames") data[sheet].push(key);
-      // @ts-expect-error i'm not writing a switch case for something thats meant to be procedural
+      // @ts-ignore i'm not writing a switch case for something thats meant to be procedural
       else data[sheet].set(key, mappers[sheet](datum, client));
     }
   }
