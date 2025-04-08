@@ -72,16 +72,32 @@ async function updateReceiver(accessToken, email) {
   }
 }
 /**
- * @param {interpret.ParsedEmail} email
- * @param {(int:Augur.GuildInteraction<"Button">) => void} approve
- * @param {(int:Augur.GuildInteraction<"Button">) => void} reject
+ * @param {{ parsed: interpret.ParsedEmail; raw: receive.FetchMessageObject; }} email
  */
-async function forwardEmail(email, approve, reject) {
-  askMods({ embeds: [u.embed({
-    title: "incoming mishmail from " + email.from?.map(from => from.name.length > 0 ? from.name : from.group ?? from.address)?.join() + " - " + email.subject,
-    description: email.text,
-    timestamp: email.receivedDate
-  })] }, approve, reject);
+async function forwardEmail(email) {
+  const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
+  const fromEmailAndNames = email.parsed.from?.map(from => from.address ?? (from.name.length > 0 ? from.name : from.group))?.join();
+  const mishId = await u.db.sheets.missionaries.findKey(address => fromEmailAndNames?.includes(address) ? address : false) + "";
+  const fromEmail = u.db.sheets.missionaries.get(mishId) + "";
+  const missionary = await ldsg.members.fetch(mishId);
+  askMods({
+    embeds: [u.embed({
+      title: `incoming mishmail from ${missionary.user.username}(${fromEmailAndNames}) - ${email.parsed.subject}`,
+      description: email.parsed.text?.replace(fromEmail, `${missionary.user.username}(${fromEmail})`),
+      timestamp: email.parsed.receivedDate
+    })] },
+  async () => {
+    receiver?.messageFlagsAdd([email.raw.uid], ["\\Seen"]);
+    ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
+      title: `${missionary.user.username} - ${email.parsed.subject}`,
+      description: email.parsed.text?.replace(fromEmail, missionary.user.username),
+      timestamp: email.parsed.receivedDate
+    })] });
+  },
+  () => {
+    receiver?.messageFlagsAdd([email.raw.uid], ["\\Seen"]);
+
+  });
 }
 /**
  * @param {string | import("discord.js").MessageCreateOptions} msg
@@ -146,7 +162,7 @@ async function askMods(msg, approve, reject) {
 async function sendUnsent() {
   if (receiver?.usable) {
     try {
-      const messageIds = (await receiver.search({ seen: false, from: "*@missionary.org" })).filter(msgId => {
+      const messageIds = (await receiver.search({ seen: false })).filter(msgId => {// , from: "*@missionary.org" })).filter(msgId => {
         return sendMailPendingApprovals.has(msgId + "") ? undefined : msgId;
       }
       );
@@ -154,18 +170,7 @@ async function sendUnsent() {
       const messages = await Promise.all((await receiver.fetchAll(messageIds, { source: true })).map(async raw => {return { parsed: await parse(raw), raw };}));
       // console.log(messages);
       // console.log("Checking for new emails:", messages?.length);
-      messages.forEach(pair => forwardEmail(
-        pair.parsed,
-        () => {
-          receiver?.messageFlagsAdd([pair.raw.uid], ["\\Seen"]);
-          module.exports.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
-            title: pair.parsed.from?.map(from => from.name.length > 0 ? from.name : from.group ?? from.address)?.join() + " - " + pair.parsed.subject,
-            description: pair.parsed.text,
-            timestamp: pair.parsed.receivedDate
-          })] });
-        },
-        () => { receiver?.messageFlagsAdd([pair.raw.uid], ["\\Seen"]); }
-      ));
+      messages.forEach(forwardEmail);
     } catch (error) {
       u.errorHandler(error, "sendUnsent");
     }
@@ -205,7 +210,7 @@ async function slashMishMailRegister(int) {
   // todo forward to a mod channel to request register, then register if approved.
   const user = int.options.getUser("user", false) ?? int.member;
   const email = int.options.getString("email", true);
-  if (!email.endsWith("@missionary.org")) {return int.editReply("missionary emails must be part of @missionary.org");}
+  // if (!email.endsWith("@missionary.org")) {return int.editReply("missionary emails must be part of @missionary.org");}
   // if (!u.perms.calc(int.member,["mod"]) && user.id != int.member.id) {
   //   return int.editReply("")
   u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
@@ -234,7 +239,7 @@ async function slashMishMailPull(int) {
   if (receiver?.usable) {
     try {
       // Example: Check for new emails
-      const messageIds = (await receiver.search({ seen: false, from: "*@missionary.org" })).filter(msgId => {
+      const messageIds = (await receiver.search({ seen: false })).filter(msgId => {// , from: "*@missionary.org" })).filter(msgId => {
         return sendMailPendingApprovals.has(msgId + "") ? undefined : msgId;
       });
       await sendUnsent();
