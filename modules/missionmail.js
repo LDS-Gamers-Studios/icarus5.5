@@ -9,14 +9,18 @@ const XOAuth2 = require("nodemailer/lib/xoauth2");
 const { ButtonStyle, Message } = require("discord.js");
 const { AugurInteraction } = require("augurbot-ts/dist/structures/AugurInteraction");
 const replyRegexes = [
-  /^On\s.+wrote:\s*$/im,
+  // /^on[\s\n\r]+.+wrote:[\s\n\r]*$/im,
+  // /on[\s\n\r]+.+wrote:[\s\n\r]*/im,
+  /^on[^>]*@[^<]*wrote:\n\n>/im,
+  // /^on\s.+wrote:\s*$/im,
+  // /On\s.+wrote:\s*/im,
   /^>.*$/m,
-  /^-+ Original Message -+$/m,
-  /^From:.*$/m,
-  /^Sent:.*$/m,
-  /^To:.*$/m,
-  /^Subject:.*$/m,
-  /^Date:.*$/m
+  /^-+ original message -+$/m,
+  /^from:.*$/m,
+  /^sent:.*$/m,
+  /^to:.*$/m,
+  /^subject:.*$/m,
+  /^date:.*$/m
 ];
 
 /** @type {send.Transporter | undefined} */
@@ -205,6 +209,7 @@ async function parse(email) {
   // parser.write(email.source)
   // parser.end()
   // return await parser.
+  /** @type {interpret.ParsedEmail} */
   const parsed = await new Promise((resolve) => {
     const parser = new interpret.MailParser();
     parser.on("end", result => resolve(result));
@@ -212,10 +217,10 @@ async function parse(email) {
     parser.end();
   });
   for (const regex of replyRegexes) {
-    const match = parsed.body.search(regex);
-    if (match !== -1) {
-      parsed.fullBody = parsed.body;
-      parsed.body = parsed.body.substring(0, match).trimEnd();
+    const match = parsed.text?.toLowerCase().search(regex);
+    if (match) {
+      // parsed.fullText = parsed.text;
+      parsed.text = parsed.text?.substring(0, match).trimEnd();
       break; // Stop after the first match to avoid over-trimming
     }
   }
