@@ -65,6 +65,7 @@ async function updateReceiver(accessToken, email) {
     });
     await receiver.connect();
     await receiver.mailboxOpen("INBOX");
+    receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the mail server spams.
     // console.log(`Mailer receiver initialized for ${email}`);
   } catch (error) {
     u.errorHandler(error, `updateReceiver for ${email}`);
@@ -337,9 +338,9 @@ const Module = new Augur.Module()
     },
     autocomplete: async (int) => {
       const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
-      console.log(u.db.sheets.missionaries);
+      // console.log(u.db.sheets.missionaries);
       const ret = await Promise.all(u.db.sheets.missionaries.map((_email, uid) => ldsg.members.fetch(uid).then(m => { return { name: m.user.username, value: m.user.toString() + "" };})));
-      console.log(ret);
+      // console.log(ret);
       await int.respond(ret);
       return ret;
     }
