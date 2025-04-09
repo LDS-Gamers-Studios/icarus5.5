@@ -8,13 +8,16 @@ const Augur = require("augurbot-ts");
 const XOAuth2 = require("nodemailer/lib/xoauth2");
 const { ButtonStyle, Message } = require("discord.js");
 const { AugurInteraction } = require("augurbot-ts/dist/structures/AugurInteraction");
+const { request } = require("express");
 
 /** @type {send.Transporter | undefined} */
 let sender;
 /** @type {receive.ImapFlow | undefined} */
 let receiver;
-/** @type {Map<string,{approve:function, reject:function}>} */
-const sendMailPendingApprovals = new Map();
+/** @type {Map<string,string>} */
+const askedApprovalUUIDFromEmailId = new Map();
+/** @type {Map<string,Message<true>>} */
+const pendingApprovals = new Map();
 async function init() {
   if (!c.google.missionMail.enabled) {
     return;
@@ -81,7 +84,7 @@ async function forwardEmail(email) {
   const mishId = await u.db.sheets.missionaries.findKey(address => fromEmailAndNames?.includes(address) ? address : false) + "";
   const fromEmail = u.db.sheets.missionaries.get(mishId) + "";
   const missionary = await ldsg.members.fetch(mishId);
-  askMods({
+  const requestUUID = await askMods({
     embeds: [u.embed({
       title: `incoming mishmail from ${missionary.user.username}(${fromEmailAndNames}) - ${email.parsed.subject}`,
       description: email.parsed.text?.replace(fromEmail, `${missionary.user.username}(${fromEmail})`),
@@ -99,6 +102,8 @@ async function forwardEmail(email) {
     receiver?.messageFlagsAdd([email.raw.uid], ["\\Seen"]);
 
   });
+  askedApprovalUUIDFromEmailId.set(email.raw.uid + "", requestUUID);
+  return requestUUID;
 }
 /**
  * @param {string | import("discord.js").MessageCreateOptions} msg
@@ -119,8 +124,9 @@ async function askMods(msg, approve, reject) {
   } else { componentMsg = msg; }
   // if (!componentMsg.components) {componentMsg.components = [];}
   componentMsg.components = (componentMsg.components ?? []).concat(actionRow);
-  // sendMailPendingApprovals.set(email.messageId + "", { approve, reject });
-  missionMailApprovals?.send(componentMsg);
+  const sentMsg = await missionMailApprovals?.send(componentMsg);
+  if (!sentMsg) {throw new Error("Couldn't be sure successful ask for mod approval in missionmail.");}
+  pendingApprovals.set(requestUUID, sentMsg);
   module.exports.client.moduleManager.interactions.set(approveId, new AugurInteraction({
     type: "Button",
     id: approveId,
@@ -155,6 +161,7 @@ async function askMods(msg, approve, reject) {
       reject();
     }
   }, module.exports.client));
+  return requestUUID;
   // ],
   //     client: module.exports.client,
   //    filepath: module.exports.filepath
@@ -164,7 +171,7 @@ async function sendUnsent() {
   if (receiver?.usable) {
     try {
       const messageIds = (await receiver.search({ seen: false })).filter(msgId => {// , from: "*@missionary.org" })).filter(msgId => {
-        return sendMailPendingApprovals.has(msgId + "") ? undefined : msgId;
+        return askedApprovalUUIDFromEmailId.has(msgId + "") ? undefined : msgId;
       }
       );
       /** @type {{parsed:interpret.ParsedEmail, raw:receive.FetchMessageObject}[]} */
@@ -241,7 +248,7 @@ async function slashMishMailPull(int) {
     try {
       // Example: Check for new emails
       const messageIds = (await receiver.search({ seen: false })).filter(msgId => {// , from: "*@missionary.org" })).filter(msgId => {
-        return sendMailPendingApprovals.has(msgId + "") ? undefined : msgId;
+        return askedApprovalUUIDFromEmailId.has(msgId + "") ? undefined : msgId;
       });
       await sendUnsent();
       await int.editReply(`Found ${messageIds.length} new emails.`);
