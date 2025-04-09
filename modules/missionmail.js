@@ -67,6 +67,7 @@ async function updateReceiver(accessToken, email) {
     });
     await receiver.connect();
     await receiver.mailboxOpen("INBOX");
+    sendUnsent();
     receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the mail server spams.
     // console.log(`Mailer receiver initialized for ${email}`);
   } catch (error) {
@@ -313,7 +314,7 @@ const Module = new Augur.Module()
       } else {
         u.errorHandler(new Error("MishMail Receiver not usable for periodic check."));
       }
-    }, 15 * 60 * 1000); // Every 15 minutes
+    }, 60 * 60 * 1000); // Every hour
   })
   .addInteraction({
     name: "mishmail",
