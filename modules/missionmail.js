@@ -8,6 +8,16 @@ const Augur = require("augurbot-ts");
 const XOAuth2 = require("nodemailer/lib/xoauth2");
 const { ButtonStyle, Message } = require("discord.js");
 const { AugurInteraction } = require("augurbot-ts/dist/structures/AugurInteraction");
+const replyRegexes = [
+  /^On\s.+wrote:\s*$/im,
+  /^>.*$/m,
+  /^-+ Original Message -+$/m,
+  /^From:.*$/m,
+  /^Sent:.*$/m,
+  /^To:.*$/m,
+  /^Subject:.*$/m,
+  /^Date:.*$/m
+];
 
 /** @type {send.Transporter | undefined} */
 let sender;
@@ -195,12 +205,21 @@ async function parse(email) {
   // parser.write(email.source)
   // parser.end()
   // return await parser.
-  return await new Promise((resolve) => {
+  const parsed = await new Promise((resolve) => {
     const parser = new interpret.MailParser();
-    parser.on("end", parsed => resolve(parsed));
+    parser.on("end", result => resolve(result));
     parser.write(email.source);
     parser.end();
   });
+  for (const regex of replyRegexes) {
+    const match = parsed.body.search(regex);
+    if (match !== -1) {
+      parsed.fullBody = parsed.body;
+      parsed.body = parsed.body.substring(0, match).trimEnd();
+      break; // Stop after the first match to avoid over-trimming
+    }
+  }
+  return parsed;
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailReInit(int) {
