@@ -8,7 +8,6 @@ const Augur = require("augurbot-ts");
 const XOAuth2 = require("nodemailer/lib/xoauth2");
 const { ButtonStyle, Message } = require("discord.js");
 const { AugurInteraction } = require("augurbot-ts/dist/structures/AugurInteraction");
-const { request } = require("express");
 
 /** @type {send.Transporter | undefined} */
 let sender;
