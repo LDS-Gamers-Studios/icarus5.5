@@ -43,6 +43,10 @@ const ban = new u.sub()
       .setMaxValue(7)
   );
 
+const channelActivity = new u.sub()
+  .setName("channel-activity")
+  .setDescription("See how active channels are");
+
 const filter = new u.sub()
   .setName("filter")
   .setDescription("Add or remove a word from the language filter")
@@ -215,6 +219,7 @@ module.exports = new u.cmd()
   .setName("mod")
   .setDescription("Modding actions within LDSG")
   .addSubcommand(ban)
+  .addSubcommand(channelActivity)
   .addSubcommand(filter)
   .addSubcommand(grownups)
   .addSubcommand(kick)
