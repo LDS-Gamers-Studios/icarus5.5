@@ -70,70 +70,6 @@ async function slashModBan(interaction) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
-async function slashModChannelActivity(interaction) {
-  try {
-    await interaction.deferReply({ flags: ["Ephemeral"] });
-    const last = Date.now() - (14 * 24 * 60 * 60 * 60_000); // 14 days ago
-
-    // makes sure that the bot can see the channel and that it isn't archive and that it is a text channel
-    const channels = interaction.guild.channels.cache.filter(ch => (ch.isTextBased() && ch.permissionsFor(interaction.client.user)?.has("ViewChannel") && (ch.parentId !== u.sf.channels.archiveCategory)));
-    const fetch = channels.map(ch => {
-      if (ch.isTextBased()) {
-        return ch.messages.fetch({ limit: 100 });
-      }
-    });
-
-    // fetch da messages
-    const channelMsgs = await Promise.all(fetch);
-    const stats = new u.Collection(channels.map(ch => ([ch.id, { channel: ch, messages: 0 } ])));
-
-    // Goes through the channels and updates the the message count for each
-    for (let messages of channelMsgs) {
-      if (!messages) continue;
-      messages = messages.filter(m => m.createdTimestamp > last); // get messages within 14 days
-
-      if ((messages?.size ?? 0) > 0) { // makes sure that messages were sent
-        const channel = messages.first()?.channel;
-        if (!channel) continue;
-
-        // update the message count
-        stats.ensure(channel.id ?? "", () => ({ channel, messages: 0 })).messages = messages.size;
-      }
-    }
-
-    const categories = interaction.guild.channels.cache.filter(ch => ch.type === Discord.ChannelType.GuildCategory).sort((a, b) => {
-      if (!a.isThread() && !b.isThread()) {
-        return a.position - b.position;
-      }
-      return 0;
-    });
-
-    /** @type {string[]} */
-    const lines = [];
-
-    for (const [categoryId, category] of categories) {
-      // sorts from most to least active and removes all active channels
-      const categoryStats = stats.filter(ch => ch.channel.parentId === categoryId && ch.messages < 25).sort((a, b) => {
-        if (!a.channel.isThread() && !b.channel.isThread()) {
-          return a.channel.position - b.channel.position;
-        }
-        return 0;
-      });
-
-      if (categoryStats.size > 0) {
-        lines.push(`**${category.name}**\n${categoryStats.map(ch => `<#${ch.channel.id}>: ${ch.messages}`).join("\n")}\n\n`);
-      }
-    }
-
-    const embed = u.embed().setTitle("Channel Activity");
-    const processedEmbeds = u.pagedEmbedsDescription(embed, lines).map(e => ({ embeds: [e] }));
-    return u.manyReplies(interaction, processedEmbeds, true);
-  } catch (error) {
-    u.errorHandler(error, interaction);
-  }
-}
-
-/** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModFilter(interaction) {
   const pf = new profanityFilter();
   await interaction.deferReply({ flags: ["Ephemeral"] });
@@ -450,7 +386,6 @@ Module.addEvent("guildMemberAdd", async (member) => {
       const subcommand = interaction.options.getSubcommand(true);
       switch (subcommand) {
         case "ban": return slashModBan(interaction);
-        case "channel-activity": return slashModChannelActivity(interaction);
         case "filter": return slashModFilter(interaction);
         case "kick": return slashModKick(interaction);
         case "mute": return slashModMute(interaction);
