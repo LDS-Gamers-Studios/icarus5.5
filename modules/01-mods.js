@@ -98,7 +98,7 @@ async function slashModChannelActivity(interaction) {
 
     for (const [categoryId, category] of categories) {
       const categoryStats = stats.filter(ch => ch.channel.parentId === categoryId && ch.messages < 25).sort((a, b) => {
-        if ("position" in a.channel && "position" in b.channel) {
+        if (!a.channel.isThread() && !b.channel.isThread()) {
           return a.channel.position - b.channel.position;
         }
         return 0;
