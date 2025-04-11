@@ -93,7 +93,12 @@ async function slashModChannelActivity(interaction) {
         stats.ensure(channel.id ?? "", () => ({ channel, messages: 0 })).messages = messages.size;
       }
     }
-    const categories = interaction.guild.channels.cache.filter(ch => ch.type === Discord.ChannelType.GuildCategory).sort((a, b) => a.position - b.position);
+    const categories = interaction.guild.channels.cache.filter(ch => ch.type === Discord.ChannelType.GuildCategory).sort((a, b) => {
+      if (!a.isThread() && !b.isThread()) {
+        return a.position - b.position;
+      }
+      return 0;
+    });
     const lines = [];
 
     for (const [categoryId, category] of categories) {
