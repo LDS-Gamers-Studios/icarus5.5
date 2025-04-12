@@ -98,30 +98,29 @@ async function forwardEmail(email) {
   const pfViolations = pf.scan(email.parsed.text + "");
   const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => email.parsed.text?.includes(bannedString) ? bannedString : undefined);
   const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
-  const fromEmailAndNames = email.parsed.from?.map(from => from.address ?? (from.name.length > 0 ? from.name : from.group))?.join();
-  const mishId = await u.db.sheets.missionaries.findKey(address => fromEmailAndNames?.includes(address) ? address : false) + "";
-  const fromEmail = u.db.sheets.missionaries.get(mishId) + "";
-  const missionary = await ldsg.members.fetch(mishId);
+  const fromEmail = email.parsed.from ? email.parsed.from[0].address : "Err:NoFromAddress";
+  const mishId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
+  const missionary = mishId ? await ldsg.members.fetch(mishId) : undefined;
   const requestUUID = await askMods({
     content:
       (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
       + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
       (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
     embeds: [u.embed({
-      title: `incoming mishmail from ${missionary.user.username}(${fromEmailAndNames}) - ${email.parsed.subject}`,
-      description: email.parsed.text?.replace(fromEmail, `${missionary.user.username}(${fromEmail})`),
+      title: `incoming mishmail from ${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail}) - ${email.parsed.subject}`,
+      description: email.parsed.text?.replace(fromEmail, `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail})`),
       timestamp: email.parsed.receivedDate
     })] },
   async () => {
-    receiver?.messageFlagsAdd([email.raw.uid], ["\\Seen"]);
+    receiver?.messageFlagsAdd([email.raw.uid], ["icarusForwarded"]);
     ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
-      title: `${missionary.user.username} - ${email.parsed.subject}`,
-      description: email.parsed.text?.replace(fromEmail, missionary.user.username),
+      title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${email.parsed.subject}`,
+      description: email.parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
       timestamp: email.parsed.receivedDate
     })] });
   },
   () => {
-    receiver?.messageFlagsAdd([email.raw.uid], ["\\Seen"]);
+    receiver?.messageFlagsAdd([email.raw.uid], ["icarusForwarded"]);
 
   });
   askedApprovalUUIDFromEmailId.set(email.raw.uid + "", requestUUID);
@@ -192,7 +191,8 @@ async function askMods(msg, approve, reject) {
 async function sendUnsent() {
   if (receiver?.usable) {
     try {
-      const messageIds = (await receiver.search({ seen: false })).filter(msgId => {// , from: "*@missionary.org" })).filter(msgId => {
+      let messageIds = (await receiver.search({ unKeyword: 'icarusForwarded' }));// , from: "*@missionary.org" }))
+      messageIds = messageIds.filter(msgId => {
         return askedApprovalUUIDFromEmailId.has(msgId + "") ? undefined : msgId;
       }
       );
@@ -278,12 +278,8 @@ async function slashMishMailPull(int) {
   // await receiver?.connect()
   if (receiver?.usable) {
     try {
-      // Example: Check for new emails
-      const messageIds = (await receiver.search({ seen: false })).filter(msgId => {// , from: "*@missionary.org" })).filter(msgId => {
-        return askedApprovalUUIDFromEmailId.has(msgId + "") ? undefined : msgId;
-      });
       await sendUnsent();
-      await int.editReply(`Found ${messageIds.length} new emails.`);
+      await int.editReply(`Processing new mishmails.`);
       // Implement further logic to process these emails
     } catch (error) {
       u.errorHandler(error, "slashMishMailPull");
@@ -396,7 +392,7 @@ const Module = new Augur.Module()
     permissions: () => c.devMode, // perms.calc(msg.member, ["mod"]),
     process: async function(message) {
       return message.reply(
-        (await receiver?.messageFlagsRemove([4], ["\\Seen"])) ? "Success" : "Fail"
+        (await receiver?.messageFlagsRemove([4], ["icarusForwarded"])) ? "Success" : "Fail"
       );
     }
   });
