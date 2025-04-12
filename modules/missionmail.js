@@ -236,6 +236,7 @@ async function parse(email) {
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailReInit(int) {
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   sender?.close();
   sender?.removeAllListeners();
   sender = undefined;
@@ -247,19 +248,17 @@ async function slashMishMailReInit(int) {
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailRegister(int) {
-  // todo forward to a mod channel to request register, then register if approved.
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
   const email = int.options.getString("email", true);
   // if (!email.endsWith("@missionary.org")) {return int.editReply("missionary emails must be part of @missionary.org");}
-  // if (!u.perms.calc(int.member,["mod"]) && user.id != int.member.id) {
-  //   return int.editReply("")
   u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
   u.db.sheets.loadData(int.client, true, false, "missionaries");
   await int.editReply(`Register command executed for ${user.displayName} setting email ${email}`);
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailRemove(int) {
-  // todo remove.
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
   u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.delete();
   u.db.sheets.loadData(int.client, true, false, "missionaries");
@@ -267,15 +266,14 @@ async function slashMishMailRemove(int) {
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailCheck(int) {
-  // todo remove.
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
   return int.editReply(user + " has the following mish email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailPull(int) {
-  // todo this should just manual trigger a function that clockwork runs every 15 minutes or so.
-  // await receiver?.connect()
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   if (receiver?.usable) {
     try {
       await sendUnsent();
@@ -303,7 +301,6 @@ async function slashMishMailSend(int) {
     return int.editReply(missionaryDiscord.user.toString() + " isn't a registered missionary. have them get in contact with a mod to link their missionary email.");
   }
 
-  // todo forward to a mod channel to request send, then send if approved.
   if (sender) {
     try {
       askMods({
