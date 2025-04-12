@@ -6,6 +6,8 @@ const receive = require("imapflow");
 const interpret = require("mailparser-mit");
 const Augur = require("augurbot-ts");
 const XOAuth2 = require("nodemailer/lib/xoauth2");
+const pf = new (require('profanity-matcher'));
+const banned = require('../data/banned.json');
 const { ButtonStyle, Message } = require("discord.js");
 const { AugurInteraction } = require("augurbot-ts/dist/structures/AugurInteraction");
 const replyRegexes = [
@@ -93,12 +95,18 @@ async function updateReceiver(accessToken, email) {
  * @param {{ parsed: interpret.ParsedEmail; raw: receive.FetchMessageObject; }} email
  */
 async function forwardEmail(email) {
+  const pfViolations = pf.scan(email.parsed.text + "");
+  const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => email.parsed.text?.includes(bannedString) ? bannedString : undefined);
   const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
   const fromEmailAndNames = email.parsed.from?.map(from => from.address ?? (from.name.length > 0 ? from.name : from.group))?.join();
   const mishId = await u.db.sheets.missionaries.findKey(address => fromEmailAndNames?.includes(address) ? address : false) + "";
   const fromEmail = u.db.sheets.missionaries.get(mishId) + "";
   const missionary = await ldsg.members.fetch(mishId);
   const requestUUID = await askMods({
+    content:
+      (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
+      + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
+      (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
     embeds: [u.embed({
       title: `incoming mishmail from ${missionary.user.username}(${fromEmailAndNames}) - ${email.parsed.subject}`,
       description: email.parsed.text?.replace(fromEmail, `${missionary.user.username}(${fromEmail})`),
@@ -292,6 +300,8 @@ async function slashMishMailSend(int) {
   if (!pingMatch || !pingMatch[1]) { return int.editReply("You need to @ mention a registered missionaries discord account."); }
   const missionaryDiscord = await ldsg.members.fetch(pingMatch[1]);
   const content = int.options.getString("content", true);
+  const pfViolations = pf.scan(content);
+  const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => content.includes(bannedString) ? bannedString : undefined);
   const email = u.db.sheets.missionaries.get(missionaryDiscord.id);
   if (!email) {
     return int.editReply(missionaryDiscord.user.toString() + " isn't a registered missionary. have them get in contact with a mod to link their missionary email.");
@@ -300,10 +310,15 @@ async function slashMishMailSend(int) {
   // todo forward to a mod channel to request send, then send if approved.
   if (sender) {
     try {
-      askMods({ embeds: [u.embed({
-        title: `outgoing mishmail from ${int.member.user.username} to ${missionaryDiscord.user.username}(${email})`,
-        description: content
-      })] }, () => {
+      askMods({
+        content:
+          (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
+          + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
+          (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
+        embeds: [u.embed({
+          title: `outgoing mishmail from ${int.member.user.username} to ${missionaryDiscord.user.username}(${email})`,
+          description: content
+        })] }, () => {
         sender?.sendMail({
           to: email,
           // to: "recipient@example.com", // Replace with actual recipient
