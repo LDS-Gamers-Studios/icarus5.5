@@ -5,11 +5,9 @@ const send = require("nodemailer");
 const receive = require("imapflow");
 const interpret = require("mailparser-mit");
 const Augur = require("augurbot-ts");
-const XOAuth2 = require("nodemailer/lib/xoauth2");
 const pf = new (require('profanity-matcher'));
 const banned = require('../data/banned.json');
-const { ButtonStyle, Message } = require("discord.js");
-const { AugurInteraction } = require("augurbot-ts/dist/structures/AugurInteraction");
+const { ChannelType } = require("discord.js");
 const replyRegexes = [
   // /^on[\s\n\r]+.+wrote:[\s\n\r]*$/im,
   // /on[\s\n\r]+.+wrote:[\s\n\r]*/im,
@@ -24,15 +22,12 @@ const replyRegexes = [
   /^subject:.*$/m,
   /^date:.*$/m
 ];
-
 /** @type {send.Transporter | undefined} */
 let sender;
 /** @type {receive.ImapFlow | undefined} */
 let receiver;
 /** @type {Map<string,string>} */
 const askedApprovalUUIDFromEmailId = new Map();
-/** @type {Map<string,Message<true>>} */
-const pendingApprovals = new Map();
 async function init() {
   if (!c.google.missionMail.enabled) {
     return;
@@ -50,143 +45,34 @@ async function init() {
           refreshToken: creds.gAccountRefreshToken,
         },
       });
-      sender.on("token", (token) => updateReceiver(token, creds.email));
+      sender.on("token", async (token) => {
+        try {
+          receiver = new receive.ImapFlow({
+            auth: {
+              user: creds.email,
+              accessToken: token.accessToken,
+            },
+            host: 'imap.gmail.com',
+            port: 993,
+          });
+          await receiver.connect();
+          await receiver.mailboxOpen("INBOX");
+          sendUnsent();
+          receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the mail server spams.
+          // console.log(`Mailer receiver initialized for ${email}`);
+        } catch (error) {
+          u.errorHandler(error, `updateReceiver for ${creds.email}`);
+          receiver = undefined;
+        }
+      });
       await sender.verify();
       // console.log(`Mailer sender initialized for ${creds.email}`);
-    }
-    if (!receiver) {
-      // Create receiver only if sender is successfully initialized
-      if (!sender) {
-        u.errorHandler(new Error("Sender was not able to be initialized, receiver will not be created."));
-      }
     }
   } catch (e) {
     u.errorHandler(e, "missionmail init");
     sender = undefined;
     receiver = undefined;
   }
-}
-
-/**
- * @param {XOAuth2.Token} accessToken
- * @param {string} email
- */
-async function updateReceiver(accessToken, email) {
-  try {
-    receiver = new receive.ImapFlow({
-      auth: {
-        user: email,
-        accessToken: accessToken.accessToken,
-      },
-      host: 'imap.gmail.com',
-      port: 993,
-    });
-    await receiver.connect();
-    await receiver.mailboxOpen("INBOX");
-    sendUnsent();
-    receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the mail server spams.
-    // console.log(`Mailer receiver initialized for ${email}`);
-  } catch (error) {
-    u.errorHandler(error, `updateReceiver for ${email}`);
-    receiver = undefined;
-  }
-}
-/**
- * @param {{ parsed: interpret.ParsedEmail; raw: receive.FetchMessageObject; }} email
- */
-async function forwardEmail(email) {
-  const pfViolations = pf.scan(email.parsed.text + "");
-  const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => email.parsed.text?.includes(bannedString) ? bannedString : undefined);
-  const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
-  const fromEmail = email.parsed.from ? email.parsed.from[0].address : "Err:NoFromAddress";
-  const mishId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
-  const missionary = mishId ? await ldsg.members.fetch(mishId) : undefined;
-  const requestUUID = await askMods({
-    content:
-      (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
-      + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
-      (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
-    embeds: [u.embed({
-      title: `incoming mishmail from ${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail}) - ${email.parsed.subject}`,
-      description: email.parsed.text?.replace(fromEmail, `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail})`),
-      timestamp: email.parsed.receivedDate
-    })] },
-  async () => {
-    receiver?.messageFlagsAdd([email.raw.uid], ["icarusForwarded"]);
-    ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
-      title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${email.parsed.subject}`,
-      description: email.parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
-      timestamp: email.parsed.receivedDate
-    })] });
-  },
-  () => {
-    receiver?.messageFlagsAdd([email.raw.uid], ["icarusForwarded"]);
-
-  });
-  askedApprovalUUIDFromEmailId.set(email.raw.uid + "", requestUUID);
-  return requestUUID;
-}
-/**
- * @param {string | import("discord.js").MessageCreateOptions} msg
- * @param {function} approve
- * @param {function} reject
- */
-async function askMods(msg, approve, reject) {
-  const requestUUID = crypto.randomUUID();
-  const [approveId, rejectId] = ["approvemishmail" + requestUUID, "rejectmishmail" + requestUUID];
-  let componentMsg;
-  // console.log(email);
-  const missionMailApprovals = module.exports.client.getTextChannel(u.sf.channels.missionMailApprovals);
-  const approveBtn = new u.Button().setCustomId(approveId).setLabel("Approve").setStyle(ButtonStyle.Primary);
-  const rejectBtn = new u.Button().setCustomId(rejectId).setLabel("Reject").setStyle(ButtonStyle.Danger);
-  const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
-  if (typeof msg === "string") {
-    componentMsg = { content: msg };
-  } else { componentMsg = msg; }
-  // if (!componentMsg.components) {componentMsg.components = [];}
-  componentMsg.components = (componentMsg.components ?? []).concat(actionRow);
-  const sentMsg = await missionMailApprovals?.send(componentMsg);
-  if (!sentMsg) {throw new Error("Couldn't be sure successful ask for mod approval in missionmail.");}
-  pendingApprovals.set(requestUUID, sentMsg);
-  module.exports.client.moduleManager.interactions.set(approveId, new AugurInteraction({
-    type: "Button",
-    id: approveId,
-    process: (int) => {
-      /** @type {Message} */
-      // @ts-ignore
-      const message = int.message;
-      message.edit({
-        content: message.content + `\n(approved by ${int.user})`,
-        components: message.components.filter(row =>
-          !row.components.some(component => component.customId === approveId) &&
-          !row.components.some(component => component.customId === rejectId)
-        )
-      });
-      approve();
-    }
-  }, module.exports.client));
-  module.exports.client.moduleManager.interactions.set(rejectId, new AugurInteraction({
-    type: "Button",
-    id: rejectId,
-    process: (int) => {
-      /** @type {Message} */
-      // @ts-ignore
-      const message = int.message;
-      message.edit({
-        content: message.content + `\n(rejected by ${int.user})`,
-        components: message.components.filter(row =>
-          !row.components.some(component => component.customId === approveId) &&
-          !row.components.some(component => component.customId === rejectId)
-        )
-      });
-      reject();
-    }
-  }, module.exports.client));
-  return requestUUID;
-  // ],
-  //     client: module.exports.client,
-  //    filepath: module.exports.filepath
-
 }
 async function sendUnsent() {
   if (receiver?.usable) {
@@ -196,43 +82,63 @@ async function sendUnsent() {
         return askedApprovalUUIDFromEmailId.has(msgId + "") ? undefined : msgId;
       }
       );
-      /** @type {{parsed:interpret.ParsedEmail, raw:receive.FetchMessageObject}[]} */
-      const messages = await Promise.all((await receiver.fetchAll(messageIds, { source: true })).map(async raw => {return { parsed: await parse(raw), raw };}));
+      const messages = await receiver.fetchAll(messageIds, { source: true });
       // console.log(messages);
       // console.log("Checking for new emails:", messages?.length);
-      messages.forEach(forwardEmail);
+      messages.forEach(async (raw) => {
+        const parsed = await new Promise((resolve) => {
+          const parser = new interpret.MailParser();
+          parser.on("end", result => resolve(result));
+          parser.write(raw.source);
+          parser.end();
+        });
+        for (const regex of replyRegexes) {
+          const match = parsed.text?.toLowerCase().search(regex);
+          if (match) {
+            // parsed.fullText = parsed.text;
+            parsed.text = parsed.text?.substring(0, match).trimEnd();
+            break; // Stop after the first match to avoid over-trimming
+          }
+        }
+        const pfViolations = pf.scan(parsed.text + "");
+        const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => parsed.text?.includes(bannedString) ? bannedString : undefined);
+        const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
+        const fromEmail = parsed.from ? parsed.from[0].address : "Err:NoFromAddress";
+        const mishId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
+        const missionary = mishId ? await ldsg.members.fetch(mishId) : undefined;
+        const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
+        if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) {throw new Error("unable to find approval channel for mishmail");}
+        const requestUUID = await u.askMods(missionMailApprovals, {
+          content:
+            (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
+            + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
+            (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
+          embeds: [u.embed({
+            title: `incoming mishmail from ${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail}) - ${parsed.subject}`,
+            description: parsed.text?.replace(fromEmail, `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail})`),
+            timestamp: parsed.receivedDate
+          })] },
+        async () => {
+          receiver?.messageFlagsAdd([raw.uid], ["icarusForwarded"]);
+          ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
+            title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
+            description: parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
+            timestamp: parsed.receivedDate
+          })] });
+        },
+        () => {
+          receiver?.messageFlagsAdd([raw.uid], ["icarusForwarded"]);
+
+        });
+        askedApprovalUUIDFromEmailId.set(raw.uid + "", requestUUID);
+        return requestUUID;
+      });
     } catch (error) {
       u.errorHandler(error, "sendUnsent");
     }
   } else {
     u.errorHandler(new Error("MishMail Receiver not usable, cannot check for new emails."));
   }
-}
-/**
- * @param {receive.FetchMessageObject} email
- * @returns {Promise<interpret.ParsedEmail>}
- */
-async function parse(email) {
-  // const parser = new interpret.MailParser();
-  // parser.write(email.source)
-  // parser.end()
-  // return await parser.
-  /** @type {interpret.ParsedEmail} */
-  const parsed = await new Promise((resolve) => {
-    const parser = new interpret.MailParser();
-    parser.on("end", result => resolve(result));
-    parser.write(email.source);
-    parser.end();
-  });
-  for (const regex of replyRegexes) {
-    const match = parsed.text?.toLowerCase().search(regex);
-    if (match) {
-      // parsed.fullText = parsed.text;
-      parsed.text = parsed.text?.substring(0, match).trimEnd();
-      break; // Stop after the first match to avoid over-trimming
-    }
-  }
-  return parsed;
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailReInit(int) {
@@ -245,47 +151,6 @@ async function slashMishMailReInit(int) {
   receiver = undefined;
   await init();
   await int.editReply("Mailer reinitialized.");
-}
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailRegister(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
-  const user = int.options.getUser("user", false) ?? int.member;
-  const email = int.options.getString("email", true);
-  // if (!email.endsWith("@missionary.org")) {return int.editReply("missionary emails must be part of @missionary.org");}
-  u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
-  u.db.sheets.loadData(int.client, true, false, "missionaries");
-  await int.editReply(`Register command executed for ${user.displayName} setting email ${email}`);
-}
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailRemove(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
-  const user = int.options.getUser("user", false) ?? int.member;
-  u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.delete();
-  u.db.sheets.loadData(int.client, true, false, "missionaries");
-  await int.editReply("Mission Mailer removed.");
-}
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailCheck(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
-  const user = int.options.getUser("user", false) ?? int.member;
-  return int.editReply(user + " has the following mish email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
-}
-
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailPull(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
-  if (receiver?.usable) {
-    try {
-      await sendUnsent();
-      await int.editReply(`Processing new mishmails.`);
-      // Implement further logic to process these emails
-    } catch (error) {
-      u.errorHandler(error, "slashMishMailPull");
-      await int.editReply("Error pulling emails.");
-    }
-  } else {
-    await int.editReply("Mailer receiver is not ready.");
-  }
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMishMailSend(int) {
@@ -303,7 +168,9 @@ async function slashMishMailSend(int) {
 
   if (sender) {
     try {
-      askMods({
+      const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
+      if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) {throw new Error("unable to find approval channel for mishmail");}
+      u.askMods(missionMailApprovals, {
         content:
           (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
           + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
@@ -331,7 +198,46 @@ async function slashMishMailSend(int) {
     await int.editReply("Mailer sender is not initialized.");
   }
 }
-
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashMishMailPull(int) {
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
+  if (receiver?.usable) {
+    try {
+      await sendUnsent();
+      await int.editReply(`Processing new mishmails.`);
+      // Implement further logic to process these emails
+    } catch (error) {
+      u.errorHandler(error, "slashMishMailPull");
+      await int.editReply("Error pulling emails.");
+    }
+  } else {
+    await int.editReply("Mailer receiver is not ready.");
+  }
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashMishMailRegister(int) {
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
+  const user = int.options.getUser("user", false) ?? int.member;
+  const email = int.options.getString("email", true);
+  // if (!email.endsWith("@missionary.org")) {return int.editReply("missionary emails must be part of @missionary.org");}
+  u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
+  u.db.sheets.loadData(int.client, true, false, "missionaries");
+  await int.editReply(`Register command executed for ${user.displayName} setting email ${email}`);
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashMishMailRemove(int) {
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
+  const user = int.options.getUser("user", false) ?? int.member;
+  u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.delete();
+  u.db.sheets.loadData(int.client, true, false, "missionaries");
+  await int.editReply("Mission Mailer removed.");
+}
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashMishMailCheck(int) {
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
+  const user = int.options.getUser("user", false) ?? int.member;
+  return int.editReply(user + " has the following mish email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
+}
 const Module = new Augur.Module()
   .setInit(init)
   .setClockwork(() => {

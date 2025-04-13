@@ -1,4 +1,5 @@
 // @ts-check
+const { AugurInteraction } = require("augurbot-ts/dist/structures/AugurInteraction");
 const { AxiosError } = require("axios");
 const Discord = require("discord.js"),
   { escapeMarkdown, ComponentType } = require('discord.js'),
@@ -510,6 +511,66 @@ const utils = {
   ephemeralChannel: function(int, channelId = sf.channels.botSpam) {
     if (int.inGuild() && int.channelId !== channelId) return ["Ephemeral"];
     return undefined;
+  },
+
+  /**
+   * @param {import("discord.js").TextChannel} channel
+   * @param {string | import("discord.js").MessageCreateOptions} msg
+   * @param {function} approve
+   * @param {function} reject
+   */
+  askMods: async function(channel, msg, approve, reject) {
+    const requestUUID = crypto.randomUUID();
+    const [approveId, rejectId] = ["approvemishmail" + requestUUID, "rejectmishmail" + requestUUID];
+    let componentMsg;
+    // console.log(email);
+    const approveBtn = new this.Button().setCustomId(approveId).setLabel("Approve").setStyle(Discord.ButtonStyle.Primary);
+    const rejectBtn = new this.Button().setCustomId(rejectId).setLabel("Reject").setStyle(Discord.ButtonStyle.Danger);
+    const actionRow = this.MessageActionRow().addComponents([approveBtn, rejectBtn]);
+    if (typeof msg === "string") {
+      componentMsg = { content: msg };
+    } else { componentMsg = msg; }
+    // if (!componentMsg.components) {componentMsg.components = [];}
+    componentMsg.components = (componentMsg.components ?? []).concat(actionRow);
+    const sentMsg = await channel.send(componentMsg);
+    if (!sentMsg) {throw new Error("Couldn't be sure successful ask for mod approval in missionmail.");}
+    channel.client.moduleManager.interactions.set(approveId, new AugurInteraction({
+      type: "Button",
+      id: approveId,
+      permissions: (int) => this.perms.calc(int.member, ["mod"]),
+      process: (int) => {
+        /** @type {Discord.Message} */
+        // @ts-ignore
+        const message = int.message;
+        message.edit({
+          content: message.content + `\n(approved by ${int.user})`,
+          components: message.components.filter(row =>
+            !row.components.some(component => component.customId === approveId) &&
+            !row.components.some(component => component.customId === rejectId)
+          )
+        });
+        approve();
+      }
+    }, channel.client));
+    channel.client.moduleManager.interactions.set(rejectId, new AugurInteraction({
+      type: "Button",
+      id: rejectId,
+      permissions: (int) => this.perms.calc(int.member, ["mod"]),
+      process: (int) => {
+        /** @type {Discord.Message} */
+        // @ts-ignore
+        const message = int.message;
+        message.edit({
+          content: message.content + `\n(rejected by ${int.user})`,
+          components: message.components.filter(row =>
+            !row.components.some(component => component.customId === approveId) &&
+            !row.components.some(component => component.customId === rejectId)
+          )
+        });
+        reject();
+      }
+    }, channel.client));
+    return requestUUID;
   }
 };
 
