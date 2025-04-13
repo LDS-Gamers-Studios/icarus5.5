@@ -53,7 +53,7 @@
     "missionMail": {
       "enabled":false,
       "note": "you must: 1) create a web app oAuth 2.0 client id and download the json. 1a) add the email to the testers for your oauth app 2) copy the values into their place below. 3) go to 'https://developers.google.com/oauthplayground/' 3a) select use your own OAuth credentials, and copy in from below. 3b) select mail.google.com in the left menu and hit 'authorize apis' 3c) follow through with the gmail account you wish to link to the bot, 3d) exchange the auth code for tokens 4) copy in the refresh token into 'gAccountRefreshToken' below, and make sure to fill in the email. 5) enable it above",
-      "email": "ldsgmissionmail@gmail.com",
+      "email": "missionmail@ldsgamers.com",
       "gAccountRefreshToken": "",
       "oAuthServerCreds": {
         "web": {
