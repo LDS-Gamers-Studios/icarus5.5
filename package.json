@@ -25,6 +25,7 @@
     "@twurple/auth": "^7.2.1",
     "@twurple/eventsub-http": "^7.2.1",
     "@twurple/eventsub-ngrok": "^7.2.1",
+    "@types/jquery": "^3.5.32",
     "augurbot-ts": "^3.3.2",
     "axios": "^1.6.7",
     "connect-mongo": "^5.1.0",

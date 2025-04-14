@@ -1,6 +1,7 @@
 // @ts-check
 const Augur = require("augurbot-ts");
 const config = require("../config/config.json");
+const { createServer } = require("http");
 
 if (config.siteOn) {
   // require modules!
@@ -14,12 +15,15 @@ if (config.siteOn) {
   const mongoose = require("mongoose");
   const cors = require("cors");
   const Store = require("connect-mongo");
+  const { Server } = require("socket.io");
 
   // @ts-ignore
   const routes = require("../site/backend/routes");
 
   // @ts-ignore
   const tourneyWS = require('../site/backend/routes/tournament/WS');
+  // @ts-ignore
+  const streamingWS = require("../site/backend/routes/streaming/ws");
 
   const app = express();
   const socket = require("express-ws")(app);
@@ -29,7 +33,8 @@ if (config.siteOn) {
   const globalLimit = require("express-rate-limit").rateLimit({
     limit: 5,
     windowMs: 3_000,
-    message: { msg: "You're going too fast! Slow down!" }
+    message: { msg: "You're going too fast! Slow down!" },
+    skip: (r) => r.url.startsWith("/streaming")
   });
 
   app.use(express.json())
@@ -107,8 +112,12 @@ if (config.siteOn) {
     });
   }
 
+  const httpServer = createServer(app);
+  const io = new Server(httpServer, { path: "/ws/streams" });
+  io.on("connection", streamingWS.listen);
+
   // eslint-disable-next-line no-console
-  app.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
+  httpServer.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
 }
 
 module.exports = new Augur.Module();
