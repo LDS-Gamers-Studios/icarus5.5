@@ -4,6 +4,7 @@ const c = require("../config/config.json");
 const send = require("nodemailer");
 const receive = require("imapflow");
 const interpret = require("mailparser-mit");
+const htmlparse = require("html-to-text");
 const Augur = require("augurbot-ts");
 const pf = new (require('profanity-matcher'));
 const banned = require('../data/banned.json');
@@ -112,18 +113,28 @@ async function sendUnsent() {
           parser.write(rawMsg.source);
           parser.end();
         });
+        // make sure there is text
+        if (!parsed.text || parsed.text.length < 1) {
+          if (parsed.html) {
+            parsed.text = htmlparse.convert(parsed.html);
+          } else {
+            parsed.text = parsed.subject;
+          }
+        }
+        if (!parsed.text) {throw new Error("unable to parse email with no discrnable text, html, or subject");}
         // trim the reply quote from the bottom if there is one (for some reason it was bypassing email replace)
         for (const regex of replyRegexes) {
-          const match = parsed.text?.toLowerCase().search(regex);
-          if (match) {
+          const match = parsed.text.toLowerCase().search(regex);
+          if (match && match > 0) {
             // parsed.fullText = parsed.text;
-            parsed.text = parsed.text?.substring(0, match).trimEnd();
+            parsed.text = parsed.text.substring(0, match);
             break; // Stop after the first match to avoid over-trimming
           }
         }
+        parsed.text = parsed.text.trimEnd();
         // search for profanity
         const pfViolations = pf.scan(parsed.text + "");
-        const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => parsed.text?.includes(bannedString) ? bannedString : undefined);
+        const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => parsed.text.includes(bannedString) ? bannedString : undefined);
         // figure out who it is from
         const fromEmail = parsed.from ? parsed.from[0].address : "Err:NoFromAddress";
         const mishId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
@@ -147,7 +158,7 @@ async function sendUnsent() {
             (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
           embeds: [u.embed({
             title: `incoming mishmail from ${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail}) - ${parsed.subject}`,
-            description: parsed.text?.replace(fromEmail, `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail})`),
+            description: parsed.text.replace(fromEmail, `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail})`),
             timestamp: parsed.receivedDate
           })]
         };
@@ -158,7 +169,7 @@ async function sendUnsent() {
             ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({
               embeds: [u.embed({
                 title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
-                description: parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
+                description: parsed.text.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
                 timestamp: parsed.receivedDate
               })]
             });
