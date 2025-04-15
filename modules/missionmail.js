@@ -39,19 +39,37 @@ async function init() {
       sender = send.createTransport({
         service: 'gmail',
         auth: {
-          type: "OAUTH2",
+          type: "LOGIN",
           user: creds.email,
-          clientId: creds.oAuthServerCreds.web.client_id,
-          clientSecret: creds.oAuthServerCreds.web.client_secret,
-          refreshToken: creds.gAccountRefreshToken,
+          pass: creds.gAccountAppPass
+          // clientId: creds.oAuthServerCreds.web.client_id,
+          // clientSecret: creds.oAuthServerCreds.web.client_secret,
+          // refreshToken: creds.gAccountRefreshToken,
         },
       });
-      sender.on("token", async (token) => {
+      receiver = new receive.ImapFlow({
+        auth: {
+          user: creds.email,
+          pass: creds.gAccountAppPass
+          // accessToken: token.accessToken,
+        },
+        host: 'imap.gmail.com',
+        port: 993,
+      });
+      await receiver.connect();
+      await receiver.mailboxOpen("INBOX");
+      sendUnsent();
+      receiver.on("exists", sendUnsent);
+      setInterval(async () => {
+        // sender.on("token", async (token) => {
         try {
+          receiver?.removeAllListeners();
+          receiver?.close();
           receiver = new receive.ImapFlow({
             auth: {
               user: creds.email,
-              accessToken: token.accessToken,
+              pass: creds.gAccountAppPass
+              // accessToken: token.accessToken,
             },
             host: 'imap.gmail.com',
             port: 993,
@@ -65,7 +83,7 @@ async function init() {
           u.errorHandler(error, `updateReceiver for ${creds.email}`);
           receiver = undefined;
         }
-      });
+      }, 60 * 60 * 1000);
       await sender.verify();
       // console.log(`Mailer sender initialized for ${creds.email}`);
     }
@@ -115,17 +133,6 @@ async function sendUnsent() {
         const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
         if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for mishmail"); }
         // setup the functions to mark it as handled and forward it when approved, or just mark when rejected
-        const onApproved = async () => {
-          receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
-          ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({
-            embeds: [u.embed({
-              title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
-              description: parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
-              timestamp: parsed.receivedDate
-            })]
-          });
-        };
-        const onReject = () => receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
         // setup the request message, including listing detected profanity at the top,
         // and the embed almost the same, but not fully replaced, just marked as will be replaced.
         // and approve and reject buttons
@@ -146,8 +153,17 @@ async function sendUnsent() {
         };
         // store what to do when the question is answered
         awaitingMods.set("from" + rawMsg.uid, {
-          approve: onApproved,
-          reject: onReject
+          approve: async () => {
+            receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
+            ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({
+              embeds: [u.embed({
+                title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
+                description: parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
+                timestamp: parsed.receivedDate
+              })]
+            });
+          },
+          reject: () => receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"])
         });
         // pop the question
         await missionMailApprovals.send(requestMsg);
@@ -323,11 +339,11 @@ const Module = new Augur.Module()
   })
   .addEvent("interactionCreate", (int) => {
     if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
-    if (int.customId.startsWith(rejectIdPrefix)) {
+    if (int.customId.startsWith(approveIdPrefix)) {
       if (!u.perms.calc(int.member, ["mod"])) {
         return int.reply({ content: "You don't have permissions to approve mishmail!", ephemeral: true });
       }
-      const id = int.customId.substring(rejectIdPrefix.length);
+      const id = int.customId.substring(approveIdPrefix.length);
       awaitingMods.get(id)?.approve();
       /** @type {Message} */
       const message = int.message;
