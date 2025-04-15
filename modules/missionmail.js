@@ -85,13 +85,15 @@ async function sendUnsent() {
       const messages = await receiver.fetchAll(messageIds, { source: true });
       // console.log(messages);
       // console.log("Checking for new emails:", messages?.length);
-      messages.forEach(async (raw) => {
+      for (const rawMsg of messages) {
+        // parse the email source into readable stuff
         const parsed = await new Promise((resolve) => {
           const parser = new interpret.MailParser();
           parser.on("end", result => resolve(result));
-          parser.write(raw.source);
+          parser.write(rawMsg.source);
           parser.end();
         });
+        // trim the reply quote from the bottom if there is one (for some reason it was bypassing email replace)
         for (const regex of replyRegexes) {
           const match = parsed.text?.toLowerCase().search(regex);
           if (match) {
@@ -100,15 +102,30 @@ async function sendUnsent() {
             break; // Stop after the first match to avoid over-trimming
           }
         }
+        // search for profanity
         const pfViolations = pf.scan(parsed.text + "");
         const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => parsed.text?.includes(bannedString) ? bannedString : undefined);
-        const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
+        // figure out who it is from
         const fromEmail = parsed.from ? parsed.from[0].address : "Err:NoFromAddress";
         const mishId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
+        // get some discord side of things stuff
+        const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
         const missionary = mishId ? await ldsg.members.fetch(mishId) : undefined;
         const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
         if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) {throw new Error("unable to find approval channel for mishmail");}
-        const requestUUID = await u.askMods(missionMailApprovals, {
+        // setup the functions to mark it as handled and forward it when approved, or just mark when rejected
+        const onApproved = async () => {
+          receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
+          ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
+            title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
+            description: parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
+            timestamp: parsed.receivedDate
+          })] });
+        };
+        const onReject = () => receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
+        // setup the request message, including listing detected profanity at the top,
+        // and the embed almost the same, but not fully replaced, just marked as will be replaced.
+        const requestMsg = {
           content:
             (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
             + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
@@ -117,22 +134,17 @@ async function sendUnsent() {
             title: `incoming mishmail from ${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail}) - ${parsed.subject}`,
             description: parsed.text?.replace(fromEmail, `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail})`),
             timestamp: parsed.receivedDate
-          })] },
-        async () => {
-          receiver?.messageFlagsAdd([raw.uid], ["icarusForwarded"]);
-          ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
-            title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
-            description: parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
-            timestamp: parsed.receivedDate
-          })] });
-        },
-        () => {
-          receiver?.messageFlagsAdd([raw.uid], ["icarusForwarded"]);
-
-        });
-        askedApprovalUUIDFromEmailId.set(raw.uid + "", requestUUID);
+          })]
+        };
+        // pop the question
+        // new command u.askMods. thought it could be useful elsewhere to be able to send a message in a channel with approve or disaprove buttons
+        // and either one adds a line at the bottom saying who hit which button, and can run a function passed to the command when approved or disaproved.
+        const requestUUID = await u.askMods(missionMailApprovals, requestMsg, onApproved, onReject);
+        // remember that that email has a pending request gone through (if the bot is restarted with messages still awaiting approval or rejection
+        // then it will ask again rather then those emails being lost.
+        askedApprovalUUIDFromEmailId.set(rawMsg.uid + "", requestUUID);
         return requestUUID;
-      });
+      }
     } catch (error) {
       u.errorHandler(error, "sendUnsent");
     }
@@ -255,7 +267,7 @@ const Module = new Augur.Module()
     }, 60 * 60 * 1000); // Every hour
   })
   .addInteraction({
-    name: "mishmail",
+    name: "missionary",
     id: u.sf.commands.slashMishmail,
     onlyGuild: true,
     hidden: true,
@@ -265,20 +277,13 @@ const Module = new Augur.Module()
       await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
       if (subcommand !== "send" && !u.perms.calc(int.member, ["mod"])) return int.editReply("That command is only for mods.");
       switch (subcommand) {
-        case "send":
-          return slashMishMailSend(int);
-        case "remove":
-          return slashMishMailRemove(int);
-        case "check":
-          return slashMishMailCheck(int);
-        case "register":
-          return slashMishMailRegister(int);
-        case "pull":
-          return slashMishMailPull(int);
-        case "reinit":
-          return slashMishMailReInit(int);
-        default:
-          return u.errorHandler(new Error("Unhandled Subcommand"), int);
+        case "send": return slashMishMailSend(int);
+        case "remove": return slashMishMailRemove(int);
+        case "check": return slashMishMailCheck(int);
+        case "register": return slashMishMailRegister(int);
+        case "pull": return slashMishMailPull(int);
+        case "reinit": return slashMishMailReInit(int);
+        default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
       }
     },
     autocomplete: async (int) => {

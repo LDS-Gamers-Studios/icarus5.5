@@ -58,8 +58,8 @@ const check = new u.sub()
   );
 
 module.exports = new u.cmd()
-  .setName("mishmail")
-  .setDescription("send and get emals from ldsgmissionmail@gmail.com")
+  .setName("missionary")
+  .setDescription("send and get emals from missionmail@ldsgamers.com")
   .setContexts(u.contexts.Guild)
   .addSubcommand(send)
   .addSubcommand(pull)
