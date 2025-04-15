@@ -7,7 +7,8 @@ const interpret = require("mailparser-mit");
 const Augur = require("augurbot-ts");
 const pf = new (require('profanity-matcher'));
 const banned = require('../data/banned.json');
-const { ChannelType } = require("discord.js");
+const { ChannelType, ButtonStyle, Message } = require("discord.js");
+const [approveIdPrefix, rejectIdPrefix] = ["approvemishmail", "rejectmishmail"];
 const replyRegexes = [
   // /^on[\s\n\r]+.+wrote:[\s\n\r]*$/im,
   // /on[\s\n\r]+.+wrote:[\s\n\r]*/im,
@@ -26,8 +27,8 @@ const replyRegexes = [
 let sender;
 /** @type {receive.ImapFlow | undefined} */
 let receiver;
-/** @type {Map<string,string>} */
-const askedApprovalUUIDFromEmailId = new Map();
+/** @type {Map<string, {approve:() => any, reject:() => any}>} */
+const awaitingMods = new Map();
 async function init() {
   if (!c.google.missionMail.enabled) {
     return;
@@ -79,7 +80,7 @@ async function sendUnsent() {
     try {
       let messageIds = (await receiver.search({ unKeyword: 'icarusForwarded' }));// , from: "*@missionary.org" }))
       messageIds = messageIds.filter(msgId => {
-        return askedApprovalUUIDFromEmailId.has(msgId + "") ? undefined : msgId;
+        return awaitingMods.has(msgId + "") ? undefined : msgId;
       }
       );
       const messages = await receiver.fetchAll(messageIds, { source: true });
@@ -112,20 +113,27 @@ async function sendUnsent() {
         const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
         const missionary = mishId ? await ldsg.members.fetch(mishId) : undefined;
         const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
-        if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) {throw new Error("unable to find approval channel for mishmail");}
+        if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for mishmail"); }
         // setup the functions to mark it as handled and forward it when approved, or just mark when rejected
         const onApproved = async () => {
           receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
-          ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({ embeds: [u.embed({
-            title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
-            description: parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
-            timestamp: parsed.receivedDate
-          })] });
+          ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({
+            embeds: [u.embed({
+              title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
+              description: parsed.text?.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
+              timestamp: parsed.receivedDate
+            })]
+          });
         };
         const onReject = () => receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
         // setup the request message, including listing detected profanity at the top,
         // and the embed almost the same, but not fully replaced, just marked as will be replaced.
+        // and approve and reject buttons
+        const approveBtn = new u.Button().setCustomId(approveIdPrefix + "from" + rawMsg.uid).setLabel("Approve").setStyle(ButtonStyle.Primary);
+        const rejectBtn = new u.Button().setCustomId(rejectIdPrefix + "from" + rawMsg.uid).setLabel("Reject").setStyle(ButtonStyle.Danger);
+        const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
         const requestMsg = {
+          components: [actionRow],
           content:
             (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
             + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
@@ -136,14 +144,13 @@ async function sendUnsent() {
             timestamp: parsed.receivedDate
           })]
         };
+        // store what to do when the question is answered
+        awaitingMods.set("from" + rawMsg.uid, {
+          approve: onApproved,
+          reject: onReject
+        });
         // pop the question
-        // new command u.askMods. thought it could be useful elsewhere to be able to send a message in a channel with approve or disaprove buttons
-        // and either one adds a line at the bottom saying who hit which button, and can run a function passed to the command when approved or disaproved.
-        const requestUUID = await u.askMods(missionMailApprovals, requestMsg, onApproved, onReject);
-        // remember that that email has a pending request gone through (if the bot is restarted with messages still awaiting approval or rejection
-        // then it will ask again rather then those emails being lost.
-        askedApprovalUUIDFromEmailId.set(rawMsg.uid + "", requestUUID);
-        return requestUUID;
+        await missionMailApprovals.send(requestMsg);
       }
     } catch (error) {
       u.errorHandler(error, "sendUnsent");
@@ -181,8 +188,12 @@ async function slashMishMailSend(int) {
   if (sender) {
     try {
       const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
-      if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) {throw new Error("unable to find approval channel for mishmail");}
-      u.askMods(missionMailApprovals, {
+      if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for mishmail"); }
+      const approveBtn = new u.Button().setCustomId(approveIdPrefix + "to" + int.id).setLabel("Approve").setStyle(ButtonStyle.Primary);
+      const rejectBtn = new u.Button().setCustomId(rejectIdPrefix + "to" + int.id).setLabel("Reject").setStyle(ButtonStyle.Danger);
+      const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
+      const message = {
+        components: [actionRow],
         content:
           (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
           + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
@@ -190,17 +201,23 @@ async function slashMishMailSend(int) {
         embeds: [u.embed({
           title: `outgoing mishmail from ${int.member.user.username} to ${missionaryDiscord.user.username}(${email})`,
           description: content
-        })] }, () => {
-        sender?.sendMail({
-          to: email,
-          // to: "recipient@example.com", // Replace with actual recipient
-          subject: "LDSG Mishmail from " + int.member.user.username,
-          text: content,
-        });
-        int.member.send(`Your Requested Mishmail to ${missionaryDiscord.user.toString()} was approved and sent!\nContent:${content}`);
-      }, () => {
-        int.member.send(`Your Requested Mishmail to ${missionaryDiscord.user.toString()} was rejected.\nContent:${content}`);
+        })]
+      };
+      awaitingMods.set("to" + int.id, {
+        approve: () => {
+          sender?.sendMail({
+            to: email,
+            // to: "recipient@example.com", // Replace with actual recipient
+            subject: "LDSG Mishmail from " + int.member.user.username,
+            text: content,
+          });
+          int.member.send(`Your Requested Mishmail to ${missionaryDiscord.user.toString()} was approved and sent!\nContent:${content}`);
+        },
+        reject: () => {
+          int.member.send(`Your Requested Mishmail to ${missionaryDiscord.user.toString()} was rejected.\nContent:${content}`);
+        }
       });
+      missionMailApprovals.send(message);
       await int.editReply("Asking mods if its good to send.");
     } catch (error) {
       u.errorHandler(error, "slashMishMailSend");
@@ -289,7 +306,7 @@ const Module = new Augur.Module()
     autocomplete: async (int) => {
       const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
       // console.log(u.db.sheets.missionaries);
-      const ret = await Promise.all(u.db.sheets.missionaries.map((_email, uid) => ldsg.members.fetch(uid).then(m => { return { name: m.user.username, value: m.user.toString() + "" };})));
+      const ret = await Promise.all(u.db.sheets.missionaries.map((_email, uid) => ldsg.members.fetch(uid).then(m => { return { name: m.user.username, value: m.user.toString() + "" }; })));
       // console.log(ret);
       await int.respond(ret);
       return ret;
@@ -303,15 +320,43 @@ const Module = new Augur.Module()
         (await receiver?.messageFlagsRemove([4], ["icarusForwarded"])) ? "Success" : "Fail"
       );
     }
+  })
+  .addEvent("interactionCreate", (int) => {
+    if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
+    if (int.customId.startsWith(rejectIdPrefix)) {
+      if (!u.perms.calc(int.member, ["mod"])) {
+        return int.reply({ content: "You don't have permissions to approve mishmail!", ephemeral: true });
+      }
+      const id = int.customId.substring(rejectIdPrefix.length);
+      awaitingMods.get(id)?.approve();
+      /** @type {Message} */
+      const message = int.message;
+      message.edit({
+        content: message.content + `\n(approved by ${int.user})`,
+        components: message.components.filter(row =>
+          !row.components.some(component => component.customId?.endsWith(id)) &&
+          !row.components.some(component => component.customId?.endsWith(id))
+        )
+      });
+      awaitingMods.delete(int.customId.substring(approveIdPrefix.length));
+    }
+    if (int.customId.startsWith(rejectIdPrefix)) {
+      if (!u.perms.calc(int.member, ["mod"])) {
+        return int.reply({ content: "You don't have permissions to reject mishmail!", ephemeral: true });
+      }
+      const id = int.customId.substring(rejectIdPrefix.length);
+      awaitingMods.get(id)?.reject();
+      /** @type {Message} */
+      const message = int.message;
+      message.edit({
+        content: message.content + `\n(rejected by ${int.user})`,
+        components: message.components.filter(row =>
+          !row.components.some(component => component.customId?.endsWith(id)) &&
+          !row.components.some(component => component.customId?.endsWith(id))
+        )
+      });
+      awaitingMods.delete(int.customId.substring(approveIdPrefix.length));
+    }
   });
-  // .addEvent("interactionCreate", (int) => {
-  //   if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
-  //   if (int.customId.startsWith("approvemishmail")) {
-  //     sendMailPendingApprovals.get(int.customId.substring("approvemishmail".length))?.approve();
-  //   }
-  //   if (int.customId.startsWith("rejectmishmail")) {
-  //     sendMailPendingApprovals.get(int.customId.substring("rejectmishmail".length))?.reject();
-  //   }
-  // });
 
 module.exports = Module;
