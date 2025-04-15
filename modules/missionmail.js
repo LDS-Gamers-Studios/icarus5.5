@@ -30,63 +30,66 @@ let receiver;
 /** @type {Map<string, {approve:() => any, reject:() => any}>} */
 const awaitingMods = new Map();
 async function init() {
-  if (!c.google.missionMail.enabled) {
-    return;
-  }
-  const creds = c.google.missionMail;
+  const creds = c.google.mail;
+  if (!creds.enabled || sender) return;
+
   try {
-    if (!sender) {
-      sender = send.createTransport({
-        service: 'gmail',
-        auth: {
-          type: "LOGIN",
-          user: creds.email,
-          pass: creds.gAccountAppPass
-          // clientId: creds.oAuthServerCreds.web.client_id,
-          // clientSecret: creds.oAuthServerCreds.web.client_secret,
-          // refreshToken: creds.gAccountRefreshToken,
-        },
-      });
-      receiver = new receive.ImapFlow({
-        auth: {
-          user: creds.email,
-          pass: creds.gAccountAppPass
-          // accessToken: token.accessToken,
-        },
-        host: 'imap.gmail.com',
-        port: 993,
-      });
-      await receiver.connect();
-      await receiver.mailboxOpen("INBOX");
-      sendUnsent();
-      receiver.on("exists", sendUnsent);
-      setInterval(async () => {
-        // sender.on("token", async (token) => {
-        try {
-          receiver?.removeAllListeners();
-          receiver?.close();
-          receiver = new receive.ImapFlow({
-            auth: {
-              user: creds.email,
-              pass: creds.gAccountAppPass
-              // accessToken: token.accessToken,
-            },
-            host: 'imap.gmail.com',
-            port: 993,
-          });
-          await receiver.connect();
-          await receiver.mailboxOpen("INBOX");
-          sendUnsent();
-          receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the mail server spams.
-          // console.log(`Mailer receiver initialized for ${email}`);
-        } catch (error) {
-          u.errorHandler(error, `updateReceiver for ${creds.email}`);
-          receiver = undefined;
-        }
-      }, 60 * 60 * 1000);
-      await sender.verify();
-      // console.log(`Mailer sender initialized for ${creds.email}`);
-    }
+
+    sender = send.createTransport({
+      service: 'gmail',
+      auth: {
+        type: "LOGIN",
+        user: creds.email,
+        pass: creds.gAccountAppPass,
+        // clientId: creds.oAuthServerCreds.web.client_id,
+        // clientSecret: creds.oAuthServerCreds.web.client_secret,
+        // refreshToken: creds.gAccountRefreshToken,
+      },
+    });
+
+    receiver = new receive.ImapFlow({
+      auth: {
+        user: creds.email,
+        pass: creds.gAccountAppPass
+        // accessToken: token.accessToken,
+      },
+      host: 'imap.gmail.com',
+      port: 993,
+    });
+
+    await receiver.connect();
+    await receiver.mailboxOpen("INBOX");
+
+    sendUnsent();
+    receiver.on("exists", sendUnsent);
+
+    setInterval(async () => {
+      // sender.on("token", async (token) => {
+      try {
+        receiver?.removeAllListeners();
+        receiver?.close();
+        receiver = new receive.ImapFlow({
+          auth: {
+            user: creds.email,
+            pass: creds.gAccountAppPass
+            // accessToken: token.accessToken,
+          },
+          host: 'imap.gmail.com',
+          port: 993,
+        });
+        await receiver.connect();
+        await receiver.mailboxOpen("INBOX");
+        sendUnsent();
+        receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the mail server spams.
+        // console.log(`Mailer receiver initialized for ${email}`);
+      } catch (error) {
+        u.errorHandler(error, `updateReceiver for ${creds.email}`);
+        receiver = undefined;
+      }
+    }, 60 * 60_000);
+
+    await sender.verify();
+    // console.log(`Mailer sender initialized for ${creds.email}`);
   } catch (e) {
     u.errorHandler(e, "missionmail init");
     sender = undefined;
@@ -99,8 +102,8 @@ async function sendUnsent() {
       let messageIds = (await receiver.search({ unKeyword: 'icarusForwarded' }));// , from: "*@missionary.org" }))
       messageIds = messageIds.filter(msgId => {
         return awaitingMods.has(msgId + "") ? undefined : msgId;
-      }
-      );
+      });
+
       const messages = await receiver.fetchAll(messageIds, { source: true });
       // console.log(messages);
       // console.log("Checking for new emails:", messages?.length);
