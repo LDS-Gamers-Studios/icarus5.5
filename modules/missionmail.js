@@ -9,7 +9,7 @@ const Augur = require("augurbot-ts");
 const pf = new (require('profanity-matcher'));
 const banned = require('../data/banned.json');
 const { ChannelType, ButtonStyle, Message } = require("discord.js");
-const [approveIdPrefix, rejectIdPrefix] = ["approvemishmail", "rejectmishmail"];
+const [approveIdPrefix, rejectIdPrefix] = ["approvemissionmail", "rejectmissionmail"];
 const replyRegexes = [
   // /^on[\s\n\r]+.+wrote:[\s\n\r]*$/im,
   // /on[\s\n\r]+.+wrote:[\s\n\r]*/im,
@@ -81,7 +81,7 @@ async function init() {
         await receiver.connect();
         await receiver.mailboxOpen("INBOX");
         sendUnsent();
-        receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the mail server spams.
+        receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the email server spams.
         // console.log(`Mailer receiver initialized for ${email}`);
       } catch (error) {
         u.errorHandler(error, `updateReceiver for ${creds.email}`);
@@ -140,12 +140,12 @@ async function sendUnsent() {
         const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => parsed.text.includes(bannedString) ? bannedString : undefined);
         // figure out who it is from
         const fromEmail = parsed.from ? parsed.from[0].address : "Err:NoFromAddress";
-        const mishId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
+        const missionaryId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
         // get some discord side of things stuff
         const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
-        const missionary = mishId ? await ldsg.members.fetch(mishId) : undefined;
+        const missionary = missionaryId ? await ldsg.members.fetch(missionaryId) : undefined;
         const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
-        if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for mishmail"); }
+        if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for missionary emails."); }
         // setup the functions to mark it as handled and forward it when approved, or just mark when rejected
         // setup the request message, including listing detected profanity at the top,
         // and the embed almost the same, but not fully replaced, just marked as will be replaced.
@@ -160,7 +160,7 @@ async function sendUnsent() {
             + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
             (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
           embeds: [u.embed({
-            title: `incoming mishmail from ${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail}) - ${parsed.subject}`,
+            title: `incoming missionary email from ${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail}) - ${parsed.subject}`,
             description: parsed.text.replace(fromEmail, `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail})`),
             timestamp: parsed.receivedDate
           })]
@@ -186,11 +186,11 @@ async function sendUnsent() {
       u.errorHandler(error, "sendUnsent");
     }
   } else {
-    u.errorHandler(new Error("MishMail Receiver not usable, cannot check for new emails."));
+    u.errorHandler(new Error("Missionary Email Receiver not usable, cannot check for new emails."));
   }
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailReInit(int) {
+async function slashMissionaryReInit(int) {
   if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   sender?.close();
   sender?.removeAllListeners();
@@ -199,10 +199,10 @@ async function slashMishMailReInit(int) {
   receiver?.removeAllListeners();
   receiver = undefined;
   await init();
-  await int.editReply("Mailer reinitialized.");
+  await int.editReply("Emailer reinitialized.");
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailSend(int) {
+async function slashMissionarySend(int) {
   const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
   const pingMatch = /<@!?([0-9]+)>/.exec(int.options.getString("missionary", true));
   if (!pingMatch || !pingMatch[1]) { return int.editReply("You need to @ mention a registered missionaries discord account."); }
@@ -218,7 +218,7 @@ async function slashMishMailSend(int) {
   if (sender) {
     try {
       const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
-      if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for mishmail"); }
+      if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for missionary emails"); }
       const approveBtn = new u.Button().setCustomId(approveIdPrefix + "to" + int.id).setLabel("Approve").setStyle(ButtonStyle.Primary);
       const rejectBtn = new u.Button().setCustomId(rejectIdPrefix + "to" + int.id).setLabel("Reject").setStyle(ButtonStyle.Danger);
       const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
@@ -229,7 +229,7 @@ async function slashMishMailSend(int) {
           + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
           (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
         embeds: [u.embed({
-          title: `outgoing mishmail from ${int.member.user.username} to ${missionaryDiscord.user.username}(${email})`,
+          title: `outgoing missionary email from ${int.member.user.username} to ${missionaryDiscord.user.username}(${email})`,
           description: content
         })]
       };
@@ -238,43 +238,43 @@ async function slashMishMailSend(int) {
           sender?.sendMail({
             to: email,
             // to: "recipient@example.com", // Replace with actual recipient
-            subject: "LDSG Mishmail from " + int.member.user.username,
+            subject: "LDSG Missionary email from " + int.member.user.username,
             text: content,
           });
-          int.member.send(`Your Requested Mishmail to ${missionaryDiscord.user.toString()} was approved and sent!\nContent:${content}`);
+          int.member.send(`Your Requested Missionary email to ${missionaryDiscord.user.toString()} was approved and sent!\nContent:${content}`);
         },
         reject: () => {
-          int.member.send(`Your Requested Mishmail to ${missionaryDiscord.user.toString()} was rejected.\nContent:${content}`);
+          int.member.send(`Your Requested Missionary email to ${missionaryDiscord.user.toString()} was rejected.\nContent:${content}`);
         }
       });
       missionMailApprovals.send(message);
       await int.editReply("Asking mods if its good to send.");
     } catch (error) {
-      u.errorHandler(error, "slashMishMailSend");
+      u.errorHandler(error, "slashMissionarySend");
       await int.editReply("Error sending email.");
     }
   } else {
-    await int.editReply("Mailer sender is not initialized.");
+    await int.editReply("Email sender is not initialized.");
   }
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailPull(int) {
+async function slashMissionaryPull(int) {
   if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   if (receiver?.usable) {
     try {
       await sendUnsent();
-      await int.editReply(`Processing new mishmails.`);
+      await int.editReply(`Processing new missionary emails.`);
       // Implement further logic to process these emails
     } catch (error) {
-      u.errorHandler(error, "slashMishMailPull");
+      u.errorHandler(error, "slashMissionaryPull");
       await int.editReply("Error pulling emails.");
     }
   } else {
-    await int.editReply("Mailer receiver is not ready.");
+    await int.editReply("Missionary Email receiver is not ready.");
   }
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailRegister(int) {
+async function slashMissionaryRegister(int) {
   if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
   const email = int.options.getString("email", true);
@@ -284,18 +284,18 @@ async function slashMishMailRegister(int) {
   await int.editReply(`Register command executed for ${user.displayName} setting email ${email}`);
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailRemove(int) {
+async function slashMissionaryRemove(int) {
   if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
   u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.delete();
   u.db.sheets.loadData(int.client, true, false, "missionaries");
-  await int.editReply("Mission Mailer removed.");
+  await int.editReply("Mission Email De-Registered.");
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMishMailCheck(int) {
+async function slashMissionaryCheck(int) {
   if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
-  return int.editReply(user + " has the following mish email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
+  return int.editReply(user + " has the following missionary email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
 }
 const Module = new Augur.Module()
   .setInit(init)
@@ -309,13 +309,13 @@ const Module = new Augur.Module()
           u.errorHandler(error, "Clockwork email check");
         }
       } else {
-        u.errorHandler(new Error("MishMail Receiver not usable for periodic check."));
+        u.errorHandler(new Error("missionary email Receiver not usable for periodic check."));
       }
     }, 60 * 60 * 1000); // Every hour
   })
   .addInteraction({
     name: "missionary",
-    id: u.sf.commands.slashMishmail,
+    id: u.sf.commands.slashMissionary,
     onlyGuild: true,
     hidden: true,
     permissions: (int) => u.perms.calc(int.member, ["trusted"]),
@@ -324,12 +324,12 @@ const Module = new Augur.Module()
       await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
       if (subcommand !== "send" && !u.perms.calc(int.member, ["mod"])) return int.editReply("That command is only for mods.");
       switch (subcommand) {
-        case "send": return slashMishMailSend(int);
-        case "remove": return slashMishMailRemove(int);
-        case "check": return slashMishMailCheck(int);
-        case "register": return slashMishMailRegister(int);
-        case "pull": return slashMishMailPull(int);
-        case "reinit": return slashMishMailReInit(int);
+        case "send": return slashMissionarySend(int);
+        case "remove": return slashMissionaryRemove(int);
+        case "check": return slashMissionaryCheck(int);
+        case "register": return slashMissionaryRegister(int);
+        case "pull": return slashMissionaryPull(int);
+        case "reinit": return slashMissionaryReInit(int);
         default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
       }
     },
@@ -343,7 +343,7 @@ const Module = new Augur.Module()
     }
   })
   .addCommand({
-    name: "mishmailunread",
+    name: "missionaryunread",
     permissions: () => c.devMode, // perms.calc(msg.member, ["mod"]),
     process: async function(message) {
       return message.reply(
@@ -355,7 +355,7 @@ const Module = new Augur.Module()
     if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
     if (int.customId.startsWith(approveIdPrefix)) {
       if (!u.perms.calc(int.member, ["mod"])) {
-        return int.reply({ content: "You don't have permissions to approve mishmail!", ephemeral: true });
+        return int.reply({ content: "You don't have permissions to approve missionary emails!", ephemeral: true });
       }
       const id = int.customId.substring(approveIdPrefix.length);
       awaitingMods.get(id)?.approve();
@@ -372,7 +372,7 @@ const Module = new Augur.Module()
     }
     if (int.customId.startsWith(rejectIdPrefix)) {
       if (!u.perms.calc(int.member, ["mod"])) {
-        return int.reply({ content: "You don't have permissions to reject mishmail!", ephemeral: true });
+        return int.reply({ content: "You don't have permissions to reject missionary emails!", ephemeral: true });
       }
       const id = int.customId.substring(rejectIdPrefix.length);
       awaitingMods.get(id)?.reject();

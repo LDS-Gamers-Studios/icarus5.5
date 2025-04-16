@@ -7,20 +7,20 @@ const send = new u.sub()
   .addStringOption(
     new u.string()
       .setName("missionary")
-      .setDescription("the registered missionary that you wish to send mail to.")
+      .setDescription("the registered missionary that you wish to send an email to.")
       .setRequired(true)
       .setAutocomplete(true)
   )
   .addStringOption(
     new u.string()
       .setName("content")
-      .setDescription("the content of the mail you wish to send them.")
+      .setDescription("the content of the email you wish to send them.")
       .setRequired(true)
   );
 
 const pull = new u.sub()
 .setName("pull")
-.setDescription("update any new mail received from missionarys in #missionary-emails");
+.setDescription("pull any new emails received from missionarys");
 
 const register = new u.sub()
   .setName("register")
@@ -40,7 +40,7 @@ const register = new u.sub()
 
 const remove = new u.sub()
   .setName("remove")
-  .setDescription("un-register a missionary email")
+  .setDescription("un-register a persons missionary email if they have one")
   .addUserOption(
     new u.user()
       .setName("user")
@@ -49,7 +49,7 @@ const remove = new u.sub()
   );
 const check = new u.sub()
   .setName("check")
-  .setDescription("check a missionary email")
+  .setDescription("check a if a person has a registered missionary email")
   .addUserOption(
     new u.user()
       .setName("user")
@@ -59,7 +59,7 @@ const check = new u.sub()
 
 module.exports = new u.cmd()
   .setName("missionary")
-  .setDescription("send and get emals from missionmail@ldsgamers.com")
+  .setDescription("send and get emails from missionmail@ldsgamers.com")
   .setContexts(u.contexts.Guild)
   .addSubcommand(send)
   .addSubcommand(pull)
