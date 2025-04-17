@@ -2,9 +2,9 @@
 const u = require("./regUtils");
 
 
-const create = new u.sub()
-  .setName("create")
-  .setDescription("Create a new tag. Content is entered after sending the command.")
+const set = new u.sub()
+  .setName("set")
+  .setDescription("Create or modify a tag. Content is entered after sending the command.")
   .addStringOption(
     new u.string()
       .setName("name")
@@ -16,23 +16,6 @@ const create = new u.sub()
     new u.attachment()
       .setName("attachment")
       .setDescription("A file to add to the tag.")
-      .setRequired(false)
-  );
-
-const modify = new u.sub()
-  .setName("modify")
-  .setDescription("Set a new value for an existing tag.")
-  .addStringOption(
-    new u.string()
-      .setName("name")
-      .setDescription("The name of the tag.")
-      .setRequired(true)
-      .setAutocomplete(true)
-  )
-  .addAttachmentOption(
-    new u.attachment()
-      .setName("attachment")
-      .setDescription("A file to upload with the message.")
       .setRequired(false)
   );
 
@@ -66,8 +49,7 @@ const value = new u.sub()
 module.exports = new u.cmd()
   .setName("tag")
   .setDescription("Manage tags!")
-  .addSubcommand(create)
-  .addSubcommand(modify)
+  .addSubcommand(set)
   .addSubcommand(del)
   .addSubcommand(variables)
   .addSubcommand(value)

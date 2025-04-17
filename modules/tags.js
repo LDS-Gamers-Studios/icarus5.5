@@ -7,9 +7,11 @@ const Augur = require("augurbot-ts"),
   config = require('../config/config.json'),
   u = require("../utils/utils");
 
+/** @typedef {import("../database/controllers/tag").tag} tag */
+
 /**
  * @param {Discord.Attachment} attachment
- * @param {{_id: import("mongoose").Types.ObjectId}} cmd
+ * @param {{ _id: import("mongoose").Types.ObjectId }} cmd
 */
 async function saveAttachment(attachment, cmd) {
   // @ts-ignore axios hates correct types
@@ -21,7 +23,6 @@ async function saveAttachment(attachment, cmd) {
   response.data.pipe(fs.createWriteStream(process.cwd() + "/media/tags/" + cmd._id.toString()));
 }
 
-/** @typedef {import("../database/controllers/tag").tag} tag */
 /** @type {Discord.Collection<string, tag>} */
 const tags = new Discord.Collection();
 
@@ -34,7 +35,9 @@ function runTag(msg) {
   if (!tag) return;
 
   const encoded = encodeTag(tag, msg);
-  msg.reply({ ...encoded, allowedMentions: { parse: [] } }).then((/** @type {Discord.Message} */ m) => {
+  const send = typeof encoded === "string" ? { content: encoded } : encoded;
+
+  msg.reply({ ...send, allowedMentions: { parse: [] } }).then(m => {
     if (typeof encoded === "string") u.clean(m);
   }).catch(u.noop);
 }
@@ -46,10 +49,12 @@ function runTag(msg) {
  * @param {Discord.ChatInputCommandInteraction} [int]
  */
 function encodeTag(tag, msg, int) {
-  let response = tag.response;
   const user = msg?.inGuild() ? msg.member : int?.inCachedGuild() ? int.member : int?.user ?? msg?.author ?? null;
   const origin = msg ?? int;
-  if (!user || !origin) return { content: "I couldn't process that command!" };
+  if (!user || !origin) return "I couldn't process that command!";
+
+  let response = tag.response;
+
   let target = msg?.mentions.members?.first() || msg?.mentions.users.first();
   if (response) {
     const randomChannels = origin.guild ? origin.guild.channels.cache.filter(c =>
@@ -57,20 +62,20 @@ function encodeTag(tag, msg, int) {
       !c.permissionOverwrites?.cache.get(origin.guild?.id ?? "")?.deny?.has("ViewChannel") // public channel
     ).map(c => c.toString()) : ["Here"];
 
-    const regex = /<@random ?\[(.*?)\]>/gim;
-    if (regex.test(response)) {
-      response = response.replace(regex, (str) => u.rand(str.replace(regex, '$1').split('|')));
+    const randRegex = /<@random ?\[(.*?)\]>/gim;
+    if (randRegex.test(response)) {
+      response = response.replace(randRegex, (str) => u.rand(str.replace(randRegex, '$1').split('|')));
     }
 
     response = response
       .replace(/<#channel>/ig, origin.channel?.toString() ?? "Here")
-      .replace(/<#randomchannel>/ig, u.rand(randomChannels) ?? origin.channel?.toString() ?? "Here")
+      .replace(/<#randomchannel>/ig, u.rand(randomChannels) || origin.channel?.toString() || "Here")
       .replace(/<@author>/ig, user.toString())
       .replace(/<@authorname>/ig, user.displayName);
 
     if ((/(<@target>)|(<@targetname>)/ig).test(response)) {
       if (!origin.guild) target ??= origin.client.user;
-      if (!target) return { content: "You need to `@mention` a user with that command!" };
+      if (!target) return "You need to `@mention` a user with that command!";
       response = response
         .replace(/<@target>/ig, target.toString())
         .replace(/<@targetname>/ig, target.displayName);
@@ -83,7 +88,12 @@ function encodeTag(tag, msg, int) {
   };
 }
 
-function contentModal(value = "") {
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashTagSet(int) {
+  // Get and validate input
+  const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
+  const oldTag = tags.get(name);
+
   const row = u.ModalActionRow();
   row.addComponents(
     new u.TextInput()
@@ -92,65 +102,14 @@ function contentModal(value = "") {
       .setPlaceholder("Leave blank for no content")
       .setRequired(false)
       .setStyle(Discord.TextInputStyle.Paragraph)
-      .setValue(value)
+      .setValue(oldTag?.response ?? "")
       .setMaxLength(2000)
   );
-  return new u.Modal().addComponents(row)
+  const modal = new u.Modal().addComponents(row)
     .setTitle("Tag Content")
     .setCustomId("tagContent");
-}
 
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashTagCreate(int) {
-  // Get and validate input
-  const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
-  const attachment = int.options.getAttachment('attachment');
-  if (tags.has(name)) return int.reply({ content: `Looks like that tag already exists. Try </tag modify:${u.sf.commands.slashTag}> or </tag delete:${u.sf.commands.slashTag}> instead.`, flags: ["Ephemeral"] });
-
-  await int.showModal(contentModal());
-  const content = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(u.noop);
-  if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", flags: ["Ephemeral"] });
-
-  await content.deferReply({ flags: ["Ephemeral"] });
-  if (!content.fields.getTextInputValue("content") && !attachment) return content.editReply("I either need content or a file.");
-
-  // Create the tag
-  const command = await u.db.tags.manageTag({
-    tag: name,
-    response: content.fields.getTextInputValue("content") || null,
-    attachment: attachment?.name || null
-  });
-
-  if (!command) return content.editReply("I wasn't able to save that. Please try again later or with a different name.");
-  if (attachment) saveAttachment(attachment, command);
-
-  tags.set(command.tag, command);
-
-  let description = `${int.member} added the tag \`${name}\``;
-  if (command.response) description += `\n\n**Tag Content:**\n${command.response}`;
-
-  const embed = u.embed({ author: int.member })
-    .setTitle("Tag created")
-    .setDescription(description);
-
-  try {
-    // report the tag creation
-    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
-    content.editReply({ content: "Tag created!", embeds: [embed.setDescription(`Try it out with \`${config.prefix}${name}\``)], files: attachment ? [attachment] : [] });
-  } catch (error) {
-    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag creation preview was too long to send." })] });
-    content.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
-  }
-}
-
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashTagModify(int) {
-  // get and validate inputs
-  const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
-  const currentTag = tags.get(name);
-  if (!currentTag) return int.reply({ content: `I couldn't find that tag.`, flags: ["Ephemeral"] });
-
-  await int.showModal(contentModal(currentTag.response ?? ""));
+  await int.showModal(modal);
   const content = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true }).catch(u.noop);
   if (!content) return int.followUp({ content: "I fell asleep waiting for your input!", flags: ["Ephemeral"] });
 
@@ -159,43 +118,48 @@ async function slashTagModify(int) {
   const attachment = int.options.getAttachment('attachment');
   if (!response && !attachment) return content.editReply(`I need a response, a file, or both. If you want to delete the tag, use </tag delete:${u.sf.commands.slashTag}>.`);
 
-  // modify the tag
+  // Create or modify the tag
   const command = await u.db.tags.manageTag({
     tag: name,
     response: response,
-    attachment: attachment?.name || null
+    attachment: attachment?.name || null,
+    attachmentExtension: attachment?.contentType || null
   });
 
-  if (!command) return content.editReply("I wasn't able to update that. Please try again later or contact a dev to see what went wrong.");
+  if (!command) return content.editReply("I wasn't able to save that. Please try again later or with a different name.");
   if (attachment) saveAttachment(attachment, command);
 
   tags.set(command.tag, command);
 
-  let description = `${int.member} modified the tag \`${name}\``;
-  if (command.response !== currentTag.response) description += `\n\n**Old Tag Content:**\n${currentTag.response || "None"}\n\n**New Tag Content:**\n${command.response || "None"}`;
+  let description = `${int.member} set the tag \`${name}\``;
+
+  if (oldTag?.response !== command.response) {
+    description += `\n\n**Old Tag Content:** \n${oldTag?.response || "None"}`;
+    if (!command.response) description += "\n\n**New Tag Content:** \nNone";
+  }
+
+  if (command.response) description += `\n\n**New Tag Content:**\n${command.response}`;
 
   const embed = u.embed({ author: int.member })
-    .setTitle("Tag modified")
+    .setTitle("Tag Saved")
     .setDescription(description);
 
-  // log the modification
-  try {
-    const value = currentTag.attachment ? attachment ? "Replaced" : "Removed" : attachment ? "Added" : "Unchanged";
-    if (command.attachment !== currentTag.attachment) embed.addFields({ name: "Attachment Status", value });
+  // report the tag creation
+  const team = int.client.getTextChannel(u.sf.channels.team.team);
+  team?.send({ embeds: [embed] }).catch(() => {
+    embed.setDescription(`${int.member} set the tag \`${name}\`\n\nError: The tag save preview was too long to send`);
+    team?.send({ embeds: [embed] });
+  });
 
-    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed], files: attachment ? [attachment] : [] });
-    content.editReply({ embeds: [embed.setDescription(null)] });
-  } catch (error) {
-    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag change preview was too long to send" })] });
-    content.editReply(`I saved the tag \`${name}\`, but I wasn't able to send you the preview`);
-  }
+  content.editReply({ content: "Tag Saved!", embeds: [embed.setDescription(`Try it out with \`${config.prefix}${name}\``)], files: attachment ? [attachment] : [] });
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagDelete(int) {
   await int.deferReply({ flags: ["Ephemeral"] });
+
   const name = int.options.getString('name', true).toLowerCase().replace(/[ \n]/g, "");
-  if (!tags.get(name)) return int.editReply(`Looks like that tag doesn't exist.`);
+  if (!tags.has(name)) return int.editReply(`Looks like that tag doesn't exist.`);
 
   const command = await u.db.tags.deleteTag(name);
   if (!command) return int.editReply("I wasn't able to delete that. Please try again later or contact a dev to see what went wrong.");
@@ -208,22 +172,22 @@ async function slashTagDelete(int) {
     .setTitle("Tag Deleted")
     .setDescription(description);
 
-  try {
-    if (command.attachment) {
-      embed.addFields({ name: "Attachment", value: "[Deleted]" });
-      fs.rmSync(process.cwd() + `/media/tags/${command._id.toString()}`);
-    }
-    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
-    int.editReply({ embeds: [embed.setDescription(null)] });
-  } catch (err) {
-    int.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed.setFields({ name: "Error", value: "The tag deletion preview was too long to send" })] });
-    int.editReply(`I deleted the tag \`${name}\`, but I wasn't able to send you the preview`);
+  if (command.attachment) {
+    embed.addFields({ name: "Attachment", value: "[Deleted]" });
+    fs.rmSync(process.cwd() + `/media/tags/${command._id.toString()}`);
   }
+
+  const team = int.client.getTextChannel(u.sf.channels.team.team);
+  team?.send({ embeds: [embed] }).catch(() => {
+    embed.setDescription(`${int.member} deleted the tag \`${name}\`\n\nError: The tag deletion preview was too long to send`);
+    team?.send({ embeds: [embed] });
+  });
+
+  int.editReply({ embeds: [embed.setDescription(null)] });
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashTagVariables(int) {
-  await int.deferReply({ flags: ["Ephemeral"] });
+function slashTagVariables(int) {
   const placeholderDescriptions = [
     "`<@author>`: Pings the user",
     "`<@authorname>`: The user's nickname",
@@ -233,10 +197,13 @@ async function slashTagVariables(int) {
     "`<#randomchannel>` A random public channel",
     "`<@random [item1|item2|item3...]>`: Randomly selects one of the items. Separate with `|`. (No, there can't be `<@random>`s inside of `<@random>`s)",
     "",
-    "Example: <@target> took over <@channel>, but <@author> <@random [is complicit|might have something to say about it]>."
+    "Example: <@target> took over <#channel>, and <@author> <@random [is complicit|might have something to say about it]>."
   ];
-  const embed = u.embed().setTitle("Tag Placeholders").setDescription(`You can use these when creating or modifying tags for some user customization. The \`<@thing>\` gets replaced with the proper value when the command is run. \n\n${placeholderDescriptions.join('\n')}`);
-  return int.editReply({ embeds: [embed] });
+  const embed = u.embed()
+    .setTitle("Tag Placeholders")
+    .setDescription(`You can use these when creating or modifying tags for some user customization. The \`<@thing>\` gets replaced with the proper value when the command is run. \n\n${placeholderDescriptions.join('\n')}`);
+
+  return int.reply({ embeds: [embed], flags: ["Ephemeral"] });
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -262,8 +229,7 @@ const Module = new Augur.Module()
   permissions: (int) => u.perms.calc(int.member, ["mgr"]),
   process: async (int) => {
     switch (int.options.getSubcommand()) {
-      case "create": return slashTagCreate(int);
-      case "modify": return slashTagModify(int);
+      case "set": return slashTagSet(int);
       case "delete": return slashTagDelete(int);
       case "variables": return slashTagVariables(int);
       case "value": return slashTagValue(int);
@@ -276,7 +242,9 @@ const Module = new Augur.Module()
     return int.respond(filtered.map(choice => ({ name: choice.tag, value: choice.tag })).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 24));
   }
 })
-.addEvent("messageCreate", async (msg) => { if (!msg.author.bot) return runTag(msg); })
+.addEvent("messageCreate", async (msg) => {
+  if (!msg.author.bot) return runTag(msg);
+})
 .addEvent("messageEdit", async (oldMsg, msg) => {
   if (!msg.author.bot) return runTag(msg);
 })
@@ -288,11 +256,6 @@ const Module = new Augur.Module()
 })
 .addShared("tags.js", { tags, encodeTag });
 
-/**
- * @typedef {{
-*  tags: Discord.Collection<string, tag>,
-*  encodeTag: (tag: tag,  msg: Discord.Message | null, int?: Discord.ChatInputCommandInteraction) => Discord.InteractionReplyOptions
-* } | undefined} SharedTags
-*/
+/** @typedef {{ tags: typeof tags, encodeTag: typeof encodeTag } | undefined} SharedTags */
 
 module.exports = Module;

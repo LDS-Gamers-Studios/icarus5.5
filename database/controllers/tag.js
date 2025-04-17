@@ -6,6 +6,7 @@ const Tag = require("../models/Tag.model");
  * @prop {string} tag the tag name
  * @prop {string | null} [response] the tag response
  * @prop {string | null} [attachment] the tag file name
+ * @prop {string | null} attachmentExtension the file extension for the file
  * @prop {import("mongoose").Types.ObjectId} _id the id of the tag
  */
 
