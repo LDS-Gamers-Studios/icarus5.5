@@ -133,7 +133,7 @@ async function slashTagSet(int) {
 
   let description = `${int.member} set the tag \`${name}\``;
 
-  if (oldTag?.response !== command.response) {
+  if (oldTag && oldTag.response !== command.response) {
     description += `\n\n**Old Tag Content:** \n${oldTag?.response || "None"}`;
     if (!command.response) description += "\n\n**New Tag Content:** \nNone";
   }

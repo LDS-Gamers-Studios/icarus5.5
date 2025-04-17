@@ -20,7 +20,7 @@ function isAvailable(command, int) {
   if (!command.enabled || command.hidden) return false; // hidden
   if (command.onlyGuild && !int.inGuild()) return false; // outside server
   if (command.guildId && command.guildId !== int.guildId) return false; // outside correct server
-  if (command.userPerms && (!int.inCachedGuild() || int.member.permissions.missing(command.userPerms))) return false; // should be in server
+  if (command.userPerms && (!int.inCachedGuild() || !int.member.permissions.has(command.userPerms))) return false; // should be in server
   try {
     return command.permissions(int); // final check
   } catch (error) {
@@ -73,14 +73,18 @@ const Module = new Augur.Module()
         return str;
       });
 
-    const ints = Module.client.moduleManager.interactions.filter(c => c.type === "CommandSlash" && isAvailable(c, int))
+    const ints = Module.client.moduleManager.interactions
+      .filter(c => c.type === "CommandSlash" && isAvailable(c, int))
       .map(i => {
         const reg = i.options?.registry;
         if (!reg || !fs.existsSync(`registry/${reg}.js`)) return [];
+
         /** @type {Discord.APIApplicationCommand} */
         const file = require(`../registry/${reg}`);
+
         const { name } = file;
         const cmds = [cmd(file, "")];
+
         for (const option of file.options ?? []) {
           if (option.type === 2) { // subcommand group
             option.options?.forEach(o => cmds.push(cmd(o, name, option)));
@@ -88,7 +92,9 @@ const Module = new Augur.Module()
             cmds.push(cmd(option, name));
           }
         }
-        return cmds.map(c => `${c.name}\n${c.description}\n`).sort((a, b) => a.localeCompare(b));
+
+        return cmds.map(c => `${c.name}\n${c.description}\n`)
+          .sort((a, b) => a.localeCompare(b));
       })
       .filter(i => i.length > 0)
       .flat();
@@ -106,13 +112,16 @@ const Module = new Augur.Module()
 function cmd(op, baseName = "", group) {
   let name = baseName ? `### /${baseName} ` : "## /";
   if (group) name += `${group.name} `;
+
   name += op.name;
+
   const descriptionLines = [op.description];
   for (const option of op.options || []) {
     if ([1, 2].includes(option.type)) continue;
     name += ` [${option.name}]`;
     descriptionLines.push(`${option.name}: ${option.description}`);
   }
+
   return { name, description: descriptionLines.join("\n") };
 }
 
