@@ -1,5 +1,6 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
+  Discord = require("discord.js"),
   u = require("../utils/utils"),
   banners = require('../data/banners.json'),
   fs = require('fs'),
@@ -77,6 +78,70 @@ async function setBanner(holiday) {
   return "I set the banner!";
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashChannelActivity(int) {
+  try {
+    await int.deferReply({ flags: ["Ephemeral"] });
+    const last = Date.now() - (14 * 24 * 60 * 60 * 60_000); // 14 days ago
+
+    // makes sure that the bot can see the channel and that it isn't archive and that it is a text channel
+    const channels = int.guild.channels.cache.filter(ch => (ch.isTextBased() && ch.permissionsFor(int.client.user)?.has("ViewChannel") && (ch.parentId !== u.sf.channels.archiveCategory)));
+    const fetch = channels.map(ch => {
+      if (ch.isTextBased()) {
+        return ch.messages.fetch({ limit: 100 });
+      }
+    });
+
+    // fetch da messages
+    const channelMsgs = await Promise.all(fetch);
+    const stats = new u.Collection(channels.map(ch => ([ch.id, { channel: ch, messages: 0 } ])));
+
+    // Goes through the channels and updates the the message count for each
+    for (let messages of channelMsgs) {
+      if (!messages) continue;
+      messages = messages.filter(m => m.createdTimestamp > last); // get messages within 14 days
+
+      if ((messages?.size ?? 0) > 0) { // makes sure that messages were sent
+        const channel = messages.first()?.channel;
+        if (!channel) continue;
+
+        // update the message count
+        stats.ensure(channel.id ?? "", () => ({ channel, messages: 0 })).messages = messages.size;
+      }
+    }
+
+    const categories = int.guild.channels.cache.filter(ch => ch.type === Discord.ChannelType.GuildCategory).sort((a, b) => {
+      if (!a.isThread() && !b.isThread()) {
+        return a.position - b.position;
+      }
+      return 0;
+    });
+
+    /** @type {string[]} */
+    const lines = [];
+
+    for (const [categoryId, category] of categories) {
+      // sorts from most to least active and removes all active channels
+      const categoryStats = stats.filter(ch => ch.channel.parentId === categoryId && ch.messages < 25).sort((a, b) => {
+        if (!a.channel.isThread() && !b.channel.isThread()) {
+          return a.channel.position - b.channel.position;
+        }
+        return 0;
+      });
+
+      if (categoryStats.size > 0) {
+        lines.push(`**${category.name}**\n${categoryStats.map(ch => `<#${ch.channel.id}>: ${ch.messages}`).join("\n")}\n\n`);
+      }
+    }
+
+    const embed = u.embed().setTitle("Channel Activity");
+    const processedEmbeds = u.pagedEmbedsDescription(embed, lines).map(e => ({ embeds: [e] }));
+    return u.manyReplies(int, processedEmbeds, true);
+  } catch (error) {
+    u.errorHandler(error, int);
+  }
+}
+
 Module.addInteraction({
   name: "management",
   id: u.sf.commands.slashManagement,
@@ -95,6 +160,7 @@ Module.addInteraction({
         if (response) int.editReply(response);
         break;
       }
+      case "channel-activity": return slashChannelActivity(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },

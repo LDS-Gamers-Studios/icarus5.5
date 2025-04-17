@@ -28,10 +28,12 @@ function giveableRole(int, role) {
  * @param {string} level
  */
 function calcGivePerms(int, level) {
-  /** @type {("mgr"|"mod"|"team")[]} */
+  /** @type {("mgr"|"mod"|"team"|"destinyManager"|"destinyValiantAdmin")[]} */
   const permArr = ['mgr'];
   if (['team', 'mod'].includes(level)) permArr.push("mod");
   if (level === 'team') permArr.push("team");
+  if (level === "destinyManager") permArr.push("destinyManager");
+  if (level === "destinyValiantAdmin") permArr.push("destinyValiantAdmin");
   return u.perms.calc(int.member, permArr);
 }
 
@@ -79,7 +81,9 @@ async function slashRoleList(int) {
   lines.push("\n**Available to Add**");
   if (without.size > 0) lines.push(...without.map(w => w.toString()));
   else lines.push("You already have all the opt-in roles!");
-  return u.pagedEmbeds(int, embed, lines, ephemeral);
+
+  const processedEmbeds = u.pagedEmbedsDescription(embed, lines).map(e => ({ embeds: [e] }));
+  return u.manyReplies(int, processedEmbeds, ephemeral);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -91,7 +95,10 @@ async function slashRoleWhoHas(int) {
     if (role.id === u.sf.ldsg) return int.editReply("Everyone has that role, silly!");
     const members = role.members.map(m => m.displayName).sort();
     if (members.length === 0) return int.editReply("I couldn't find any members with that role. :shrug:");
-    return u.pagedEmbeds(int, u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`), members, ephemeral);
+
+    const embed = u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`);
+    const processedEmbeds = u.pagedEmbedsDescription(embed, members).map(e => ({ embeds: [e] }));
+    return u.manyReplies(int, processedEmbeds, ephemeral);
   } catch (error) { u.errorHandler(error, int); }
 }
 

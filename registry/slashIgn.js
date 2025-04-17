@@ -14,8 +14,34 @@ const set = new u.sub()
   .addStringOption(
     new u.string()
       .setName("ign")
-      .setDescription("The IGN for that system")
+      .setDescription("The IGN for that system. Don't include a URL, I'll take care of that.")
       .setRequired(true)
+  );
+
+const birthday = new u.sub()
+  .setName("birthday")
+  .setDescription("Set your birthday and get Icarus alerts!")
+  .addStringOption(
+    new u.string()
+      .setName("month")
+      .setDescription("What month is your birthday in?")
+      .setChoices(u.months)
+  )
+  .addIntegerOption(
+    new u.int()
+      .setName("day")
+      .setDescription("What day is your birthday on?")
+      .setMinValue(1)
+      .setMaxValue(31)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("notifications")
+      .setDescription("Do you want to recieve birthday DMs?")
+      .addChoices(
+        { name: "Yes", value: "FULL" },
+        { name: "No", value: "OFF" }
+      )
   );
 
 const remove = new u.sub()
@@ -42,7 +68,7 @@ const view = new u.sub()
   .addUserOption(
     new u.user()
       .setName("target")
-      .setDescription("The person to veiw (default: you)")
+      .setDescription("The person to veiw (Default: you)")
       .setRequired(false)
   );
 
@@ -65,6 +91,7 @@ const whois = new u.sub()
       .setName("ign")
       .setDescription("The IGN you want to find")
       .setRequired(true)
+      .setMinLength(3)
   )
   .addStringOption(
     new u.string()
@@ -77,8 +104,9 @@ const whois = new u.sub()
 module.exports = new u.cmd()
   .setName("ign")
   .setDescription("Save and view various game system IGNs or social network names")
-  .setContexts(u.contexts.Guild)
+  .setContexts(u.contexts.Guild, u.contexts.BotDM)
   .addSubcommand(set)
+  .addSubcommand(birthday)
   .addSubcommand(remove)
   .addSubcommand(view)
   .addSubcommand(whoplays)
