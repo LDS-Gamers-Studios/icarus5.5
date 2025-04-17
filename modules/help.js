@@ -50,7 +50,8 @@ const Module = new Augur.Module()
       .setThumbnail(ldsg?.iconURL() ?? null);
 
     const mapped = tu.tags.map(t => `${config.prefix}${u.escapeText(t.tag)}`);
-    u.pagedEmbeds(int, embed, mapped, true);
+    const embeds = u.pagedEmbedsDescription(embed, mapped);
+    return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), true);
   }
 })
 .addInteraction({
@@ -59,7 +60,7 @@ const Module = new Augur.Module()
   options: { registry: "slashHelp" },
   process: async (int) => {
     const embed = u.embed().setTitle("Icarus Commands")
-      .setDescription("These are all the commands availabe in LDS Gamers.")
+      .setDescription("These are all the commands availabe in LDS Gamers.\n")
       .setURL("https://my.ldsgamers.com/commands")
       .setThumbnail(int.client.user?.displayAvatarURL() || null);
 
@@ -99,7 +100,8 @@ const Module = new Augur.Module()
       .filter(i => i.length > 0)
       .flat();
 
-    await u.pagedEmbeds(int, embed, ints.concat(commands).concat(miscFeatures), true);
+    const embeds = u.pagedEmbedsDescription(embed, ints.concat(commands).concat(miscFeatures));
+    await u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), true);
     await int.followUp({ components: [u.MessageActionRow().addComponents(tagButton)], flags: ["Ephemeral"] });
   }
 });
