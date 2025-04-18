@@ -46,7 +46,7 @@ const Module = new Augur.Module()
     const ldsg = int.client.guilds.cache.get(u.sf.ldsg);
     const embed = u.embed({ author: int.client.user })
       .setTitle(`Custom Tags in ${ldsg?.name ?? "LDS Gamers"}`)
-      .setURL("https://my.ldsgamers.com/commands")
+      .setURL("https://my.ldsgamers.com/commands") // TODO: remove once new site is up and running
       .setThumbnail(ldsg?.iconURL() ?? null);
 
     const mapped = tu.tags.map(t => `${config.prefix}${u.escapeText(t.tag)}`);
@@ -61,10 +61,10 @@ const Module = new Augur.Module()
   process: async (int) => {
     const embed = u.embed().setTitle("Icarus Commands")
       .setDescription("These are all the commands availabe in LDS Gamers.\n")
-      .setURL("https://my.ldsgamers.com/commands")
+      .setURL("https://my.ldsgamers.com/commands") // TODO: remove once new site is up and running
       .setThumbnail(int.client.user?.displayAvatarURL() || null);
 
-    const commands = [...Module.client.moduleManager.commands.values()]
+    const commands = Module.client.moduleManager.commands
       .filter(c => isAvailable(c, int))
       .map(c => {
         let str = `### ${config.prefix}${c.name}`;
@@ -112,6 +112,7 @@ const Module = new Augur.Module()
  * @param {{ name: string }} [group]
  */
 function cmd(op, baseName = "", group) {
+  // command or subcommand header
   let name = baseName ? `### /${baseName} ` : "## /";
   if (group) name += `${group.name} `;
 
@@ -119,7 +120,7 @@ function cmd(op, baseName = "", group) {
 
   const descriptionLines = [op.description];
   for (const option of op.options || []) {
-    if ([1, 2].includes(option.type)) continue;
+    if ([1, 2].includes(option.type)) continue; // no subcommands/groups
     name += ` [${option.name}]`;
     descriptionLines.push(`${option.name}: ${option.description}`);
   }
