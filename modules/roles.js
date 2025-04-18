@@ -175,6 +175,7 @@ Module.addInteraction({
   guildId: u.sf.ldsg,
   onlyGuild: true,
   id: u.sf.commands.slashRole,
+  options: { registry: "slashRole" },
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
       case "add": return slashRoleAdd(interaction);

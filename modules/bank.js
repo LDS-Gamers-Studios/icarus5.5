@@ -360,10 +360,12 @@ async function slashBankAward(interaction) {
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
-Module.addInteraction({ name: "bank",
+Module.addInteraction({
+  name: "bank",
   guildId: u.sf.ldsg,
   onlyGuild: true,
   id: u.sf.commands.slashBank,
+  options: { registry: "slashBank" },
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
       case "give": return slashBankGive(interaction);
