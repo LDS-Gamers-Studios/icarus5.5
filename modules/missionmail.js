@@ -98,11 +98,11 @@ async function sendUnsent(receiver) {
     const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
     const embed = u.embed()
     .setAuthor({ name: missionary.toString(), iconURL: missionary.avatarURL() ?? undefined })
-    .setTitle(`${missionary.user.username} - ${parsed.subject}`)
-    .setDescription(parsed.text.replace(fromEmail, missionary.user.username))
+    .setTitle(`${missionary.displayName} - ${parsed.subject}`)
+    .setDescription(parsed.text.replace(fromEmail, missionary.displayName))
     .setTimestamp(parsed.receivedDate);
     const requestMsg = {
-      content: `incoming missionary email from ${missionary.user.username}(\`${fromEmail}\`)`,
+      content: `incoming missionary email from ${missionary.displayName}(\`${fromEmail}\`)`,
       embeds: [embed],
       components: [actionRow]
     };
