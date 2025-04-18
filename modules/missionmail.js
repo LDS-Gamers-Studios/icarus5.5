@@ -102,7 +102,7 @@ async function sendUnsent(receiver) {
     .setDescription(parsed.text.replace(fromEmail, missionary.user.username))
     .setTimestamp(parsed.receivedDate);
     const requestMsg = {
-      content: `incoming missionary email from ${missionary.user.username}(${fromEmail})`,
+      content: `incoming missionary email from ${missionary.user.username}(\`${fromEmail}\`)`,
       embeds: [embed],
       components: [actionRow]
     };
@@ -147,7 +147,7 @@ async function slashMissionaryRemove(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryCheck(int) {
   const user = int.options.getUser("user", false) ?? int.member;
-  return int.editReply(user.toString() + " has the following missionary email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
+  return int.editReply(user.toString() + " has the following missionary email: `" + u.db.sheets.missionaries.findKey(id => id === user.id) + '`');
 }
 const Module = new Augur.Module()
   .setInit(logNPull)
@@ -173,14 +173,6 @@ const Module = new Augur.Module()
         case "pull": return slashMissionaryPull(int);
         default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
       }
-    },
-    autocomplete: async (int) => {
-      const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
-      // console.log(u.db.sheets.missionaries);
-      const ret = await Promise.all(u.db.sheets.missionaries.map((email, uid) => ldsg.members.fetch(uid).then(m => { return { name: `${m.user.username}(${email})`, value: email + "" }; })));
-      // console.log(ret);
-      await int.respond(ret);
-      return ret;
     }
   })
   .addEvent("interactionCreate", (int) => {
