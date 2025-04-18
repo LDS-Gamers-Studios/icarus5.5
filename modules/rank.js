@@ -156,9 +156,12 @@ async function rankReset(msg, suffix) {
 }
 
 const Module = new Augur.Module()
-  .addInteraction({ id: u.sf.commands.slashRank,
+  .addInteraction({
+    name: "rank",
     guildId: u.sf.ldsg,
     onlyGuild: true,
+    id: u.sf.commands.slashRank,
+    options: { registry: "slashRank" },
     process: async (interaction) => {
       try {
         const subcommand = interaction.options.getSubcommand(true);
@@ -206,6 +209,8 @@ const Module = new Augur.Module()
   })
   .addCommand({ name: "rankreset",
     onlyGuild: true,
+    description: "Resets everyone's season XP and awards ember",
+    syntax: "rankreset <ember>",
     permissions: (msg) => u.perms.calc(msg.member, ["mgr"]),
     process: rankReset
   });
