@@ -88,6 +88,16 @@ function encodeTag(tag, msg, int) {
   };
 }
 
+/***
+ * @param {Discord.EmbedBuilder} embed
+ * @param {tag} command
+ */
+function deleteAttachment(embed, command) {
+  embed.addFields({ name: "Attachment", value: "[Deleted]" });
+  const path = process.cwd() + `/media/tags/${command._id.toString()}`;
+  if (fs.existsSync(path)) fs.rmSync(path);
+}
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTagSet(int) {
   // Get and validate input
@@ -116,6 +126,7 @@ async function slashTagSet(int) {
   await content.deferReply({ flags: ["Ephemeral"] });
   const response = content.fields.getTextInputValue("content") || null;
   const attachment = int.options.getAttachment('attachment');
+
   if (!response && !attachment) return content.editReply(`I need a response, a file, or both. If you want to delete the tag, use </tag delete:${u.sf.commands.slashTag}>.`);
 
   // Create or modify the tag
@@ -127,9 +138,6 @@ async function slashTagSet(int) {
   });
 
   if (!command) return content.editReply("I wasn't able to save that. Please try again later or with a different name.");
-  if (attachment) saveAttachment(attachment, command);
-
-  tags.set(command.tag, command);
 
   let description = `${int.member} set the tag \`${name}\``;
 
@@ -144,9 +152,18 @@ async function slashTagSet(int) {
     .setTitle("Tag Saved")
     .setDescription(description);
 
+  if (attachment) {
+    embed.addFields({ name: "Attachment", value: "[Uploaded]" });
+    saveAttachment(attachment, command);
+  } else if (oldTag?.attachment) {
+    deleteAttachment(embed, command);
+  }
+
+  tags.set(command.tag, command);
+
   // report the tag creation
   const team = int.client.getTextChannel(u.sf.channels.team.team);
-  team?.send({ embeds: [embed] }).catch(() => {
+  team?.send({ embeds: [embed], files: attachment ? [attachment] : undefined }).catch(() => {
     embed.setDescription(`${int.member} set the tag \`${name}\`\n\nError: The tag save preview was too long to send`);
     team?.send({ embeds: [embed] });
   });
@@ -172,10 +189,7 @@ async function slashTagDelete(int) {
     .setTitle("Tag Deleted")
     .setDescription(description);
 
-  if (command.attachment) {
-    embed.addFields({ name: "Attachment", value: "[Deleted]" });
-    fs.rmSync(process.cwd() + `/media/tags/${command._id.toString()}`);
-  }
+  if (command.attachment) deleteAttachment(embed, command);
 
   const team = int.client.getTextChannel(u.sf.channels.team.team);
   team?.send({ embeds: [embed] }).catch(() => {
