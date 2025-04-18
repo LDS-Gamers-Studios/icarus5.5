@@ -203,16 +203,13 @@ async function slashMissionaryReInit(int) {
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionarySend(int) {
+  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
-  const pingMatch = /<@!?([0-9]+)>/.exec(int.options.getString("missionary", true));
-  if (!pingMatch || !pingMatch[1]) { return int.editReply("You need to @ mention a registered missionaries discord account."); }
-  const missionaryDiscord = await ldsg.members.fetch(pingMatch[1]);
+  const email = int.options.getString("email", true);
+  // if (!email.endsWith("@missionary.org")) {return int.editReply("emails may only be sent to a part of @missionary.org");}
+  const mishID = u.db.sheets.missionaries.findKey(v => v === email);
+  const missionaryDiscord = mishID ? await ldsg.members.fetch(mishID) : undefined;
   const content = int.options.getString("content", true);
-  const email = u.db.sheets.missionaries.get(missionaryDiscord.id);
-  if (!email) {
-    return int.editReply(missionaryDiscord.user.toString() + " isn't a registered missionary. have them get in contact with a mod to link their missionary email.");
-  }
-
   if (sender) {
     try {
       sender?.sendMail({
@@ -220,7 +217,7 @@ async function slashMissionarySend(int) {
         subject: "LDSG Missionary email from " + int.member.user.username,
         text: content,
       });
-      int.reply(`Your Missionary email to ${missionaryDiscord.user.toString()} was sent!\nContent:${content}`);
+      int.reply(`Your Missionary email to ${missionaryDiscord?.user.toString() ?? "UNREGISTERED"}(${email}) was sent!\nContent:${content}`);
     } catch (error) {
       u.errorHandler(error, "slashMissionarySend");
       await int.editReply("Error sending email.");
@@ -234,9 +231,8 @@ async function slashMissionaryPull(int) {
   if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   if (receiver?.usable) {
     try {
-      await sendUnsent();
+      sendUnsent().catch(() => int.editReply("Error pulling emails."));
       await int.editReply(`Processing new missionary emails.`);
-      // Implement further logic to process these emails
     } catch (error) {
       u.errorHandler(error, "slashMissionaryPull");
       await int.editReply("Error pulling emails.");
@@ -308,7 +304,7 @@ const Module = new Augur.Module()
     autocomplete: async (int) => {
       const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
       // console.log(u.db.sheets.missionaries);
-      const ret = await Promise.all(u.db.sheets.missionaries.map((_email, uid) => ldsg.members.fetch(uid).then(m => { return { name: m.user.username, value: m.user.toString() + "" }; })));
+      const ret = await Promise.all(u.db.sheets.missionaries.map((email, uid) => ldsg.members.fetch(uid).then(m => { return { name: `${m.user.username}(${email})`, value: email + "" }; })));
       // console.log(ret);
       await int.respond(ret);
       return ret;
