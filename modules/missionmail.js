@@ -214,7 +214,7 @@ async function slashMissionarySend(int) {
     try {
       sender?.sendMail({
         to: email,
-        subject: "LDSG Missionary email from " + int.member.user.username,
+        subject: "LDSG MOD email from " + int.member.user.username,
         text: content,
       });
       int.reply(`Your Missionary email to ${missionaryDiscord?.user.toString() ?? "UNREGISTERED"}(${email}) was sent!\nContent:${content}`);
