@@ -95,7 +95,7 @@ function encodeTag(tag, msg, int) {
 function deleteAttachment(embed, command) {
   embed.addFields({ name: "Attachment", value: "[Deleted]" });
   const path = process.cwd() + `/media/tags/${command._id.toString()}`;
-  if (fs.existsSync(path)) fs.rmSync(path);
+  if (fs.existsSync(path)) fs.unlinkSync(path);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
