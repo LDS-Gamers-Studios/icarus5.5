@@ -5,8 +5,6 @@ const receive = require("imapflow");
 const interpret = require("mailparser-mit");
 const htmlparse = require("html-to-text");
 const Augur = require("augurbot-ts");
-const pf = new (require('profanity-matcher'));
-const banned = require('../data/banned.json');
 const { ChannelType, ButtonStyle, Message } = require("discord.js");
 const [approveIdPrefix, rejectIdPrefix] = ["approvemissionmail", "rejectmissionmail"];
 const replyRegexes = [
@@ -23,16 +21,10 @@ const replyRegexes = [
   /^subject:.*$/m,
   /^date:.*$/m
 ];
-/** @type {receive.ImapFlow | undefined} */
-let receiver;
-/** @type {Map<string, {approve:() => any, reject:() => any}>} */
-const awaitingMods = new Map();
 async function logNPull() {
   const creds = c.google.mail;
   try {
-    receiver?.removeAllListeners();
-    receiver?.close();
-    receiver = new receive.ImapFlow({
+    const receiver = new receive.ImapFlow({
       auth: {
         user: creds.email,
         pass: creds.gAccountAppPass
@@ -42,26 +34,23 @@ async function logNPull() {
     });
     await receiver.connect();
     await receiver.mailboxOpen("INBOX");
-    // this shouldn't run too often, but it could theoretically depending on how much the email server spams.
-    // it seems to be the most reliable event when theres new mail.
-    receiver.on("exists", sendUnsent);
-    // and run right now for good measure.
-    return sendUnsent();
+    const sent = await sendUnsent(receiver);
+    receiver.removeAllListeners();
+    receiver.close();
+    return sent;
   } catch (error) {
     u.errorHandler(error, `login & pull missionmail`);
-    receiver = undefined;
   }
 }
-/** @returns {Promise<number>} */
-async function sendUnsent() {
-  if (!receiver?.usable) {
+/**
+ * @param {receive.ImapFlow} receiver
+ * @returns {Promise<number>}
+ */
+async function sendUnsent(receiver) {
+  if (!receiver.usable) {
     throw new Error("Missionary Email Receiver not usable, cannot check for new emails.");
   }
-  let messageIds = (await receiver.search({ unKeyword: 'icarusForwarded', from: "*@missionary.org" }));
-  messageIds = messageIds.filter(msgId => {
-    return awaitingMods.has(msgId + "") ? undefined : msgId;
-  });
-
+  const messageIds = await receiver.search({ unKeyword: 'icarusForwarded', or: u.db.sheets.missionaries.map((email) => {return { from: email };}) });
   const messages = await receiver.fetchAll(messageIds, { source: true });
   for (const rawMsg of messages) {
     // parse the email source into readable stuff
@@ -79,7 +68,7 @@ async function sendUnsent() {
         parsed.text = parsed.subject;
       }
     }
-    if (!parsed.text) {throw new Error("unable to parse email with no discrnable text, html, or subject");}
+    if (!parsed.text) throw new Error("unable to parse email with no discrnable text, html, or subject");
     // trim the reply quote from the bottom if there is one (for some reason it was bypassing email replace)
     for (const regex of replyRegexes) {
       const match = parsed.text.toLowerCase().search(regex);
@@ -90,58 +79,41 @@ async function sendUnsent() {
       }
     }
     parsed.text = parsed.text.trimEnd();
-    // search for profanity
-    const pfViolations = pf.scan(parsed.text + "");
-    const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => parsed.text.includes(bannedString) ? bannedString : undefined);
     // figure out who it is from
     const fromEmail = parsed.from ? parsed.from[0].address : "Err:NoFromAddress";
     const missionaryId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
     // get some discord side of things stuff
     const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
     const missionary = missionaryId ? await ldsg.members.fetch(missionaryId) : undefined;
+    if (!missionary) {
+      // still need this in case the filter fails or they aren't a member anymore.
+      receiver.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
+      continue;
+    }
     const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
     if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for missionary emails."); }
-    // setup the functions to mark it as handled and forward it when approved, or just mark when rejected
-    // setup the request message, including listing detected profanity at the top,
-    // and the embed almost the same, but not fully replaced, just marked as will be replaced.
-    // and approve and reject buttons
+    // buttons are handled at the bottom, only the embed gets forwarded. anything for mods but not normies should not go in the embed.
     const approveBtn = new u.Button().setCustomId(approveIdPrefix + "from" + rawMsg.uid).setLabel("Approve").setStyle(ButtonStyle.Primary);
     const rejectBtn = new u.Button().setCustomId(rejectIdPrefix + "from" + rawMsg.uid).setLabel("Reject").setStyle(ButtonStyle.Danger);
     const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
+    const embed = u.embed()
+    .setAuthor({ name: missionary.toString(), iconURL: missionary.avatarURL() ?? undefined })
+    .setTitle(`${missionary.user.username} - ${parsed.subject}`)
+    .setDescription(parsed.text.replace(fromEmail, missionary.user.username))
+    .setTimestamp(parsed.receivedDate);
     const requestMsg = {
-      components: [actionRow],
-      content:
-        (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
-        + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
-        (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
-      embeds: [u.embed({
-        title: `incoming missionary email from ${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail}) - ${parsed.subject}`,
-        description: parsed.text.replace(fromEmail, `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"}(${fromEmail})`),
-        timestamp: parsed.receivedDate
-      })]
+      content: `incoming missionary email from ${missionary.user.username}(${fromEmail})`,
+      embeds: [embed],
+      components: [actionRow]
     };
-    // store what to do when the question is answered
-    awaitingMods.set("from" + rawMsg.uid, {
-      approve: async () => {
-        receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
-        ldsg.client.getTextChannel(u.sf.channels.missionMail)?.send({
-          embeds: [u.embed({
-            title: `${missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"} - ${parsed.subject}`,
-            description: parsed.text.replace(fromEmail, missionary?.user.username ?? "NON REGISTERED MISSIONARY EMAIL"),
-            timestamp: parsed.receivedDate
-          })]
-        });
-      },
-      reject: () => receiver?.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"])
-    });
     // pop the question
+    receiver.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
     await missionMailApprovals.send(requestMsg);
   }
   return messages.length;
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryPull(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   try {
     await int.editReply("Pulling Emails.");
     logNPull().then(
@@ -158,17 +130,15 @@ async function slashMissionaryPull(int) {
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryRegister(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
   const email = int.options.getString("email", true);
   if (!email.endsWith("@missionary.org")) {return int.editReply("missionary emails must be part of @missionary.org");}
-  u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
-  u.db.sheets.loadData(int.client, true, false, "missionaries");
+  await u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
+  await u.db.sheets.loadData(int.client, true, false, "missionaries");
   await int.editReply(`Register command executed for ${user.displayName} setting email ${email}`);
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryRemove(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
   u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.delete();
   u.db.sheets.loadData(int.client, true, false, "missionaries");
@@ -176,7 +146,6 @@ async function slashMissionaryRemove(int) {
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryCheck(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
   const user = int.options.getUser("user", false) ?? int.member;
   return int.editReply(user.toString() + " has the following missionary email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
 }
@@ -192,6 +161,8 @@ const Module = new Augur.Module()
     hidden: true,
     permissions: (int) => u.perms.calc(int.member, ["mod"]),
     process: async (int) => {
+      // just a double check.
+      if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
       const subcommand = int.options.getSubcommand(true);
       await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionMailApprovals) });
       if (!u.perms.calc(int.member, ["mod"])) return int.editReply("That command is only for mods.");
@@ -212,15 +183,6 @@ const Module = new Augur.Module()
       return ret;
     }
   })
-  .addCommand({
-    name: "missionaryunread",
-    permissions: () => c.devMode, // perms.calc(msg.member, ["mod"]),
-    process: async function(message) {
-      return message.reply(
-        (await receiver?.messageFlagsRemove([4], ["icarusForwarded"])) ? "Success" : "Fail"
-      );
-    }
-  })
   .addEvent("interactionCreate", (int) => {
     if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
     if (int.customId.startsWith(approveIdPrefix)) {
@@ -228,9 +190,11 @@ const Module = new Augur.Module()
         return int.reply({ content: "You don't have permissions to approve missionary emails!", ephemeral: true });
       }
       const id = int.customId.substring(approveIdPrefix.length);
-      awaitingMods.get(id)?.approve();
       /** @type {Message} */
       const message = int.message;
+      int.client.getTextChannel(u.sf.channels.missionMail)?.send({
+        embeds: int.message.embeds
+      });
       message.edit({
         content: message.content + `\n(approved by ${int.user})`,
         components: message.components.filter(row =>
@@ -238,14 +202,12 @@ const Module = new Augur.Module()
           !row.components.some(component => component.customId?.endsWith(id))
         )
       });
-      awaitingMods.delete(int.customId.substring(approveIdPrefix.length));
     }
     if (int.customId.startsWith(rejectIdPrefix)) {
       if (!u.perms.calc(int.member, ["mod"])) {
         return int.reply({ content: "You don't have permissions to reject missionary emails!", ephemeral: true });
       }
       const id = int.customId.substring(rejectIdPrefix.length);
-      awaitingMods.get(id)?.reject();
       /** @type {Message} */
       const message = int.message;
       message.edit({
@@ -255,7 +217,6 @@ const Module = new Augur.Module()
           !row.components.some(component => component.customId?.endsWith(id))
         )
       });
-      awaitingMods.delete(int.customId.substring(approveIdPrefix.length));
     }
   });
 
