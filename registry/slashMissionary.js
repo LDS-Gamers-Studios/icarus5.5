@@ -1,23 +1,6 @@
 // @ts-check
 const u = require("./regUtils");
 
-const send = new u.sub()
-  .setName("send")
-  .setDescription("sends a registered missionary an email.")
-  .addStringOption(
-    new u.string()
-      .setName("missionary")
-      .setDescription("the registered missionary that you wish to send an email to.")
-      .setRequired(true)
-      .setAutocomplete(true)
-  )
-  .addStringOption(
-    new u.string()
-      .setName("content")
-      .setDescription("the content of the email you wish to send them.")
-      .setRequired(true)
-  );
-
 const pull = new u.sub()
 .setName("pull")
 .setDescription("pull any new emails received from missionarys");
@@ -61,7 +44,6 @@ module.exports = new u.cmd()
   .setName("missionary")
   .setDescription("send and get emails from missionmail@ldsgamers.com")
   .setContexts(u.contexts.Guild)
-  .addSubcommand(send)
   .addSubcommand(pull)
   .addSubcommand(remove)
   .addSubcommand(register)

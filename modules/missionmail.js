@@ -1,7 +1,6 @@
 // @ts-check
 const u = require("../utils/utils");
 const c = require("../config/config.json");
-const send = require("nodemailer");
 const receive = require("imapflow");
 const interpret = require("mailparser-mit");
 const htmlparse = require("html-to-text");
@@ -24,76 +23,30 @@ const replyRegexes = [
   /^subject:.*$/m,
   /^date:.*$/m
 ];
-/** @type {send.Transporter | undefined} */
-let sender;
 /** @type {receive.ImapFlow | undefined} */
 let receiver;
 /** @type {Map<string, {approve:() => any, reject:() => any}>} */
 const awaitingMods = new Map();
-async function init() {
+async function logNPull() {
   const creds = c.google.mail;
-  if (!creds.enabled || sender) return;
-
   try {
-
-    sender = send.createTransport({
-      service: 'gmail',
-      auth: {
-        type: "LOGIN",
-        user: creds.email,
-        pass: creds.gAccountAppPass,
-        // clientId: creds.oAuthServerCreds.web.client_id,
-        // clientSecret: creds.oAuthServerCreds.web.client_secret,
-        // refreshToken: creds.gAccountRefreshToken,
-      },
-    });
-
+    receiver?.removeAllListeners();
+    receiver?.close();
     receiver = new receive.ImapFlow({
       auth: {
         user: creds.email,
         pass: creds.gAccountAppPass
-        // accessToken: token.accessToken,
       },
       host: 'imap.gmail.com',
       port: 993,
     });
-
     await receiver.connect();
     await receiver.mailboxOpen("INBOX");
-
     sendUnsent();
+    // this shouldn't run too often, but it could theoretically depending on how much the email server spams.
     receiver.on("exists", sendUnsent);
-
-    setInterval(async () => {
-      // sender.on("token", async (token) => {
-      try {
-        receiver?.removeAllListeners();
-        receiver?.close();
-        receiver = new receive.ImapFlow({
-          auth: {
-            user: creds.email,
-            pass: creds.gAccountAppPass
-            // accessToken: token.accessToken,
-          },
-          host: 'imap.gmail.com',
-          port: 993,
-        });
-        await receiver.connect();
-        await receiver.mailboxOpen("INBOX");
-        sendUnsent();
-        receiver.on("exists", sendUnsent); // this shouldn't run too often, but it could theoretically depending on how much the email server spams.
-        // console.log(`Mailer receiver initialized for ${email}`);
-      } catch (error) {
-        u.errorHandler(error, `updateReceiver for ${creds.email}`);
-        receiver = undefined;
-      }
-    }, 60 * 60_000);
-
-    await sender.verify();
-    // console.log(`Mailer sender initialized for ${creds.email}`);
-  } catch (e) {
-    u.errorHandler(e, "missionmail init");
-    sender = undefined;
+  } catch (error) {
+    u.errorHandler(error, `login & pull missionmail`);
     receiver = undefined;
   }
 }
@@ -190,55 +143,13 @@ async function sendUnsent() {
   }
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMissionaryReInit(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
-  sender?.close();
-  sender?.removeAllListeners();
-  sender = undefined;
-  receiver?.close();
-  receiver?.removeAllListeners();
-  receiver = undefined;
-  await init();
-  await int.editReply("Emailer reinitialized.");
-}
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMissionarySend(int) {
-  if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
-  const ldsg = await int.client.guilds.fetch(u.sf.ldsg);
-  const email = int.options.getString("email", true);
-  // if (!email.endsWith("@missionary.org")) {return int.editReply("emails may only be sent to a part of @missionary.org");}
-  const mishID = u.db.sheets.missionaries.findKey(v => v === email);
-  const missionaryDiscord = mishID ? await ldsg.members.fetch(mishID) : undefined;
-  const content = int.options.getString("content", true);
-  if (sender) {
-    try {
-      sender?.sendMail({
-        to: email,
-        subject: "LDSG MOD email from " + int.member.user.username,
-        text: content,
-      });
-      int.reply(`Your Missionary email to ${missionaryDiscord?.user.toString() ?? "UNREGISTERED"}(${email}) was sent!\nContent:${content}`);
-    } catch (error) {
-      u.errorHandler(error, "slashMissionarySend");
-      await int.editReply("Error sending email.");
-    }
-  } else {
-    await int.editReply("Email sender is not initialized.");
-  }
-}
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryPull(int) {
   if (!u.perms.calc(int.member, ["mod"])) return int.editReply("This command may only be used by Mods.");
-  if (receiver?.usable) {
-    try {
-      sendUnsent().catch(() => int.editReply("Error pulling emails."));
-      await int.editReply(`Processing new missionary emails.`);
-    } catch (error) {
-      u.errorHandler(error, "slashMissionaryPull");
-      await int.editReply("Error pulling emails.");
-    }
-  } else {
-    await int.editReply("Missionary Email receiver is not ready.");
+  try {
+    await logNPull();
+  } catch (error) {
+    u.errorHandler(error, "slashMissionaryPull");
+    await int.editReply("Error pulling emails.");
   }
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -266,20 +177,9 @@ async function slashMissionaryCheck(int) {
   return int.editReply(user + " has the following missionary email:" + u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.get("Email"));
 }
 const Module = new Augur.Module()
-  .setInit(init)
+  .setInit(logNPull)
   .setClockwork(() => {
-    return setInterval(async () => {
-      if (receiver?.usable) {
-        try {
-          // Implement your periodic email checking logic here
-          sendUnsent();
-        } catch (error) {
-          u.errorHandler(error, "Clockwork email check");
-        }
-      } else {
-        u.errorHandler(new Error("missionary email Receiver not usable for periodic check."));
-      }
-    }, 60 * 60 * 1000); // Every hour
+    return setInterval(logNPull, 5 * 60 * 60_000);
   })
   .addInteraction({
     name: "missionary",
@@ -292,12 +192,10 @@ const Module = new Augur.Module()
       await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionMailApprovals) });
       if (!u.perms.calc(int.member, ["mod"])) return int.editReply("That command is only for mods.");
       switch (subcommand) {
-        case "send": return slashMissionarySend(int);
         case "remove": return slashMissionaryRemove(int);
         case "check": return slashMissionaryCheck(int);
         case "register": return slashMissionaryRegister(int);
         case "pull": return slashMissionaryPull(int);
-        case "reinit": return slashMissionaryReInit(int);
         default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
       }
     },
