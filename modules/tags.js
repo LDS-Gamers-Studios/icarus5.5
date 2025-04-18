@@ -134,7 +134,7 @@ async function slashTagSet(int) {
     tag: name,
     response: response,
     attachment: attachment?.name || null,
-    attachmentExtension: attachment?.contentType || null
+    attachmentMime: attachment?.contentType || null
   });
 
   if (!command) return content.editReply("I wasn't able to save that. Please try again later or with a different name.");
