@@ -1,6 +1,7 @@
 // @ts-check
 const Augur = require("augurbot-ts");
 const config = require("../config/config.json");
+const { createServer } = require("http");
 
 if (config.siteOn) {
   // require modules!
@@ -14,33 +15,65 @@ if (config.siteOn) {
   const mongoose = require("mongoose");
   const cors = require("cors");
   const Store = require("connect-mongo");
+  const { Server } = require("socket.io");
+
   // @ts-ignore
   const routes = require("../site/backend/routes");
+
   // @ts-ignore
   const tourneyWS = require('../site/backend/routes/tournament/WS');
-  const socket = require("express-ws")(express());
-  const app = socket.app;
+  // @ts-ignore
+  const streamingWS = require("../site/backend/routes/streaming/ws");
 
-  const TOURNEY_DEPLOYMENT_READY = false;
-  const DEPLOY_BUILD = false;
+  const app = express();
+  const socket = require("express-ws")(app);
 
   // encoders
+
+  const globalLimit = require("express-rate-limit").rateLimit({
+    limit: 5,
+    windowMs: 3_000,
+    message: { msg: "You're going too fast! Slow down!" },
+    skip: (r) => r.url.startsWith("/streaming")
+  });
+
   app.use(express.json())
     .use(express.urlencoded({ extended: false }))
     .use(cors({
-      origin: [siteConfig.frontend],
+      origin: siteConfig.allowedCorsOrigins,
       credentials: true,
-    }));
+    }))
+    .use((req, res, next) => {
+      res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+      res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+      res.setHeader("X-Frame-Options", "DENY");
+      // res.setHeader("Content-Security-Policy", siteConfig.cspHeaders.join("");
+      next();
+    });
+
+  app.use('/static', express.static('site/backend/public', { setHeaders: (res, path) => {
+    // we want these to be direct downloads
+    if (path.includes("wallpapers")) {
+      res.setHeader("Content-Disposition", "attachment");
+    }
+    res.setHeader("Cache-Control", "public, max-age=259200");
+    return res;
+  } }));
 
   // token storage setup
   app.use(session({
     secret: siteConfig.sessionSecret,
-    cookie: { maxAge: 60000 * 60 * 24 * 3 },
+    cookie: {
+      maxAge: 60000 * 60 * 24 * siteConfig.maxCookieDays,
+      secure: siteConfig.deployBuild,
+      httpOnly: true,
+      sameSite: "strict"
+    },
     resave: false,
     saveUninitialized: false,
     store: Store.create({
       // @ts-expect-error
-      client: mongoose.connection.getClient()
+      client: mongoose.connection.getClient(),
     })
   }));
 
@@ -48,20 +81,20 @@ if (config.siteOn) {
     .use(passport.session());
 
   // expose backend routes
-  app.use('/api', routes);
-  app.use('/static', express.static('site/backend/public', { setHeaders: (res, path) => {
-    // we want these to be direct downloads
-    if (path.includes("wallpapers")) {
-      res.setHeader("Content-Disposition", "attachment");
+  app.use('/api', globalLimit, (req, res, next) => {
+    if (siteConfig.monitoring) {
+      // @ts-ignore sometimes it picks on some nonsense
+      // eslint-disable-next-line no-console
+      console.log(`${req.user?.displayName ?? "Unauthorized User"} [${req.method}] ${req.path}`);
     }
-    return res;
-  } }));
+    next();
+  }, routes);
 
   // not quite ready, waiting for tag migration
   // app.use('/tags', express.static('media/tags'));
 
   // Handle all other routes by serving the React index.html file
-  if (DEPLOY_BUILD) {
+  if (siteConfig.deployBuild) {
     const path = require("path");
     const frontFiles = path.resolve(__dirname, '../site/frontend/build');
 
@@ -72,15 +105,19 @@ if (config.siteOn) {
     });
   }
 
-  if (TOURNEY_DEPLOYMENT_READY) {
+  if (siteConfig.tournamentReady) {
     // tournament websocket handler
-    app.ws("/ws/tournaments/:id/listen", (ws, req) => {
+    socket.app.ws("/ws/tournaments/:id/listen", (ws, req) => {
       tourneyWS.listen(ws, req);
     });
   }
 
+  const httpServer = createServer(app);
+  const io = new Server(httpServer, { path: "/ws/streams" });
+  io.on("connection", streamingWS.listen);
+
   // eslint-disable-next-line no-console
-  app.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
+  httpServer.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
 }
 
 module.exports = new Augur.Module();

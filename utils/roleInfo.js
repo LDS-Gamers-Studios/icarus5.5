@@ -27,21 +27,30 @@ async function equip(member, baseName, baseId) {
     await member.roles.remove(allColors);
     return true;
   }
-  // role can't be equipped
-  if (!baseName) return null;
-  if (baseId ? !u.db.sheets.roles.equip.get(baseId) : !u.db.sheets.roles.equip.find(r => r.base.name.toLowerCase() === baseName.toLowerCase())) {
+
+
+  let role;
+  if (baseId) {
+    role = u.db.sheets.roles.equip.get(baseId);
+  } else if (baseName) {
+    role = u.db.sheets.roles.equip.find(r => r.base.name.toLowerCase() === baseName.toLowerCase());
+  } else {
     return null;
   }
-  const colorRole = baseId ? inventory.get(baseId) : inventory.find(r => r.base.name.toLowerCase() === baseName.toLowerCase());
+
+  // role doesn't exist
+  if (!role) return null;
+
   // role isn't in their inventory
-  if (!colorRole) return false;
+  if (!inventory.has(role.base.id)) return false;
 
   // nothing changed
-  if (member.roles.cache.has(colorRole.color.id)) return true;
+  if (member.roles.cache.has(role.color.id)) return true;
 
-  const removal = allColors.filter(c => c !== colorRole.color.id);
+  // swap colors
+  const removal = allColors.filter(c => c !== role.color.id);
   if (removal.length > 0) await member.roles.remove(removal);
-  await member.roles.add(colorRole.color.id);
+  await member.roles.add(role.color.id);
   return true;
 }
 

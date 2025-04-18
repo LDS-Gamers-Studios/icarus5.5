@@ -3,7 +3,6 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   u = require("../utils/utils"),
   config = require('../config/config.json'),
-  profanityFilter = require("profanity-matcher"),
   c = require("../utils/modCommon"),
   Module = new Augur.Module();
 
@@ -71,7 +70,8 @@ async function slashModBan(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModFilter(interaction) {
-  const pf = new profanityFilter();
+  /** @type {import("profanity-matcher")} */
+  const pf = interaction.client.moduleManager.shared.get("filter")?.shared();
   await interaction.deferReply({ flags: ["Ephemeral"] });
 
   const word = interaction.options.getString("word", true).toLowerCase().trim();
