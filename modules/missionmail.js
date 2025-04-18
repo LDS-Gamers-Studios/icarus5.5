@@ -208,8 +208,6 @@ async function slashMissionarySend(int) {
   if (!pingMatch || !pingMatch[1]) { return int.editReply("You need to @ mention a registered missionaries discord account."); }
   const missionaryDiscord = await ldsg.members.fetch(pingMatch[1]);
   const content = int.options.getString("content", true);
-  const pfViolations = pf.scan(content);
-  const bannedViolations = [banned.links, banned.words, banned.scam].flat().filter(bannedString => content.includes(bannedString) ? bannedString : undefined);
   const email = u.db.sheets.missionaries.get(missionaryDiscord.id);
   if (!email) {
     return int.editReply(missionaryDiscord.user.toString() + " isn't a registered missionary. have them get in contact with a mod to link their missionary email.");
@@ -217,38 +215,12 @@ async function slashMissionarySend(int) {
 
   if (sender) {
     try {
-      const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
-      if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for missionary emails"); }
-      const approveBtn = new u.Button().setCustomId(approveIdPrefix + "to" + int.id).setLabel("Approve").setStyle(ButtonStyle.Primary);
-      const rejectBtn = new u.Button().setCustomId(rejectIdPrefix + "to" + int.id).setLabel("Reject").setStyle(ButtonStyle.Danger);
-      const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
-      const message = {
-        components: [actionRow],
-        content:
-          (bannedViolations.length > 0 ? '# DETECTED BANNED PHRASES:\n' + bannedViolations.join(', ') : '')
-          + (bannedViolations.length > 0 && pfViolations.length > 0 ? '\n' : '') +
-          (pfViolations.length > 0 ? '# DETECTED PROFANITY:\n' + pfViolations.join(', ') : ''),
-        embeds: [u.embed({
-          title: `outgoing missionary email from ${int.member.user.username} to ${missionaryDiscord.user.username}(${email})`,
-          description: content
-        })]
-      };
-      awaitingMods.set("to" + int.id, {
-        approve: () => {
-          sender?.sendMail({
-            to: email,
-            // to: "recipient@example.com", // Replace with actual recipient
-            subject: "LDSG Missionary email from " + int.member.user.username,
-            text: content,
-          });
-          int.member.send(`Your Requested Missionary email to ${missionaryDiscord.user.toString()} was approved and sent!\nContent:${content}`);
-        },
-        reject: () => {
-          int.member.send(`Your Requested Missionary email to ${missionaryDiscord.user.toString()} was rejected.\nContent:${content}`);
-        }
+      sender?.sendMail({
+        to: email,
+        subject: "LDSG Missionary email from " + int.member.user.username,
+        text: content,
       });
-      missionMailApprovals.send(message);
-      await int.editReply("Asking mods if its good to send.");
+      int.reply(`Your Missionary email to ${missionaryDiscord.user.toString()} was sent!\nContent:${content}`);
     } catch (error) {
       u.errorHandler(error, "slashMissionarySend");
       await int.editReply("Error sending email.");
@@ -318,11 +290,11 @@ const Module = new Augur.Module()
     id: u.sf.commands.slashMissionary,
     onlyGuild: true,
     hidden: true,
-    permissions: (int) => u.perms.calc(int.member, ["trusted"]),
+    permissions: (int) => !u.perms.calc(int.member, ["mod"]),
     process: async (int) => {
       const subcommand = int.options.getSubcommand(true);
-      await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionPrep) });
-      if (subcommand !== "send" && !u.perms.calc(int.member, ["mod"])) return int.editReply("That command is only for mods.");
+      await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionMailApprovals) });
+      if (!u.perms.calc(int.member, ["mod"])) return int.editReply("That command is only for mods.");
       switch (subcommand) {
         case "send": return slashMissionarySend(int);
         case "remove": return slashMissionaryRemove(int);
