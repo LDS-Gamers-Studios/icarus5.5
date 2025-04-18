@@ -138,8 +138,7 @@ async function slashBotReload(int) {
 
   for (const file of files) {
     try {
-      // @ts-expect-error augur goof, functions correctly
-      int.client.moduleHandler.reload(path.resolve(__dirname, file));
+      int.client.moduleManager.reload(path.resolve(__dirname, file));
     } catch (error) { return u.errorHandler(error, int); }
   }
   return int.editReply("Reloaded!");
