@@ -97,12 +97,12 @@ async function sendUnsent(receiver) {
     const rejectBtn = new u.Button().setCustomId(rejectIdPrefix + "from" + rawMsg.uid).setLabel("Reject").setStyle(ButtonStyle.Danger);
     const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
     const embed = u.embed()
-    .setAuthor({ name: missionary.toString(), iconURL: missionary.avatarURL() ?? undefined })
+    .setAuthor({ name: missionary.displayName, iconURL: missionary.avatarURL() ?? undefined })
     .setTitle(`${missionary.displayName} - ${parsed.subject}`)
     .setDescription(parsed.text.replace(fromEmail, missionary.displayName))
     .setTimestamp(parsed.receivedDate);
     const requestMsg = {
-      content: `incoming missionary email from ${missionary.displayName}(\`${fromEmail}\`)`,
+      content: `incoming missionary email from ${missionary.toString()}(\`${fromEmail}\`)`,
       embeds: [embed],
       components: [actionRow]
     };
@@ -133,9 +133,10 @@ async function slashMissionaryRegister(int) {
   const user = int.options.getUser("user", false) ?? int.member;
   const email = int.options.getString("email", true);
   if (!email.endsWith("@missionary.org")) {return int.editReply("missionary emails must be part of @missionary.org");}
+  if (u.db.sheets.missionaries.has(user.id)) {return int.editReply(`${user.toString()} already has email \`${email}\` registered. Remove that first to register a new one.`);}
   await u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
   await u.db.sheets.loadData(int.client, true, false, "missionaries");
-  await int.editReply(`Register command executed for ${user.displayName} setting email ${email}`);
+  await int.editReply(`Register command executed for ${user.toString()} setting email \`${email}\``);
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryRemove(int) {
