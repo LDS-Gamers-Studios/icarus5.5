@@ -482,6 +482,7 @@ const Module = new Augur.Module()
 .addInteraction({
   name: "fun",
   id: u.sf.commands.slashFun,
+  options: { registry: "slashFun" },
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
     switch (subcommand) {
