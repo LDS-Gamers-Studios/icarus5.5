@@ -1,0 +1,51 @@
+// @ts-check
+const u = require("./regUtils");
+
+const pull = new u.sub()
+.setName("pull")
+.setDescription("pull any new emails received from missionarys");
+
+const register = new u.sub()
+  .setName("register")
+  .setDescription("register a missionary email")
+  .addStringOption(
+    new u.string()
+      .setName("email")
+      .setDescription("the missionary email you wish to register (must end in @missionary.org")
+      .setRequired(true)
+  )
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Who do you wish to register this email to? (needs mod for other than yourself)")
+      .setRequired(true)
+  );
+
+const remove = new u.sub()
+  .setName("remove")
+  .setDescription("un-register a persons missionary email if they have one")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Whose email do you wish to un-register (needs mod for other than yourself)")
+      .setRequired(true)
+  );
+const check = new u.sub()
+  .setName("check")
+  .setDescription("check a if a person has a registered missionary email")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Whose email do you wish to check (needs mod for other than yourself)")
+      .setRequired(true)
+  );
+
+module.exports = new u.cmd()
+  .setName("missionary")
+  .setDescription("send and get emails from missionmail@ldsgamers.com")
+  .setContexts(u.contexts.Guild)
+  .addSubcommand(pull)
+  .addSubcommand(remove)
+  .addSubcommand(register)
+  .addSubcommand(check)
+  .toJSON();
