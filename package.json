@@ -20,9 +20,8 @@
   },
   "homepage": "https://github.com/BobbyTheCatfish/icarus5.5#readme",
   "dependencies": {
-    "@twurple/api": "^7.2.0",
-    "@twurple/auth": "^7.2.0",
-    "@types/steamapi": "^2.2.5",
+    "@twurple/api": "^7.2.1",
+    "@twurple/auth": "^7.2.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.1",
