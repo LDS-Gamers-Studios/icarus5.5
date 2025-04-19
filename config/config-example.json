@@ -6,9 +6,8 @@
   "api": {
     "tenor": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/tenor.googleapis.com",
     "snipcart": "we don't have a way to test the API right now",
-    "steam": "https://steamcommunity.com/dev/apikey",
-    "challonge": "https://api.challonge.com/v1",
-    "thegamesdb": ""
+    "thegamesdb": "",
+    "challonge": "https://api.challonge.com/v1"
   },
   "applicationId": "https://discord.com/developers/applications",
   "color": "0xf89a22",
@@ -26,6 +25,7 @@
   "devMode": true,
   "silentMode": false,
   "ownerOverride": true,
+  "siteOn": false,
   "webhooks": {
     "error": "Webhook url for errors",
     "watchlist": "Webhook url for #watch-list",
@@ -87,5 +87,11 @@
   "memberMilestone": {
     "enabled": false,
     "count": 5000
+  },
+  "badgePath": "./media/badges",
+  "xp": {
+    "base": 25,
+    "featherCooldown": 3,
+    "featherDropChance": 0.01
   }
 }

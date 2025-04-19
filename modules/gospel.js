@@ -34,7 +34,8 @@ const works = {
 const manuals = new u.Collection([
   [2022, "old-testament-2022"],
   [2023, "new-testament-2023"],
-  [2024, "book-of-mormon-2024"]
+  [2024, "book-of-mormon-2024"],
+  [2025, "doctrine-and-covenants-2025"]
 ]);
 
 /**
@@ -94,9 +95,10 @@ async function slashGospelVerse(interaction, parsed) {
     ({ book, chapter, verses } = getScriptureMastery(abbreviationTable.get(book?.toLowerCase() ?? "")?.bookName, chapter?.toString()));
   }
 
+  const intCheck = !parsed && interaction instanceof Discord.ChatInputCommandInteraction;
   const bookRef = abbreviationTable.get(book.toLowerCase());
   if (!bookRef) {
-    if (!parsed) interaction.reply({ content: "I don't understand what book you're mentioning.", ephemeral: true });
+    if (intCheck) interaction.reply({ content: "I don't understand what book you're mentioning.", flags: ["Ephemeral"] });
     return;
   }
 
@@ -108,12 +110,14 @@ async function slashGospelVerse(interaction, parsed) {
     .setTitle(bookRef.bookName + " " + chapter.toString() + (text ? ":" + text : ""))
     .setURL(`https://www.churchofjesuschrist.org/study/scriptures/${bookRef.work}/${bookRef.urlAbbrev}/${chapter}${(versesNums[0] ? ("." + text.replace(/ /g, "") + "?lang=eng#p" + versesNums[0]) : "?lang=eng")}`)
     .setColor(0x012b57);
+  // @ts-ignore
   const bookJson = require("../data/gospel/" + works[bookRef.work] + "-reference.json");
   if (!bookJson[bookRef.bookName][chapter]) {
-    if (!parsed) interaction.reply({ content: `That chapter doesn't exist in ${bookRef.bookName}!`, ephemeral: true });
+    if (intCheck) interaction.reply({ content: `That chapter doesn't exist in ${bookRef.bookName}!`, flags: ["Ephemeral"] });
     return;
   }
   if (versesNums.length > 0) {
+    /** @type {string[]} */
     const verseContent = [];
     for (const num of versesNums) {
       if (bookJson[bookRef.bookName][chapter][num]) {
@@ -122,7 +126,7 @@ async function slashGospelVerse(interaction, parsed) {
     }
     const verseJoinedContent = verseContent.join("\n\n");
     if (verses && verseJoinedContent.length === 0) {
-      if (!parsed) interaction.reply({ content: "The verse(s) you requested weren't found.", ephemeral: true });
+      if (intCheck) interaction.reply({ content: "The verse(s) you requested weren't found.", flags: ["Ephemeral"] });
       return;
     }
     embed.setDescription(verseJoinedContent.length > 2048 ? verseJoinedContent.slice(0, 2048) + "…" : verseJoinedContent);
@@ -199,7 +203,7 @@ function slashGospelComeFollowMe(interaction) {
   if (date && typeof date !== 'string') {
     interaction.reply(`## Come, Follow Me Lesson for the week of ${date.str}:\n${date.link}`);
   } else {
-    interaction.reply({ content: `Sorry, I don't have information for the ${new Date().getFullYear()} manual yet.`, ephemeral: true });
+    interaction.reply({ content: `Sorry, I don't have information for the ${new Date().getFullYear()} manual yet.`, flags: ["Ephemeral"] });
   }
 }
 
@@ -226,6 +230,7 @@ const Module = new Augur.Module()
 .addInteraction({
   name: "gospel",
   id: u.sf.commands.slashGospel,
+  options: { registry: "slashGospel" },
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
       case "comefollowme": return slashGospelComeFollowMe(interaction);
@@ -255,7 +260,7 @@ const Module = new Augur.Module()
   }
 })
 .addCommand({ name: "debugcfm",
-  permissions: (msg) => u.perms.isAdmin(msg.member),
+  permissions: (msg) => u.perms.calc(msg.member, ["botAdmin"]),
   process: (msg) => {
     const fakeDay = new Date("Dec 31 2023");
     let i = 0;

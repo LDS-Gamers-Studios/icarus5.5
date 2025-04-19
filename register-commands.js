@@ -13,23 +13,27 @@ const ldsg = require(`./config/snowflakes${config.devMode ? "-testing" : ""}.jso
 const globalCommandFiles = [
   "messageBookmark.js",
   "slashAvatar.js",
-  "slashFun.js"
+  "slashFun.js",
+  "slashHelp.js"
 ];
 
 const guildCommandFiles = [
   "messageMod.js",
   "slashBank.js",
   "slashBot.js",
+  "slashGame.js",
   "slashGospel.js",
+  "slashIgn.js",
   "slashLdsg.js",
-  "slashRank.js",
   "slashManagement.js",
   "slashMod.js",
+  "slashRank.js",
+  "slashRole.js",
+  "slashTag.js",
   "slashTournament.js",
   "slashTwitch.js",
   "slashUser.js",
   "slashVoice.js",
-  "slashRole.js",
   "userMod.js"
 ];
 
@@ -59,12 +63,10 @@ function getCommandType(typeId) {
 function displayError(error) {
   if (error.response) {
     if (error.response.status === 429) {
-      // @ts-expect-error
       console.log("You're being rate limited! try again after " + error.response.data.retry_after + " seconds. Starting countdown...");
       setTimeout(() => {
         console.log("try now!");
         process.exit();
-        // @ts-expect-error
       }, error.response.data.retry_after * 1000);
     } else if (error.response.status === 400) {
       console.log("You've got a bad bit of code somewhere! Unfortunately it won't tell me where :(");
@@ -94,11 +96,13 @@ async function register() {
   if (!applicationId) return console.log("Please put your application ID in config/config.json\nYou can find the ID here:\nhttps://discord.com/developers/applications");
   const commandPath = path.resolve(require.main ? path.dirname(require.main.filename) : process.cwd(), "./registry");
 
+  /** @type {any[]} */
   const guildCommandLoads = [];
   for (const command of guildCommandFiles) {
     const load = require(path.resolve(commandPath, command));
     guildCommandLoads.push(load);
   }
+  // @ts-expect-error
   const guild = await axios({
     method: "put",
     url: `https://discord.com/api/v8/applications/${applicationId}/guilds/${ldsg}/commands`,
@@ -114,12 +118,14 @@ async function register() {
     }
   }
 
+  /** @type {any[]} */
   const globalCommandLoads = [];
   for (const command of globalCommandFiles) {
     const load = require(path.resolve(commandPath, command));
     globalCommandLoads.push(load);
   }
   /** @type {ReturnedCommand|void} */
+  // @ts-expect-error
   const global = await axios({
     method: "put",
     url: `https://discord.com/api/v8/applications/${applicationId}/commands`,

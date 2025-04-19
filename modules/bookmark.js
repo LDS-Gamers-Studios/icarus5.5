@@ -5,12 +5,13 @@ const Augur = require("augurbot-ts"),
 // Message context menu for bookmarking a message.
 
 const Module = new Augur.Module()
-.addInteraction({ name: "Bookmark",
+.addInteraction({
+  name: "Bookmark",
   id: u.sf.commands.messageBookmark,
   type: "ContextMessage",
   process: async (interaction) => {
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: ["Ephemeral"] });
       const message = await interaction.channel?.messages.fetch(interaction.targetId).catch(u.noop);
       if (message) {
         await interaction.editReply("I'm sending you a DM!");

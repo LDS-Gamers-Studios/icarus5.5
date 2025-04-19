@@ -3,5 +3,5 @@ const u = require("./regUtils");
 
 module.exports = u.msgContext()
   .setName("Bookmark")
-  .setDMPermission(true)
+  .setContexts(u.contexts.Guild, u.contexts.PrivateChannel, u.contexts.BotDM)
   .toJSON();

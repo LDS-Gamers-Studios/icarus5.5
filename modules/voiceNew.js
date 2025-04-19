@@ -4,7 +4,9 @@ const Augur = require('augurbot-ts'),
   u = require('../utils/utils'),
   Module = new Augur.Module();
 
-/** @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">}|Discord.Interaction<"cached">|false>} voice */
+/**
+ * @typedef {{msg: string, int: Augur.GuildInteraction<"CommandSlash"|"Button"|"SelectMenuUser">} | Discord.Interaction<"cached">| false} VoiceReturn
+ * @typedef {(int: Augur.GuildInteraction<"Button"|"CommandSlash">, channel: Discord.BaseGuildVoiceChannel, trying?: boolean) => Promise<VoiceReturn>} voice */
 
 /**
  * @param {updates} options
@@ -44,7 +46,7 @@ function getComponents(user, channel, oldMsg) {
   // Get status of vc
   const locked = isLocked(channel);
   const streamlocked = isStreamLocked(channel);
-  const ignore = [user.id, channel.client.user.id, channel.guildId, u.sf.roles.icarus, u.sf.roles.muted, u.sf.roles.suspended, u.sf.roles.ducttape];
+  const ignore = [user.id, channel.client.user.id, channel.guildId, u.sf.roles.icarus, u.sf.roles.moderation.muted, u.sf.roles.moderation.suspended, u.sf.roles.moderation.ductTape];
   const allowedUsers = channel.permissionOverwrites.cache.filter(p => p.allow.has("Connect") && !ignore.includes(p.id)).map(p => `<@${p.id}>`);
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak") && !ignore.includes(p.id)).map(p => `<@${p.id}>`);
   const banned = channel.permissionOverwrites.cache.filter(p => p.deny.has("Connect") && !ignore.includes(p.id)).map(p => `<@${p.id}>`);
@@ -74,8 +76,6 @@ function getComponents(user, channel, oldMsg) {
  */
 
 let processing = false;
-/** @type {string[]} */
-let channelNames = [];
 
 /**
  * @param {Augur.GuildInteraction<"Button"|"SelectMenuUser"|"CommandSlash">} int
@@ -164,7 +164,10 @@ async function selectUsers(int, action) {
   return received;
 }
 
-/** @param {Augur.GuildInteraction<"Button"|"CommandSlash">} int*/
+/**
+ * @param {Augur.GuildInteraction<"Button"|"CommandSlash">} int
+ * @param {string} string
+ */
 async function getUser(int, string) {
   if (int instanceof Discord.ButtonInteraction) {
     const selected = await selectUsers(int, string);
@@ -246,6 +249,7 @@ async function streamLock(int, channel, trying = false) {
   await channel.permissionOverwrites.set(newPerms);
   return int;
 }
+
 /** @type {voice} */
 async function streamUnlock(int, channel, trying = false) {
   if (!isStreamLocked(channel)) {
@@ -262,6 +266,7 @@ async function streamUnlock(int, channel, trying = false) {
   await channel.permissionOverwrites.set(newPerms);
   return int;
 }
+
 /** @type {voice} */
 async function streamAllow(int, channel) {
   if (!isStreamLocked(channel)) return { msg: "Your voice channel isn't stream locked!", int };
@@ -279,6 +284,7 @@ async function streamAllow(int, channel) {
   await channel.permissionOverwrites.set(newPerms);
   return newInt;
 }
+
 /** @type {voice} */
 async function streamDeny(int, channel) {
   if (!isStreamLocked(channel)) return { msg: "Your voice channel isn't stream locked!" + (isLocked(channel) ? " Try the button for kicking users." : ""), int };
@@ -288,7 +294,7 @@ async function streamDeny(int, channel) {
 
   const { member, newInt } = user;
   if (!member) return { msg: noUser, int: newInt };
-  if (member.id === user.id) return { msg: `You can't deny yourself from speaking!`, int: newInt };
+  if (member.id === user.member.id) return { msg: `You can't deny yourself from speaking!`, int: newInt };
   const allowedSpeak = channel.permissionOverwrites.cache.filter(p => p.allow.has("Speak")).map(p => p.id);
   if (!allowedSpeak.includes(member.id)) return { msg: `${member} wasn't able to speak in the first place!`, int: newInt };
 
@@ -314,7 +320,7 @@ async function kickUser(int, channel) {
 Module.addEvent("interactionCreate", async (int) => {
   if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("voice")) return false;
   const channel = int.member.voice.channel;
-  if (!channel || channel.id !== int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", ephemeral: true }).catch(u.noop);
+  if (!channel || channel.id !== int.message.channel.id) return int.reply({ content: "You need to be connected to that voice channel to use these buttons!", flags: ["Ephemeral"] }).catch(u.noop);
   await int.deferUpdate();
   let result;
   switch (int.customId) {
@@ -337,21 +343,24 @@ Module.addEvent("interactionCreate", async (int) => {
   else if (result instanceof Discord.ButtonInteraction || result instanceof Discord.UserSelectMenuInteraction) edit(result, channel);
   else if ("int" in result && !(result.int instanceof Discord.ChatInputCommandInteraction)) edit(result.int, channel, result.msg);
 })
-.addInteraction({ name: "slashVoice",
+.addInteraction({
+  name: "slashVoice",
   id: u.sf.commands.slashVoice,
   guildId: u.sf.ldsg,
   onlyGuild: true,
+  options: { registry: "slashVoice" },
   permissions: (int) => u.perms.calc(int.member, ["notMuted"]),
   process: async (int) => {
     const subcommand = int.options.getSubcommand(true);
     const channel = int.member.voice.channel;
-    await int.deferReply({ ephemeral: true });
+    await int.deferReply({ flags: ["Ephemeral"] });
     // handled seperately cuz they might not be able to join
     if (subcommand === "refresh") {
       updateChannels(undefined, undefined, true);
       return int.editReply("I've added empty voice channels if there weren't before.");
     }
     if (!channel) return int.editReply("You need to be in a voice channel to run these commands!");
+    /** @type {VoiceReturn} */
     let result;
     const user = int.options.getUser("user");
     switch (subcommand) {
@@ -395,9 +404,6 @@ Module.addEvent("interactionCreate", async (int) => {
   const components = getComponents(newState.member.user, newState.channel);
   if (newState.channel.members.size === 1) newState.channel.send({ embeds: components.embeds, components: components.components });
 })
-.setInit(async () => {
-  channelNames = u.db.sheets.vcNames;
-})
 .addEvent("ready", () => {
   updateChannels();
 });
@@ -432,7 +438,7 @@ async function updateChannels(oldState, newState, bypass = false) {
   const used = channels.map(c => c.isVoiceBased() ? c.bitrate : 0);
   const bitrate = bitrates.find(c => !used.includes(c * 1000)) ?? u.rand(bitrates);
   if (open.size < 2 || channels.size < 3) {
-    const name = u.rand(channelNames.filter(cn => !channels.find(ch => ch.name.includes(cn)))) ?? "Room Error";
+    const name = u.rand(u.db.sheets.vcNames.filter(cn => !channels.find(ch => ch.name.includes(cn)))) ?? "Room Error";
     voiceCategory.children.create({
       name: `${name} (${bitrate} kbps)`,
       type: Discord.ChannelType.GuildVoice,

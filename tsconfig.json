@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowUmdGlobalAccess": true,
+    "target": "ES2016",
+    "skipLibCheck": true,
+    "noEmit": true,
+    "checkJs": true,
+    "allowJs": true,
+    "moduleResolution": "node10",
+    "module": "CommonJS",
+    "useUnknownInCatchVariables": false,
+    "resolveJsonModule": true,
+    "strict": true,
+    "esModuleInterop": true,
+  },
+  "exclude": [
+    "site/frontend",
+    "node_modules"
+  ]
+}

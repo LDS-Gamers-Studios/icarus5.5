@@ -3,9 +3,11 @@ storage/*
 tmp
 config/config.json
 config/snowflakes-commands.json
+config/siteConfig.json
 test.js
 *-.js
 *-.json
+*.csv
 data/banned.json
 data/extralifeDonors.json
 data/streams.json
@@ -13,6 +15,8 @@ site
 .DS_Store
 media/badges/*
 media/banners/*
+!media/banners/README.md
+media/tags/*
 naughty.csv
 
 # For Visual Studio's temp directory

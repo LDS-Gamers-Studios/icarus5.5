@@ -16,16 +16,17 @@ async function getTournaments(state) {
   // parameters for the url
   const urlParams = `api_key=${encodeURIComponent(config.api.challonge)}&state=${encodeURIComponent(state)}&subdomain=ldsg`;
   const url = "https://api.challonge.com/v1/tournaments.json?" + urlParams;
+
   // @ts-ignore... it can be called lol
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error("Tournament API Call Error " + e.status);
   });
-  return response.data.map(t => t.tournament);
+  return response.data.map((/** @type {{ tournament: any }} */ t) => t.tournament);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function bracket(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const responses = await Promise.all([
     getTournaments("pending"),
     getTournaments("in_progress")
@@ -33,6 +34,7 @@ async function bracket(int) {
 
   const tournaments = responses.flat().sort((a, b) => (new Date(a.start_at)).valueOf() - (new Date(b.start_at).valueOf()));
 
+  /** @type {string[]} */
   const displayTourneys = [];
   for (const tournament of tournaments) {
     const displayDate = (tournament.start_at ? u.time(new Date(tournament.start_at), "D") : "Unscheduled");
@@ -48,28 +50,31 @@ async function bracket(int) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function champs(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const tName = int.options.getString('tournament');
+  /** @param {string} str */
   const user = (str) => int.options.getMember(str);
-  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].map(usr => usr?.id).filter(usr => usr !== null));
-  const date = new Date(Date.now() + (3 * 7 * 24 * 60 * 60 * 1000)).valueOf();
+  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr !== null));
+  const date = u.moment().add(3, "weeks").valueOf();
 
-  await u.db.sheets.data.doc?.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr ?? "", "Take Role At": date })));
-
+  const rows = await u.db.sheets.data.docs?.config.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr?.id ?? "", "Take Role At": date, Key: u.customId(5) })));
+  for (const row of rows ?? []) {
+    u.db.sheets.tourneyChampions.set(row.get("Key"), u.db.sheets.mappers.tourneyChampions(row));
+  }
   for (const usr of users) {
-    const member = int.guild.members.cache.get(usr ?? "");
-    if (!member) continue;
-    member?.roles.add(u.sf.roles.champion);
+    usr?.roles.add(u.sf.roles.tournament.champion);
   }
   const s = users.length > 1 ? 's' : '';
-  Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send(`## Congratulations to our new tournament champion${s}!\n${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`);
+  const content = `## 🏆 Congratulations to our new tournament champion${s}! 🏆\n` +
+    `${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`;
+  Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send({ content, allowedMentions: { parse: ["users"] } });
   int.editReply("Champions recorded and announced!");
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function participant(int) {
-  const role = int.guild.roles.cache.get(u.sf.roles.tournamentparticipant);
-  await int.deferReply({ ephemeral: true });
+  const role = int.guild.roles.cache.get(u.sf.roles.tournament.participant);
+  await int.deferReply({ flags: ["Ephemeral"] });
   if (!role) return u.errorHandler(new Error("No Tourney Champion Role"), int);
   const reset = int.options.getBoolean('reset');
   const remove = int.options.getBoolean('remove');
@@ -105,9 +110,11 @@ async function participant(int) {
 
 }
 
-Module.addInteraction({ name: "tournament",
+Module.addInteraction({
+  name: "tournament",
   id: u.sf.commands.slashTournament,
   onlyGuild: true,
+  options: { registry: "slashTournament" },
   // Only /tournament list is publicly available
   permissions: (int) => int.options.getSubcommand() === 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
   process: async (int) => {
