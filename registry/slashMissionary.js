@@ -18,7 +18,7 @@ const register = new u.sub()
     new u.user()
       .setName("user")
       .setDescription("Who do you wish to register this email to? (needs mod for other than yourself)")
-      .setRequired(false)
+      .setRequired(true)
   );
 
 const remove = new u.sub()
@@ -28,7 +28,7 @@ const remove = new u.sub()
     new u.user()
       .setName("user")
       .setDescription("Whose email do you wish to un-register (needs mod for other than yourself)")
-      .setRequired(false)
+      .setRequired(true)
   );
 const check = new u.sub()
   .setName("check")
@@ -37,7 +37,7 @@ const check = new u.sub()
     new u.user()
       .setName("user")
       .setDescription("Whose email do you wish to check (needs mod for other than yourself)")
-      .setRequired(false)
+      .setRequired(true)
   );
 
 module.exports = new u.cmd()

@@ -6,9 +6,10 @@
     "botTesting": "925797283600150558",
     "general": "96335850576556032",
     "gospelCategory": "363016072200454146",
-    "missionPrep": "598224878813970432",
-    "missionMail": "424737599924731905",
-    "missionMailApprovals": "",
+    "missionary": {
+      "mail": "424737599924731905",
+      "approvals": ""
+    },
     "voiceAFK": "123477839696625664",
     "voiceCategory": "363014069533540362",
     "welcome": "121751722308796416",
