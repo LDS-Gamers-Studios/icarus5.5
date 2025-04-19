@@ -49,7 +49,7 @@ const Module = new Augur.Module()
       .setURL("https://my.ldsgamers.com/commands") // TODO: remove once new site is up and running
       .setThumbnail(ldsg?.iconURL() ?? null);
 
-    const mapped = tu.tags.map(t => `${config.prefix}${u.escapeText(t.tag)}`);
+    const mapped = tu.tags.sort((a, b) => a.tag.localeCompare(b.tag)).map(t => `${config.prefix}${u.escapeText(t.tag)}`);
     const embeds = u.pagedEmbedsDescription(embed, mapped);
     return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), true);
   }
