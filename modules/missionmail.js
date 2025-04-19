@@ -229,14 +229,15 @@ Module
     for (const message of pagedMessages.reverse().values()) {
       await int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: message.embeds, files: [...message.attachments.values()] });
     }
-    await int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: int.message.embeds, files: [...int.message.attachments.values()] });
-
+    int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: int.message.embeds, files: [...int.message.attachments.values()] });
+    return true;
   }
 
   if (int.customId.startsWith(rejectIdPrefix)) {
     if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to reject missionary emails!", flags: ["Ephemeral"] });
 
     int.update({ content: int.message.content + `\n(rejected by ${int.user})`, components: [] });
+    return true;
   }
 });
 
