@@ -81,16 +81,16 @@ async function sendUnsent(receiver) {
     parsed.text = parsed.text.trimEnd();
     // figure out who it is from
     const fromEmail = parsed.from ? parsed.from[0].address : "Err:NoFromAddress";
-    const missionaryId = await u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
+    const missionaryId = u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address) ? address : false);
     // get some discord side of things stuff
-    const ldsg = await module.exports.client.guilds.fetch(u.sf.ldsg);
-    const missionary = missionaryId ? await ldsg.members.fetch(missionaryId) : undefined;
+    const ldsg = module.exports.client.guilds.cache.get(u.sf.ldsg);
+    const missionary = ldsg && missionaryId ? ldsg.members.cache.get(missionaryId) : undefined;
     if (!missionary) {
       // still need this in case the filter fails or they aren't a member anymore.
       receiver.messageFlagsAdd([rawMsg.uid], ["icarusForwarded"]);
       continue;
     }
-    const missionMailApprovals = await ldsg.channels.fetch(u.sf.channels.missionMailApprovals);
+    const missionMailApprovals = ldsg.channels.cache.get(u.sf.channels.missionMailApprovals);
     if (!missionMailApprovals || missionMailApprovals.type !== ChannelType.GuildText) { throw new Error("unable to find approval channel for missionary emails."); }
     // buttons are handled at the bottom, only the embed gets forwarded. anything for mods but not normies should not go in the embed.
     const approveBtn = new u.Button().setCustomId(approveIdPrefix + "from" + rawMsg.uid).setLabel("Approve").setStyle(ButtonStyle.Primary);
