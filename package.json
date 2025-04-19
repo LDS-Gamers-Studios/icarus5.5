@@ -40,7 +40,7 @@
     "fuzzysort": "^3.1.0",
     "google-auth-library": "^9.14.1",
     "google-spreadsheet": "^4.1.4",
-    "html-to-text": "latest",
+    "html-to-text": "^9.0.5",
     "imapflow": "^1.0.184",
     "jimp": "^0.22.10",
     "mailparser-mit": "^1.0.0",
@@ -58,7 +58,7 @@
     "typescript": "^5.4.3"
   },
   "devDependencies": {
-    "@types/html-to-text": "latest",
+    "@types/html-to-text": "^9.0.4",
     "@types/imapflow": "^1.0.20",
     "@types/mailparser-mit": "^1.0.4",
     "eslint": "^8.52.0",
