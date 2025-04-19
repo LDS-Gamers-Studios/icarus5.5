@@ -63,7 +63,8 @@ const teamId = config.twitch.elTeam;
 
 /** @param {string} path */
 async function call(path) {
-  return axios(`https://extralife.donordrive.com/api${path}`).then(res => res.data);
+  // @ts-ignore
+  return axios(`https://extralife.donordrive.com/api${path}`).then(/** @param {any} res */ res => res.data);
 }
 
 /** @returns {Promise<Team>} */
@@ -71,7 +72,6 @@ async function getTeam() {
   const team = await call(`/teams/${encodeURIComponent(teamId)}`);
   team.milestones = await call(`/teams/${encodeURIComponent(teamId)}/milestones`);
   team.participants = await call(`/teams/${encodeURIComponent(teamId)}/participants`);
-  this.teams.set(teamId, team);
 
   return team;
 }
