@@ -1,5 +1,6 @@
 // @ts-check
 const Discord = require("discord.js");
+const banned = (require("../data/banned.json")).features.xp;
 const Augur = require("augurbot-ts");
 const u = require("../utils/utils");
 const mc = require("../utils/modCommon");
@@ -159,6 +160,9 @@ async function reactionXp(reaction, user, add = true) {
   await reaction.message.fetch();
   await reaction.message.member?.fetch();
 
+  if (banned.reactionsGiving.includes(user.id)) return;
+  if (banned.reactionsReceiving.includes(reaction.message.author?.id ?? "")) return;
+
   // check if custom id, then check if unicode emoji
   const identifier = reaction.emoji.id ?? reaction.emoji.name ?? "";
 
@@ -203,6 +207,8 @@ async function rankClockwork(client) {
   // give xp to people active in voice chats
   ldsg.members.cache.filter(m => m.voice.channel && !m.voice.mute && !m.voice.deaf && m.voice.channel.members.size > 1)
     .forEach(m => {
+      if (banned.voice.includes(m.id)) return;
+
       // vcs get deleted, stage channels don't
       const channelId = m.voice.channel?.type === Discord.ChannelType.GuildVoice ? "Voice" : m.voice.channelId ?? "No VC";
       const members = m.voice.channel?.members.size ?? 0;
@@ -297,6 +303,7 @@ Module.setUnload(() => active)
       !msg.inGuild() || msg.guild?.id !== u.sf.ldsg || // only in LDSG
       msg.member?.roles.cache.has(u.sf.roles.moderation.muted) || // no muted allowed
       msg.author.bot || msg.author.system || msg.webhookId || // no bots
+      banned.posts.includes(msg.author.id) || // not banned from the feature
       u.parse(msg) // not a command
     ) return;
 
@@ -325,6 +332,7 @@ Module.setUnload(() => active)
   .addEvent("messageUpdate", async (msg, newMsg) => {
     // see if it's a finished poll outside of a VC
     if (!msg.inGuild() || !msg.poll || !(!msg.poll.resultsFinalized && newMsg.poll?.resultsFinalized) || msg.channel.type === Discord.ChannelType.GuildVoice) return;
+    if (banned.polls.includes(msg.author.id)) return;
 
     // people can only get xp once per poll. no multiple answers shenanigans
     const voters = new Set();
