@@ -1,5 +1,4 @@
 // @ts-check
-
 const Augur = require("augurbot-ts");
 const Discord = require("discord.js");
 const NoRepeat = require("no-repeat");
@@ -38,7 +37,7 @@ const bonusStreams = require("../data/streams.json");
 
 const approvalText = "## Congratulations!\n" +
   `You've been added to the Approved Streamers list in LDSG! This allows going live notifications to show up in <#${u.sf.channels.general}>, and grants access to stream to voice channels.\n` +
-  "This has been done automatically, but in order to show notifications in #general, please double check that your correct Twitch name is saved in the database with `/ign view twitch`. If the link doesn't work, try `/ign set twitch YourTwitchUsername`.\n\n" +
+  "This has been done automatically, but please double check that your correct Twitch name is saved in the database with `/ign view twitch`. If the link doesn't work, try `/ign set twitch YourTwitchUsername`.\n\n" +
   "While streaming, please remember the [Streaming Guidelines](<https://goo.gl/Pm3mwS>) and [LDSG Code of Conduct](<http://ldsgamers.com/code-of-conduct>).\n" +
   "-# LDSG may make changes to the Approved Streamers list from time to time at its discretion.";
 
@@ -46,25 +45,35 @@ const notEL = "Extra Life isn't quite ready yet! Try again in November.";
 
 /** @param {string} gameId */
 async function gameInfo(gameId) {
-  // use cache if possible
-  const got = twitchGames.get(gameId);
-  if (got) return got;
+  try {
+    // use cache if possible
+    const got = twitchGames.get(gameId);
+    if (got) return got;
 
-  const game = await twitch.games.getGameById(gameId).catch(u.noop);
-  if (game && config.api.thegamesdb) {
-    twitchGames.set(game.id, game);
+    const game = await twitch.games.getGameById(gameId).catch(u.noop);
+    if (game && config.api.thegamesdb) {
+      twitchGames.set(game.id, game);
 
-    /** @type {{ game_title: string, rating: string }[] | undefined} */
-    // @ts-ignore
-    const apiGame = await axios(`https://api.thegamesdb.net/v1/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(game.name)}&fields=rating`)
-      .then(/** @param {any} res */ (res) => res.data?.games);
+      /** @type {{ game_title: string, rating: string }[] | undefined} */
+      // @ts-ignore
+      const apiGame = await axios(`https://api.thegamesdb.net/v1/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(game.name)}&fields=rating`)
+        .then(/** @param {any} res */ (res) => res.data?.games);
 
-    const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === game.name.toLowerCase() && g.rating !== "Not Rated");
-    const withRating = Object.assign(game, { rating: ratings?.[0]?.rating });
+      const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === game.name.toLowerCase() && g.rating !== "Not Rated");
+      const withRating = Object.assign(game, { rating: ratings?.[0]?.rating });
 
-    twitchGames.set(game.id, withRating);
-    return withRating;
+      twitchGames.set(game.id, withRating);
+      return withRating;
+    }
+  } catch (error) {
+    twitchErrorHandler(error);
   }
+}
+
+/** @param {string} error  */
+function twitchErrorHandler(error) {
+  error = error.toString().replace(new RegExp(config.twitch.clientSecret, "g"), "<SECRET>");
+  u.errorHandler(new Error(error), "Twitch API");
 }
 
 async function checkStreams() {
@@ -74,7 +83,11 @@ async function checkStreams() {
     if (streamers.length === 0) return;
 
     const igns = await u.db.ign.findMany(streamers, "twitch");
-    processTwitch(bonusStreams.map(s => ({ ign: s, discordId: s })).concat(igns));
+    const streams = bonusStreams.filter(s => s.length > 0)
+      .map(s => ({ ign: s, discordId: s }))
+      .concat(igns);
+
+    processTwitch(streams);
 
     // Check for Extra Life
     if (extraLife() && (new Date().getMinutes() < 5)) {
@@ -198,7 +211,7 @@ async function fetchExtraLifeTeam() {
         .setTimestamp(new Date(donation.createdDateUTC));
       Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
 
-      const publicEmbed = u.embed().setColor(0x7fd836)
+      const publicEmbed = u.embed().setColor(colors.elBlue)
         .setTitle("New Extra Life Donation")
         .setURL(`https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${teamId}`)
         .setThumbnail("https://assets.donordrive.com/extralife/images/$event550$/facebookImage.png")
@@ -254,7 +267,7 @@ async function processTwitch(igns) {
       const users = streamers.map(s => s.ign);
 
       const streams = await twitch.streams.getStreamsByUserNames(users)
-        .catch(error => { u.errorHandler(error, "Twitch getStreamsByUserNames()"); });
+        .catch(twitchErrorHandler);
 
       if (!streams) return;
 
@@ -408,7 +421,7 @@ async function slashTwitchLive(int) {
 
   const embed = u.embed()
     .setTitle(`Currently Streaming in ${int.guild.name}`)
-    .setColor("#6441A4")
+    .setColor(colors.twitch)
     .setTimestamp();
 
   const chanPromises = res.flat().map(stream => {
@@ -423,7 +436,7 @@ async function slashTwitchLive(int) {
   });
 
   const channels = await Promise.all(chanPromises).then(ch => ch.sort((a, b) => a.name.localeCompare(b.name)));
-  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})`);
+  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game?.name ?? "something"}**\n[${ch.title}](${ch.url})`);
 
   const embeds = u.pagedEmbedsDescription(embed, lines);
   return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), Boolean(ephemeral));
@@ -588,13 +601,13 @@ Module.addInteraction({
   let alert;
   if (oldMember.roles.cache.has(twitchSub) && !newMember.roles.cache.has(twitchSub)) {
     content = "## It looks like your Twitch subscription to LDS Gamers has expired!\n" +
-    "Twitch Prime subscriptions need to be resubbed on a monthly basis. If this was unintentional, please consider resubbing at <https://www.twitch.tv/ldsgamers>." +
+    "Twitch Prime subscriptions need to be resubbed on a monthly basis. If this was unintentional, please consider resubbing at <https://www.twitch.tv/ldsgamers>. " +
     `It helps keep the website and various game servers running. Thanks for the support! ${hexlogo}`;
 
     alert = "'s Twitch Sub has expired!";
   } else if (!oldMember.roles.cache.has(twitchSub) && newMember.roles.cache.has(twitchSub)) {
     content = "## Thanks for becoming an LDS Gamers Twitch Subscriber!\n" +
-    "People like you help keep the website and various game servers running. If you subscribed with a Twitch Prime sub, those need to be renewed monthly." +
+    "People like you help keep the website and various game servers running. If you subscribed with a Twitch Prime sub, those need to be renewed monthly. " +
     `You'll get a notification if I notice it lapse. Thanks for the support! ${hexlogo}`;
 
     alert = " has become a Twitch Sub!";
@@ -604,12 +617,24 @@ Module.addInteraction({
     alertChannel?.send(`**${c.userBackup(newMember)}**${alert}`);
   }
 })
-.setInit((data) => {
+.setInit(async (data) => {
   if (data) {
     for (const [key, status] of data.twitchStatus) {
       twitchStatus.set(key, status);
     }
+  } else {
+    // reset live role on restart
+    const members = Module.client.guilds.cache.get(u.sf.ldsg)?.roles.cache.get(u.sf.roles.streaming.live)?.members ?? new u.Collection();
+    for (const member of members.values()) {
+      await member.roles.remove(u.sf.roles.streaming.live);
+    }
   }
+  if (config.devMode) checkStreams();
+})
+.addCommand({
+  name: "checkstreams",
+  permissions: () => config.devMode,
+  process: () => checkStreams()
 })
 .setClockwork(() => {
   const interval = 5 * 60_000;
