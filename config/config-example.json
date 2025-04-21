@@ -69,6 +69,7 @@
     }
   },
   "twitch": {
+    "enabled": false,
     "clientId": "https://dev.twitch.tv",
     "clientSecret": "^",
     "elTeam": "Extra Life Team ID"
