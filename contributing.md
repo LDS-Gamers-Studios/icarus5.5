@@ -114,6 +114,7 @@ In order for a pull request to be approved, the following requirements have to b
 - A quick look through by both parties of all modified files to see if any features should behave differently
 - All user seen strings need to be LDSG-Worthy
 - All changes to `config.json` (new properties, changed defaults, etc) need to be reflected in `config/config-example.json` with a description if possible
+- All changes to `config.json` need to be reflected in `config-schema.json` with a type, description, and default value if applicable.
 - All IDs (snowflakes) need to be put in `config/snowflakes.json` (real server IDs) and `config/snowflakes-testing.json` (testing server IDs).
 - All interactions that need registration must follow the style of the existing files in `/registry`
 - All functions must have sufficient valid JSDoc describing the types of parameters, as well as the return type if really needed. This includes variables like `Collections` and `Array`s, which by default are typed to contain `any` or `never` unless an initial value is passed in.
