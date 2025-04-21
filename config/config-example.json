@@ -52,9 +52,8 @@
   "google": {
     "mail": {
       "enabled":false,
-      "note": "you may be able to just use your password if you don't have 2 factor enabled, but I know if you have 2 factor enabled you can search 'app password' in security settings and generate an app password to put here - works as of 4-15-2025",
       "email": "missionmail@ldsgamers.com",
-      "gAccountAppPass": ""
+      "pass": "Use an app password. Google it if you need more info"
     },
     "api": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
     "creds": {
