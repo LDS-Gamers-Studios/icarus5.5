@@ -100,7 +100,8 @@ async function slashClockworkCancel(int) {
         `-# Requested ${toTime(p.started, "R")}\n`;
     });
     const embed = u.embed().setTitle("Pending Timers/Reminders");
-    return u.pagedEmbeds(int, embed, lines, true);
+    const embeds = u.pagedEmbedsDescription(embed, lines);
+    return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), true);
   }
   const deleted = await u.db.reminder.deleteById(inputId, int.user.id);
   if (!deleted) return int.editReply("Sorry, I couldn't find that one!");
