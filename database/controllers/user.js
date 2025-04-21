@@ -17,6 +17,7 @@ const ChannelXP = require("../models/ChannelXP.model");
  * @prop {number} currentXP
  * @prop {number} totalXP
  * @prop {number} priorTenure
+ * @prop {boolean} sendBdays
  * @prop {boolean} watching
  */
 
@@ -30,14 +31,15 @@ const ChannelXP = require("../models/ChannelXP.model");
 
 const outdated = "Expected a Discord ID but likely recieved an object instead. That's deprecated now!";
 
+/**
+ * @enum {number}
+ */
 const TrackXPEnum = {
-  0: "OFF",
-  1: "SILENT",
-  2: "FULL",
-  "OFF": 0,
-  "SILENT": 1,
-  "FULL": 2
+  OFF: 0,
+  SILENT: 1,
+  FULL: 2
 };
+
 
 const models = {
   TrackXPEnum,
@@ -218,6 +220,16 @@ const models = {
   trackXP: function(discordId, trackXP) {
     if (typeof discordId !== 'string') throw new Error(outdated);
     return User.findOneAndUpdate({ discordId }, { trackXP }, { new: true, upsert: true, lean: true }).exec();
+  },
+  /**
+   * Update a member's birthday notification preference
+   * @param {string} discordId The guild member to update.
+   * @param {boolean} sendBdays The new status
+   * @returns {Promise<UserRecord | null>}
+   */
+  bdayMsgs: function(discordId, sendBdays) {
+    if (typeof discordId !== 'string') throw new Error(outdated);
+    return User.findOneAndUpdate({ discordId }, { sendBdays }, { new: true, upsert: true, lean: true }).exec();
   },
   /**
    * Update a member's roles in the database

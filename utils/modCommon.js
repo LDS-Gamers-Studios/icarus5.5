@@ -225,6 +225,7 @@ const modCommon = {
     embed.addFields({ name: `Infraction Summary (${infractionSummary.time} Days)`, value: `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}` });
     if (bot) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
 
+    /** @type {(string|undefined)[]} */
     const content = [];
     if (pingMods) {
       if (msg) u.clean(msg, 0);
@@ -577,6 +578,7 @@ const modCommon = {
   spamCleanup: async function(searchContent, guild, message, auto = false) {
     const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2) * 1000;
     const contents = u.unique(searchContent);
+    /** @type {Promise<Discord.Collection<Discord.Snowflake, Discord.Message | Discord.PartialMessage | undefined>>[]} */
     const promises = [];
     for (const [, channel] of guild.channels.cache) {
       const perms = channel.permissionsFor(message.client.user);

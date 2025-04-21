@@ -17,14 +17,16 @@ const menuOptions = require("../data/modMenuOptions.json"),
  * @typedef {(int: Augur.GuildInteraction<"SelectMenuString">, message: Discord.Message<true>|null, user: Discord.GuildMember|Discord.User|null, apply?: boolean) => Promise<any>} both
  */
 
+/** @param {Discord.AnySelectMenuInteraction} int */
 function usrErr(int) {
   const content = "I couldn't find the user! They may have left the server.";
-  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [], ephemeral: true });
+  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [] });
 }
 
+/** @param {Discord.AnySelectMenuInteraction} int */
 function msgErr(int) {
   const content = "I couldn't find the message! It might have been deleted.";
-  return int.replied ? edit(int, content) : int.update({ content, ephemeral: true });
+  return int.replied ? edit(int, content) : int.update({ content });
 }
 
 /**
@@ -435,9 +437,9 @@ function permComponents(int) {
   ));
 }
 
-/** @param {Augur.GuildInteraction<"ContextBase">} int */
+/** @param {Augur.GuildInteraction<"ContextMessage"|"ContextUser">} int */
 async function sendModMenu(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const id = u.customId();
   const components = permComponents(int);
   const actionRow = u.MessageActionRow()
@@ -466,15 +468,15 @@ async function sendModMenu(int) {
 }
 const Module = new Augur.Module()
   .addInteraction({
-    id: u.sf.commands.messageModeration,
     name: "msgModMenu",
+    id: u.sf.commands.messageModeration,
     type: "ContextMessage",
     onlyGuild: true,
     process: sendModMenu
   })
   .addInteraction({
-    id: u.sf.commands.userModeration,
     name: "usrModMenu",
+    id: u.sf.commands.userModeration,
     type: "ContextUser",
     onlyGuild: true,
     process: sendModMenu

@@ -20,7 +20,7 @@ module.exports = {
   },
   /**
    * Find a specific IGN
-   * @param {string | string[]} discordId
+   * @param {string} discordId
    * @param {string} system
    * @returns {Promise<IGN | null>}
    */
@@ -31,11 +31,13 @@ module.exports = {
    * Find a list of all IGNs for a given system
    * @function getList
    * @param {string | string[]} discordId
-   * @param {string} [system] Which system list to fetch
+   * @param {string | null} [system] Which system list to fetch
    * @returns {Promise<IGN[]>}
    */
   findMany: function(discordId, system) {
+    /** @type {string[] | string | { $in: string[] }} */
     let ids;
+    /** @type {any} */
     let query;
     if (Array.isArray(discordId)) ids = { $in: discordId };
     else ids = discordId;

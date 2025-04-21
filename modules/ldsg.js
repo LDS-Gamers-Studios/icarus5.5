@@ -1,44 +1,47 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
+  config = require("../config/config.json"),
   Discord = require("discord.js"),
   /** @type {string[]} */
   banned = require("../data/banned.json").features.suggestions;
 
+/** @typedef {import("../database/controllers/tag").tag} tag */
+
 const hasLink = /http(s)?:\/\/(\w+(-\w+)*\.)+\w+/;
-const affiliateLinks = {
-// amazon: { //Functionality can be renabled if amazon will let us get a affiliate
+const affiliateLinks = [
+  // { //Functionality can be renabled if amazon will let us get a affiliate
   //  site: "Amazon",
   //  affiliate: "Amazon Affiliate",
   //  test: /amazon\.(com|co\.uk)\/(\w+(-\w+)*\/)?(gp\/product|dp)\/(\w+)/i,
   //  tag: /tag=ldsgamers-20/,
+  /** @param {string} match */
   //  link: (match) => `https://www.${match[0]}?tag=ldsgamers-20`
-  //  },
-  cdkeys: {
+  // },
+  {
     site: "CDKeys.com",
     affiliate: "CDKeys Affiliate",
     test: /cdkeys\.com(\/\w+(-\w+)*)*/i,
     tag: /mw_aref=LDSGamers/i,
-    // eslint-disable-next-line jsdoc/no-undefined-types
-    /** @param {RegExpExecArray} match */
-    link: match => `https://www.${match[0]}?mw_aref=LDSGamers`
+    /** @param {string} match */
+    link: match => `https://www.${match}?mw_aref=LDSGamers`
   },
-// humblebundle: {
-  // site: "Humble Bundle",
+  // {
+  //  site: "Humble Bundle",
   //  affiliate: "Humble Bundle Partner",
   //  test: /humblebundle\.com(\/\w+(-\w+)*)*/i,
   //  tag: /partner=ldsgamers/i,
+  /** @param {string} match */
   //  link: (match) => `https://www.${match[0]}?partner=ldsgamers`
-// },
-};
+  // },
+];
 
 /** @param {Discord.Message} msg */
 function processLinks(msg) {
-  for (const x in affiliateLinks) {
-    const site = affiliateLinks[x];
+  for (const site of affiliateLinks) {
     const match = site.test.exec(msg.cleanContent);
     if (match && !site.tag.test(msg.cleanContent)) {
-      msg.reply(`You can help LDSG by using our [${site.affiliate} Link](${site.link(match)})`);
+      msg.reply(`You can help LDSG by using our [${site.affiliate} Link](${site.link(match[0])})`);
     }
   }
 }
@@ -79,7 +82,7 @@ const replyOption = [
 async function slashLdsgSuggest(int) {
   if (banned.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
   const suggestion = int.options.getString("suggestion", true);
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const embed = u.embed({ author: int.user })
     .setTitle("Suggestion")
     .setDescription(suggestion)
@@ -95,7 +98,7 @@ async function suggestReply(int) {
   // get user input
   await int.showModal(replyModal);
   const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionReplyModal" }).catch(u.noop);
-  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", flags: ["Ephemeral"] });
   await submitted.deferUpdate();
 
   // generate reply embed
@@ -120,8 +123,8 @@ async function suggestReply(int) {
 /** @param {Discord.ButtonInteraction<"cached">} int */
 async function suggestManage(int) {
   // make sure everything is good
-  if (!int.channel) return int.reply({ content: "I couldn't access the channel you're in!", ephemeral: true });
-  if (int.channel.parentId !== u.sf.channels.team.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.team.suggestionBox}>!`, ephemeral: true });
+  if (!int.channel) return int.reply({ content: "I couldn't access the channel you're in!", flags: ["Ephemeral"] });
+  if (int.channel.parentId !== u.sf.channels.team.suggestionBox) return int.reply({ content: `This can only be done in <#${u.sf.channels.team.suggestionBox}>!`, flags: ["Ephemeral"] });
 
   // create modal
   const oldFields = (int.message.embeds[0]?.fields || []);
@@ -158,8 +161,8 @@ async function suggestManage(int) {
   // get user input
   await int.showModal(manageModal);
   const submitted = await int.awaitModalSubmit({ time: 5 * 60 * 1000, dispose: true, filter: (i) => i.customId === "suggestionManageModal" }).catch(u.noop);
-  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", ephemeral: true });
-  await submitted.deferReply({ ephemeral: true });
+  if (!submitted) return int.followUp({ content: "I fell asleep waiting for your input...", flags: ["Ephemeral"] });
+  await submitted.deferReply({ flags: ["Ephemeral"] });
   const title = submitted.fields.getTextInputValue("title");
   const issue = submitted.fields.getTextInputValue("issue");
   const plans = submitted.fields.getTextInputValue("plans");
@@ -177,6 +180,8 @@ async function suggestManage(int) {
     const user = int.guild.members.cache.get(em.data.footer?.text ?? "")?.displayName ?? em.data.footer?.text;
     await int.channel.setName(`Suggestion from ${user}`);
   }
+
+  /** @type {{ name: string, value: string }[]} */
   const fields = [];
   if (issue) fields.push({ name: "Issue", value: issue });
   if (plans) fields.push({ name: "Plans", value: plans });
@@ -190,12 +195,31 @@ const Module = new Augur.Module()
   .addInteraction({
     name: "ldsg",
     id: u.sf.commands.slashLdsg,
+    options: { registry: "slashLdsg" },
+    onlyGuild: true,
     process: async (interaction) => {
-      const subcommand = interaction.options.getSubcommand(true);
+      const subcommand = interaction.options.getSubcommand(true).toLowerCase();
       switch (subcommand) {
         case "members": return slashLdsgMembers(interaction);
         case "suggest": return slashLdsgSuggest(interaction);
-        default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
+
+        // these commands are static tags
+        default: {
+          /** @type {import("./tags").SharedTags} */
+          const tu = interaction.client.moduleManager.shared.get("tags.js")?.shared;
+          if (!tu) return u.errorHandler(new Error("Couldn't get Tag Utils"), interaction);
+
+          const tag = tu.tags.get(subcommand);
+          if (!tag) return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
+
+          const encoded = tu.encodeTag(tag, null, interaction);
+
+          // if its a string then its an error message
+          if (typeof encoded === "string") return interaction.reply({ content: encoded, ephemeral: true });
+
+          encoded.content = (encoded.content ?? "") + `\n-# This command can also be run via \`${config.prefix}${subcommand}\``;
+          return interaction.reply(encoded);
+        }
       }
     }
   })
@@ -203,7 +227,7 @@ const Module = new Augur.Module()
     if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
     if (!int.customId.startsWith("suggestion")) return;
     if (!u.perms.calc(int.member, ["team", "mgr"])) {
-      return int.reply({ content: "You don't have permissions to interact with this suggestion!", ephemeral: true });
+      return int.reply({ content: "You don't have permissions to interact with this suggestion!", flags: ["Ephemeral"] });
     }
     switch (int.customId) {
       case "suggestionReply": return suggestReply(int);
