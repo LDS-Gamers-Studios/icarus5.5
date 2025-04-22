@@ -117,7 +117,7 @@ async function featherCheck(msg) {
           )
           .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in ${msg.url} and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
-        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed], allowedMentions: { parse: ["users"] } });
+        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ content: finder.toString(), embeds: [embed], allowedMentions: { parse: ["users"] }, flags: ["SuppressNotifications"] });
       }
 
       // give em xp
