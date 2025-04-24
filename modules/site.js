@@ -61,7 +61,7 @@ if (config.siteOn) {
   } }));
 
   // token storage setup
-  app.use(session({
+  const sessionMiddleware = session({
     secret: siteConfig.sessionSecret,
     cookie: {
       maxAge: 60000 * 60 * 24 * siteConfig.maxCookieDays,
@@ -75,7 +75,9 @@ if (config.siteOn) {
       // @ts-expect-error
       client: mongoose.connection.getClient(),
     })
-  }));
+  });
+
+  app.use(sessionMiddleware);
 
   app.use(passport.initialize())
     .use(passport.session());
@@ -114,6 +116,35 @@ if (config.siteOn) {
 
   const httpServer = createServer(app);
   const io = new Server(httpServer, { path: "/ws/streams" });
+
+  /**
+   * @param {import("express").Handler} middleware
+   * @returns {import("express").Handler}
+   */
+  const onlyForHandshake = (middleware) => {
+    return (req, res, next) => {
+      // @ts-ignore
+      const isHandshake = req._query.sid === undefined;
+      if (isHandshake) {
+        middleware(req, res, next);
+      } else {
+        next();
+      }
+    };
+  };
+
+  io.engine.use(onlyForHandshake(sessionMiddleware));
+  io.engine.use(onlyForHandshake(passport.session()));
+  io.engine.use(onlyForHandshake((req, res, next) => {
+    if (req.user) {
+      next();
+    } else {
+      res.writeHead(401);
+      res.end();
+    }
+
+  }));
+
   io.on("connection", streamingWS.listen);
 
   // eslint-disable-next-line no-console
