@@ -29,11 +29,12 @@ module.exports = {
   },
   /**
    * Find someone by their IGN
-   * @param {string} ign
+   * @param {string | string[]} ign
    * @param {string} system
    * @returns {Promise<IGN | null>}
    */
   findOneByIgn: function(ign, system) {
+    if (Array.isArray(ign)) return Ign.findOne({ ign: { $in: ign }, system }, undefined, { lean: true }).exec();
     return Ign.findOne({ ign, system }, undefined, { lean: true }).exec();
   },
   /**

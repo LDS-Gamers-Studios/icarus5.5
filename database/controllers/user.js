@@ -19,6 +19,7 @@ const ChannelXP = require("../models/ChannelXP.model");
  * @prop {number} priorTenure
  * @prop {boolean} sendBdays
  * @prop {boolean} watching
+ * @prop {boolean} twitchFollow
  */
 
 /** @typedef {UserRecord & {rank: {season: number, lifetime: number}}} RankedUser */
@@ -112,7 +113,8 @@ const models = {
   /**
    * DANGER!!! THIS RESETS ALL CURRENTXP TO 0
    */
-  resetSeason: function() {
+  resetSeason: async function() {
+    await ChannelXP.deleteMany({}, { lean: true, new: true });
     return User.updateMany({ currentXP: { $gt: 0 } }, { currentXP: 0 }, { lean: true, new: true }).exec();
   },
   /**
@@ -215,26 +217,6 @@ const models = {
     return User.findOne({ discordId }, undefined, { upsert: true, lean: true }).exec();
   },
   /**
-   * Update a member's track XP preference
-   * @param {string} discordId The guild member to update.
-   * @param {number} trackXP The new status
-   * @returns {Promise<UserRecord | null>}
-   */
-  trackXP: function(discordId, trackXP) {
-    if (typeof discordId !== 'string') throw new Error(outdated);
-    return User.findOneAndUpdate({ discordId }, { trackXP }, { new: true, upsert: true, lean: true }).exec();
-  },
-  /**
-   * Update a member's birthday notification preference
-   * @param {string} discordId The guild member to update.
-   * @param {boolean} sendBdays The new status
-   * @returns {Promise<UserRecord | null>}
-   */
-  bdayMsgs: function(discordId, sendBdays) {
-    if (typeof discordId !== 'string') throw new Error(outdated);
-    return User.findOneAndUpdate({ discordId }, { sendBdays }, { new: true, upsert: true, lean: true }).exec();
-  },
-  /**
    * Update a member's roles in the database
    * @param {Discord.GuildMember} [member] The member to update
    * @param {string[]} [roles]
@@ -264,21 +246,20 @@ const models = {
     ).exec();
   },
   /**
-   * Watches or unwatches a user
-   * @param {string} discordId The guild member to watch/unwatch
-   * @param {boolean} status Set to watched or not (Default: true)
+   * Gets all the channel xp info
+   */
+  getChannelXPs: function() {
+    return ChannelXP.find({}, undefined, { lean: true }).exec();
+  },
+  /**
+   * Updates a property
+   * @param {string} discordId The guild member to change
+   * @param {Partial<UserRecord>} update
    * @returns {Promise<UserRecord | null>}
    */
-  updateWatch: function(discordId, status = true) {
+  update: function(discordId, update) {
     if (typeof discordId !== "string") throw new Error(outdated);
-    return User.findOneAndUpdate(
-      { discordId },
-      { $set: { watching: status } },
-      { new: true, upsert: true, lean: true }
-    ).exec();
-  },
-  getChannelXPs: function() {
-    return ChannelXP.find({}, undefined, { lean: true });
+    return User.findOneAndUpdate({ discordId }, update, { lean: true, new: true, upsert: true });
   }
 };
 

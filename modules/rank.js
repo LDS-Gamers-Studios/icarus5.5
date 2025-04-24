@@ -45,7 +45,7 @@ async function slashRankTrack(interaction) {
     }
 
     const enumed = u.db.user.TrackXPEnum[track] ?? u.db.user.TrackXPEnum.FULL;
-    await u.db.user.trackXP(interaction.user.id, enumed);
+    await u.db.user.update(interaction.user.id, { trackXP: enumed });
     const str = track === "FULL" ? "track your XP and notify you of level ups!" : track === "SILENT" ? "silently track your XP!" : "stop tracking your XP.";
     await interaction.editReply(`Ok! I'll ${str}`);
   } catch (error) { u.errorHandler(error, interaction); }
