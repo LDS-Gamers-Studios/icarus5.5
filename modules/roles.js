@@ -77,7 +77,7 @@ async function slashRoleList(int) {
 
   /** @type {string[]} */
   const lines = [];
-  if (has.size > 0) lines.push("**Already Have**\n", ...has.map(h => h.toString()));
+  if (has.size > 0) lines.push("**Already Have**", ...has.map(h => h.toString()));
   lines.push("\n**Available to Add**");
   if (without.size > 0) lines.push(...without.map(w => w.toString()));
   else lines.push("You already have all the opt-in roles!");
