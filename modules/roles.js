@@ -73,7 +73,7 @@ async function slashRoleList(int) {
 
   const ephemeral = int.channel?.id !== u.sf.channels.botSpam;
   const embed = u.embed().setTitle("Opt-In Roles")
-    .setDescription(`You can add these roles with </role add:${u.sf.commands.slashRole}> to recieve pings and access to certain channels`);
+    .setDescription(`You can add these roles with </role add:${u.sf.commands.slashRole}> to recieve pings and gain access to certain channels\n`);
 
   /** @type {string[]} */
   const lines = [];
