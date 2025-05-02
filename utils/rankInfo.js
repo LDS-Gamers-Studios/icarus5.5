@@ -1,21 +1,7 @@
 // @ts-check
-const { devMode } = require("../config/config.json"),
-  u = require('./utils'),
-  rankExclude = require('../config/rankExclude.json'),
-  rankExcludeTesting = require("../config/rankExclude-testing.json");
-
 const xpScale = 200;
 
-const globalExcludeChannels = [
-  u.sf.channels.botspam,
-  u.sf.channels.staffCategory,
-  u.sf.channels.muted,
-  u.sf.channels.office
-];
-
 const Rank = {
-  excludeChannels: (devMode ? rankExcludeTesting : rankExclude).concat(globalExcludeChannels),
-  excludeRoles: u.sf.roles.muted,
   messages: [
     "Your future is looking so bright that I need sunglasses.",
     "Keep being awesome, and I'll keep saying congratulations.",

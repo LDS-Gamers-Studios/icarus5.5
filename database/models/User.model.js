@@ -21,9 +21,13 @@ const UserSchema = new Schema({
     type: Number,
     default: 0
   },
-  excludeXP: {
-    type: Boolean,
-    default: true
+  voice: {
+    type: Number,
+    default: 0
+  },
+  trackXP: {
+    type: Number,
+    default: 1
   },
   currentXP: {
     type: Number,
@@ -40,6 +44,10 @@ const UserSchema = new Schema({
   watching: {
     type: Boolean,
     default: false
+  },
+  sendBdays: {
+    type: Boolean,
+    default: true
   }
 });
 

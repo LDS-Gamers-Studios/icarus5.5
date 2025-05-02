@@ -1,19 +1,18 @@
 // @ts-check
+// ! Functions here are called in management.js. Make sure to test those calls as well
 const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   config = require('../config/config.json'),
   u = require("../utils/utils"),
   Module = new Augur.Module();
 
-function celebrate() {
-  if (u.moment().hours() === 15) {
-    testBirthdays().catch(error => u.errorHandler(error, "Test Birthdays"));
-    testCakeDays().catch(error => u.errorHandler(error, "Test Cake Days"));
+function celebrate(test = false) {
+  if (u.moment().hours() === 15 || test) {
+    birthdays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + " Birthdays"));
+    cakedays().catch(error => u.errorHandler(error, (test ? "Test" : "Celebrate") + " Cake Days"));
   }
 }
 
-/** @type {Discord.Collection<number, string>} */
-let tenureCache = new u.Collection();
 
 /**
  * @param {import("moment").Moment} date
@@ -27,168 +26,171 @@ function checkDate(date, today, checkYear) {
 
 /**
  * Provide testing parameters for testing which days work
- * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  * @param {Date|string} [testDate] fake date
+ * @param {{discordId: string, ign: string|Date}[]} [testMember] fake IGN db entry
  */
-async function testBirthdays(testMember, testDate) {
+async function birthdays(testDate, testMember) {
   // Send Birthday Messages, if saved by member
   try {
-    const guild = Module.client.guilds.cache.get(u.sf.ldsg);
-    if (!guild) return;
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+    if (!ldsg) throw new Error("Birthdays couldn't access LDSG");
 
-    const now = u.moment(testDate ? new Date(testDate) : undefined);
+    const now = u.moment(testDate ?? new Date());
 
     // Birthday Blast
     const birthdayLangs = require("../data/birthday.json");
-    const flair = [
-      ":tada: ",
-      ":confetti_ball: ",
-      ":birthday: ",
-      ":gift: ",
-      ":cake: "
-    ];
+    const flair = ["🎉", "🎊", "🎂", "🎁", "🍰"];
 
-    const birthdays = testMember ?? (await u.db.ign.getList("birthday")).filter(ign => guild.members.cache.has(ign.discordId));
+    const bdays = testMember ?? await u.db.ign.findMany(ldsg.members.cache.map(m => m.id), "birthday");
+
+    /** @type {(Discord.GuildMember | undefined)[]} */
     const celebrating = [];
-    for (const birthday of birthdays) {
+    const year = new Date().getFullYear();
+    for (const birthday of bdays) {
       try {
-        const date = u.moment(new Date(birthday.ign).valueOf() + 10 * 60 * 60 * 1000);
+        const date = u.moment(`${birthday.ign} ${year}-15`, "MMM D YYYY-HH");
         if (checkDate(date, now, false)) {
-          const member = guild.members.cache.get(birthday.discordId);
+          const member = ldsg.members.cache.get(birthday.discordId);
           celebrating.push(member);
-          const msgs = birthdayLangs.map(lang => member?.send(u.rand(flair) + lang));
+          const msgs = birthdayLangs.map(lang => member?.send(`${u.rand(flair)} ${lang}`));
           Promise.all(msgs).then(() => {
-            member?.send(":birthday: :confetti_ball: :tada: A very happy birthday to you, from LDS Gamers! :tada: :confetti_ball: :birthday:").catch(u.noop);
+            member?.send("🎂 🎊 🎉 A very happy birthday to you, from LDS Gamers! 🎉 🎊 🎂").catch(u.noop);
           }).catch(u.noop);
         }
-      } catch (e) { u.errorHandler(e, `Birthday Send - Discord Id: ${birthday.discordId}`); continue; }
+      } catch (e) {
+        u.errorHandler(e, `Birthday Send - Discord ID: ${birthday.discordId}`);
+        continue;
+      }
     }
     if (celebrating.length > 0) {
       const embed = u.embed()
         .setTitle("Happy Birthday!")
         .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Emoji_u1f389.svg/128px-Emoji_u1f389.svg.png")
         .setDescription("Happy birthday to these fantastic people!\n\n" + celebrating.join("\n"));
-      guild.client.getTextChannel(u.sf.channels.general)?.send({ content: celebrating.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
+      ldsg.client.getTextChannel(u.sf.channels.general)?.send({ content: celebrating.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
     }
   } catch (e) { u.errorHandler(e, "Birthday Error"); }
 }
 
 /**
- * Provide testing parameters for testing which days work
+ * Add tenure roles on member cake days
  * @param {Date} [testJoinDate]
  * @param {Date} [testDate]
  * @param {Discord.Collection<string, Discord.GuildMember>} [testMember]
  */
-async function testCakeDays(testJoinDate, testDate, testMember) {
-  // Add tenure roles on member cake days
-
+async function cakedays(testDate, testJoinDate, testMember) {
   try {
-    const guild = Module.client.guilds.cache.get(u.sf.ldsg);
-    const now = u.moment(testDate);
-    if (!guild) return u.errorHandler(new Error("LDSG is unavailable???"));
+    const now = u.moment(testDate) ?? u.moment();
 
-    const members = testMember ?? await guild.members.fetch().catch(u.noop) ?? guild.members.cache;
-    const offsets = testJoinDate ? [] : await u.db.user.getUsers({ discordId: { $in: [...members.keys()] }, priorTenure: { $gt: 0 } });
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+    const trusted = await ldsg?.roles.fetch(u.sf.roles.moderation.trusted);
+    const membersToCheck = testMember ?? trusted?.members ?? new u.Collection();
+
+    const priorTenures = await u.db.user.getUsers({ discordId: { $in: [...membersToCheck.keys()] }, priorTenure: { $gt: 0 } })
+      .then((rawresults) => {
+        return new u.Collection(rawresults.map((value) => [value.discordId, value.priorTenure]));
+      });
+
+    /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
+    const missingRoleErrors = new u.Collection();
+    /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
+    const cantRoleSetErrors = new u.Collection();
 
     /** @type {Discord.Collection<number, Discord.GuildMember[]>} */
     const celebrating = new u.Collection();
 
-    const unknownYears = new Set();
-    const unapplied = [];
-    for (const [memberId, member] of members.filter(m => m.roles.cache.has(u.sf.roles.trusted))) {
-      try {
-        const offset = offsets.find(o => o.discordId === memberId);
-        const join = u.moment(testJoinDate ?? member.joinedAt ?? 0).subtract(offset?.priorTenure || 0, "days");
-        if (checkDate(join, now, true)) {
-          const years = now.year() - join.year();
-          // yell at devs if not
-          if (tenureCache.has(years)) {
-            const role = tenureCache.find(r => member.roles.cache.has(r));
-            await member.roles.add(tenureCache.get(years) ?? "").catch(e => u.errorHandler(e, `Tenure Role Add (${member.displayName} - ${memberId})`));
-            if (role) await member.roles.remove(role).catch(e => u.errorHandler(e, `Tenure Role Remove (${member.displayName} - ${memberId})`));
-          } else {
-            unknownYears.add(years);
-            unapplied.push(member);
-          }
-          if (celebrating.has(years)) celebrating.get(years)?.push(member);
-          else celebrating.set(years, [member]);
+    for (const [memberId, member] of membersToCheck) {
+      const joinDate = u.moment(testJoinDate ?? member.joinedAt);
+      if (!joinDate.isValid()) {
+        continue;
+      }
+
+      // this moves back the join date to simulate them having joined earlier to account for their prior tenure
+      joinDate.subtract(priorTenures.get(memberId) ?? 0, "days");
+
+      if (checkDate(joinDate, now, true)) {
+        const years = Math.round(now.diff(joinDate, "years", true));
+        celebrating.ensure(years, () => []).push(member);
+
+        const currentYearRole = u.db.sheets.roles.year.get(years)?.base;
+        if (!currentYearRole) {
+          missingRoleErrors.ensure(years, () => []).push(member);
+          continue;
         }
-      } catch (e) { u.errorHandler(e, `Announce Cake Day Error (${member.displayName} - ${memberId})`); continue; }
+
+        const previousYearRole = u.db.sheets.roles.year.get(years - 1)?.base;
+
+        const userRoles = member.roles.cache.clone();
+        userRoles.delete(previousYearRole?.id ?? "");
+        userRoles.set(currentYearRole.id, currentYearRole);
+
+        await member.roles.set(userRoles).catch(() => {
+          cantRoleSetErrors.ensure(years, () => []).push(member);
+        });
+      }
     }
-    if (unknownYears.size > 0) {
-      Module.client.getTextChannel(u.sf.channels.bottesting)?.send(`## ⚠️ Cakeday Manual Fix\n I couldn't find the role IDs for the following cakeday year(s): ${[...unknownYears].join(", ")}\nAre they in the google sheet with the type set to \`Year\`?\nThe following members need the role(s) given manually. ${unapplied.join(", ")}`);
-    }
+
+    // yell at the devs
+    cantRoleSetErrors.forEach((members, year) =>
+      u.errorHandler(new Error(`Cakedays - Couldn't upgrade the following members ${year > 1 ? `from the ${year - 1} year role ` : ""}to the ${year} year role`), members.join("\n"))
+    );
+    missingRoleErrors.forEach((members, year) =>
+      u.errorHandler(new Error(`Cakedays - Couldn't find the year role for ${year} year(s)`), members.join("\n"))
+    );
+
     if (celebrating.size > 0) {
       const embed = u.embed()
-      .setTitle("Cake Days!")
-      .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
-      .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
-      for (const [years, cakeMembers] of celebrating.sort((v1, v2, k1, k2) => k2 - k1)) {
-        embed.addFields({ name: `${years} ${years > 1 ? "Years" : "Year"}`, value: cakeMembers.join("\n") });
+        .setTitle("Cake Days!")
+        .setThumbnail("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Emoji_u1f382.svg/128px-Emoji_u1f382.svg.png")
+        .setDescription("The following server members are celebrating their cake days! Glad you're with us!");
+
+      if (testDate) embed.setDescription((embed.data.description ?? "") + " (Sorry if we're a bit late!)");
+
+      celebrating.sort((a, b, y1, y2) => y2 - y1);
+
+      for (const [years, cakeMembers] of celebrating) {
+        embed.addFields({
+          name: `${years} ${years < 1 ? "Years, First Day!!!" : years < 2 ? "Year" : "Years"}`,
+          value: cakeMembers.join("\n")
+        });
       }
-      const allMentions = [...celebrating.values()].flat().map(c => c.toString());
-      await guild.client.getTextChannel(u.sf.channels.general)?.send({ content: allMentions.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
+
+      const allMentions = [...celebrating.values()].flat().map(c => c?.toString());
+      await Module.client.getTextChannel(u.sf.channels.general)?.send({ content: allMentions.join(" "), embeds: [embed], allowedMentions: { parse: ['users'] } });
     }
   } catch (e) { u.errorHandler(e, "Cake Days"); }
 }
 
 Module.addEvent("ready", () => {
-  // Populate tenureCache
-  const guild = Module.client.guilds.cache.get(u.sf.ldsg);
-  if (!guild) return;
-  const exp = /^Member - (\d+) Years?$/;
-  const roles = guild.roles.cache.filter(r => exp.test(r.name));
-
-  for (const [roleId, role] of roles) {
-    const match = exp.exec(role.name);
-    if (!match) continue;
-    tenureCache.set(parseInt(match[1], 10), roleId);
-  }
-
   celebrate();
 })
-.setInit(async () => {
-  try {
-    const years = u.db.sheets.roles.filter(r => r.type === "Year").map(r => {
-      return {
-        year: parseInt(r.level),
-        role: r.base,
-      };
-    });
-    tenureCache = new u.Collection(years.map(r => [r.year, r.role]));
-  } catch (e) {
-    u.errorHandler(e, "Cakeday Init");
-  }
-})
-// Janky stuff, but it works!!! (for now lol)
-.setUnload((date, type) => {
-  if (type === "cake") testCakeDays(undefined, date);
-  else if (type === "bday") testBirthdays(undefined, date);
-})
-.addCommand({ name: "bday",
-  permissions: () => config.devMode,
-  hidden: true,
-  process: (msg) => {
-    testBirthdays([{ discordId: msg.author.id, ign: new Date() }], new Date());
-  }
-})
-.addCommand({ name: "cakeday",
-  permissions: () => config.devMode,
-  hidden: true,
-  process: (msg, suffix) => {
-    const date = new Date();
-    if (suffix) date.setFullYear(parseInt(suffix));
-    testCakeDays(date, new Date(), new u.Collection().set(msg.author.id, msg.member));
-  }
-})
-.setClockwork(() => {
-  return setInterval(() => {
-    try {
-      celebrate();
-    } catch (error) {
-      u.errorHandler(error, "Birthday Clockwork Error");
+  .addCommand({
+    name: "bday",
+    enabled: config.devMode,
+    hidden: true,
+    process: (msg) => {
+      birthdays(new Date(), [{ discordId: msg.author.id, ign: u.moment().format("MMM D YYYY-HH") }]);
     }
-  }, 60 * 60 * 1000);
-});
+  })
+  .addCommand({
+    name: "cakeday",
+    enabled: config.devMode,
+    hidden: true,
+    process: (msg, suffix) => {
+      const date = u.moment();
+      if (suffix) date.subtract(parseInt(suffix), "year");
+      cakedays(date.toDate(), new Date(), new u.Collection().set(msg.author.id, msg.member));
+    }
+  })
+  .setClockwork(() => {
+    return setInterval(() => {
+      try {
+        celebrate();
+      } catch (error) {
+        u.errorHandler(error, "Birthday Clockwork Error");
+      }
+    }, 60 * 60 * 1000);
+  })
+  .addShared("cake.js", { cakedays, birthdays, celebrate });
 
 module.exports = Module;

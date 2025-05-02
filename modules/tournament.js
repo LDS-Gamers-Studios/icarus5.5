@@ -16,16 +16,18 @@ async function getTournaments(state) {
   // parameters for the url
   const urlParams = `api_key=${encodeURIComponent(config.api.challonge)}&state=${encodeURIComponent(state)}&subdomain=ldsg`;
   const url = "https://api.challonge.com/v1/tournaments.json?" + urlParams;
+
   // @ts-ignore... it can be called lol
   const response = await axios({ url, method: "get" }).catch((/** @type {axios.AxiosError} */ e) => {
     throw new Error("Tournament API Call Error " + e.status);
   });
-  return response.data.map(t => t.tournament);
+  return response.data.map((/** @type {{ tournament: any }} */ t) => t.tournament);
 }
 
 Module.addInteraction({ name: "tournaments",
   id: u.sf.commands.slashTournaments,
   onlyGuild: true,
+  options: { registry: "slashTournament" },
   // Only /tournament list is publicly available
   permissions: (int) => int.options.getSubcommand() === 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
   process: async (int) => {

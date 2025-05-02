@@ -1,0 +1,12 @@
+{
+  "sessionSecret": "",
+  "port": 3000,
+  "passport": {
+    "clientId": "",
+    "clientSecret": "",
+    "callbackUrl": "http://localhost:3000/api/auth/discord/redirect"
+  },
+  "encryptionToken": "",
+  "url": "http://localhost:3000",
+  "frontend": "http://localhost:3006"
+}

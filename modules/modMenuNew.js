@@ -2,7 +2,9 @@
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  Discord = require("discord.js");
+  Discord = require("discord.js"),
+  /** @type {string[]} */
+  banned = require("../data/banned.json").features.flag;
 
 const menuOptions = require("../data/modMenuOptions.json"),
   menuFlagOptions = require("../data/modMenuFlagOptions.json"),
@@ -15,14 +17,16 @@ const menuOptions = require("../data/modMenuOptions.json"),
  * @typedef {(int: Augur.GuildInteraction<"SelectMenuString">, message: Discord.Message<true>|null, user: Discord.GuildMember|Discord.User|null, apply?: boolean) => Promise<any>} both
  */
 
+/** @param {Discord.AnySelectMenuInteraction} int */
 function usrErr(int) {
   const content = "I couldn't find the user! They may have left the server.";
-  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [], ephemeral: true });
+  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [] });
 }
 
+/** @param {Discord.AnySelectMenuInteraction} int */
 function msgErr(int) {
   const content = "I couldn't find the message! It might have been deleted.";
-  return int.replied ? edit(int, content) : int.update({ content, ephemeral: true });
+  return int.replied ? edit(int, content) : int.update({ content });
 }
 
 /**
@@ -139,13 +143,13 @@ async function pin(int, msg) {
   if (msg.author.id === int.user.id) return edit(int, "You can't request your own message to be pinned!");
   const embed = u.embed({ author: int.member })
       .setTimestamp()
-      .setDescription(msg.cleanContent)
+      .setDescription(msg.cleanContent || null)
       .addFields(
         { name: "Pin Requested By", value: int.member.toString() },
         { name: "Post", value: msg.url }
       );
   if (msg.attachments.size > 0) embed.setImage(msg.attachments.first()?.url ?? null);
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [embed] });
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] });
   return edit(int, "Pin request submitted!");
 
 }
@@ -247,7 +251,7 @@ async function warnUser(int, usr) {
 /** @type {message} */
 async function modDiscussion(int, msg) {
   if (!msg) return edit(int, "I couldn't find that message!");
-  const md = int.client.getTextChannel(u.sf.channels.moddiscussion);
+  const md = int.client.getTextChannel(u.sf.channels.mods.discussion);
   const embed = u.msgReplicaEmbed(msg, "", true)
     .setFooter({ text: `Linked by ${u.escapeText(int.member.displayName)}` })
     .setColor(c.colors.action);
@@ -336,7 +340,7 @@ async function purgeChannel(int, msg) {
   if (!toDelete) return edit(int, "I couldn't get those messages.");
   const deleted = await channel.bulkDelete(toDelete, true);
 
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({ author: int.member })
       .setTitle("Channel Purge")
       .addFields(
@@ -355,7 +359,7 @@ async function spamCleanup(int, msg) {
   const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false);
   if (!cleaned) return edit(int, "I couldn't find any recent messages that matched this one.");
   // Log it
-  int.client.getTextChannel(u.sf.channels.modlogs)?.send({ embeds: [
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({ author: int.member })
       .setTitle("Channel Purge")
       .addFields(
@@ -422,7 +426,8 @@ async function handleModMenu(submitted, oldInt) {
 
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
 function permComponents(int) {
-  let components = menuOptions.everyone;
+  let components = [...menuOptions.everyone];
+  if (!banned.includes(int.user.id)) components.push(menuOptions.flag);
   if (u.perms.calc(int.member, ['mod', 'mgr'])) components = components.concat(menuOptions.mod);
   if (u.perms.calc(int.member, ['mgr', 'mgmt'])) components = components.concat(menuOptions.mgmt);
   return components.filter(cmp => (
@@ -432,9 +437,9 @@ function permComponents(int) {
   ));
 }
 
-/** @param {Augur.GuildInteraction<"ContextBase">} int */
+/** @param {Augur.GuildInteraction<"ContextMessage"|"ContextUser">} int */
 async function sendModMenu(int) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const id = u.customId();
   const components = permComponents(int);
   const actionRow = u.MessageActionRow()
@@ -463,15 +468,15 @@ async function sendModMenu(int) {
 }
 const Module = new Augur.Module()
   .addInteraction({
-    id: u.sf.commands.messageModeration,
     name: "msgModMenu",
+    id: u.sf.commands.messageModeration,
     type: "ContextMessage",
     onlyGuild: true,
     process: sendModMenu
   })
   .addInteraction({
-    id: u.sf.commands.userModeration,
     name: "usrModMenu",
+    id: u.sf.commands.userModeration,
     type: "ContextUser",
     onlyGuild: true,
     process: sendModMenu

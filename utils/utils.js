@@ -2,7 +2,7 @@
 const { AxiosError } = require("axios");
 const Discord = require("discord.js"),
   { escapeMarkdown, ComponentType } = require('discord.js'),
-  sf = require("../config/snowflakes.json"),
+  rsf = require("../config/snowflakes.json"),
   tsf = require("../config/snowflakes-testing.json"),
   csf = require("../config/snowflakes-commands.json"),
   db = require("../database/dbControllers.js"),
@@ -10,12 +10,14 @@ const Discord = require("discord.js"),
   moment = require('moment-timezone'),
   config = require("../config/config.json");
 
+const sf = { ...(config.devMode ? tsf : rsf), ...csf };
+
 const errorLog = new Discord.WebhookClient({ url: config.webhooks.error });
 const { nanoid } = require("nanoid");
 /**
  * @typedef ParsedInteraction
  * @property {String | null} command - The command issued, represented as a string.
- * @property {{name: string, value: string|number|boolean|undefined}[]} data - Associated data for the command, such as command options or values selected.
+ * @property {{name: string, value?: string|number|boolean}[]} data - Associated data for the command, such as command options or values selected.
  */
 
 /**
@@ -26,6 +28,7 @@ const { nanoid } = require("nanoid");
 function parseInteraction(int) {
   if (int.isCommand() || int.isAutocomplete()) {
     let command = "";
+    /** @type {Record<any, any> & {name: string, value?: string | number | boolean}[]} */
     let data = [];
     if (int.isAutocomplete()) command += "Autocomplete for ";
     if (int.isChatInputCommand()) {
@@ -34,7 +37,7 @@ function parseInteraction(int) {
       const sc = int.options.getSubcommand(false);
       if (sg) {
         command += ` ${sg}`;
-        data = int.options.data[0]?.options?.[0]?.options ?? [];
+        data = int.options.data[0]?.options?.[0]?.options?.map(o => ({ name: o.name, value: o.value })) ?? [];
       }
       if (sc) command += ` ${sc}`;
     } else {
@@ -76,13 +79,13 @@ const utils = {
    * @returns {Discord.TextBasedChannel | null}
    */
   botSpam: function(msg) {
-    if (msg.inGuild() && msg.guild.id === utils.sf.ldsg && // Is in server
-      ![utils.sf.channels.botspam, utils.sf.channels.bottesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
-      msg.channel.parentId !== utils.sf.channels.staffCategory) { // Isn't in the moderation category
+    if (msg.inGuild() && msg.guild.id === sf.ldsg && // Is in server
+      ![sf.channels.botSpam, sf.channels.botTesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
+      msg.channel.parentId !== sf.channels.team.category) { // Isn't in the moderation category
 
-      msg.reply(`I've placed your results in <#${utils.sf.channels.botspam}> to keep things nice and tidy in here. Hurry before they get cold!`)
+      msg.reply(`I've placed your results in <#${sf.channels.botSpam}> to keep things nice and tidy in here. Hurry before they get cold!`)
         .then(utils.clean);
-      return msg.client.getTextChannel(utils.sf.channels.botspam);
+      return msg.client.getTextChannel(sf.channels.botSpam);
     }
     return msg.channel;
 
@@ -150,7 +153,7 @@ const utils = {
     };
 
     if (interaction.replied || interaction.deferred) await interaction.editReply(response);
-    else await interaction.reply({ ...response, ephemeral: true, content: undefined });
+    else await interaction.reply({ ...response, flags: ["Ephemeral"], content: undefined });
 
     const confirm = await interaction.channel?.awaitMessageComponent({
       filter: (button) => button.user.id === interaction.user.id && (button.customId === confirmTrue || button.customId === confirmFalse),
@@ -211,35 +214,91 @@ const utils = {
     return embed;
   },
   /**
- * @param {Discord.CommandInteraction | null} int
- * @param {Discord.EmbedBuilder} embed
- * @param {string[]} lines
- */
-  pagedEmbeds: async (int, embed, lines, ephemeral = true) => {
-    const descriptions = [];
+   * @param {Discord.EmbedBuilder} embed
+   * @param {string[]} lines
+   */
+  pagedEmbedsDescription: (embed, lines) => {
+    /** @type {Discord.APIEmbed[]} */
+    const embeds = [];
+    let currentEmbed = embed.toJSON();
     let active = "";
     lines.forEach((line) => {
       if (active.length + line.length > 4000) {
-        descriptions.push(active);
+        currentEmbed.description = (currentEmbed.description ?? "") + active;
+        embeds.push(currentEmbed);
+        currentEmbed = embed.toJSON();
+        currentEmbed.title = (embed.data.title ?? "") + " (Cont.)";
         active = "";
       }
       active += `${line}\n`;
     });
-    descriptions.push(active);
-    if (!int) return descriptions;
-    let i = 0;
-    do {
-      const desc = descriptions[i];
-      if (!desc) return;
-      const e = utils.embed(embed.toJSON()).setDescription(desc);
-      if (i === 0) {
-        if (int.deferred || int.replied) await int.editReply({ embeds: [e] });
-        else await int.reply({ embeds: [e], ephemeral });
-      } else {
-        await int.followUp({ embeds: [e.setTitle(`${e.data.title ?? ""} Cont.`)], ephemeral });
+    currentEmbed.description = (currentEmbed.description ?? "") + active;
+    embeds.push(currentEmbed);
+    return embeds;
+  },
+  /**
+   * @param {Discord.EmbedBuilder} embed
+   * @param {Map<string, string[]>} lines Map of field names to values
+   */
+  pagedEmbedFields: (embed, lines, inline = false) => {
+    const embeds = [];
+    let fields = [];
+    let em = embed.toJSON();
+    const embedLength = () => {
+      return (em.title?.length ?? 0) +
+        (em.author?.name.length ?? 0) +
+        (em.description?.length ?? 0) +
+        (em.footer?.text.length ?? 0);
+    };
+    let strTotal = embedLength();
+    for (const [fieldName, fieldLines] of lines) {
+      let field = "";
+      let name = fieldName;
+      for (const line of fieldLines) {
+        // reset
+        if (strTotal + line.length > 5500 || fields.length === 25) {
+          if (!em.fields) em.fields = [];
+          em.fields.push(...fields);
+          embeds.push(em);
+          em = embed.toJSON();
+          if (em.title) em.title = em.title + " (Cont.)";
+          fields = [];
+          strTotal = embedLength();
+        }
+        if (field.length + line.length > 1200) {
+          fields.push({ name, value: field, inline });
+          field = "";
+          name = fieldName + " (Cont.)";
+        }
+
+        field += `${line}\n`;
+        strTotal += line.length + 2;
       }
-      i++;
-    } while (i < descriptions.length);
+      fields.push({ name, value: field, inline });
+    }
+    if (!em.fields) em.fields = [];
+    em.fields.push(...fields);
+    embeds.push(em);
+    return embeds;
+  },
+  /**
+   * @typedef {Discord.MessagePayload & { flags: Discord.BitFieldResolvable<"SuppressEmbeds"> }} payload
+   */
+  /**
+   * For when just one reply won't cut it.
+   * @param {Discord.ChatInputCommandInteraction | Discord.ButtonInteraction} int
+   * @param {(Discord.InteractionEditReplyOptions & Discord.InteractionReplyOptions) []} payloads
+   */
+  manyReplies: async (int, payloads, ephemeral = int.ephemeral ?? true) => {
+    for (let i = 0; i < payloads.length; i++) {
+      const payload = payloads[i];
+      if (i === 0) {
+        if (int.deferred || int.replied) await int.editReply(payload);
+        else await int.reply({ ...payload, flags: ephemeral ? ["Ephemeral"] : undefined });
+      } else {
+        await int.followUp({ ...payload, flags: ephemeral ? ["Ephemeral"] : undefined });
+      }
+    }
   },
   parseInteraction,
   /**
@@ -260,23 +319,24 @@ const utils = {
       /* eslint-disable-next-line no-console*/
       console.error(`${message.author.username} in ${loc}: ${message.cleanContent}`);
 
-      message.channel.send("I've run into an error. I've let my devs know.")
+      message.reply("I've run into an error. I've let my devs know.")
         .then(utils.clean);
       embed.addFields(
         { name: "User", value: message.author.username, inline: true },
         { name: "Location", value: loc, inline: true },
-        { name: "Command", value: message.cleanContent || "`undefined`", inline: true }
+        { name: "Command", value: message.cleanContent || "`No Content`", inline: true }
       );
     } else if (message instanceof Discord.BaseInteraction) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");
       /* eslint-disable-next-line no-console*/
       console.error(`Interaction by ${message.user.username} in ${loc}`);
       if (message.isRepliable() && (message.deferred || message.replied)) message.editReply("I've run into an error. I've let my devs know.").catch(utils.noop).then(utils.clean);
-      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop).then(utils.clean);
+      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", flags: ["Ephemeral"] }).catch(utils.noop).then(utils.clean);
       embed.addFields(
         { name: "User", value: message.user?.username, inline: true },
         { name: "Location", value: loc, inline: true }
       );
+      /** @type {string[]} */
       const descriptionLines = [];
       const { command, data } = parseInteraction(message);
       if (command) descriptionLines.push(command);
@@ -329,9 +389,12 @@ const utils = {
   /**
    * Shortcut to moment with the correct UTC offset (Mountain Time)
    * @param {moment.MomentInput} [input]
-   * @param {boolean} [strict]
+   * @param {string} [format]
    */
-  moment: (input, strict) => moment(input, strict).tz("America/Denver"),
+  moment: (input, format) => {
+    if (input && format) return moment.tz(input?.toString(), format, "America/Denver");
+    return moment.tz(input, "America/Denver");
+  },
   /**
    * This task is extremely complicated.
    * You need to understand it perfectly to use it.
@@ -394,7 +457,7 @@ const utils = {
   /**
    * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
    */
-  sf: { ...(config.devMode ? tsf : sf), ...csf },
+  sf,
 
   /**
    * Returns a promise that will fulfill after the given amount of time.
@@ -412,7 +475,41 @@ const utils = {
    * @returns {T[]}
    */
   unique: function(items) {
-    return [...new Set(items)];
+    return Array.from(new Set(items));
+  },
+  /**
+   * @template T
+   * @param {T[]} items
+   * @param {keyof T} key
+   * @returns {T[]}
+   */
+  uniqueObj: function(items, key) {
+    const col = new Discord.Collection(items.map(i => [i[key], i]));
+    return Array.from(col.values());
+  },
+  /** @param {Discord.GuildMember | null} [member]*/
+  getHouseInfo: function(member) {
+    const houseInfo = new Map([
+      [sf.roles.houses.housebb, { name: "Brightbeam", color: 0x00a1da }],
+      [sf.roles.houses.housefb, { name: "Freshbeast", color: 0xfdd023 }],
+      [sf.roles.houses.housesc, { name: "Starcamp", color: 0xe32736 }]
+    ]);
+
+    if (member) {
+      for (const [k, v] of houseInfo) {
+        if (member.roles.cache.has(k)) return v;
+      }
+    }
+    return { name: "Unsorted", color: 0x402a37 };
+  },
+  /**
+   * @param {Discord.Interaction} int
+   * @param {string} [channelId]
+   * @returns {["Ephemeral"] | undefined}
+   */
+  ephemeralChannel: function(int, channelId = sf.channels.botSpam) {
+    if (int.inGuild() && int.channelId !== channelId) return ["Ephemeral"];
+    return undefined;
   }
 };
 

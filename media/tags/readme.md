@@ -1,0 +1,1 @@
+This folder will store all the attachments for tags

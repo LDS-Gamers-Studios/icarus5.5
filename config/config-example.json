@@ -1,19 +1,18 @@
 {
+  "$schema": "./config-schema.json",
   "adminId": [
     "put any user IDs that need to control the bot here"
   ],
   "ownerId": "put your id here",
   "api": {
+    "tenor": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/tenor.googleapis.com",
     "snipcart": "we don't have a way to test the API right now",
-    "steam": "https://steamcommunity.com/dev/apikey",
     "challonge": "https://api.challonge.com/v1"
   },
   "applicationId": "https://discord.com/developers/applications",
   "color": "0xf89a22",
   "db": {
-    "model": "database/dbControllers.js",
-    "note": "(Don't change this value, it's a note.) Connection string format: (mongodb(+srv?) or localhost:27017)://<username>:<password>@<connection>",
-    "db": "localhost:27017/icarus or mongodb(+srv?)://<connection>/icarus",
+    "db": "mongodb://localhost:27017/icarus or mongodb+srv://<connection>/icarus",
     "settings": {
       "useNewUrlParser": true,
       "useUnifiedTopology": true,
@@ -24,6 +23,7 @@
   "devMode": true,
   "silentMode": false,
   "ownerOverride": true,
+  "siteOn": false,
   "webhooks": {
     "error": "Webhook url for errors",
     "watchlist": "Webhook url for #watch-list",
@@ -49,7 +49,6 @@
     "voiceStateUpdate"
   ],
   "google": {
-    "api": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
     "creds": {
       "type": "Create a project, give it access to google sheets, and create a service account credential. Download the JSON and that should fit in this object",
       "project_id": "",
@@ -80,5 +79,11 @@
   "memberMilestone": {
     "enabled": false,
     "count": 5000
+  },
+  "badgePath": "./media/badges",
+  "xp": {
+    "base": 25,
+    "featherCooldown": 3,
+    "featherDropChance": 0.01
   }
 }

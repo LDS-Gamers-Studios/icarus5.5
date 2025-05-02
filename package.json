@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "register": "node register-commands.js"
+    "register": "node register-commands.js",
+    "tscheck": "tsc"
   },
   "repository": {
     "type": "git",
@@ -19,11 +20,24 @@
   },
   "homepage": "https://github.com/BobbyTheCatfish/icarus5.5#readme",
   "dependencies": {
-    "@types/steamapi": "^2.2.5",
-    "augurbot-ts": "^3.1.4",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.1",
+    "@types/express-ws": "^3.0.5",
+    "@types/passport": "^1.0.17",
+    "augurbot-ts": "^3.3.2",
     "axios": "^1.6.7",
-    "discord.js": "^14.14.1",
+    "connect-mongo": "^5.1.0",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "discord.js": "^14.18.0",
+    "express": "^4.21.1",
+    "express-fileupload": "^1.5.1",
+    "express-rate-limit": "^7.4.1",
+    "express-validator": "^7.2.0",
+    "express-ws": "^5.0.2",
     "forever": "^4.0.1",
+    "fuzzysort": "^3.1.0",
     "google-auth-library": "^9.14.1",
     "google-spreadsheet": "^4.1.4",
     "jimp": "^0.22.10",
@@ -31,10 +45,13 @@
     "moment-timezone": "^0.5.45",
     "mongoose": "^7.6.3",
     "nanoid": "^3.1.25",
+    "node-emoji": "^2.1.3",
+    "passport": "^0.7.0",
+    "passport-discord-auth": "^1.1.1",
     "pet-pet-gif": "^1.0.9",
     "profanity-matcher": "^1.0.1",
     "rss-parser": "^3.12.0",
-    "steamapi": "^2.1.3",
+    "sharp": "^0.33.5",
     "typescript": "^5.4.3"
   },
   "devDependencies": {

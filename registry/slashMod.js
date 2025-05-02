@@ -1,19 +1,28 @@
 // @ts-check
 const u = require("./regUtils");
 
-/** Who do you want to X? */
+/**
+ * Who do you want to X?
+ * @param {string} action
+ */
 const user = (action, req = true) => new u.user()
   .setName('user')
   .setDescription(`Who do you want to ${action}?`)
   .setRequired(req);
 
-/** Why are they being X? */
+/**
+ * Why are they being X?
+ * @param {string} action
+*/
 const reason = (action, req = true) => new u.string()
   .setName("reason")
   .setDescription(`Why are they being ${action}?`)
   .setRequired(req);
 
-/** Should I add or remove the X? (Default: Y) */
+/**
+ * Should I add or remove the X? (Default: Y)
+ * @param {string} obj
+ */
 const action = (obj) => new u.string()
   .setName("action")
   .setDescription(`Should I add or remove the ${obj}? (Default: Add)`)
@@ -137,6 +146,7 @@ const watchlist = new u.sub()
 const slowmode = new u.sub()
   .setName("slowmode")
   .setDescription("Set a temporary slow mode in the current channel")
+  .addStringOption(reason("slowmoded", true))
   .addIntegerOption(
     new u.int()
       .setName("duration")
@@ -149,12 +159,6 @@ const slowmode = new u.sub()
       .setName("delay")
       .setDescription("How many seconds between messages? (Default: 15)")
       .setMinValue(0)
-      .setRequired(false)
-  )
-  .addBooleanOption(
-    new u.bool()
-      .setName("indefinite")
-      .setDescription("Enables slowmode forever")
       .setRequired(false)
   );
 
@@ -226,6 +230,6 @@ module.exports = new u.cmd()
   .addSubcommand(timeout)
   .addSubcommand(warn)
   .addSubcommand(watch)
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.devMode)
   .toJSON();

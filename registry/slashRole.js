@@ -51,5 +51,5 @@ module.exports = new u.cmd()
   .addSubcommand(who)
   .addSubcommand(equip)
   .addSubcommand(list)
-  .setDMPermission(false)
+  .setContexts(u.contexts.Guild)
   .toJSON();

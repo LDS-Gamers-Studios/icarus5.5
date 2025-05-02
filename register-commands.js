@@ -12,23 +12,28 @@ const ldsg = require(`./config/snowflakes${config.devMode ? "-testing" : ""}.jso
  ************************/
 const globalCommandFiles = [
   "messageBookmark.js",
-  "slashAvatar.js"
+  "slashAvatar.js",
+  "slashFun.js",
+  "slashHelp.js"
 ];
 
 const guildCommandFiles = [
   "messageMod.js",
   "slashBank.js",
   "slashBot.js",
+  "slashGame.js",
   "slashGospel.js",
+  "slashIgn.js",
   "slashLdsg.js",
-  "slashRank.js",
   "slashManagement.js",
   "slashMod.js",
   "slashTeam.js",
   "slashTournaments.js",
+  "slashRank.js",
+  "slashRole.js",
+  "slashTag.js",
   "slashUser.js",
   "slashVoice.js",
-  "slashRole.js",
   "userMod.js"
 ];
 
@@ -91,6 +96,7 @@ async function register() {
   if (!applicationId) return console.log("Please put your application ID in config/config.json\nYou can find the ID here:\nhttps://discord.com/developers/applications");
   const commandPath = path.resolve(require.main ? path.dirname(require.main.filename) : process.cwd(), "./registry");
 
+  /** @type {any[]} */
   const guildCommandLoads = [];
   for (const command of guildCommandFiles) {
     const load = require(path.resolve(commandPath, command));
@@ -112,6 +118,7 @@ async function register() {
     }
   }
 
+  /** @type {any[]} */
   const globalCommandLoads = [];
   for (const command of globalCommandFiles) {
     const load = require(path.resolve(commandPath, command));
@@ -133,7 +140,7 @@ async function register() {
       console.log(`${c.name} (${commandType}): ${c.id}`);
     }
   }
-  const files = { commands: Object.fromEntries((global?.data ?? []).concat(guild.data).map(cmd => {
+  const files = { commands: Object.fromEntries((global?.data ?? []).concat(guild?.data ?? []).map(cmd => {
     return [
       `${getCommandType(cmd.type)}${cmd.name[0].toUpperCase()}${cmd.name.substring(1).toLowerCase()}`,
       cmd.id
