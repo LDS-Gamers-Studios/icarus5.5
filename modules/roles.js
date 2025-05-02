@@ -2,8 +2,7 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   roleInfo = require("../utils/roleInfo"),
-  u = require("../utils/utils"),
-  c = require("../utils/modCommon");
+  u = require("../utils/utils");
 
 const Module = new Augur.Module();
 
@@ -100,12 +99,6 @@ async function slashRoleWhoHas(int) {
     const processedEmbeds = u.pagedEmbedsDescription(embed, members).map(e => ({ embeds: [e] }));
     return u.manyReplies(int, processedEmbeds, ephemeral);
   } catch (error) { u.errorHandler(error, int); }
-}
-
-/** @param {Discord.GuildMember} member */
-function getInventory(member, override = true) {
-  if (override && u.perms.calc(member, ["mgr"])) return equipRoles;
-  return equipRoles.filter(r => member.roles.cache.hasAny(r.base, ...r.parents));
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */

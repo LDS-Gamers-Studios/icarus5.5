@@ -28,10 +28,8 @@ Module.addInteraction({ name: "tournaments",
   id: u.sf.commands.slashTournaments,
   onlyGuild: true,
   options: { registry: "slashTournament" },
-  // Only /tournament list is publicly available
-  permissions: (int) => int.options.getSubcommand() === 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
   process: async (int) => {
-    await int.deferReply({ ephemeral: true });
+    await int.deferReply({ flags: ["Ephemeral"] });
     const responses = await Promise.all([
       getTournaments("pending"),
       getTournaments("in_progress")
@@ -39,6 +37,7 @@ Module.addInteraction({ name: "tournaments",
 
     const tournaments = responses.flat().sort((a, b) => (new Date(a.start_at)).valueOf() - (new Date(b.start_at).valueOf()));
 
+    /** @type {string[]} */
     const displayTourneys = [];
     for (const tournament of tournaments) {
       const displayDate = (tournament.start_at ? u.time(new Date(tournament.start_at), "D") : "Unscheduled");

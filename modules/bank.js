@@ -296,68 +296,6 @@ async function slashBankDiscount(interaction) {
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
-/** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
-async function slashBankAward(interaction) {
-  try {
-    const giver = interaction.member;
-    const recipient = interaction.options.getMember("user");
-    const reason = interaction.options.getString("reason") || "Astounding feats of courage, wisdom, and heart";
-    let value = interaction.options.getInteger("amount", true);
-    if (!recipient) return interaction.reply({ content: "You can't just award *nobody*!", ephemeral: true });
-
-    let reply = "";
-
-    if (!u.perms.calc(giver, ["team", "volunteer", "mgr"])) {
-      reply = `*Nice try!* This command is for Volunteers and Team+ only!`;
-    } else if (recipient.id === giver.id) {
-      reply = `You can't award ***yourself*** ${ember}, silly.`;
-    } else if (recipient.id === interaction.client.user.id) {
-      reply = `You can't award ***me*** ${ember}, silly.`;
-    } else if (recipient.id !== interaction.client.user.id && recipient.user.bot) {
-      reply = `Bots don't really have a use for awarded ${ember}.`;
-    } else if (value === 0) {
-      reply = "You can't award ***nothing***.";
-    }
-
-    if (reply) return interaction.reply({ content: reply, ephemeral: true });
-
-    value = value < 0 ? Math.max(value, -1 * limit.ember) : Math.min(value, limit.ember);
-
-    const award = {
-      currency: "em",
-      discordId: recipient.id,
-      description: `From ${giver.displayName} (House Points): ${reason}`,
-      value,
-      giver: giver.id,
-      hp: true
-    };
-
-    const receipt = await u.db.bank.addCurrency(award);
-    const balance = await u.db.bank.getBalance(recipient.id);
-    const str = (/** @type {string} */ m) => value > 0 ? `awarded ${m} ${ember}${receipt.value}` : `docked ${ember}${-receipt.value} from ${m}`;
-    let embed = u.embed({ author: interaction.client.user })
-      .addFields(
-        { name:"Reason", value: reason },
-        { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
-      )
-      .setDescription(`${u.escapeText(giver.displayName)} just ${str("you")}! This counts toward your House's Points.`);
-
-    await interaction.reply(`Successfully ${str(recipient.displayName)} for ${reason}. This counts towards their House's Points.`);
-    recipient.send({ embeds: [embed] }).catch(() => interaction.followUp({ content: `I wasn't able to alert ${recipient} about the award. Please do so yourself.`, ephemeral: true }));
-    u.clean(interaction, 60000);
-
-    const house = getHouseInfo(recipient);
-
-    embed = u.embed({ author: recipient })
-      .setColor(house.color)
-      .addFields(
-        { name: "House", value: house.name },
-        { name: "Reason", value: reason }
-      )
-      .setDescription(`**${giver}** ${str(recipient.toString())}`);
-    interaction.client.getTextChannel(u.sf.channels.mopbucketawards)?.send({ embeds: [embed] });
-  } catch (e) { u.errorHandler(e, interaction); }
-}
 
 Module.addInteraction({
   name: "bank",
@@ -376,6 +314,8 @@ Module.addInteraction({
       default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   }
-});
+})
+/** @typedef {{ buyGame: buyGame, limit: limit, gb: gb, ember: ember }} BankShared */
+.addShared("bank.js", { buyGame, limit, gb, ember });
 
-module.exports = { buyGame, ...Module };
+module.exports = Module;
