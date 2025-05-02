@@ -23,20 +23,6 @@ function giveableRole(int, role) {
 }
 
 /**
- * @param {Discord.BaseInteraction<"cached">} int
- * @param {string} level
- */
-function calcGivePerms(int, level) {
-  /** @type {("mgr"|"mod"|"team"|"destinyManager"|"destinyValiantAdmin")[]} */
-  const permArr = ['mgr'];
-  if (['team', 'mod'].includes(level)) permArr.push("mod");
-  if (level === 'team') permArr.push("team");
-  if (level === "destinyManager") permArr.push("destinyManager");
-  if (level === "destinyValiantAdmin") permArr.push("destinyValiantAdmin");
-  return u.perms.calc(int.member, permArr);
-}
-
-/**
  * @param {Augur.GuildInteraction<"CommandSlash">} int
  * @param {Boolean} give
 */
@@ -175,7 +161,7 @@ Module.addInteraction({
         if (!u.perms.calc(interaction.member, ["team", "mod", "mgr"])) return;
         const withPerms = u.db.sheets.roles.team.filter(r => {
           if (option.value && !r.base.name.toLowerCase().includes(option.value.toLowerCase())) return false;
-          return calcGivePerms(interaction, r.level);
+          return u.perms.calc(interaction.member, [r.level]);
         }).sort((a, b) => b.base.comparePositionTo(a.base)).map(r => r.base.name);
         return interaction.respond(withPerms.map(r => ({ name: r, value: r })));
       }

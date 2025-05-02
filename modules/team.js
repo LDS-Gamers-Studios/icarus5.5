@@ -152,9 +152,7 @@ const Module = new Augur.Module()
       const withPerms = u.db.sheets.roles.team.filter(r => {
         if (option.value && !r.base.name.toLowerCase().includes(option.value.toLowerCase())) return;
 
-        const permArr = [r.level];
-        if (r.level === 'mod') permArr.push("team");
-        return u.perms.calc(int.member, permArr);
+        return u.perms.calc(int.member, [r.level]);
       })
         .sort((a, b) => b.base.comparePositionTo(a.base))
         .map(r => r.base.name)
