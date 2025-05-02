@@ -20,8 +20,8 @@ const user = (num, req = false) => new u.user()
   .setRequired(num === 1 || req);
 
 
-// ROLE COMMANDS
-const give = new u.sub()
+// ROLES
+const roleGive = new u.sub()
   .setName("give")
   .setDescription("Give someone a role")
   .addUserOption(
@@ -32,7 +32,7 @@ const give = new u.sub()
   )
   .addStringOption(role("give"));
 
-const take = new u.sub()
+const roleTake = new u.sub()
 .setName("take")
 .setDescription("Take a role from someone")
 .addUserOption(
@@ -44,8 +44,8 @@ const take = new u.sub()
 .addStringOption(role("take"));
 
 
-// BANK COMMANDS
-const award = new u.sub()
+// BANK
+const bankAward = new u.sub()
   .setName("award")
   .setDescription("Award ember to a member for the house cup.")
   .addUserOption(
@@ -70,8 +70,8 @@ const award = new u.sub()
   );
 
 
-// TOURNAMENT COMMANDS
-const champion = new u.sub()
+// TOURNAMENTS
+const tourneyChampion = new u.sub()
   .setName("champions")
   .setDescription("Declare tournament champions!")
   .addStringOption(
@@ -87,9 +87,21 @@ const champion = new u.sub()
   .addUserOption(user(5))
   .addUserOption(user(6));
 
-const reset = new u.sub()
+const tourneyReset = new u.sub()
   .setName("reset")
   .setDescription("Reset the Tournament Participant role");
+
+// RANK
+const rankReset = new u.sub()
+  .setName("reset")
+  .setDescription("Resets everyone's season XP and awards ember")
+  .addIntegerOption(
+    new u.int()
+      .setName("ember-reward")
+      .setDescription("How many ember to award in total (ideal is about 10,000)")
+      .setMinValue(0)
+      .setRequired(true)
+  );
 
 module.exports = new u.cmd()
   .setName("team")
@@ -98,22 +110,28 @@ module.exports = new u.cmd()
     new u.subGroup()
       .setName("role")
       .setDescription("Manage roles for a user.")
-      .addSubcommand(give)
-      .addSubcommand(take)
+      .addSubcommand(roleGive)
+      .addSubcommand(roleTake)
   )
   .addSubcommandGroup(
     new u.subGroup()
       .setName("bank")
       .setDescription("Interact with currency")
-      .addSubcommand(award)
+      .addSubcommand(bankAward)
   )
   .addSubcommandGroup(
     new u.subGroup()
       .setName("tournament")
       .setDescription("Manage tournaments")
-      .addSubcommand(champion)
-      .addSubcommand(reset)
+      .addSubcommand(tourneyChampion)
+      .addSubcommand(tourneyReset)
   )
-  .setDMPermission(false)
+  .addSubcommandGroup(
+    new u.subGroup()
+      .setName("rank")
+      .setDescription("Manage the leaderboard season")
+      .addSubcommand(rankReset)
+  )
+  .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.privateCommand)
   .toJSON();

@@ -46,10 +46,18 @@ module.exports = {
      * Adds currency to a user's account.
      * @param {Omit<CurrencyRecord, "timestamp">} data The data object.
      * @return {Promise<CurrencyRecord>} A record of the addition.
-     */
+  */
   addCurrency: function(data) {
     if (typeof data.discordId !== 'string' || typeof data.giver !== 'string') throw new TypeError(outdated);
     return new Bank(data).save();
+  },
+  /**
+   * Adds many currency records
+   * @param {CurrencyRecord[]} data The data object.
+   * @return {Promise<CurrencyRecord[]>} A record of the addition.
+   */
+  addManyTransactions: function(data) {
+    return Bank.insertMany(data, { lean: true });
   },
   fixUp: async function() {
     /**
