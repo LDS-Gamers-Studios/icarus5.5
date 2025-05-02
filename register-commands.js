@@ -27,11 +27,11 @@ const guildCommandFiles = [
   "slashLdsg.js",
   "slashManagement.js",
   "slashMod.js",
-  "slashTeam.js",
-  "slashTournaments.js",
   "slashRank.js",
   "slashRole.js",
   "slashTag.js",
+  "slashTeam.js",
+  "slashTournaments.js",
   "slashUser.js",
   "slashVoice.js",
   "userMod.js"
