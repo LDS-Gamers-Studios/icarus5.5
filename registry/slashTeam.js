@@ -7,6 +7,7 @@ const role = (action = "add") => new u.string()
   .setDescription(`The role to ${action}`)
   .setRequired(action === 'equip' ? false : true)
   .setAutocomplete(true);
+
 /**
  *
  * @param {number | null} num
