@@ -27,7 +27,7 @@ async function getTournaments(state) {
 Module.addInteraction({ name: "tournaments",
   id: u.sf.commands.slashTournaments,
   onlyGuild: true,
-  options: { registry: "slashTournament" },
+  options: { registry: "slashTournaments" },
   process: async (int) => {
     await int.deferReply({ flags: ["Ephemeral"] });
     const responses = await Promise.all([

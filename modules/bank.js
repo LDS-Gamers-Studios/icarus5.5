@@ -315,7 +315,10 @@ Module.addInteraction({
     }
   }
 })
-/** @typedef {{ buyGame: buyGame, limit: limit, gb: gb, ember: ember }} BankShared */
 .addShared("bank.js", { buyGame, limit, gb, ember });
+
+/**
+ * @typedef {{ buyGame: buyGame, limit: limit, gb: gb, ember: ember }} BankShared
+ */
 
 module.exports = Module;

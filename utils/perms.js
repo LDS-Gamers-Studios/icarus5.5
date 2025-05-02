@@ -63,7 +63,11 @@ const perms = {
   /**
    * @param {Discord.GuildMember | null |undefined } m
    */
-  isOwner: (m) => m && permFuncs.botOwner(m),
+  isOwner: (m) => m && permFuncs.botOwner(m)
 };
+
+/**
+ * @typedef {keyof permFuncs} Perms
+ */
 
 module.exports = perms;
