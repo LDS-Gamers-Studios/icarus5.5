@@ -22,7 +22,9 @@ const ChannelXP = require("../models/ChannelXP.model");
  * @prop {boolean} twitchFollow
  */
 
-/** @typedef {UserRecord & {rank: {season: number, lifetime: number}}} RankedUser */
+/**
+ * @typedef {UserRecord & {rank: {season: number, lifetime: number}}} RankedUser
+ */
 
 /**
  * @typedef leaderboardOptions Options for the leaderboard fetch
@@ -192,7 +194,7 @@ const models = {
 
     // Get requested user
     const record = await User.findOne({ discordId }, undefined, { lean: true }).exec();
-    if (!record || filterOptedOut && record.trackXP === TrackXPEnum.OFF) return null;
+    if (!record || (filterOptedOut && record.trackXP === TrackXPEnum.OFF)) return null;
 
     const seasonCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, currentXP: { $gt: record.currentXP }, discordId: { $in: members } });
     const lifeCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, totalXP: { $gt: record.totalXP }, discordId: { $in: members } });
