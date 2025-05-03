@@ -1,5 +1,5 @@
 // @ts-check
-const moment = require("moment");
+const moment = require("moment-timezone");
 const Bank = require("../models/Bank.model");
 const Discord = require("discord.js");
 /**
@@ -28,14 +28,22 @@ module.exports = {
   },
   /**
    * @param {string[]} discordIds
+   * @param {moment.Moment} [startDate]
    * @return {Promise<CurrencyRecord[]>}
    */
-  getReport: async function(discordIds) {
+  getReport: async function(discordIds, startDate) {
+    if (!startDate) {
+      const seasonStart = moment.tz("America/Denver").startOf("month").hour(19);
+      const monthsAgo = seasonStart.month() % 4;
+      seasonStart.subtract(monthsAgo, "months");
+      startDate ??= seasonStart;
+    }
+
     return Bank.find({
       discordId: { $in: discordIds },
       currency: "em",
       hp: true,
-      timestamp: { $gte: moment().subtract(3, "months") }
+      timestamp: { $gte: startDate.toDate() }
     }, undefined, { lean: true }).exec();
   },
   /**
