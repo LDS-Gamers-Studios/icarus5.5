@@ -57,7 +57,17 @@ module.exports = {
    * @return {Promise<CurrencyRecord[]>} A record of the addition.
    */
   addManyTransactions: function(data) {
-    return Bank.insertMany(data, { lean: true });
+    const records = data.map(d => new Bank(d));
+    return Bank.insertMany(records, { lean: true });
+  },
+  /**
+   * Gets the house points
+   * @param {string[]} discordIds
+   * @param {number} time
+   * @return {Promise<CurrencyRecord[]>} A record of the addition.
+   */
+  getPointAwards(discordIds, time) {
+    return Bank.find({ discordId: { $in: discordIds }, timestamp: { $gt: time }, hp: true });
   },
   fixUp: async function() {
     /**

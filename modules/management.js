@@ -46,14 +46,14 @@ function runCelebrate(int) {
   return int.editReply("Celebrate run!");
 }
 
-/** @param {string} [holiday] */
-async function setBanner(holiday) {
+/** @param {string} [filename] */
+async function setBanner(filename) {
   const date = new Date();
   const month = date.getMonth();
   const day = date.getDate();
 
   // should look for the banners in banners.json
-  const banner = banners.find(b => holiday ? b.file === holiday.toLowerCase() : b.month === month && b.day === day);
+  const banner = banners.find(b => filename ? b.file === filename.toLowerCase() : b.month === month && b.day === day);
   if (!banner) return "I couldn't find that file."; // end function here if there's not a banner
 
   const bannerPath = `media/banners/${banner.file}.png`;
@@ -68,7 +68,7 @@ async function setBanner(holiday) {
   try {
     await ldsg.setBanner(bannerPath);
   } catch (error) {
-    if (holiday) return "I couldn't set the banner.";
+    if (filename) return "I couldn't set the banner.";
     Module.client.getTextChannel(u.sf.channels.team.logistics)?.send({
       content: `Failed to set banner, please do this manually.`,
       files: [bannerPath]
@@ -174,6 +174,11 @@ Module.addInteraction({
 })
 .setClockwork(() =>
   setInterval(() => setBanner(), 24 * 60 * 60_000)
-);
+)
+.addShared("management.js", setBanner);
+
+/**
+ * @typedef {setBanner} ManagementShared
+ */
 
 module.exports = Module;
