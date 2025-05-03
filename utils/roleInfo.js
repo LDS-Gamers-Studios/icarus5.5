@@ -10,11 +10,12 @@ const u = require("./utils");
  */
 function getInventory(member, override = true) {
   const equipRoles = u.db.sheets.roles.equip;
-  if (override && u.perms.calc(member, ["mgr"])) return equipRoles;
+  if (override && u.perms.calc(member, ["mgmt"])) return equipRoles;
   return equipRoles.filter(r => member.roles.cache.hasAny(r.base.id, ...r.parents));
 }
 
 /**
+ * null = no role, true = success, false = not equipable
  * @param {GuildMember} member
  * @param {string | null} baseName
  * @param {string} [baseId]
@@ -28,14 +29,12 @@ async function equip(member, baseName, baseId) {
     return true;
   }
 
-
+  /** @type {(import("../database/sheetTypes").Role & { color: import("discord.js").Role }) | undefined} */
   let role;
   if (baseId) {
     role = u.db.sheets.roles.equip.get(baseId);
   } else if (baseName) {
     role = u.db.sheets.roles.equip.find(r => r.base.name.toLowerCase() === baseName.toLowerCase());
-  } else {
-    return null;
   }
 
   // role doesn't exist
