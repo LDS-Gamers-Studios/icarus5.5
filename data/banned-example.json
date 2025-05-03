@@ -18,6 +18,13 @@
     "features": {
         "welcome": [],
         "suggestions": [],
-        "flag": []
+        "flag": [],
+        "xp": {
+            "reactionsReceiving": [""],
+            "reactionsGiving": [""],
+            "voice": [""],
+            "posts": [""],
+            "polls": [""]
+        }
     }
 }
