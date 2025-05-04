@@ -16,9 +16,9 @@
         "ldsgamers.com"
     ],
     "features": {
-        "welcome": [],
-        "suggestions": [],
-        "flag": [],
+        "welcome": [""],
+        "suggestions": [""],
+        "flag": [""],
         "xp": {
             "reactionsReceiving": [""],
             "reactionsGiving": [""],

@@ -110,7 +110,7 @@ async function slashIgnBirthday(int) {
 
 
   if (setting) {
-    await u.db.user.bdayMsgs(int.user.id, setting === "FULL");
+    await u.db.user.update(int.user.id, { sendBdays: setting === "FULL" });
   }
 
   if (month && day) {
