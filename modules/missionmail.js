@@ -77,7 +77,7 @@ async function sendUnsent(receiver) {
 
     // figure out who it is from
     const fromEmail = parsed.from?.[0].address ?? "Err:NoFromAddress";
-    const missionaryId = u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address));
+    const missionaryId = u.db.sheets.missionaries.findKey(address => fromEmail.includes(address));
 
     // get the server member. if they don't show up, they're probably not a member anymore
     const missionary = Module.client.guilds.cache.get(u.sf.ldsg)?.members.cache.get(missionaryId ?? "");
@@ -230,7 +230,9 @@ Module
       await int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: message.embeds, files: [...message.attachments.values()] });
     }
 
-    int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: int.message.embeds, files: [...int.message.attachments.values()] });
+    if (int.message.embeds.length > 0 || int.message.attachments.size > 0) {
+      int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: int.message.embeds, files: [...int.message.attachments.values()] });
+    }
     return true;
   }
 

@@ -2,48 +2,50 @@
 const u = require("./regUtils");
 
 const pull = new u.sub()
-.setName("pull")
-.setDescription("pull any new emails received from missionarys");
+  .setName("fetch")
+  .setDescription("Check for new emails from missionarys");
 
 const register = new u.sub()
   .setName("register")
-  .setDescription("register a missionary email")
+  .setDescription("Record a missionary's email")
   .addStringOption(
     new u.string()
       .setName("email")
-      .setDescription("the missionary email you wish to register (must end in @missionary.org")
+      .setDescription("The missionary's email (must end in @missionary.org")
       .setRequired(true)
   )
   .addUserOption(
     new u.user()
       .setName("user")
-      .setDescription("Who do you wish to register this email to? (needs mod for other than yourself)")
+      .setDescription("Who do you want to register this email to?")
       .setRequired(true)
   );
 
 const remove = new u.sub()
   .setName("remove")
-  .setDescription("un-register a persons missionary email if they have one")
+  .setDescription("Remove a missionary's email if they have one")
   .addUserOption(
     new u.user()
       .setName("user")
-      .setDescription("Whose email do you wish to un-register (needs mod for other than yourself)")
+      .setDescription("Whose email do you want to remove?")
       .setRequired(true)
   );
+
 const check = new u.sub()
   .setName("check")
-  .setDescription("check a if a person has a registered missionary email")
+  .setDescription("Check a if someone has a registered missionary email")
   .addUserOption(
     new u.user()
       .setName("user")
-      .setDescription("Whose email do you wish to check (needs mod for other than yourself)")
+      .setDescription("Whose email do you want to check?")
       .setRequired(true)
   );
 
 module.exports = new u.cmd()
   .setName("missionary")
-  .setDescription("send and get emails from missionmail@ldsgamers.com")
+  .setDescription("Send and get emails from missionmail@ldsgamers.com")
   .setContexts(u.contexts.Guild)
+  .setDefaultMemberPermissions(u.devMode)
   .addSubcommand(pull)
   .addSubcommand(remove)
   .addSubcommand(register)
