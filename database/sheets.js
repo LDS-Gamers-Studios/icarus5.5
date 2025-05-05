@@ -16,6 +16,8 @@ const data = {
     /** @type {GoogleSpreadsheetRow[]} */
     igns: [],
     /** @type {GoogleSpreadsheetRow[]} */
+    missionaries: [],
+    /** @type {GoogleSpreadsheetRow[]} */
     optRoles: [],
     /** @type {GoogleSpreadsheetRow[]} */
     roles: [],
@@ -29,8 +31,6 @@ const data = {
     wipChannels: [],
     /** @type {GoogleSpreadsheetRow[]} */
     xpSettings: [],
-    /** @type {GoogleSpreadsheetRow[]} */
-    missionaries: [],
     /** @type {{ config: GoogleSpreadsheet, games: GoogleSpreadsheet } | null}} */
     docs: null
   },
@@ -42,6 +42,8 @@ const data = {
   },
   /** @type {Collection<string, types.IGN>} */
   igns: new Collection(),
+  /** @type {Collection<string, string>} */
+  missionaries: new Collection(),
   /** @type {Collection<string, types.OptRole>} */
   optRoles: new Collection(),
   roles: {
@@ -66,8 +68,6 @@ const data = {
   wipChannels: new Collection(),
   /** @type {{ channels: Collection<string, types.ChannelXPSetting>, banned: Set<string> }} */
   xpSettings: { banned: new Set(), channels: new Collection() },
-  /** @type {Collection<string, string>} */
-  missionaries: new Collection()
 };
 
 /** @param {string} [sheetId] */
@@ -93,14 +93,14 @@ function getServer(client) {
 const sheetMap = {
   games: [],
   igns: ["IGN", "System"],
+  missionaries: ["Mail", "UserId"],
   optRoles: ["Opt-In Roles", "RoleID"],
   roles: ["Roles", "Base Role ID"],
   sponsors: ["Sponsor Channels", "Sponsor"],
   tourneyChampions: ["Tourney Champions", "Key"],
   vcNames: ["Voice Channel Names", "Name"],
-  xpSettings: ["XP Settings", "ChannelId"],
   wipChannels: ["WIP Channel Defaults", "ChannelId"],
-  missionaries: ["Mail", "UserId"]
+  xpSettings: ["XP Settings", "ChannelId"],
 };
 
 const mappers = {
@@ -134,6 +134,14 @@ const mappers = {
     name: row.get("Name"),
     system: row.get("System")
   }),
+
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @returns {string}
+  */
+  missionaries: (row) => {
+    return row.get("Email");
+  },
 
   /**
    * @param {GoogleSpreadsheetRow} row
@@ -240,10 +248,6 @@ const mappers = {
       posts: isNaN(posts) ? 1 : posts,
       preferMedia: row.get("PreferMedia") === "TRUE"
     };
-  },
-  /** @param {GoogleSpreadsheetRow} row */
-  missionaries: (row) => {
-    return row.get("Email");
   }
 };
 

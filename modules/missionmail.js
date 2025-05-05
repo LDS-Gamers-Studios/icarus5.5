@@ -75,6 +75,14 @@ async function sendUnsent(receiver) {
       parser.end();
     });
 
+    // figure out who it is from
+    const fromEmail = parsed.from?.[0].address ?? "Err:NoFromAddress";
+    const missionaryId = u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address));
+
+    // get the server member. if they don't show up, they're probably not a member anymore
+    const missionary = Module.client.guilds.cache.get(u.sf.ldsg)?.members.cache.get(missionaryId ?? "");
+    if (!missionary) continue;
+
     // make sure there is text
     if (!parsed.text) {
       if (parsed.html) {
@@ -99,14 +107,6 @@ async function sendUnsent(receiver) {
 
     // now that we've removed the reply...
     if (!parsed.text) continue;
-
-    // figure out who it is from
-    const fromEmail = parsed.from ? parsed.from[0].address : "Err:NoFromAddress";
-    const missionaryId = u.db.sheets.missionaries.findKey(address => fromEmail?.includes(address));
-
-    // get the server member. if they don't show up, they're probably not a member anymore
-    const missionary = Module.client.guilds.cache.get(u.sf.ldsg)?.members.cache.get(missionaryId ?? "");
-    if (!missionary) continue;
 
     const embed = u.embed({ author: missionary })
       .setTitle(`${missionary.displayName} - ${parsed.subject}`)
@@ -133,7 +133,7 @@ async function sendUnsent(receiver) {
       components: [actionRow]
     });
   }
-  receiver.messageFlagsAdd(messageIds, ["\\seen"]);
+  await receiver.messageFlagsAdd(messageIds, ["\\seen"]);
   return messages.length;
 }
 
@@ -206,10 +206,10 @@ Module
     await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionary.approvals) });
 
     switch (subcommand) {
-      case "remove": return slashMissionaryRemove(int);
+      case "pull": return slashMissionaryPull(int);
       case "check": return slashMissionaryCheck(int);
       case "register": return slashMissionaryRegister(int);
-      case "pull": return slashMissionaryPull(int);
+      case "remove": return slashMissionaryRemove(int);
       default: return u.errorHandler(new Error("Slash Missionary - Unhandled Subcommand"), int);
     }
   }

@@ -115,7 +115,8 @@
               "description": "Use an app password. Google it if you need more info",
               "type": "string"
             }
-          }
+          },
+          "required": ["enabled", "email", "pass"]
         },
         "creds": {
           "description": "Create a project, give it access to google sheets, and create a service account credential. Download the JSON and that should fit in this object",
@@ -145,7 +146,7 @@
           "required": ["config", "games", "applications"]
         }
       },
-      "required": ["creds","sheets"]
+      "required": ["creds","sheets", "mail"]
     },
     "prefix": {
       "description": "The bot will respond to commands starting with this string",
