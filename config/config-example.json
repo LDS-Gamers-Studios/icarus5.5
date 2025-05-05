@@ -86,6 +86,7 @@
     "count": 5000
   },
   "badgePath": "./media/badges",
+  "tagFilePath": "./media/tags",
   "xp": {
     "base": 25,
     "featherCooldown": 3,

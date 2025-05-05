@@ -60,10 +60,12 @@ const perms = {
     }
     return false;
   },
-  /**
-   * @param {Discord.GuildMember | null |undefined } m
-   */
+  /** @param {Discord.GuildMember | null |undefined } m */
   isOwner: (m) => m && permFuncs.botOwner(m),
+
+  /** @param {Discord.GuildMember | null |undefined } m */
+  inHouse: (m) => m && permFuncs.inHouse(m),
+
 };
 
 module.exports = perms;

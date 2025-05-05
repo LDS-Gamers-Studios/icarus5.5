@@ -20,7 +20,7 @@ async function saveAttachment(attachment, cmd) {
     url: attachment.url,
     responseType: "stream",
   });
-  response.data.pipe(fs.createWriteStream(process.cwd() + "/media/tags/" + cmd._id.toString()));
+  response.data.pipe(fs.createWriteStream(config.tagFilePath + "/" + cmd._id.toString()));
 }
 
 /** @type {Discord.Collection<string, tag>} */
@@ -83,7 +83,7 @@ function encodeTag(tag, msg, int) {
   }
   return {
     content: response ?? undefined,
-    files: tag.attachment ? [new u.Attachment(`./media/tags/${tag._id}`).setName(tag.attachment)] : [],
+    files: tag.attachment ? [new u.Attachment(`${config.tagFilePath}/${tag._id}`).setName(tag.attachment)] : [],
     allowedMentions: { users: target ? [target.id, user.id] : [user.id] }
   };
 }
@@ -94,7 +94,7 @@ function encodeTag(tag, msg, int) {
  */
 function deleteAttachment(embed, command) {
   embed.addFields({ name: "Attachment", value: "[Deleted]" });
-  const path = process.cwd() + `/media/tags/${command._id.toString()}`;
+  const path = `${config.tagFilePath}/${command._id.toString()}`;
   if (fs.existsSync(path)) fs.unlinkSync(path);
 }
 
@@ -231,7 +231,7 @@ async function slashTagValue(int) {
   const embed = u.embed({ author: int.member })
     .setTitle(tag.tag)
     .setDescription(tag.response || null);
-  return int.editReply({ embeds: [embed], files: tag.attachment ? [new u.Attachment(`./media/tags/${tag._id}`).setName(tag.attachment)] : [] });
+  return int.editReply({ embeds: [embed], files: tag.attachment ? [new u.Attachment(`${config.tagFilePath}/${tag._id}`).setName(tag.attachment)] : [] });
 }
 
 const Module = new Augur.Module()

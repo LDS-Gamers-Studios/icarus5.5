@@ -207,6 +207,11 @@
       "type": "string",
       "default": "./media/badges"
     },
+    "tagFilePath": {
+      "description": "Where your tag attachments are stored",
+      "type": "string",
+      "default": "./media/tags"
+    },
     "xp": {
       "type": "object",
       "properties": {
@@ -245,6 +250,7 @@
     "token",
     "memberMilestone",
     "badgePath",
+    "tagFilePath",
     "xp"
   ]
 }

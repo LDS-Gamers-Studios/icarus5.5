@@ -7,6 +7,16 @@
     "callbackUrl": "http://localhost:3000/api/auth/discord/redirect"
   },
   "encryptionToken": "",
-  "url": "http://localhost:3000",
-  "frontend": "http://localhost:3006"
+  "backend": "http://localhost:3000",
+  "frontend": "http://localhost:3006",
+  "tournamentReady": false,
+  "deployBuild": false,
+  "allowedCorsOrigins": [
+    "http://localhost:3006"
+  ],
+  "cspHeaders": [
+    "default-src 'self';"
+  ],
+  "maxCookieDays": 3,
+  "monitoring": true
 }
