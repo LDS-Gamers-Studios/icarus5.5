@@ -84,6 +84,7 @@ async function sendUnsent(receiver) {
     }
 
     if (!parsed.text) continue;
+
     // trim the reply quote from the bottom if there is one (for some reason it was bypassing email replace)
     for (const regex of replyRegexes) {
       const match = parsed.text.search(regex);
@@ -104,15 +105,14 @@ async function sendUnsent(receiver) {
 
     const embeds = u.pagedEmbedsDescription(embed, parsed.text.replace(fromEmail, missionary.displayName).split("\n"));
 
-    // buttons are handled at the bottom, only the embed gets forwarded. anything for mods but not normies should not go in the embed.
-    const approveBtn = new u.Button().setCustomId(approveIdPrefix + embeds.length).setLabel("Approve").setStyle(ButtonStyle.Primary);
-    const rejectBtn = new u.Button().setCustomId(rejectIdPrefix + embeds.length).setLabel("Reject").setStyle(ButtonStyle.Danger);
-    const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
-
     for (const em of embeds) {
       await approvals.send({ embeds: [em] });
     }
 
+    // buttons are handled at the bottom, only the embed gets forwarded. anything for mods but not normies should not go in the embed.
+    const approveBtn = new u.Button().setCustomId(approveIdPrefix + embeds.length).setLabel("Approve").setStyle(ButtonStyle.Primary).setEmoji("✅");
+    const rejectBtn = new u.Button().setCustomId(rejectIdPrefix).setLabel("Reject").setStyle(ButtonStyle.Danger).setEmoji("🗑️");
+    const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
 
     const files = parsed.attachments?.slice(0, 9).map(a => new u.Attachment(a.content).setName(a.fileName ?? a.generatedFileName));
 
@@ -148,11 +148,11 @@ async function slashMissionaryRegister(int) {
 
   if (!email.endsWith("@missionary.org")) return int.editReply("Missionary emails must end with `@missionary.org`");
 
-  if (u.db.sheets.missionaries.has(user.id)) {
+  const entry = u.db.sheets.data.missionaries.find(m => m.get("UserId") === user.id);
+  if (entry) {
     // update db entry
-    const entry = u.db.sheets.data.missionaries.find(m => m.get("UserId") === user.id);
-    entry?.set("Email", email);
-    await entry?.save();
+    entry.set("Email", email);
+    await entry.save();
   } else {
     const row = await u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
     if (row) u.db.sheets.data.missionaries.push(row);
@@ -210,8 +210,10 @@ Module
   if (int.customId.startsWith(approveIdPrefix)) {
     if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to interact with this!", flags: ["Ephemeral"] });
 
-    const embedPages = parseInt(int.customId.substring(approveIdPrefix.length));
-    const pagedMessages = await int.channel?.messages.fetch({ before: int.message.id, limit: embedPages });
+    const embedCount = parseInt(int.customId.substring(approveIdPrefix.length));
+    const pagedMessages = await int.channel?.messages.fetch({ before: int.message.id, limit: embedCount + 10 })
+      .then((msgs) => msgs.filter(m => m.author.id === int.client.user.id).first(embedCount));
+
     if (!pagedMessages) return int.reply({ content: "I couldn't find the messages to forward!" });
 
     await int.update({ content: int.message.content + `\n\nApproved by ${int.user}`, components: [] });
@@ -226,7 +228,7 @@ Module
     return true;
   }
 
-  if (int.customId.startsWith(rejectIdPrefix)) {
+  if (int.customId === rejectIdPrefix) {
     if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to interact with this!", flags: ["Ephemeral"] });
 
     int.update({ content: int.message.content + `\n\n Rejected by ${int.user}`, components: [] });
