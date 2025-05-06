@@ -43,7 +43,7 @@ const check = new u.sub()
 
 module.exports = new u.cmd()
   .setName("missionary")
-  .setDescription("Send and get emails from missionmail@ldsgamers.com")
+  .setDescription("Manage missonary mail settings")
   .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.devMode)
   .addSubcommand(pull)

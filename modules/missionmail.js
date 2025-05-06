@@ -10,18 +10,9 @@ const { ButtonStyle } = require("discord.js");
 const [approveIdPrefix, rejectIdPrefix] = ["approveMissionMail", "rejectMissionMail"];
 
 const replyRegexes = [
-  // /^on[\s\n\r]+.+wrote:[\s\n\r]*$/im,
-  // /on[\s\n\r]+.+wrote:[\s\n\r]*/im,
   /^on[^>]*@[^<]*wrote:\n\n>/im,
-  // /^on\s.+wrote:\s*$/im, :(){:|:&};:
-  // /On\s.+wrote:\s*/im,
-  /^>.*$/m,
-  /^-+ original message -+$/m,
-  /^from:.*$/m,
-  /^sent:.*$/m,
-  /^to:.*$/m,
-  /^subject:.*$/m,
-  /^date:.*$/m
+  /^-+ original message -+$/im,
+  /^-+ forwarded message -+$/im
 ];
 
 const Module = new Augur.Module();
@@ -93,10 +84,9 @@ async function sendUnsent(receiver) {
     }
 
     if (!parsed.text) continue;
-
     // trim the reply quote from the bottom if there is one (for some reason it was bypassing email replace)
     for (const regex of replyRegexes) {
-      const match = parsed.text.toLowerCase().search(regex);
+      const match = parsed.text.search(regex);
       if (match !== -1) { // it found it!
         parsed.text = parsed.text.substring(0, match);
         break; // Stop after the first match to avoid over-trimming
@@ -206,7 +196,7 @@ Module
     await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionary.approvals) });
 
     switch (subcommand) {
-      case "pull": return slashMissionaryPull(int);
+      case "fetch": return slashMissionaryPull(int);
       case "check": return slashMissionaryCheck(int);
       case "register": return slashMissionaryRegister(int);
       case "remove": return slashMissionaryRemove(int);
