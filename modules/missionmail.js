@@ -5,7 +5,7 @@ const receive = require("imapflow");
 const interpret = require("mailparser-mit");
 const htmlparse = require("html-to-text");
 const Augur = require("augurbot-ts");
-const { ButtonStyle } = require("discord.js");
+const Discord = require("discord.js");
 
 const [approveIdPrefix, rejectIdPrefix] = ["approveMissionMail", "rejectMissionMail"];
 
@@ -110,8 +110,8 @@ async function sendUnsent(receiver) {
     }
 
     // buttons are handled at the bottom, only the embed gets forwarded. anything for mods but not normies should not go in the embed.
-    const approveBtn = new u.Button().setCustomId(approveIdPrefix + embeds.length).setLabel("Approve").setStyle(ButtonStyle.Primary).setEmoji("✅");
-    const rejectBtn = new u.Button().setCustomId(rejectIdPrefix).setLabel("Reject").setStyle(ButtonStyle.Danger).setEmoji("🗑️");
+    const approveBtn = new u.Button().setCustomId(approveIdPrefix + embeds.length).setLabel("Approve").setStyle(Discord.ButtonStyle.Primary).setEmoji("✅");
+    const rejectBtn = new u.Button().setCustomId(rejectIdPrefix).setLabel("Reject").setStyle(Discord.ButtonStyle.Danger).setEmoji("🗑️");
     const actionRow = u.MessageActionRow().addComponents([approveBtn, rejectBtn]);
 
     const files = parsed.attachments?.slice(0, 9).map(a => new u.Attachment(a.content).setName(a.fileName ?? a.generatedFileName));
@@ -212,7 +212,7 @@ Module
 
     const embedCount = parseInt(int.customId.substring(approveIdPrefix.length));
     const pagedMessages = await int.channel?.messages.fetch({ before: int.message.id, limit: embedCount + 10 })
-      .then((msgs) => msgs.filter(m => m.author.id === int.client.user.id).first(embedCount));
+      .then((/** @type {Discord.Collection<String, Discord.Message<true>>} */ msgs) => msgs.filter(m => m.author.id === int.client.user.id).first(embedCount));
 
     if (!pagedMessages) return int.reply({ content: "I couldn't find the messages to forward!" });
 
