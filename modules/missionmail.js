@@ -214,9 +214,8 @@ Module
     if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to interact with this!", flags: ["Ephemeral"] });
 
     const embedCount = parseInt(int.customId.substring(approveIdPrefix.length));
-    const pagedMessages = (await int.channel?.messages.fetch({ before: int.message.id, limit: embedCount + 10 }))
-      ?.filter(m => m.author.id === int.client.user.id)
-      .first(embedCount);
+    const pagedMessages = await int.channel?.messages.fetch({ before: int.message.id, limit: embedCount + 10 })
+      .then((/** @type {Discord.Collection<String, Discord.Message<true>>} */ msgs) => msgs.filter(m => m.author.id === int.client.user.id).first(embedCount));
 
     if (!pagedMessages) return int.reply({ content: "I couldn't find the messages to forward!" });
 
