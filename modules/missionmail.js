@@ -10,7 +10,7 @@ const Discord = require("discord.js");
 const [approveIdPrefix, rejectIdPrefix] = ["approveMissionMail", "rejectMissionMail"];
 
 const replyRegexes = [
-  /^on[^>]*@[^<]*wrote:\n\n>/im,
+  /^on[^>]*@[^>]*> wrote:\n\n>/im,
   /^-+ original message -+$/im,
   /^-+ forwarded message -+$/im
 ];
@@ -130,11 +130,8 @@ async function sendUnsent(receiver) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryPull(int) {
   try {
-    await int.editReply("Pulling Emails.");
-
     const pullCount = await loadEmails();
-    int.editReply(`Pulled ${pullCount} Emails`);
-
+    int.editReply(`Pulled ${pullCount} Email(s)`);
   } catch (error) {
     u.errorHandler(error, "slashMissionaryPull");
     return await int.editReply("Error pulling emails.");
@@ -165,6 +162,8 @@ async function slashMissionaryRegister(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryRemove(int) {
   const user = int.options.getUser("user", true);
+
+  if (!u.db.sheets.missionaries.has(user.id)) return int.editReply(`${user} doesn't have a missionary email set up!`);
 
   await u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.delete();
   await u.db.sheets.loadData(int.client, true, true, "missionaries");
@@ -197,10 +196,9 @@ Module
   hidden: true,
   permissions: (int) => u.perms.calc(int.member, ["mod"]),
   process: async (int) => {
-    const subcommand = int.options.getSubcommand(true);
     await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionary.approvals) });
 
-    switch (subcommand) {
+    switch (int.options.getSubcommand(true)) {
       case "fetch": return slashMissionaryPull(int);
       case "register": return slashMissionaryRegister(int);
       case "remove": return slashMissionaryRemove(int);
@@ -216,8 +214,9 @@ Module
     if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to interact with this!", flags: ["Ephemeral"] });
 
     const embedCount = parseInt(int.customId.substring(approveIdPrefix.length));
-    const pagedMessages = await int.channel?.messages.fetch({ before: int.message.id, limit: embedCount + 10 })
-      .then((/** @type {Discord.Collection<String, Discord.Message<true>>} */ msgs) => msgs.filter(m => m.author.id === int.client.user.id).first(embedCount));
+    const pagedMessages = (await int.channel?.messages.fetch({ before: int.message.id, limit: embedCount + 10 }))
+      ?.filter(m => m.author.id === int.client.user.id)
+      .first(embedCount);
 
     if (!pagedMessages) return int.reply({ content: "I couldn't find the messages to forward!" });
 

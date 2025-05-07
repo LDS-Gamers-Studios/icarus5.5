@@ -8,16 +8,16 @@ const pull = new u.sub()
 const register = new u.sub()
   .setName("register")
   .setDescription("Record a missionary's email")
+  .addUserOption(
+    new u.user()
+    .setName("user")
+    .setDescription("Who do you want to register this email to?")
+    .setRequired(true)
+  )
   .addStringOption(
     new u.string()
       .setName("email")
       .setDescription("The missionary's email (must end in @missionary.org")
-      .setRequired(true)
-  )
-  .addUserOption(
-    new u.user()
-      .setName("user")
-      .setDescription("Who do you want to register this email to?")
       .setRequired(true)
   );
 

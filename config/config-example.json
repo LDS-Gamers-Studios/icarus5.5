@@ -50,7 +50,7 @@
   ],
   "google": {
     "mail": {
-      "enabled":false,
+      "enabled": false,
       "email": "missionmail@ldsgamers.com",
       "pass": "Use an app password. Google it if you need more info"
     },
