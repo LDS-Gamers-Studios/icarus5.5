@@ -1,4 +1,5 @@
 {
+  "$schema": "./config-schema.json",
   "adminId": [
     "put any user IDs that need to control the bot here"
   ],
@@ -11,9 +12,7 @@
   "applicationId": "https://discord.com/developers/applications",
   "color": "0xf89a22",
   "db": {
-    "model": "database/dbControllers.js",
-    "note": "(Don't change this value, it's a note.) Connection string format: (mongodb(+srv?) or localhost:27017)://<username>:<password>@<connection>",
-    "db": "localhost:27017/icarus or mongodb(+srv?)://<connection>/icarus",
+    "db": "mongodb://localhost:27017/icarus or mongodb+srv://<connection>/icarus",
     "settings": {
       "useNewUrlParser": true,
       "useUnifiedTopology": true,
@@ -50,7 +49,11 @@
     "voiceStateUpdate"
   ],
   "google": {
-    "api": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
+    "mail": {
+      "enabled": false,
+      "email": "missionmail@ldsgamers.com",
+      "pass": "Use an app password. Google it if you need more info"
+    },
     "creds": {
       "type": "Create a project, give it access to google sheets, and create a service account credential. Download the JSON and that should fit in this object",
       "project_id": "",
@@ -83,6 +86,7 @@
     "count": 5000
   },
   "badgePath": "./media/badges",
+  "tagFilePath": "./media/tags",
   "xp": {
     "base": 25,
     "featherCooldown": 3,
