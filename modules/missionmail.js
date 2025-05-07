@@ -49,7 +49,7 @@ async function loadEmails() {
 async function sendUnsent(receiver) {
   if (!receiver.usable) throw new Error("Missionary Email Receiver not usable, cannot check for new emails.");
 
-  const messageIds = await receiver.search({ or: u.db.sheets.missionaries.map((email) => ({ from: email })), seen: false });
+  const messageIds = await receiver.search({ or: u.db.sheets.missionaries.map((email) => ({ from: email })), seen: false, since: u.moment().subtract(1, "week").toDate() });
   const messages = await receiver.fetchAll(messageIds, { source: true });
 
   const approvals = Module.client.getTextChannel(u.sf.channels.missionary.approvals);
