@@ -31,15 +31,9 @@ const remove = new u.sub()
       .setRequired(true)
   );
 
-const check = new u.sub()
-  .setName("check")
-  .setDescription("Check a if someone has a registered missionary email")
-  .addUserOption(
-    new u.user()
-      .setName("user")
-      .setDescription("Whose email do you want to check?")
-      .setRequired(true)
-  );
+const list = new u.sub()
+  .setName("list")
+  .setDescription("Get a list of users with registered missionary emails");
 
 module.exports = new u.cmd()
   .setName("missionary")
@@ -47,7 +41,7 @@ module.exports = new u.cmd()
   .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.devMode)
   .addSubcommand(pull)
-  .addSubcommand(remove)
   .addSubcommand(register)
-  .addSubcommand(check)
+  .addSubcommand(remove)
+  .addSubcommand(list)
   .toJSON();

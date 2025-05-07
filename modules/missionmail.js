@@ -1,6 +1,6 @@
 // @ts-check
 const u = require("../utils/utils");
-const c = require("../config/config.json");
+const config = require("../config/config.json");
 const receive = require("imapflow");
 const interpret = require("mailparser-mit");
 const htmlparse = require("html-to-text");
@@ -18,7 +18,7 @@ const replyRegexes = [
 const Module = new Augur.Module();
 
 async function loadEmails() {
-  const creds = c.google.mail;
+  const creds = config.google.mail;
   try {
     const receiver = new receive.ImapFlow({
       auth: {
@@ -173,11 +173,16 @@ async function slashMissionaryRemove(int) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function slashMissionaryCheck(int) {
-  const user = int.options.getUser("user", true);
-  const email = u.db.sheets.missionaries.get(user.id);
-  if (!email) return int.editReply(`${user} doesn't have a missionary email set!`);
-  return int.editReply(`${user} has their missionary email stored as \`${email}\`.`);
+async function slashMissionaryList(int) {
+  const missionaries = u.db.sheets.missionaries.map((email, id) => {
+    const member = int.guild.members.cache.get(id);
+    if (!member) return `<@${id}> (${id}, unknown user): **${email}**`;
+    return `${member} (${member.displayName}): **${email}**`;
+  });
+  const embed = u.embed().setTitle("Missionary Emails")
+    .setDescription(`I have the following missionary emails stored:\n\n${missionaries.join("\n")}`);
+
+  return int.editReply({ embeds: [embed] });
 }
 
 Module
@@ -197,9 +202,9 @@ Module
 
     switch (subcommand) {
       case "fetch": return slashMissionaryPull(int);
-      case "check": return slashMissionaryCheck(int);
       case "register": return slashMissionaryRegister(int);
       case "remove": return slashMissionaryRemove(int);
+      case "list": return slashMissionaryList(int);
       default: return u.errorHandler(new Error("Slash Missionary - Unhandled Subcommand"), int);
     }
   }
