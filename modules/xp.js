@@ -141,7 +141,7 @@ function addXp(discordId, multiplier, channelId, isVoice = false, isMessage = fa
 }
 
 /**
- * @param {Discord.PartialMessageReaction | Discord.MessageReaction} reaction
+ * @param {Augur.NonPartialMessageReaction | Discord.PartialMessageReaction | Discord.MessageReaction} reaction
  * @param {Discord.User | Discord.PartialUser} user
  * @param {Boolean} add
  */
