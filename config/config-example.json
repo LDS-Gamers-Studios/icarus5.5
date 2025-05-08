@@ -48,6 +48,8 @@
     "userUpdate",
     "voiceStateUpdate"
   ],
+  "getMessageContent": true,
+  "processDMs": true,
   "google": {
     "mail": {
       "enabled": false,
