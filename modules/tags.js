@@ -268,8 +268,8 @@ const Module = new Augur.Module()
     cmds.forEach(c => tags.set(c.tag.toLowerCase(), c));
   } catch (error) { u.errorHandler(error, "Load Custom Tags"); }
 })
-.addShared("tags.js", { tags, encodeTag });
+.setShared({ tags, encodeTag });
 
-/** @typedef {{ tags: typeof tags, encodeTag: typeof encodeTag } | undefined} SharedTags */
+/** @typedef {{ tags: tags, encodeTag: encodeTag } | undefined} Shared */
 
 module.exports = Module;

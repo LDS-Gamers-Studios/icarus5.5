@@ -95,6 +95,16 @@
       "items": { "type": "string" },
       "uniqueItems": true
     },
+    "getMessageContent": {
+      "description": "Keep as true to enable message related features",
+      "type": "boolean",
+      "default": true
+    },
+    "processDMs": {
+      "description": "Keep as true to enable message related features in DMs",
+      "type": "boolean",
+      "default": true
+    },
     "google": {
       "description": "API credentials, mainly for google sheets. You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
       "type": "object",

@@ -500,7 +500,7 @@ const Module = new Augur.Module()
 })
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
-.addShared("filter", () => pf)
+.setShared(() => pf)
 .addEvent("ready", () => {
   // eslint-disable-next-line no-unused-vars
   const forWhenSpamWorks = () => setInterval(() => {

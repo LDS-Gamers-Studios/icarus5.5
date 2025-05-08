@@ -70,8 +70,10 @@ async function slashModBan(interaction) {
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModFilter(interaction) {
-  /** @type {import("profanity-matcher")} */
-  const pf = interaction.client.moduleManager.shared.get("filter")?.shared();
+  /** @type {import("profanity-matcher") | undefined} */
+  const pf = interaction.client.moduleManager.shared.get("01-filter.js")?.();
+  if (!pf) throw new Error("Couldn't access profanity filter");
+
   await interaction.deferReply({ flags: ["Ephemeral"] });
 
   const word = interaction.options.getString("word", true).toLowerCase().trim();

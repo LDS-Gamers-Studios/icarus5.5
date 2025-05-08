@@ -107,8 +107,10 @@ async function slashFunAcronym(int) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   // input or number between 3 and 5
   const len = int.options.getInteger("length") || Math.floor(Math.random() * 3) + 3;
-  /** @type {import("profanity-matcher")} */
-  const pf = int.client.moduleManager.shared.get("filter")?.shared();
+
+  /** @type {import("profanity-matcher") | undefined} */
+  const pf = int.client.moduleManager.shared.get("01-filter.js")?.();
+  if (!pf) throw new Error("Couldn't access profanity filter");
 
   /** @type {string[]} */
   let wordgen = [];
@@ -360,11 +362,15 @@ async function slashFunNamegame(int) {
     if (!response) {
       return int.editReply(`I couldn't generate lyrics for ${name}.\nPerhaps you can get it yourself from https://thenamegame-generator.com.`).then(u.clean);
     }
+
     // parse the song
     const song = /<blockquote>\n(.*)<\/blockquote>/g.exec(response?.data)?.[1]?.replace(/<br ?\/>/g, "\n");
+
     // make sure its safe
-    /** @type {import("profanity-matcher")} */
-    const pf = int.client.moduleManager.shared.get("filter")?.shared();
+    /** @type {import("profanity-matcher") | undefined} */
+    const pf = int.client.moduleManager.shared.get("01-filter.js")?.();
+    if (!pf) throw new Error("Couldn't access profanity filter");
+
     const profane = pf.scan(song?.toLowerCase().replace(/\n/g, " ") ?? "").length;
     if (!song) {
       return int.editReply("I uh... broke my voice box. Try a different name?").then(u.clean);

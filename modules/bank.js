@@ -378,6 +378,6 @@ Module.addInteraction({
     }
   }
 })
-.addShared("bank.js", buyGame);
+.setShared(buyGame);
 
 module.exports = Module;
