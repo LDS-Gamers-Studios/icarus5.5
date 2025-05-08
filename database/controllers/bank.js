@@ -78,7 +78,7 @@ module.exports = {
    * @return {Promise<CurrencyRecord[]>} A record of the addition.
    */
   addManyTransactions: function(data) {
-    return Bank.insertMany(data, { lean: true });
+    return Bank.insertMany(data.map(d => new Bank(d)), { lean: true });
   },
   fixUp: async function() {
     /**
