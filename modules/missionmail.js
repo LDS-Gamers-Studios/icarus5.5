@@ -83,27 +83,29 @@ async function sendUnsent(receiver) {
       }
     }
 
-    if (!parsed.text) continue;
+    if (!parsed.text && parsed.attachments?.length === 0) continue;
 
     // trim the reply quote from the bottom if there is one (for some reason it was bypassing email replace)
-    for (const regex of replyRegexes) {
-      const match = parsed.text.search(regex);
-      if (match !== -1) { // it found it!
-        parsed.text = parsed.text.substring(0, match);
-        break; // Stop after the first match to avoid over-trimming
+    if (parsed.text) {
+      for (const regex of replyRegexes) {
+        const match = parsed.text?.search(regex);
+        if (match !== -1) { // it found it!
+          parsed.text = parsed.text?.substring(0, match);
+          break; // Stop after the first match to avoid over-trimming
+        }
       }
+
+      parsed.text = parsed.text?.trim();
     }
 
-    parsed.text = parsed.text?.trim();
-
     // now that we've removed the reply...
-    if (!parsed.text) continue;
+    if (!parsed.text && parsed.attachments?.length === 0) continue;
 
     const embed = u.embed({ author: missionary })
       .setTitle(`${missionary.displayName} - ${parsed.subject}`)
       .setTimestamp(parsed.receivedDate);
 
-    const embeds = u.pagedEmbedsDescription(embed, parsed.text.replace(fromEmail, missionary.displayName).split("\n"));
+    const embeds = parsed.text ? u.pagedEmbedsDescription(embed, parsed.text.replace(fromEmail, missionary.displayName).split("\n")) : [embed.setDescription("Attachments:")];
 
     for (const em of embeds) {
       await approvals.send({ embeds: [em] });
