@@ -16,6 +16,8 @@ const data = {
     /** @type {GoogleSpreadsheetRow[]} */
     igns: [],
     /** @type {GoogleSpreadsheetRow[]} */
+    missionaries: [],
+    /** @type {GoogleSpreadsheetRow[]} */
     optRoles: [],
     /** @type {GoogleSpreadsheetRow[]} */
     roles: [],
@@ -40,6 +42,8 @@ const data = {
   },
   /** @type {Collection<string, types.IGN>} */
   igns: new Collection(),
+  /** @type {Collection<string, string>} */
+  missionaries: new Collection(),
   /** @type {Collection<string, types.OptRole>} */
   optRoles: new Collection(),
   roles: {
@@ -63,7 +67,7 @@ const data = {
   /** @type {Collection<string, types.PlayingDefault>} */
   wipChannels: new Collection(),
   /** @type {{ channels: Collection<string, types.ChannelXPSetting>, banned: Set<string> }} */
-  xpSettings: { banned: new Set(), channels: new Collection() }
+  xpSettings: { banned: new Set(), channels: new Collection() },
 };
 
 /** @param {string} [sheetId] */
@@ -89,13 +93,14 @@ function getServer(client) {
 const sheetMap = {
   games: [],
   igns: ["IGN", "System"],
+  missionaries: ["Mail", "UserId"],
   optRoles: ["Opt-In Roles", "RoleID"],
   roles: ["Roles", "Base Role ID"],
   sponsors: ["Sponsor Channels", "Sponsor"],
   tourneyChampions: ["Tourney Champions", "Key"],
   vcNames: ["Voice Channel Names", "Name"],
+  wipChannels: ["WIP Channel Defaults", "ChannelId"],
   xpSettings: ["XP Settings", "ChannelId"],
-  wipChannels: ["WIP Channel Defaults", "ChannelId"]
 };
 
 const mappers = {
@@ -129,6 +134,14 @@ const mappers = {
     name: row.get("Name"),
     system: row.get("System")
   }),
+
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @returns {string}
+  */
+  missionaries: (row) => {
+    return row.get("Email");
+  },
 
   /**
    * @param {GoogleSpreadsheetRow} row
@@ -308,7 +321,7 @@ async function setData(sheet, doc, client) {
     const key = datum.get(sheetMap[sheet][1]);
     if (key) {
       if (sheet === "vcNames") data[sheet].push(key);
-      // @ts-expect-error i'm not writing a switch case for something thats meant to be procedural
+      // @ts-ignore i'm not writing a switch case for something thats meant to be procedural
       else data[sheet].set(key, mappers[sheet](datum, client));
     }
   }

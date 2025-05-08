@@ -191,6 +191,8 @@ Module.addEvent("ready", () => {
       }
     }, 60 * 60 * 1000);
   })
-  .addShared("cake.js", { cakedays, birthdays, celebrate });
+  .setShared({ cakedays, birthdays, celebrate });
+
+/** @typedef {{ cakedays: cakedays, birthdays: birthdays, celebrate: celebrate } | undefined} Shared */
 
 module.exports = Module;

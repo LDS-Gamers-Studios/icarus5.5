@@ -28,6 +28,16 @@ module.exports = {
     return Ign.findOne({ discordId, system }, undefined, { lean: true }).exec();
   },
   /**
+   * Find someone by their IGN
+   * @param {string | string[]} ign
+   * @param {string} system
+   * @returns {Promise<IGN | null>}
+   */
+  findOneByIgn: function(ign, system) {
+    if (Array.isArray(ign)) return Ign.findOne({ ign: { $in: ign }, system }, undefined, { lean: true }).exec();
+    return Ign.findOne({ ign, system }, undefined, { lean: true }).exec();
+  },
+  /**
    * Find a list of all IGNs for a given system
    * @function getList
    * @param {string | string[]} discordId

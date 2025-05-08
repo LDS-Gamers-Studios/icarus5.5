@@ -48,6 +48,10 @@ const UserSchema = new Schema({
   sendBdays: {
     type: Boolean,
     default: true
+  },
+  twitchFollow: {
+    type: Boolean,
+    default: false
   }
 });
 
