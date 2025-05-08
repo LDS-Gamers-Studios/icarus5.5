@@ -10,7 +10,7 @@ const Discord = require("discord.js");
 const [approveIdPrefix, rejectIdPrefix] = ["approveMissionMail", "rejectMissionMail"];
 
 const replyRegexes = [
-  /^on[^>]*@[^>]*> wrote:\n\n>/im,
+  /^on[^>]*@[^>]*>(?: |\n)wrote:\n\n>/im,
   /^-+ original message -+$/im,
   /^-+ forwarded message -+$/im
 ];
