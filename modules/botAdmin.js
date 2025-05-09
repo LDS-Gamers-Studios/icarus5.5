@@ -57,9 +57,20 @@ function fieldMismatches(obj1, obj2) {
   return [m1, m2];
 }
 
+let warned = false;
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashBotGtb(int) {
   try {
+    // prevent double cakedays if possible
+    if (!warned && u.moment().hours() === 15) {
+      await int.editReply("It's cakeday and birthday hour! If you really need to restart, run this again.");
+
+      warned = true;
+      return setTimeout(() => {
+        warned = false;
+      }, 5 * 60_000);
+    }
     await int.editReply("Good night! 🛏");
     await int.client.destroy();
     process.exit();
@@ -127,8 +138,7 @@ async function slashBotReload(int) {
 
   for (const file of files) {
     try {
-      // @ts-expect-error augur goof, functions correctly
-      int.client.moduleHandler.reload(path.resolve(__dirname, file));
+      int.client.moduleManager.reload(path.resolve(__dirname, file));
     } catch (error) { return u.errorHandler(error, int); }
   }
   return int.editReply("Reloaded!");
@@ -202,10 +212,12 @@ async function slashBotStatus(int) {
 }
 
 const Module = new Augur.Module()
-.addInteraction({ name: "bot",
+.addInteraction({
+  name: "bot",
   id: u.sf.commands.slashBot,
   onlyGuild: true,
   hidden: true,
+  options: { registry: "slashBot" },
   permissions: (int) => u.perms.calc(int.member, ["botTeam", "botAdmin"]),
   process: async (int) => {
     if (!u.perms.calc(int.member, ["botTeam", "botAdmin"])) return; // redundant check, but just in case lol

@@ -5,7 +5,7 @@ const config = require("../config/config.json"),
 const bank = require("./controllers/bank"),
   ign = require("./controllers/ign"),
   infraction = require("./controllers/infraction"),
-  oauth = require("./controllers/oauth"),
+  tags = require("./controllers/tag"),
   user = require("./controllers/user"),
   tournament = require("./controllers/tournament");
 
@@ -17,7 +17,7 @@ module.exports = {
   bank,
   ign,
   infraction,
-  oauth,
+  tags,
   user,
   tournament,
   sheets: { ...data, loadData, mappers }

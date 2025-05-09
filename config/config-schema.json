@@ -1,0 +1,266 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "adminId": {
+      "type": "array",
+      "description": "Any user IDs that need to control the bot",
+      "items": { "type": "string" }
+    },
+    "ownerId": {
+      "description": "Put your ID here",
+      "type": "string"
+    },
+    "api": {
+      "type": "object",
+      "properties": {
+        "tenor": {
+          "description": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/tenor.googleapis.com",
+          "type": "string"
+        },
+        "snipcart": {
+          "description": "We don't have a way to test the API right now",
+          "type": "string"
+        },
+        "challonge": {
+          "description": "https://api.challonge.com/v1",
+          "type": "string"
+        }
+      },
+      "required": ["tenor", "snipcart", "challonge"]
+    },
+    "applicationId": {
+      "description": "https://discord.com/developers/applications",
+      "type": "string"
+    },
+    "color": {
+      "description": "Mainly used for embed colors",
+      "type": "string",
+      "default": "0xf89a22"
+    },
+    "db": {
+      "type": "object",
+      "properties": {
+        "db": {
+          "description": "mongodb://localhost:27017/icarus or mongodb+srv://*connection*/icarus",
+          "type": "string",
+          "default": "mongodb://localhost:27017/icarus"
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "useNewUrlParser": { "type": "boolean", "default": true },
+            "useUnifiedTopology": { "type": "boolean", "default": true },
+            "user": { "type": "string" },
+            "pass": { "type": "string" }
+          },
+          "required": ["useNewUrlParser", "useUnifiedTopology", "user", "pass"]
+        }
+      },
+      "required": ["db", "settings"]
+    },
+    "devMode": {
+      "description": "If in development. Main use is so the bot uses the testing snowflakes.",
+      "type": "boolean",
+      "default": true
+    },
+    "silentMode": {
+      "description": "Disables posting an embed when the bot turns on",
+      "type": "boolean",
+      "default": false
+    },
+    "ownerOverride": {
+      "description": "Gives you, the owner, a bypass for u.perms.calc",
+      "type": "boolean",
+      "default": true
+    },
+    "siteOn": {
+      "description": "Turns on the website. Don't turn on unless you have an instance of the site.",
+      "type": "boolean",
+      "default": false
+    },
+    "webhooks": {
+      "type": "object",
+      "description": "Webhook urls for various things",
+      "properties": {
+        "error": { "type": "string" },
+        "watchlist": { "type": "string" },
+        "mcTesting": { "type": "string" }
+      },
+      "required": ["error", "watchlist", "mcTesting"]
+    },
+    "events": {
+      "description": "Events the bot will listen to/handle",
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "getMessageContent": {
+      "description": "Keep as true to enable message related features",
+      "type": "boolean",
+      "default": true
+    },
+    "processDMs": {
+      "description": "Keep as true to enable message related features in DMs",
+      "type": "boolean",
+      "default": true
+    },
+    "google": {
+      "description": "API credentials, mainly for google sheets. You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
+      "type": "object",
+      "properties": {
+        "mail": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "description": "Toggles checking the mail",
+              "type": "boolean",
+              "default": false
+            },
+            "email": {
+              "description": "The email to check",
+              "type": "string"
+            },
+            "pass": {
+              "description": "Use an app password. Google it if you need more info",
+              "type": "string"
+            }
+          },
+          "required": ["enabled", "email", "pass"]
+        },
+        "creds": {
+          "description": "Create a project, give it access to google sheets, and create a service account credential. Download the JSON and that should fit in this object",
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "project_id": { "type": "string" },
+            "private_key_id":  {"type": "string" },
+            "private_key": { "type": "string" },
+            "client_email": { "type": "string" },
+            "client_id": { "type": "string" },
+            "auth_uri": { "type": "string" },
+            "token_uri": { "type": "string" },
+            "auth_provider_x509_cert_url": { "type": "string" },
+            "client_x509_cert_url": { "type": "string" }
+          },
+          "required": ["type", "project_id", "private_key_id", "private_key", "client_email", "client_id", "auth_uri", "token_uri", "auth_provider_x509_cert_url", "client_x509_cert_url"]
+        },
+        "sheets": {
+          "description": "Google Sheet IDs. They're the last part of the URL after /d/.",
+          "type": "object",
+          "properties": {
+            "config": { "type": "string" },
+            "games": { "type": "string" },
+            "applications": { "type": "string" }
+          },
+          "required": ["config", "games", "applications"]
+        }
+      },
+      "required": ["creds","sheets", "mail"]
+    },
+    "prefix": {
+      "description": "The bot will respond to commands starting with this string",
+      "type": "string",
+      "default": "!"
+    },
+    "spamThreshold": {
+      "description": "Thresholds for the spam filter. The first number is for untrusted members, the second for trusted.",
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": [
+            { "type": "integer" },
+            { "type": "integer" }
+          ]
+        },
+        "messages": {
+          "type": "array",
+          "items": [
+            { "type": "integer" },
+            { "type": "integer" }
+          ]
+        },
+        "same": {
+          "type": "array",
+          "items": [
+            { "type": "integer" },
+            { "type": "integer" }
+          ]
+        },
+        "time": {
+          "description": "Time in seconds until the threshold resets",
+          "type": "integer"
+        },
+        "cleanupLimit": {
+          "description": "How many messages can be cleaned up",
+          "type": "integer"
+        }
+      },
+      "required": ["channels", "messages", "same", "time", "cleanupLimit"]
+    },
+    "token": {
+      "description": "Put your bot token here (https://discord.com/developers/applications)",
+      "type": "string"
+    },
+    "memberMilestone": {
+      "description": "Pizza party notification settings",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "count": { "type": "integer" }
+      },
+      "required": ["enabled", "count"]
+    },
+    "badgePath": {
+      "description": "Where your badge image files are stored",
+      "type": "string",
+      "default": "./media/badges"
+    },
+    "tagFilePath": {
+      "description": "Where your tag attachments are stored",
+      "type": "string",
+      "default": "./media/tags"
+    },
+    "xp": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "description": "Without a multiplier, give this much xp",
+          "type": "integer"
+        },
+        "featherCooldown": {
+          "description": "Minimum hours between feathers",
+          "type": "integer"
+        },
+        "featherDropChance": {
+          "description": "When a feather is ready, how likely it is to appear",
+          "type": "number"
+        }
+      },
+      "required": ["base", "featherCooldown", "featherDropChance"]
+    }
+  },
+  "required": [
+    "adminId",
+    "ownerId",
+    "api",
+    "applicationId",
+    "color",
+    "db",
+    "devMode",
+    "silentMode",
+    "ownerOverride",
+    "siteOn",
+    "webhooks",
+    "events",
+    "google",
+    "prefix",
+    "spamThreshold",
+    "token",
+    "memberMilestone",
+    "badgePath",
+    "tagFilePath",
+    "xp"
+  ]
+}

@@ -24,104 +24,31 @@ async function getTournaments(state) {
   return response.data.map((/** @type {{ tournament: any }} */ t) => t.tournament);
 }
 
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function bracket(int) {
-  await int.deferReply({ flags: ["Ephemeral"] });
-  const responses = await Promise.all([
-    getTournaments("pending"),
-    getTournaments("in_progress")
-  ]);
-
-  const tournaments = responses.flat().sort((a, b) => (new Date(a.start_at)).valueOf() - (new Date(b.start_at).valueOf()));
-
-  /** @type {string[]} */
-  const displayTourneys = [];
-  for (const tournament of tournaments) {
-    const displayDate = (tournament.start_at ? u.time(new Date(tournament.start_at), "D") : "Unscheduled");
-    displayTourneys.push(`${displayDate}: [${tournament.name}](${tournament.full_challonge_url})`);
-  }
-
-  if (displayTourneys.length === 0) return int.editReply("Looks like there aren't any tourneys scheduled right now.");
-  const embed = u.embed()
-    .setTitle("Upcoming and Current LDSG Tournaments")
-    .setDescription(`\n\nCommunity Tournaments:\n${displayTourneys.join('\n')}`);
-  int.editReply({ embeds: [embed] });
-}
-
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function champs(int) {
-  await int.deferReply({ flags: ["Ephemeral"] });
-  const tName = int.options.getString('tournament');
-  /** @param {string} str */
-  const user = (str) => int.options.getMember(str);
-  const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr !== null));
-  const date = u.moment().add(3, "weeks").valueOf();
-
-  const rows = await u.db.sheets.data.docs?.config.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr?.id ?? "", "Take Role At": date, Key: u.customId(5) })));
-  for (const row of rows ?? []) {
-    u.db.sheets.tourneyChampions.set(row.get("Key"), u.db.sheets.mappers.tourneyChampions(row));
-  }
-  for (const usr of users) {
-    usr?.roles.add(u.sf.roles.tournament.champion);
-  }
-  const s = users.length > 1 ? 's' : '';
-  const content = `## 🏆 Congratulations to our new tournament champion${s}! 🏆\n` +
-    `${users.join(", ")}!\n\nTheir performance landed them the champion slot in the ${tName} tournament, and they'll hold on to the LDSG Tourney Champion role for a few weeks.`;
-  Module.client.guilds.cache.get(u.sf.ldsg)?.client.getTextChannel(u.sf.channels.announcements)?.send({ content, allowedMentions: { parse: ["users"] } });
-  int.editReply("Champions recorded and announced!");
-}
-
-/** @param {Augur.GuildInteraction<"CommandSlash">} int */
-async function participant(int) {
-  const role = int.guild.roles.cache.get(u.sf.roles.tournament.participant);
-  await int.deferReply({ flags: ["Ephemeral"] });
-  if (!role) return u.errorHandler(new Error("No Tourney Champion Role"), int);
-  const reset = int.options.getBoolean('reset');
-  const remove = int.options.getBoolean('remove');
-  const user = int.options.getMember('user');
-  if (!user) return int.editReply("I couldn't find that user! They might have left the server.");
-  if (reset) {
-    let succeeded = 0;
-    let i = 0;
-    const members = role.members;
-    while (i < members.size) {
-      const member = members.at(i);
-      try {
-        await member?.roles.remove(role.id);
-        succeeded++;
-      } catch (error) {null;}
-      i++;
-    }
-    return int.editReply(`Removed ${succeeded}/${members.size} people from the ${role} role`);
-  } else if (remove) {
-    if (user.roles.cache.has(role.id)) {
-      let content = `I removed the ${role} role from ${user}`;
-      await user.roles.remove(role.id).catch(() => content = `I couldn't remove the ${role} role from ${user}`);
-      return int.editReply(content);
-    }
-    return int.editReply(`${user} doesn't have the ${role} role`);
-
-  } else if (!user.roles.cache.has(role.id)) {
-    let content = `I added the ${role} role to ${user}`;
-    await user.roles.add(role.id).catch(() => content = `I couldn't add the ${role} role to ${user}`);
-    return int.editReply({ content });
-  }
-  return int.editReply(`${user} already has the ${role} role`);
-
-}
-
-Module.addInteraction({ name: "tournament",
-  id: u.sf.commands.slashTournament,
+Module.addInteraction({ name: "tournaments",
+  id: u.sf.commands.slashTournaments,
   onlyGuild: true,
-  // Only /tournament list is publicly available
-  permissions: (int) => int.options.getSubcommand() === 'list' ? true : u.perms.calc(int.member, ["team", "mgr"]),
+  options: { registry: "slashTournaments" },
   process: async (int) => {
-    switch (int.options.getSubcommand()) {
-      case "list": return bracket(int);
-      case "champion": return champs(int);
-      case "participant": return participant(int);
-      default: return u.errorHandler(new Error("Unhandled Subcomand"), int);
+    await int.deferReply({ flags: ["Ephemeral"] });
+    const responses = await Promise.all([
+      getTournaments("pending"),
+      getTournaments("in_progress")
+    ]);
+
+    const tournaments = responses.flat().sort((a, b) => (new Date(a.start_at)).valueOf() - (new Date(b.start_at).valueOf()));
+
+    /** @type {string[]} */
+    const displayTourneys = [];
+    for (const tournament of tournaments) {
+      const displayDate = (tournament.start_at ? u.time(new Date(tournament.start_at), "D") : "Unscheduled");
+      displayTourneys.push(`${displayDate}: [${tournament.name}](${tournament.full_challonge_url})`);
     }
+
+    if (displayTourneys.length === 0) return int.editReply("Looks like there aren't any tourneys scheduled right now.");
+    const embed = u.embed()
+      .setTitle("Upcoming and Current LDSG Tournaments")
+      .setDescription(`\n\nCommunity Tournaments:\n${displayTourneys.join('\n')}`);
+    int.editReply({ embeds: [embed] });
   }
 });
 

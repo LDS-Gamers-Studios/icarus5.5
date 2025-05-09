@@ -17,7 +17,13 @@ const ChannelXP = require("../models/ChannelXP.model");
  * @prop {number} currentXP
  * @prop {number} totalXP
  * @prop {number} priorTenure
+ * @prop {boolean} sendBdays
  * @prop {boolean} watching
+ * @prop {boolean} twitchFollow
+ */
+
+/**
+ * @typedef {UserRecord & {rank: {season: number, lifetime: number}}} RankedUser
  */
 
 /**
@@ -38,6 +44,7 @@ const TrackXPEnum = {
   SILENT: 1,
   FULL: 2
 };
+
 
 const models = {
   TrackXPEnum,
@@ -108,7 +115,8 @@ const models = {
   /**
    * DANGER!!! THIS RESETS ALL CURRENTXP TO 0
    */
-  resetSeason: function() {
+  resetSeason: async function() {
+    await ChannelXP.deleteMany({}, { lean: true, new: true });
     return User.updateMany({ currentXP: { $gt: 0 } }, { currentXP: 0 }, { lean: true, new: true }).exec();
   },
   /**
@@ -144,9 +152,10 @@ const models = {
 
     return ranked;
   },
+
   /**
    * Get the top X of both leaderboards
-   * @param {Omit<leaderboardOptions, "season">} options
+   * @param {Omit<leaderboardOptions, "season"> & { rank?: RankedUser | null }} options
    * @returns {Promise<{ season: (UserRecord & { rank: number })[], life: (UserRecord & { rank: number })[] }>}
    */
   getBothLeaderboards: async function(options) {
@@ -165,8 +174,8 @@ const models = {
     const seasonHas = season.some(r => r.discordId === member);
     const lifeHas = life.some(r => r.discordId === member);
     if (member && (!seasonHas || !lifeHas)) {
-      const record = await models.getRank(member, members);
-      if (record) {
+      const record = options.rank ?? await models.getRank(member, members);
+      if (record && record.trackXP !== TrackXPEnum.OFF) {
         if (!seasonHas) season.push({ ...record, rank: record.rank.season });
         if (!lifeHas) life.push({ ...record, rank: record.rank.lifetime });
       }
@@ -180,12 +189,12 @@ const models = {
      * @param {Discord.Collection<string, Discord.GuildMember>|string[]} members Collection or Array of snowflakes to include in the leaderboard
      * @returns {Promise<(UserRecord & {rank: {season: number, lifetime: number}}) | null>}
      */
-  getRank: async function(discordId, members) {
+  getRank: async function(discordId, members, filterOptedOut = true) {
     members = (members instanceof Discord.Collection ? Array.from(members.keys()) : members);
 
     // Get requested user
-    const record = await User.findOne({ discordId, trackXP: { $ne: TrackXPEnum.OFF } }, undefined, { lean: true }).exec();
-    if (!record) return null;
+    const record = await User.findOne({ discordId }, undefined, { lean: true }).exec();
+    if (!record || (filterOptedOut && record.trackXP === TrackXPEnum.OFF)) return null;
 
     const seasonCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, currentXP: { $gt: record.currentXP }, discordId: { $in: members } });
     const lifeCount = await User.count({ trackXP: { $ne: TrackXPEnum.OFF }, totalXP: { $gt: record.totalXP }, discordId: { $in: members } });
@@ -208,16 +217,6 @@ const models = {
   newUser: async function(discordId) {
     if (typeof discordId !== "string") throw new TypeError(outdated);
     return User.findOne({ discordId }, undefined, { upsert: true, lean: true }).exec();
-  },
-  /**
-   * Update a member's track XP preference
-   * @param {string} discordId The guild member to update.
-   * @param {number} trackXP The new status
-   * @returns {Promise<UserRecord | null>}
-   */
-  trackXP: function(discordId, trackXP) {
-    if (typeof discordId !== 'string') throw new Error(outdated);
-    return User.findOneAndUpdate({ discordId }, { trackXP }, { new: true, upsert: true, lean: true }).exec();
   },
   /**
    * Update a member's roles in the database
@@ -249,18 +248,20 @@ const models = {
     ).exec();
   },
   /**
-   * Watches or unwatches a user
-   * @param {string} discordId The guild member to watch/unwatch
-   * @param {boolean} status Set to watched or not (Default: true)
+   * Gets all the channel xp info
+   */
+  getChannelXPs: function() {
+    return ChannelXP.find({}, undefined, { lean: true }).exec();
+  },
+  /**
+   * Updates a property
+   * @param {string} discordId The guild member to change
+   * @param {Partial<UserRecord>} update
    * @returns {Promise<UserRecord | null>}
    */
-  updateWatch: function(discordId, status = true) {
+  update: function(discordId, update) {
     if (typeof discordId !== "string") throw new Error(outdated);
-    return User.findOneAndUpdate(
-      { discordId },
-      { $set: { watching: status } },
-      { new: true, upsert: true, lean: true }
-    ).exec();
+    return User.findOneAndUpdate({ discordId }, update, { lean: true, new: true, upsert: true });
   }
 };
 

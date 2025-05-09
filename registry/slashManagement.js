@@ -35,37 +35,18 @@ const banner = new u.sub()
       .setAutocomplete(true)
   );
 
-
-const team = new u.sub()
-  .setName("promote")
-  .setDescription("Promote a member to team")
-  .addUserOption(
-    new u.user()
-      .setName("user")
-      .setDescription("The user to promote")
-      .setRequired(true)
-  )
-  .addStringOption(
-    new u.string()
-    .setName("position")
-    .setDescription("The position to promote the user to")
-    .setRequired(true)
-    .setAutocomplete(true)
-  )
-  .addStringOption(
-    new u.string()
-    .setName("reason")
-    .setDescription("The reason to be sent with the welcome message to the team chat")
-  );
+const channelActivity = new u.sub()
+  .setName("channel-activity")
+  .setDescription("Get a list of inactive channels");
 
 module.exports = new u.cmd()
   .setName("management")
   .setDescription("Management Commands")
   .setContexts(u.contexts.Guild)
-  .setDefaultMemberPermissions(u.devMode)
+  .setDefaultMemberPermissions(u.privateCommand)
   .addSubcommand(celebrate)
   .addSubcommand(cakeday)
   .addSubcommand(banner)
   .addSubcommand(birthday)
-  .addSubcommand(team)
+  .addSubcommand(channelActivity)
   .toJSON();

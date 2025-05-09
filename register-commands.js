@@ -13,7 +13,8 @@ const ldsg = require(`./config/snowflakes${config.devMode ? "-testing" : ""}.jso
 const globalCommandFiles = [
   "messageBookmark.js",
   "slashAvatar.js",
-  "slashFun.js"
+  "slashFun.js",
+  "slashHelp.js"
 ];
 
 const guildCommandFiles = [
@@ -22,14 +23,18 @@ const guildCommandFiles = [
   "slashBot.js",
   "slashGame.js",
   "slashGospel.js",
+  "slashIgn.js",
   "slashLdsg.js",
-  "slashRank.js",
   "slashManagement.js",
+  "slashMissionary.js",
   "slashMod.js",
-  "slashTournament.js",
+  "slashRank.js",
+  "slashRole.js",
+  "slashTag.js",
+  "slashTeam.js",
+  "slashTournaments.js",
   "slashUser.js",
   "slashVoice.js",
-  "slashRole.js",
   "userMod.js"
 ];
 

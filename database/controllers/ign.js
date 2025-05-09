@@ -20,7 +20,7 @@ module.exports = {
   },
   /**
    * Find a specific IGN
-   * @param {string | string[]} discordId
+   * @param {string} discordId
    * @param {string} system
    * @returns {Promise<IGN | null>}
    */
@@ -28,10 +28,20 @@ module.exports = {
     return Ign.findOne({ discordId, system }, undefined, { lean: true }).exec();
   },
   /**
+   * Find someone by their IGN
+   * @param {string | string[]} ign
+   * @param {string} system
+   * @returns {Promise<IGN | null>}
+   */
+  findOneByIgn: function(ign, system) {
+    if (Array.isArray(ign)) return Ign.findOne({ ign: { $in: ign }, system }, undefined, { lean: true }).exec();
+    return Ign.findOne({ ign, system }, undefined, { lean: true }).exec();
+  },
+  /**
    * Find a list of all IGNs for a given system
    * @function getList
    * @param {string | string[]} discordId
-   * @param {string} [system] Which system list to fetch
+   * @param {string | null} [system] Which system list to fetch
    * @returns {Promise<IGN[]>}
    */
   findMany: function(discordId, system) {
