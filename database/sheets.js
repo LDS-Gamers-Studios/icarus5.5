@@ -49,7 +49,7 @@ const data = {
   roles: {
     /** @type {Collection<string, types.Role>} */
     all: new Collection(),
-    /** @type {Collection<string, Omit<types.Role, "level"> & { level: string }>} */
+    /** @type {Collection<string, Omit<types.Role, "level"> & { level: import("../utils/perms").Perms }>} */
     team: new Collection(),
     /** @type {Collection<string, Omit<types.Role, "color"> & { color: Role }>} */
     equip: new Collection(),
@@ -302,6 +302,7 @@ async function setData(sheet, doc, client) {
       const mapped = mappers.roles(role, client);
       if (mapped.color) data.roles.equip.set(id, mapped);
       switch (type) {
+        // @ts-ignore
         case "Team Assign": data.roles.team.set(id, mapped); break;
         case "Rank": data.roles.rank.set(parseInt(mapped.level ?? "1000"), mapped); break;
         case "Year": data.roles.year.set(parseInt(mapped.level ?? "1000"), mapped); break;

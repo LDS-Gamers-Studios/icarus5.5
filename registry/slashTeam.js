@@ -1,0 +1,137 @@
+// @ts-check
+const u = require("./regUtils");
+
+// GENERAL FUNCTIONS
+const role = (action = "add") => new u.string()
+  .setName(action === 'equip' ? "color" : "role")
+  .setDescription(`The role to ${action}`)
+  .setRequired(action === 'equip' ? false : true)
+  .setAutocomplete(true);
+
+/**
+ *
+ * @param {number | null} num
+ * @param {boolean} [req]
+ * @returns
+ */
+const user = (num, req = false) => new u.user()
+  .setName(`${num ?? "user"}`)
+  .setDescription(`User ${num ?? ""}`)
+  .setRequired(num === 1 || req);
+
+
+// ROLES
+const roleGive = new u.sub()
+  .setName("give")
+  .setDescription("Give someone a role")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("The user to receive the role")
+      .setRequired(true)
+  )
+  .addStringOption(role("give"));
+
+const roleTake = new u.sub()
+.setName("take")
+.setDescription("Take a role from someone")
+.addUserOption(
+  new u.user()
+    .setName("user")
+    .setDescription("The user to take the role from")
+    .setRequired(true)
+)
+.addStringOption(role("take"));
+
+
+// BANK
+const bankAward = new u.sub()
+  .setName("award")
+  .setDescription("Award ember to a member for the house cup.")
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Who do you want to award?")
+      .setRequired(true)
+  )
+  .addIntegerOption(
+    new u.int()
+      .setName("amount")
+      .setDescription("How many ember do you want to give them?")
+      .setRequired(true)
+      .setMinValue(1)
+      .setMaxValue(10000)
+  )
+  .addStringOption(
+    new u.string()
+      .setName("reason")
+      .setDescription("But... why?")
+      .setRequired(false)
+  );
+
+
+// TOURNAMENTS
+const tourneyChampion = new u.sub()
+  .setName("champions")
+  .setDescription("Declare tournament champions!")
+  .addStringOption(
+    new u.string()
+      .setName("tournament")
+      .setDescription("The name of the tournament")
+      .setRequired(true)
+  )
+  .addUserOption(user(1))
+  .addUserOption(user(2))
+  .addUserOption(user(3))
+  .addUserOption(user(4))
+  .addUserOption(user(5))
+  .addUserOption(user(6));
+
+const tourneyReset = new u.sub()
+  .setName("reset")
+  .setDescription("Reset the Tournament Participant role");
+
+// RANK
+const rankReset = new u.sub()
+  .setName("reset")
+  .setDescription("Resets everyone's season XP and awards ember")
+  .addIntegerOption(
+    new u.int()
+      .setName("ember-reward")
+      .setDescription("How many ember to award in total (ideal is about 10,000)")
+      .setMinValue(0)
+      .setRequired(true)
+  );
+
+module.exports = new u.cmd()
+  .setName("team")
+  .setDescription("Do team stuff. idk.")
+  .addSubcommandGroup(
+    new u.subGroup()
+      .setName("role")
+      .setDescription("Manage roles for a user.")
+      .addSubcommand(roleGive)
+      .addSubcommand(roleTake)
+  )
+  .addSubcommandGroup(
+    new u.subGroup()
+      .setName("bank")
+      .setDescription("Interact with currency")
+      .addSubcommand(bankAward)
+  )
+  .addSubcommandGroup(
+    new u.subGroup()
+      .setName("tournament")
+      .setDescription("Manage tournaments")
+      .addSubcommand(tourneyChampion)
+      .addSubcommand(tourneyReset)
+  )
+  .addSubcommandGroup(
+    new u.subGroup()
+      .setName("rank")
+      .setDescription("Manage the leaderboard season")
+      .addSubcommand(rankReset)
+  )
+  .setContexts(u.contexts.Guild)
+  .setDefaultMemberPermissions(u.privateCommand)
+  .toJSON();

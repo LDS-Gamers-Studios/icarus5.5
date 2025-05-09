@@ -71,30 +71,6 @@ const discount = new u.sub()
       .setRequired(true)
   );
 
-const award = new u.sub()
-  .setName("award")
-  .setDescription("[TEAM] Award ember to a member for the house cup.")
-  .addUserOption(
-    new u.user()
-      .setName("user")
-      .setDescription("Who do you want to award?")
-      .setRequired(true)
-  )
-  .addIntegerOption(
-    new u.int()
-      .setName("amount")
-      .setDescription("How many ember do you want to give them?")
-      .setRequired(true)
-      .setMinValue(1)
-      .setMaxValue(10000)
-  )
-  .addStringOption(
-    new u.string()
-      .setName("reason")
-      .setDescription("But... why?")
-      .setRequired(false)
-  );
-
 module.exports = new u.cmd()
   .setName("bank")
   .setDescription("Interact with the server currencies.")
@@ -103,7 +79,7 @@ module.exports = new u.cmd()
   .addSubcommand(balance)
   .addSubcommandGroup(game)
   // .addSubcommand(discount) no store rn
-  .addSubcommand(award)
+  // .addSubcommand(award) this is located at /team bank award in team.js
   .toJSON();
 
 discount;
