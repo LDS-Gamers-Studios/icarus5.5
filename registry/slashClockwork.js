@@ -11,7 +11,7 @@ const timer = new u.sub()
   .addIntegerOption(
     new u.int()
       .setName("days")
-      .setDescription("How many days until your timer goes off?")
+      .setDescription("How many days?")
       .setRequired(false)
       .setMinValue(0)
       .setMaxValue(100)
@@ -19,7 +19,7 @@ const timer = new u.sub()
   .addIntegerOption(
     new u.int()
       .setName("hours")
-      .setDescription("How many hours until your timer goes off?")
+      .setDescription("How many hours?")
       .setRequired(false)
       .setMinValue(0)
       .setMaxValue(100)
@@ -27,7 +27,7 @@ const timer = new u.sub()
   .addIntegerOption(
     new u.int()
       .setName("minutes")
-      .setDescription("How many minutes until your timer goes off?")
+      .setDescription("How many minutes?")
       .setRequired(false)
       .setMinValue(0)
       .setMaxValue(100)
@@ -35,7 +35,7 @@ const timer = new u.sub()
 
 const reminder = new u.sub()
   .setName("reminder")
-  .setDescription("Get a reminder at a specific time")
+  .setDescription("Get a DM reminder at a specific time.")
   .addStringOption(
     new u.string()
       .setName("reminder-text")
@@ -48,18 +48,18 @@ const reminder = new u.sub()
       .setName("month")
       .setDescription("What month to remind you in")
       .setChoices([
-        { name: "Jan", value: "01" },
-        { name: "Feb", value: "02" },
-        { name: "Mar", value: "03" },
-        { name: "Apr", value: "04" },
+        { name: "January", value: "01" },
+        { name: "February", value: "02" },
+        { name: "March", value: "03" },
+        { name: "April", value: "04" },
         { name: "May", value: "05" },
         { name: "June", value: "06" },
         { name: "July", value: "07" },
-        { name: "Aug", value: "08" },
-        { name: "Sept", value: "09" },
-        { name: "Oct", value: "10" },
-        { name: "Nov", value: "11" },
-        { name: "Dec", value: "12" },
+        { name: "August", value: "08" },
+        { name: "September", value: "09" },
+        { name: "October", value: "10" },
+        { name: "November", value: "11" },
+        { name: "December", value: "12" },
       ])
       .setRequired(true)
   )
@@ -76,22 +76,23 @@ const reminder = new u.sub()
       .setName("year")
       .setDescription("Which year?")
       .setMinValue(new Date().getFullYear())
+      .setMaxValue(new Date().getFullYear() + 100)
   )
   .addStringOption(
     new u.string()
       .setName("time")
-      .setDescription("12:34 AM/PM (Timezone is MST)")
+      .setDescription("Timezone is MST. Format as 12:34 AM/PM or 14:00.")
       .setMaxLength(8)
       .setMinLength(3)
   );
 
 const cancel = new u.sub()
   .setName("cancel")
-  .setDescription("Cancel a pending timer or reminder")
+  .setDescription("Cancel timers and reminders or get a list of upcoming ones.")
   .addStringOption(
     new u.string()
       .setName("id")
-      .setDescription("Your timer or reminder ID. Leave blank to get a list of pending ones.")
+      .setDescription("Your timer or reminder ID. Leave blank to get a list of upcoming ones.")
       .setRequired(false)
   );
 

@@ -3,6 +3,8 @@ const Augur = require("augurbot-ts");
 const Discord = require("discord.js");
 const u = require("../utils/utils");
 
+const MONTH_THRESHOLD = 6;
+
 const testDmRow = u.MessageActionRow()
   .addComponents(new u.Button().setCustomId("testDMs").setLabel("Test DM").setStyle(Discord.ButtonStyle.Primary));
 
@@ -41,7 +43,7 @@ async function slashClockworkTimer(int) {
     isTimer: true
   });
 
-  if (!timestamp.isAfter(u.moment().add(6, "m"))) reminders.push(reminder);
+  if (!timestamp.isAfter(u.moment().add(MONTH_THRESHOLD, "months"))) reminders.push(reminder);
 
   const content = `I set a ${textForm} timer! Once it's up, I'll send you this message: ` +
     `\`${reminderText}\`\n` +
@@ -65,10 +67,10 @@ async function slashClockworkReminder(int) {
   const timeRegex = /(\d?\d):(\d\d) ?(am|pm)?/i.exec(time);
   if (!timeRegex) return int.editReply("Sorry, I couldn't understand that time format! Try `XX:XX AM/PM`.");
 
-  const amPm = timeRegex[3];
+  const amPm = timeRegex[3]?.toLowerCase();
   let hour = parseInt(timeRegex[1]);
-  if (hour === 12 && amPm?.toLowerCase() === "am") hour = 0;
-  else if (hour !== 12 && amPm?.toLowerCase() === "pm") hour = Math.min(hour + 12, 24);
+  if (hour === 12 && amPm === "am") hour = 0;
+  else if (hour !== 12 && amPm === "pm") hour = Math.min(hour + 12, 24);
 
   const minutes = timeRegex[2];
   const timestamp = u.moment(`${year}-${month}-${day.toString().padStart(2, "0")}`);
@@ -86,7 +88,7 @@ async function slashClockworkReminder(int) {
     isTimer: false
   });
 
-  if (!timestamp.isAfter(u.moment().add(6, "m"))) reminders.push(reminder);
+  if (!timestamp.isAfter(u.moment().add(MONTH_THRESHOLD, "months"))) reminders.push(reminder);
 
   const content = `I'll remind you the following at ${toTime(timestamp)}:\n` +
     `\`${reminderText}\`\n` +
@@ -181,7 +183,7 @@ Module.addInteraction({
 })
 .setInit(async () => {
   // if the bot isn't restarted at all in 6 months then we probably have a bigger issue than some meme timer
-  reminders = await u.db.reminder.fetchUpcoming(u.moment().add(6, "months"));
+  reminders = await u.db.reminder.fetchUpcoming(u.moment().add(MONTH_THRESHOLD, "months"));
   timerCheck(Module.client);
 });
 
