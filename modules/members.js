@@ -68,6 +68,7 @@ async function makeProfileCard(member) {
 
     card.blit(new Jimp(ICON_PADDING, h, BORDER), 0, 0);
     card.blit(new Jimp(ICON_PADDING, h, BORDER), WIDTH - ICON_PADDING, 0);
+    card.blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h);
 
     const badges = badgeUtils.getBadges(member.roles.cache);
     const extra = 4 - (badges.length % 4 || 4);
