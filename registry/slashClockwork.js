@@ -81,8 +81,8 @@ const reminder = new u.sub()
     new u.string()
       .setName("time")
       .setDescription("12:34 AM/PM (Timezone is MST)")
-      .setMaxLength(7)
-      .setMinLength(4)
+      .setMaxLength(8)
+      .setMinLength(3)
   );
 
 const cancel = new u.sub()

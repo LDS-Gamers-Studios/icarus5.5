@@ -18,6 +18,13 @@ module.exports = {
     return Reminder.find({}, undefined, { lean: true });
   },
   /**
+   * @param {import("moment-timezone").Moment} cutoffDate
+   * @returns {Promise<Timer[]>}
+   */
+  fetchUpcoming: (cutoffDate) => {
+    return Reminder.find({ timestamp: { $lte: cutoffDate.valueOf() } });
+  },
+  /**
    * @param {string} discordId
    * @returns {Promise<Timer[]>}
   */
