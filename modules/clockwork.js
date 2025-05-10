@@ -97,11 +97,12 @@ async function slashClockworkReminder(int) {
 }
 
 /**
- * @param {number|import("moment").Moment} num
+ * @param {number|import("moment").Moment|Date} num
  * @param {Discord.TimestampStylesString} [dec]
 */
 function toTime(num, dec = "f") {
   if (typeof num === "number") return u.time(new Date(num), dec);
+  if (num instanceof Date) return u.time(num, dec);
   return u.time(num.toDate(), dec);
 }
 
