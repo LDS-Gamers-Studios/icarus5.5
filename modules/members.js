@@ -83,11 +83,9 @@ async function makeProfileCard(member) {
     for (let i = 0; i < badges.length; i++) {
       const b = badges[i];
       const badge = b.image ? await Jimp.read(`${config.badgePath}/${b.image}`) : new Jimp(1, 1, 0x00000000);
-      const roomier = new Jimp(badge.getWidth() + 6, badge.getHeight() + 6, 0x00000000).blit(badge, 3, 3);
 
-      roomier.shadow({ blur: 3, opacity: 0.5, size: 1, x: 0.2, y: 0.2 })
-        .resize(ICON_SIZE - ICON_PADDING, ICON_SIZE - ICON_PADDING);
-      const cubby = badgeCubby.clone().blit(roomier, placement, placement);
+      badge.resize(ICON_SIZE - ICON_PADDING, ICON_SIZE - ICON_PADDING);
+      const cubby = badgeCubby.clone().blit(badge, placement, placement);
 
       card.blit(cubby, ((ICON_SIZE + ICON_PADDING) * (i % 4)), h);
       if (i % 4 === 3) h += ICON_SIZE + ICON_PADDING;
@@ -95,13 +93,9 @@ async function makeProfileCard(member) {
 
     h += ICON_PADDING;
     card.crop(0, 0, WIDTH, h);
-    const cardShadow = new Jimp(card.getWidth() + 30, card.getHeight() + 30, 0x00000000)
-      .blit(card, 15, 15)
-      .shadow({ blur: 1, opacity: 0.5, size: 1, x: 5, y: 5 });
 
-
-    const output = new Jimp(cardShadow.getWidth(), cardShadow.getHeight(), member.displayHexColor)
-      .blit(cardShadow, 0, 0);
+    const output = new Jimp(card.getWidth() + 30, card.getHeight() + 30, member.displayHexColor)
+      .blit(card, 15, 15);
 
     return output.getBufferAsync(Jimp.MIME_PNG);
   } catch (error) {
