@@ -75,7 +75,7 @@ async function slashClockworkReminder(int) {
   timestamp.hour(hour).minute(parseInt(minutes));
   if (!timestamp.isValid()) return int.editReply("Sorry, I couldn't understand that date!");
 
-  if (!yearInput && timestamp.isBefore(u.moment(), "day")) timestamp.add(1, "year");
+  if (!yearInput && timestamp.isBefore(u.moment(), "month")) timestamp.add(1, "year");
   if (timestamp.isSameOrBefore(u.moment(), "minute")) return int.editReply("Sorry, I can't go back in time to send you a reminder.");
 
   const reminder = await u.db.reminder.save({
