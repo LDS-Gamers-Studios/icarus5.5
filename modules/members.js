@@ -100,7 +100,7 @@ async function makeProfileCard(member) {
       .shadow({ blur: 1, opacity: 0.5, size: 1, x: 5, y: 5 });
 
 
-    const output = new Jimp(cardShadow.getWidth(), cardShadow.getHeight(), member.displayHexColor.slice(1) || 0x40693aFF)
+    const output = new Jimp(cardShadow.getWidth(), cardShadow.getHeight(), member.displayHexColor)
       .blit(cardShadow, 0, 0);
 
     return output.getBufferAsync(Jimp.MIME_PNG);
