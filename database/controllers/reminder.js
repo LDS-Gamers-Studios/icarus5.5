@@ -22,7 +22,7 @@ module.exports = {
    * @returns {Promise<Timer[]>}
    */
   fetchUpcoming: (cutoffDate) => {
-    return Reminder.find({ timestamp: { $lte: cutoffDate.valueOf() } });
+    return Reminder.find({ timestamp: { $lte: cutoffDate.valueOf() } }, undefined, { lean: true });
   },
   /**
    * @param {string} discordId
