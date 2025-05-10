@@ -10,9 +10,7 @@ const Augur = require("augurbot-ts"),
   Jimp = require("jimp");
 
 /** @type {import("@jimp/plugin-print").Font} */
-let font,
-  /** @type {Jimp} */
-  cardBackground;
+let font;
 
 /**
  * Creates a profile card - a PNG that contains some user information in a fun format!
@@ -21,38 +19,85 @@ let font,
  */
 async function makeProfileCard(member) {
   try {
-    const card = cardBackground.clone();
-
     const members = member.guild.members.cache;
     const rank = await u.db.user.getRank(member.id, members);
 
-    const avatar = await Jimp.read(member.displayAvatarURL({ size: 64, extension: "png" }));
+    const ICON_SIZE = 128;
+    const ICON_PADDING = 10;
+    const BG = 0xF4A460FF;
+    const BORDER = 0x402a23FF;
 
-    card.blit(avatar.resize(64, 64), 8, 8)
-      // eslint-disable-next-line no-control-regex
-      .print(font, 80, 8, member.displayName.replace(/[^\x00-\x7F]/g, ""), 212)
-      .print(font, 80, 28, "Joined: " + (member.joinedAt ? u.moment(member.joinedAt).format("MMMM D, YYYY") : "???"), 212);
+    const WIDTH = (ICON_SIZE + ICON_PADDING) * 4 + ICON_PADDING;
+    const card = new Jimp(WIDTH, 10000, BG);
 
-    const rankOffset = (rank ? 168 : 80);
+    const badgeCubby = new Jimp(ICON_SIZE + ICON_PADDING * 2, ICON_SIZE + ICON_PADDING * 2, BORDER)
+      .blit(new Jimp(ICON_SIZE, ICON_SIZE, BG), ICON_PADDING, ICON_PADDING);
+
+    let h = 0;
+    card.blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h, () => h += ICON_PADDING);
+
+    const avatarImg = await Jimp.read(member.displayAvatarURL({ size: ICON_SIZE, extension: "png" }));
+    const avatarCubby = badgeCubby.clone().blit(avatarImg, ICON_PADDING, ICON_PADDING);
+
+    const joined = u.moment(member.joinedAt).subtract(rank?.priorTenure ?? 0, "days");
+    const now = u.moment();
+    const days = now.diff(joined, "days") % 365;
+    const years = now.diff(joined, "years");
+    const tenure = `Tenure: ${years > 0 ? `${years} year${years !== 1 ? "s" : ""}, ` : ""}${days} day${days !== 1 ? "s" : ""}`;
+
+    // eslint-disable-next-line no-control-regex
+    const name = member.displayName.replace(/[^\x00-\x7F]/g, "").substring(0, 24);
+
+    const midpoint = Math.floor((ICON_SIZE - ICON_PADDING) / 4) - 32 + h;
+    card.blit(avatarCubby.resize(ICON_SIZE, ICON_SIZE), 0, 0)
+      .print(font, ICON_SIZE + ICON_PADDING, h + midpoint, name, () => h += (ICON_SIZE - ICON_PADDING) / 2 - ICON_PADDING)
+      .blit(new Jimp(WIDTH, ICON_PADDING, BORDER), ICON_SIZE, h, () => h += ICON_PADDING)
+      .print(font, ICON_SIZE + ICON_PADDING, h + midpoint, tenure, () => h += (ICON_SIZE - ICON_PADDING) / 2 - ICON_PADDING)
+      .blit(new Jimp(WIDTH, ICON_PADDING, BORDER), ICON_SIZE, h, () => h += ICON_PADDING);
+
     if (rank) {
+      h = ICON_SIZE + ICON_PADDING;
       const level = RankInfo.level(rank.totalXP);
-      card.print(font, 8, 80, `Current Level: ${level} (${rank.totalXP.toLocaleString()} XP)`, 284)
-        .print(font, 8, 100, `Next Level: ${RankInfo.minXp(level + 1).toLocaleString()} XP`, 284)
-        .print(font, 8, 128, `Season Rank: ${rank.rank.season}/${member.guild.memberCount}`, 138)
-        .print(font, 154, 128, `Lifetime Rank: ${rank.rank.lifetime}/${member.guild.memberCount}`, 138);
+      card.print(font, ICON_PADDING * 2, h, `Current Level: ${level} (${rank.totalXP.toLocaleString()} XP)`, () => h += 35)
+        .print(font, ICON_PADDING * 2, h, `Next Level: ${RankInfo.minXp(level + 1).toLocaleString()} XP`, () => h += ICON_PADDING + 35)
+        .blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h, () => h += ICON_PADDING * 2)
+        .print(font, ICON_PADDING * 2, h, `Season Rank:\n${rank.rank.season}/${member.guild.memberCount}`)
+        .print(font, ICON_PADDING * 2 + 242, h, `Lifetime Rank:\n${rank.rank.lifetime}/${member.guild.memberCount}`, () => h += 64 + ICON_PADDING * 2);
+
+      card.blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h);
+    } else {
+      h = ICON_SIZE - ICON_PADDING;
     }
 
+    card.blit(new Jimp(ICON_PADDING, h, BORDER), 0, 0);
+    card.blit(new Jimp(ICON_PADDING, h, BORDER), WIDTH - ICON_PADDING, 0);
+
     const badges = badgeUtils.getBadges(member.roles.cache);
-    const promises = badges.map(async (b, i) => {
-      const badge = await Jimp.read(`${config.badgePath}/${b.image}`);
-      card.blit(badge.resize(61, 61), 10 + (73 * (i % 4)), rankOffset + (73 * Math.floor(i / 4)));
-    });
+    const extra = 4 - (badges.length % 4 || 4);
+    for (let i = 0; i < extra; i++) {
+      badges.push({ image: "", name: "", overrides: [] });
+    }
 
-    await Promise.all(promises); // Wait for all the blitting to be done
+    const placement = ICON_PADDING * 1.5;
 
-    card.crop(0, 0, 300, Math.min(rankOffset + 73 * Math.ceil((badges.length) / 4), 533));
+    for (let i = 0; i < badges.length; i++) {
+      const b = badges[i];
+      const badge = b.image ? await Jimp.read(`${config.badgePath}/${b.image}`) : new Jimp(1, 1, 0x00000000);
 
-    return await card.getBufferAsync(Jimp.MIME_PNG);
+      badge.resize(ICON_SIZE - ICON_PADDING, ICON_SIZE - ICON_PADDING);
+      const cubby = badgeCubby.clone().blit(badge, placement, placement);
+
+      card.blit(cubby, ((ICON_SIZE + ICON_PADDING) * (i % 4)), h);
+      if (i % 4 === 3) h += ICON_SIZE + ICON_PADDING;
+    }
+
+    h += ICON_PADDING;
+    card.crop(0, 0, WIDTH, h);
+
+    const output = new Jimp(card.getWidth() + 30, card.getHeight() + 30, member.displayHexColor)
+      .blit(card, 15, 15);
+
+    return output.getBufferAsync(Jimp.MIME_PNG);
   } catch (error) {
     u.errorHandler(error, "Profile Card Failure");
   }
@@ -86,8 +131,7 @@ async function slashUserProfile(interaction, user) {
 
 const Module = new Augur.Module()
   .setInit(async () => {
-    font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
-    cardBackground = await Jimp.read("./media/background.jpg");
+    font = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
   })
   .addInteraction({
     name: "user",

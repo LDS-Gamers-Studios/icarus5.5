@@ -5,6 +5,9 @@ const { AugurClient } = require("augurbot-ts"),
   u = require("./utils/utils"),
   s = require("./database/sheets");
 
+// eslint-disable-next-line no-console
+if (!config.getMessageContent) console.log("Message content is turned off.");
+
 // @ts-expect-error config.json includes more properties and augur doesn't like that.
 const client = new AugurClient(config, {
   clientOptions: {

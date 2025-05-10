@@ -231,5 +231,5 @@ module.exports = new u.cmd()
   .addSubcommand(warn)
   .addSubcommand(watch)
   .setContexts(u.contexts.Guild)
-  .setDefaultMemberPermissions(u.devMode)
+  .setDefaultMemberPermissions(u.privateCommand)
   .toJSON();

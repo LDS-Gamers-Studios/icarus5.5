@@ -767,7 +767,7 @@ const modCommon = {
       if (apply && (watchStatus?.watching || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
       if (!apply && watchStatus && !watchStatus.watching && !modCommon.watchlist.has(id)) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
 
-      await u.db.user.updateWatch(id, apply);
+      await u.db.user.update(id, { watching: apply });
       if (apply) modCommon.watchlist.add(id);
       else modCommon.watchlist.delete(id);
       success = true;
