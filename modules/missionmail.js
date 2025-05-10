@@ -210,34 +210,38 @@ Module
   }
 })
 .addEvent("interactionCreate", async (int) => {
-  if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
+  try {
+    if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
 
-  if (int.customId.startsWith(approveIdPrefix)) {
-    if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to interact with this!", flags: ["Ephemeral"] });
+    if (int.customId.startsWith(approveIdPrefix)) {
+      if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to interact with this!", flags: ["Ephemeral"] });
 
-    const embedCount = parseInt(int.customId.substring(approveIdPrefix.length));
-    const pagedMessages = await int.channel?.messages.fetch({ before: int.message.id, limit: embedCount + 10 })
-      .then((/** @type {Discord.Collection<String, Discord.Message<true>>} */ msgs) => msgs.filter(m => m.author.id === int.client.user.id).first(embedCount));
+      const embedCount = parseInt(int.customId.substring(approveIdPrefix.length));
+      const pagedMessages = await int.channel?.messages.fetch({ before: int.message.id, limit: embedCount + 10 })
+        .then((/** @type {Discord.Collection<String, Discord.Message<true>>} */ msgs) => msgs.filter(m => m.author.id === int.client.user.id).first(embedCount));
 
-    if (!pagedMessages) return int.reply({ content: "I couldn't find the messages to forward!" });
+      if (!pagedMessages) return int.reply({ content: "I couldn't find the messages to forward!" });
 
-    await int.update({ content: int.message.content + `\n\nApproved by ${int.user}`, components: [] });
+      await int.update({ content: int.message.content + `\n\nApproved by ${int.user}`, components: [] });
 
-    for (const message of pagedMessages.reverse().values()) {
-      await int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: message.embeds, files: [...message.attachments.values()] });
+      for (const message of pagedMessages.reverse().values()) {
+        await int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: message.embeds, files: [...message.attachments.values()] });
+      }
+
+      if (int.message.embeds.length > 0 || int.message.attachments.size > 0) {
+        int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: int.message.embeds, files: [...int.message.attachments.values()] });
+      }
+      return true;
     }
 
-    if (int.message.embeds.length > 0 || int.message.attachments.size > 0) {
-      int.client.getTextChannel(u.sf.channels.missionary.mail)?.send({ embeds: int.message.embeds, files: [...int.message.attachments.values()] });
+    if (int.customId === rejectIdPrefix) {
+      if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to interact with this!", flags: ["Ephemeral"] });
+
+      int.update({ content: int.message.content + `\n\n Rejected by ${int.user}`, components: [] });
+      return true;
     }
-    return true;
-  }
-
-  if (int.customId === rejectIdPrefix) {
-    if (!u.perms.calc(int.member, ["mod"])) return int.reply({ content: "You don't have permissions to interact with this!", flags: ["Ephemeral"] });
-
-    int.update({ content: int.message.content + `\n\n Rejected by ${int.user}`, components: [] });
-    return true;
+  } catch (error) {
+    u.errorHandler(error, `Mission Mail Button ${int.isButton() ? int.customId : ""}`);
   }
 });
 
