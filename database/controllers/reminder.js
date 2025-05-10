@@ -36,7 +36,7 @@ module.exports = {
    * @returns {Promise<Timer>}
    */
   save: (reminder) => {
-    return Reminder.create({ ...reminder, id: nanoid(5).toUpperCase() }).then(r => r.toObject());
+    return new Reminder({ ...reminder, id: nanoid(5).toUpperCase() }).save().then(r => r.toObject());
   },
   /**
    * @param {string} id
