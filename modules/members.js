@@ -55,20 +55,22 @@ async function makeProfileCard(member) {
       .print(font, ICON_SIZE + ICON_PADDING, h + midpoint, tenure, () => h += (ICON_SIZE - ICON_PADDING) / 2 - ICON_PADDING)
       .blit(new Jimp(WIDTH, ICON_PADDING, BORDER), ICON_SIZE, h, () => h += ICON_PADDING);
 
-    h = ICON_SIZE + ICON_PADDING;
-
     if (rank) {
+      h = ICON_SIZE + ICON_PADDING;
       const level = RankInfo.level(rank.totalXP);
       card.print(font, ICON_PADDING * 2, h, `Current Level: ${level} (${rank.totalXP.toLocaleString()} XP)`, () => h += 35)
         .print(font, ICON_PADDING * 2, h, `Next Level: ${RankInfo.minXp(level + 1).toLocaleString()} XP`, () => h += ICON_PADDING + 35)
         .blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h, () => h += ICON_PADDING * 2)
         .print(font, ICON_PADDING * 2, h, `Season Rank:\n${rank.rank.season}/${member.guild.memberCount}`)
         .print(font, ICON_PADDING * 2 + 242, h, `Lifetime Rank:\n${rank.rank.lifetime}/${member.guild.memberCount}`, () => h += 64 + ICON_PADDING * 2);
+
+      card.blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h);
+    } else {
+      h = ICON_SIZE - ICON_PADDING;
     }
 
     card.blit(new Jimp(ICON_PADDING, h, BORDER), 0, 0);
     card.blit(new Jimp(ICON_PADDING, h, BORDER), WIDTH - ICON_PADDING, 0);
-    card.blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h);
 
     const badges = badgeUtils.getBadges(member.roles.cache);
     const extra = 4 - (badges.length % 4 || 4);
