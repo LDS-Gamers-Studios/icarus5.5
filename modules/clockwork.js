@@ -17,8 +17,13 @@ async function slashClockworkTimer(int) {
   const hours = int.options.getInteger("hours");
   const minutes = int.options.getInteger("minutes");
 
-  const textForm = `${days ? ` ${days} day` : ""}${hours ? ` ${hours} hour` : ""}${minutes ? ` ${minutes} minute` : ""}`;
-  const reminderText = int.options.getString("timer-text") ?? `Your${textForm} timer is up!`;
+  const textFormArray = [];
+  if (days) textFormArray.push(`${days} day`);
+  if (hours) textFormArray.push(`${hours} hour`);
+  if (minutes) textFormArray.push(`${minutes} minute`);
+
+  const textForm = textFormArray.join(", ");
+  const reminderText = int.options.getString("timer-text") ?? `Your ${textForm} timer is up!`;
 
   if (!days && !hours && !minutes) return int.editReply("Your timer is up! (you need to give me a delay!)");
 
@@ -38,7 +43,7 @@ async function slashClockworkTimer(int) {
 
   if (!timestamp.isAfter(u.moment().add(6, "m"))) reminders.push(reminder);
 
-  const content = `I set a${textForm} timer! Once it's up, I'll send you this message:` +
+  const content = `I set a ${textForm} timer! Once it's up, I'll send you this message: ` +
     `\`${reminderText}\`\n` +
     "Click the button below if you're not sure if you can receive DMs from me.";
   await int.editReply({ content, components: [testDmRow] });
@@ -51,7 +56,9 @@ async function slashClockworkReminder(int) {
   const reminderText = int.options.getString("reminder-text", true);
   const month = int.options.getString("month", true);
   const day = int.options.getInteger("day", true);
-  const year = int.options.getInteger("year") ?? u.moment().get("year");
+  const yearInput = int.options.getInteger("year");
+  const year = yearInput || u.moment().get("year");
+
   const time = int.options.getString("time") ?? u.moment().format("h:mm a");
 
   // parse the time (XX:XX AM/PM format)
@@ -66,8 +73,9 @@ async function slashClockworkReminder(int) {
   const minutes = timeRegex[2];
   const timestamp = u.moment(`${year}-${month}-${day.toString().padStart(2, "0")}`);
   timestamp.hour(hour).minute(parseInt(minutes));
-
   if (!timestamp.isValid()) return int.editReply("Sorry, I couldn't understand that date!");
+
+  if (!yearInput && timestamp.isBefore(u.moment(), "day")) timestamp.add(1, "year");
   if (timestamp.isSameOrBefore(u.moment(), "minute")) return int.editReply("Sorry, I can't go back in time to send you a reminder.");
 
   const reminder = await u.db.reminder.save({
@@ -98,7 +106,7 @@ function toTime(num, dec = "f") {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashClockworkCancel(int) {
   const inputId = int.options.getString("id");
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
 
   if (inputId) {
     const deleted = await u.db.reminder.deleteById(inputId, int.user.id);
