@@ -26,7 +26,7 @@ async function slashTeamRoleGive(int, give = true) {
 async function slashTeamBankAward(int) {
   try {
     /** @type {import("./bank").BankShared} */
-    const bankUtils = int.client.moduleManager.shared.get("bank.js")?.shared;
+    const bankUtils = int.client.moduleManager.shared.get("bank.js");
     if (!bankUtils) throw new Error("Could not access bank utilities from shared.");
     const { ember, gb, limit } = bankUtils;
 
