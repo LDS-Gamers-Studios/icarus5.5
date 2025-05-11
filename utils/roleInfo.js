@@ -6,6 +6,7 @@ const u = require("./utils");
  * @typedef {{baseId: string, inherited: string[], colorId: string }[]} equipRoles
  */
 /**
+ * Get the roles that a given member can equip
  * @param {GuildMember} member
  */
 function getInventory(member, override = true) {

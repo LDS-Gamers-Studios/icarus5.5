@@ -519,7 +519,7 @@ const modCommon = {
   },
 
   /**
-   *
+   * Change someone's server nickname
    * @param {Augur.GuildInteraction<"CommandSlash"|"Modal">} interaction
    * @param {Discord.GuildMember} target
    * @param {string} newNick
@@ -570,6 +570,7 @@ const modCommon = {
   },
 
   /**
+   * Delete spam messages similar to a given message
    * @param {string[]} searchContent
    * @param {Discord.Guild} guild
    * @param {Discord.Message<true>} message
@@ -792,6 +793,7 @@ const modCommon = {
   },
 
   /**
+   * Issue a warning to a user
    * @param {Discord.Interaction<"cached">} interaction
    * @param {string} reason
    * @param {number} value
@@ -849,7 +851,7 @@ const modCommon = {
   },
   /** @type {Set<string>} */
   watchlist: new Set(),
-  /** @type {Discord.Collection<string, any>} */
+  /** @type {Discord.Collection<string, NodeJS.Timeout>} */
   grownups: new u.Collection()
 };
 

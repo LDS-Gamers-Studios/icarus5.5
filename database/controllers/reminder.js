@@ -4,12 +4,12 @@ const Reminder = require("../models/Reminder.model");
 
 /**
  * @typedef Timer
- * @prop {string} id
- * @prop {string} discordId
- * @prop {string} reminder
- * @prop {number} timestamp
- * @prop {number} started
- * @prop {boolean} isTimer
+ * @prop {string} id The timer's ID
+ * @prop {string} discordId The user's ID
+ * @prop {string} reminder The reminder text
+ * @prop {number} timestamp Timestamp of when the timer will go off
+ * @prop {number} started Timestamp of when the timer was set
+ * @prop {boolean} isTimer Whether its a timer or a reminder
  */
 
 module.exports = {

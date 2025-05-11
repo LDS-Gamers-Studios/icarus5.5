@@ -8,18 +8,18 @@ const ChannelXP = require("../models/ChannelXP.model");
 
 /**
  * @typedef UserRecord
- * @prop {string} discordId
- * @prop {string[]} roles
- * @prop {string[]} badges
- * @prop {number} posts
- * @prop {number} voice
- * @prop {number} trackXP
- * @prop {number} currentXP
- * @prop {number} totalXP
- * @prop {number} priorTenure
- * @prop {boolean} sendBdays
- * @prop {boolean} watching
- * @prop {boolean} twitchFollow
+ * @prop {string} discordId The ID of the user
+ * @prop {string[]} roles IDs of roles the user had when they left the server
+ * @prop {string[]} badges Currently unused
+ * @prop {number} posts The count of active chat minutes
+ * @prop {number} voice The count of minutes spent in voice channels
+ * @prop {number} trackXP Setting for tracking XP. See TrackXPEnum for details
+ * @prop {number} currentXP Season XP
+ * @prop {number} totalXP Lifetime XP
+ * @prop {number} priorTenure How many days they've spent in the server, updated when they leave
+ * @prop {boolean} sendBdays Setting for receiving birthday spam
+ * @prop {boolean} watching If this user is on the watchlist
+ * @prop {boolean} twitchFollow If they've followed the LDSG Twitch channel
  */
 
 /**
