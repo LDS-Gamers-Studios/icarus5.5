@@ -101,11 +101,15 @@ async function sendUnsent(receiver) {
     // now that we've removed the reply...
     if (!parsed.text && parsed.attachments?.length === 0) continue;
 
+    const text = parsed.text?.replace(fromEmail, missionary.displayName)
+      .replace(/\n(\n|[a-z])/g, " $1")
+      .split("\n");
+
     const embed = u.embed({ author: missionary })
       .setTitle(`${missionary.displayName} - ${parsed.subject}`)
       .setTimestamp(parsed.receivedDate);
 
-    const embeds = parsed.text ? u.pagedEmbedsDescription(embed, parsed.text.replace(fromEmail, missionary.displayName).split("\n")) : [embed.setDescription("Attachments:")];
+    const embeds = text ? u.pagedEmbedsDescription(embed, text) : [embed.setDescription("Attachments:")];
 
     for (const em of embeds) {
       await approvals.send({ embeds: [em] });
