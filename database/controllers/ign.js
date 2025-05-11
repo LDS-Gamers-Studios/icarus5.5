@@ -2,9 +2,9 @@
 const Ign = require("../models/Ign.model");
 /**
  * @typedef IGN
- * @prop {string} discordId
- * @prop {string} system
- * @prop {string} ign
+ * @prop {string} discordId The ID fo the user
+ * @prop {string} system What the IGN is for
+ * @prop {string} ign The stored value
  */
 
 module.exports = {
