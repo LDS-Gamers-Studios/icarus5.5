@@ -305,6 +305,31 @@ async function slashModTrust(interaction) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
+async function slashModTrustAudit(interaction) {
+  try {
+    await interaction.deferReply({ flags: u.ephemeralChannel(interaction, u.sf.channels.mods.discussion) });
+    const threshold = interaction.options.getInteger("posts", false) || 100;
+    const members = interaction.guild.members.cache;
+    const pool = members.filter(member => ((Date.now() - (member.joinedTimestamp || 0)) > (7 * 24 * 60 * 60_000)) && !member.roles.cache.has(u.sf.roles.moderation.trusted));
+    const users = await u.db.user.getUsers({ posts: { $gt: threshold }, discordId: { $in: pool.map(m => m.id) } });
+    const response = users.sort((a, b) => b.posts - a.posts)
+      .map(m => {
+        const member = members.get(m.discordId);
+        return `${member || `<@${m.discordId}>`}: ${m.posts} posts, joined ${member?.joinedAt?.toDateString() || "at an unkown date" } `;
+      });
+
+    if (response.length === 0) return interaction.editReply(`No untrusted users who have been in the server longer than a week with ${threshold}+ posts found.`);
+
+    const embed = u.embed().setTitle("Trust Audit").setDescription("All of the people that have talked without the trusted role");
+    const processedembed = u.pagedEmbedsDescription(embed, response);
+
+    return u.manyReplies(interaction, processedembed.map(a => ({ embeds: [a] })));
+  } catch (e) {
+    u.errorHandler(e, interaction);
+  }
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashModTimeout(interaction) {
   await interaction.deferReply({ flags: ["Ephemeral"] });
   const member = interaction.options.getMember("user");
@@ -402,6 +427,7 @@ Module.addEvent("guildMemberAdd", async (member) => {
         case "warn": return slashModWarn(interaction);
         case "watch": return slashModWatch(interaction);
         case "grownups": return slashModGrownups(interaction);
+        case "trustaudit": return slashModTrustAudit(interaction);
         default:
           u.errorHandler(Error("Unknown Interaction Subcommand"), interaction);
       }

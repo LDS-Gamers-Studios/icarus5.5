@@ -42,6 +42,17 @@ const ban = new u.sub()
       .setMinValue(0)
       .setMaxValue(7)
   );
+const trustaudit = new u.sub()
+  .setName("trustaudit")
+  .setDescription("See all of the people that have talked without the trusted role")
+  .addIntegerOption(
+    new u.int()
+    .setName("posts")
+    .setDescription("How many posts do they need to have?")
+    .setRequired(false)
+    .setMinValue(0)
+    .setMaxValue(10000)
+  );
 
 const filter = new u.sub()
   .setName("filter")
@@ -230,6 +241,7 @@ module.exports = new u.cmd()
   .addSubcommand(timeout)
   .addSubcommand(warn)
   .addSubcommand(watch)
+  .addSubcommand(trustaudit)
   .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.devMode)
   .toJSON();
