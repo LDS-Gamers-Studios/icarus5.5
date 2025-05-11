@@ -205,8 +205,8 @@ const Module = new Augur.Module()
 
         // these commands are static tags
         default: {
-          /** @type {import("./tags").SharedTags} */
-          const tu = interaction.client.moduleManager.shared.get("tags.js")?.shared;
+          /** @type {import("./tags").Shared} */
+          const tu = interaction.client.moduleManager.shared.get("tags.js");
           if (!tu) return u.errorHandler(new Error("Couldn't get Tag Utils"), interaction);
 
           const tag = tu.tags.get(subcommand);

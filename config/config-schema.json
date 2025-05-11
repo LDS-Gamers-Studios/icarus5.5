@@ -95,10 +95,39 @@
       "items": { "type": "string" },
       "uniqueItems": true
     },
+    "getMessageContent": {
+      "description": "Keep as true to enable message related features",
+      "type": "boolean",
+      "default": true
+    },
+    "processDMs": {
+      "description": "Keep as true to enable message related features in DMs",
+      "type": "boolean",
+      "default": true
+    },
     "google": {
       "description": "API credentials, mainly for google sheets. You can get your API key for this and more info at https://console.cloud.google.com/apis/library/sheets.googleapis.com",
       "type": "object",
       "properties": {
+        "mail": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "description": "Toggles checking the mail",
+              "type": "boolean",
+              "default": false
+            },
+            "email": {
+              "description": "The email to check",
+              "type": "string"
+            },
+            "pass": {
+              "description": "Use an app password. Google it if you need more info",
+              "type": "string"
+            }
+          },
+          "required": ["enabled", "email", "pass"]
+        },
         "creds": {
           "description": "Create a project, give it access to google sheets, and create a service account credential. Download the JSON and that should fit in this object",
           "type": "object",
@@ -127,7 +156,7 @@
           "required": ["config", "games", "applications"]
         }
       },
-      "required": ["creds","sheets"]
+      "required": ["creds","sheets", "mail"]
     },
     "prefix": {
       "description": "The bot will respond to commands starting with this string",

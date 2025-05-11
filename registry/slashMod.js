@@ -243,5 +243,5 @@ module.exports = new u.cmd()
   .addSubcommand(watch)
   .addSubcommand(trustaudit)
   .setContexts(u.contexts.Guild)
-  .setDefaultMemberPermissions(u.devMode)
+  .setDefaultMemberPermissions(u.privateCommand)
   .toJSON();

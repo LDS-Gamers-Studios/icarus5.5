@@ -16,6 +16,8 @@ const data = {
     /** @type {GoogleSpreadsheetRow[]} */
     igns: [],
     /** @type {GoogleSpreadsheetRow[]} */
+    missionaries: [],
+    /** @type {GoogleSpreadsheetRow[]} */
     optRoles: [],
     /** @type {GoogleSpreadsheetRow[]} */
     roles: [],
@@ -40,12 +42,14 @@ const data = {
   },
   /** @type {Collection<string, types.IGN>} */
   igns: new Collection(),
+  /** @type {Collection<string, string>} */
+  missionaries: new Collection(),
   /** @type {Collection<string, types.OptRole>} */
   optRoles: new Collection(),
   roles: {
     /** @type {Collection<string, types.Role>} */
     all: new Collection(),
-    /** @type {Collection<string, Omit<types.Role, "level"> & { level: string }>} */
+    /** @type {Collection<string, Omit<types.Role, "level"> & { level: import("../utils/perms").Perms }>} */
     team: new Collection(),
     /** @type {Collection<string, Omit<types.Role, "color"> & { color: Role }>} */
     equip: new Collection(),
@@ -63,7 +67,7 @@ const data = {
   /** @type {Collection<string, types.PlayingDefault>} */
   wipChannels: new Collection(),
   /** @type {{ channels: Collection<string, types.ChannelXPSetting>, banned: Set<string> }} */
-  xpSettings: { banned: new Set(), channels: new Collection() }
+  xpSettings: { banned: new Set(), channels: new Collection() },
 };
 
 /** @param {string} [sheetId] */
@@ -89,13 +93,14 @@ function getServer(client) {
 const sheetMap = {
   games: [],
   igns: ["IGN", "System"],
+  missionaries: ["Mail", "UserId"],
   optRoles: ["Opt-In Roles", "RoleID"],
   roles: ["Roles", "Base Role ID"],
   sponsors: ["Sponsor Channels", "Sponsor"],
   tourneyChampions: ["Tourney Champions", "Key"],
   vcNames: ["Voice Channel Names", "Name"],
+  wipChannels: ["WIP Channel Defaults", "ChannelId"],
   xpSettings: ["XP Settings", "ChannelId"],
-  wipChannels: ["WIP Channel Defaults", "ChannelId"]
 };
 
 const mappers = {
@@ -129,6 +134,14 @@ const mappers = {
     name: row.get("Name"),
     system: row.get("System")
   }),
+
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @returns {string}
+  */
+  missionaries: (row) => {
+    return row.get("Email");
+  },
 
   /**
    * @param {GoogleSpreadsheetRow} row
@@ -289,6 +302,7 @@ async function setData(sheet, doc, client) {
       const mapped = mappers.roles(role, client);
       if (mapped.color) data.roles.equip.set(id, mapped);
       switch (type) {
+        // @ts-ignore
         case "Team Assign": data.roles.team.set(id, mapped); break;
         case "Rank": data.roles.rank.set(parseInt(mapped.level ?? "1000"), mapped); break;
         case "Year": data.roles.year.set(parseInt(mapped.level ?? "1000"), mapped); break;
@@ -307,7 +321,7 @@ async function setData(sheet, doc, client) {
     const key = datum.get(sheetMap[sheet][1]);
     if (key) {
       if (sheet === "vcNames") data[sheet].push(key);
-      // @ts-expect-error i'm not writing a switch case for something thats meant to be procedural
+      // @ts-ignore i'm not writing a switch case for something thats meant to be procedural
       else data[sheet].set(key, mappers[sheet](datum, client));
     }
   }

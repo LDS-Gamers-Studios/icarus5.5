@@ -68,4 +68,8 @@ const perms = {
 
 };
 
+/**
+ * @typedef {keyof permFuncs} Perms
+ */
+
 module.exports = perms;
