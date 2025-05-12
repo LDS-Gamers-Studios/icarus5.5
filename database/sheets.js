@@ -24,6 +24,8 @@ const data = {
     /** @type {GoogleSpreadsheetRow[]} */
     sponsors: [],
     /** @type {GoogleSpreadsheetRow[]} */
+    starboards: [],
+    /** @type {GoogleSpreadsheetRow[]} */
     tourneyChampions: [],
     /** @type {GoogleSpreadsheetRow[]} */
     vcNames: [],
@@ -60,6 +62,8 @@ const data = {
   },
   /** @type {Collection<string, types.Sponsor>} */
   sponsors: new Collection(),
+  /** @type {Collection<string, types.Starboard>} */
+  starboards: new Collection(),
   /** @type {Collection<string, types.TourneyChampion>} */
   tourneyChampions: new Collection(),
   /** @type {string[]} */
@@ -97,6 +101,7 @@ const sheetMap = {
   optRoles: ["Opt-In Roles", "RoleID"],
   roles: ["Roles", "Base Role ID"],
   sponsors: ["Sponsor Channels", "Sponsor"],
+  starboards: ["Starboards", "ChannelID"],
   tourneyChampions: ["Tourney Champions", "Key"],
   vcNames: ["Voice Channel Names", "Name"],
   wipChannels: ["WIP Channel Defaults", "ChannelId"],
@@ -212,7 +217,23 @@ const mappers = {
       archiveAt: isNaN(date.valueOf()) ? null : date
     };
   },
-
+  /**
+   * @param {GoogleSpreadsheetRow} row
+   * @param {Client} client
+   * @returns {types.Starboard}
+   */
+  starboards: (row, client) => {
+    const cId = row.get("ChannelID");
+    const channel = client.getTextChannel(cId);
+    if (!channel) throw new Error(`Sheet Error - Missing Starboard Channel: Row ${row.rowNumber}, ${cId}`);
+    return {
+      approval: row.get("Approval") === "TRUE",
+      channel,
+      priorityChannels: new Set(row.get("PriorityChannels")?.split(", ") || []),
+      priorityEmoji: new Set(row.get("Reactions")?.split(", ") || []),
+      threshold: parseInt(row.get("Threshold")),
+    };
+  },
   /**
    * @param {GoogleSpreadsheetRow} row
    * @returns {types.TourneyChampion}

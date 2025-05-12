@@ -8,6 +8,7 @@ const bank = require("./controllers/bank"),
   tags = require("./controllers/tag"),
   user = require("./controllers/user"),
   reminder = require("./controllers/reminder"),
+  starboard = require("./controllers/starboard"),
   tournament = require("./controllers/tournament");
 
 const { data, loadData, mappers } = require("./sheets");
@@ -21,6 +22,7 @@ module.exports = {
   tags,
   user,
   reminder,
+  starboard,
   tournament,
   sheets: { ...data, loadData, mappers }
 };
