@@ -57,17 +57,18 @@ const Module = new Augur.Module()
     permissions: (int) => u.perms.calc(int.member, ["team"]),
     process: async (int) => {
       await int.deferUpdate();
+
       if (int.message.partial) await int.message.fetch();
       const embed = int.message.embeds?.[0];
 
       const channelId = embed?.fields?.find(f => f.name === "Destination")?.value.split(" | ")[1];
-      console.log(embed.fields);
       const channel = int.client.getTextChannel(channelId || "");
+
       if (!embed || !channel) return int.editReply("Sorry, I couldn't repost this message.");
 
       const richEmbed = u.embed(embed)
-        .setFields(embed.fields.filter(f => f.name !== "Destination"))
-        .setColor(0x00ff00);
+        .setFields(embed.fields.filter(f => f.name !== "Destination"));
+
       await int.editReply({ components: [], content: "Approved" });
       channel.send({ embeds: [richEmbed] });
     }
