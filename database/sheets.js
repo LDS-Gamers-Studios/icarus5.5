@@ -33,6 +33,7 @@ const sheetMap = {
   games: "",
   igns: "IGN",
   optRoles: "Opt-In Roles",
+  missionaries: "Mail",
   roles: "Roles",
   sponsors: "Sponsor Channels",
   tourneyChampions: "Tourney Champions",
@@ -151,6 +152,11 @@ const data = {
     system: { key: "System" }
   }),
 
+  missionaries: new Schemas.ObjectSchema("userId", {
+    userId: { key: "UserId" },
+    email: { key: "Email" }
+  }),
+
   tourneyChampions: new Schemas.ObjectSchema("key", {
     tourneyName: { key: "Tourney Name" },
     userId: { key: "User ID" },
@@ -172,6 +178,8 @@ const data = {
 
   roles: {
     all: new Schemas.SchemaFunction("Base Role ID", functionSchemas.rolesBase),
+    /** @type {Schemas.SchemaFunction<string, Omit<types.LevelStrRole, "level"> & { level: import("../utils/perms").Perms }>} */
+    // @ts-ignore
     team: new Schemas.SchemaFunction("Base Role ID", functionSchemas.levelRole),
     equip: new Schemas.SchemaFunction("Base Role ID", functionSchemas.colorRole),
     rank: new Schemas.SchemaFunction("Level", functionSchemas.numRole, "number"),
