@@ -21,16 +21,19 @@ const guildCommandFiles = [
   "messageMod.js",
   "slashBank.js",
   "slashBot.js",
+  "slashClockwork.js",
   "slashGame.js",
   "slashGospel.js",
   "slashIgn.js",
   "slashLdsg.js",
   "slashManagement.js",
+  "slashMissionary.js",
   "slashMod.js",
   "slashRank.js",
   "slashRole.js",
   "slashTag.js",
-  "slashTournament.js",
+  "slashTeam.js",
+  "slashTournaments.js",
   "slashUser.js",
   "slashVoice.js",
   "userMod.js"
@@ -86,6 +89,7 @@ function displayError(error) {
   } else {
     // Something happened in setting up the request that triggered an Error
     console.log('Error', error.message);
+    console.trace(error);
   }
   process.exit();
 }

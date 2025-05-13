@@ -39,8 +39,8 @@ const Module = new Augur.Module()
   id: "helpTags",
   type: "Button",
   process: async (int) => {
-    /** @type {import("./tags").SharedTags} */
-    const tu = int.client.moduleManager.shared.get("tags.js")?.shared;
+    /** @type {import("./tags").Shared} */
+    const tu = int.client.moduleManager.shared.get("tags.js");
     if (!tu || tu.tags.size === 0) return int.reply({ content: "I couldn't find any tags. Try again later!", flags: ["Ephemeral"] });
 
     const ldsg = int.client.guilds.cache.get(u.sf.ldsg);
@@ -49,7 +49,7 @@ const Module = new Augur.Module()
       .setURL("https://my.ldsgamers.com/commands") // TODO: remove once new site is up and running
       .setThumbnail(ldsg?.iconURL() ?? null);
 
-    const mapped = tu.tags.map(t => `${config.prefix}${u.escapeText(t.tag)}`);
+    const mapped = tu.tags.sort((a, b) => a.tag.localeCompare(b.tag)).map(t => `${config.prefix}${u.escapeText(t.tag)}`);
     const embeds = u.pagedEmbedsDescription(embed, mapped);
     return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), true);
   }

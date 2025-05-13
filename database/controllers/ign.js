@@ -2,9 +2,9 @@
 const Ign = require("../models/Ign.model");
 /**
  * @typedef IGN
- * @prop {string} discordId
- * @prop {string} system
- * @prop {string} ign
+ * @prop {string} discordId The ID fo the user
+ * @prop {string} system What the IGN is for
+ * @prop {string} ign The stored value
  */
 
 module.exports = {
@@ -26,6 +26,16 @@ module.exports = {
    */
   findOne: function(discordId, system) {
     return Ign.findOne({ discordId, system }, undefined, { lean: true }).exec();
+  },
+  /**
+   * Find someone by their IGN
+   * @param {string | string[]} ign
+   * @param {string} system
+   * @returns {Promise<IGN | null>}
+   */
+  findOneByIgn: function(ign, system) {
+    if (Array.isArray(ign)) return Ign.findOne({ ign: { $in: ign }, system }, undefined, { lean: true }).exec();
+    return Ign.findOne({ ign, system }, undefined, { lean: true }).exec();
   },
   /**
    * Find a list of all IGNs for a given system

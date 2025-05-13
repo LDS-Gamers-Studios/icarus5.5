@@ -20,7 +20,7 @@ async function saveAttachment(attachment, cmd) {
     url: attachment.url,
     responseType: "stream",
   });
-  response.data.pipe(fs.createWriteStream(process.cwd() + "/media/tags/" + cmd._id.toString()));
+  response.data.pipe(fs.createWriteStream(config.tagFilePath + "/" + cmd._id.toString()));
 }
 
 /** @type {Discord.Collection<string, tag>} */
@@ -83,7 +83,7 @@ function encodeTag(tag, msg, int) {
   }
   return {
     content: response ?? undefined,
-    files: tag.attachment ? [new u.Attachment(`./media/tags/${tag._id}`).setName(tag.attachment)] : [],
+    files: tag.attachment ? [new u.Attachment(`${config.tagFilePath}/${tag._id}`).setName(tag.attachment)] : [],
     allowedMentions: { users: target ? [target.id, user.id] : [user.id] }
   };
 }
@@ -94,7 +94,7 @@ function encodeTag(tag, msg, int) {
  */
 function deleteAttachment(embed, command) {
   embed.addFields({ name: "Attachment", value: "[Deleted]" });
-  const path = process.cwd() + `/media/tags/${command._id.toString()}`;
+  const path = `${config.tagFilePath}/${command._id.toString()}`;
   if (fs.existsSync(path)) fs.unlinkSync(path);
 }
 
@@ -162,10 +162,10 @@ async function slashTagSet(int) {
   tags.set(command.tag, command);
 
   // report the tag creation
-  const team = int.client.getTextChannel(u.sf.channels.team.team);
-  team?.send({ embeds: [embed], files: attachment ? [attachment] : undefined }).catch(() => {
+  const alerts = await int.client.getTextChannel(u.sf.channels.team.team)?.threads.fetch(u.sf.channels.team.tags);
+  alerts?.send({ embeds: [embed], files: attachment ? [attachment] : undefined }).catch(() => {
     embed.setDescription(`${int.member} set the tag \`${name}\`\n\nError: The tag save preview was too long to send`);
-    team?.send({ embeds: [embed] });
+    alerts?.send({ embeds: [embed] });
   });
 
   content.editReply({ content: "Tag Saved!", embeds: [embed.setDescription(`Try it out with \`${config.prefix}${name}\``)], files: attachment ? [attachment] : [] });
@@ -191,10 +191,10 @@ async function slashTagDelete(int) {
 
   if (command.attachment) deleteAttachment(embed, command);
 
-  const team = int.client.getTextChannel(u.sf.channels.team.team);
-  team?.send({ embeds: [embed] }).catch(() => {
+  const alerts = await int.client.getTextChannel(u.sf.channels.team.team)?.threads.fetch(u.sf.channels.team.tags);
+  alerts?.send({ embeds: [embed] }).catch(() => {
     embed.setDescription(`${int.member} deleted the tag \`${name}\`\n\nError: The tag deletion preview was too long to send`);
-    team?.send({ embeds: [embed] });
+    alerts?.send({ embeds: [embed] });
   });
 
   int.editReply({ embeds: [embed.setDescription(null)] });
@@ -231,7 +231,7 @@ async function slashTagValue(int) {
   const embed = u.embed({ author: int.member })
     .setTitle(tag.tag)
     .setDescription(tag.response || null);
-  return int.editReply({ embeds: [embed], files: tag.attachment ? [new u.Attachment(`./media/tags/${tag._id}`).setName(tag.attachment)] : [] });
+  return int.editReply({ embeds: [embed], files: tag.attachment ? [new u.Attachment(`${config.tagFilePath}/${tag._id}`).setName(tag.attachment)] : [] });
 }
 
 const Module = new Augur.Module()
@@ -268,8 +268,8 @@ const Module = new Augur.Module()
     cmds.forEach(c => tags.set(c.tag.toLowerCase(), c));
   } catch (error) { u.errorHandler(error, "Load Custom Tags"); }
 })
-.addShared("tags.js", { tags, encodeTag });
+.setShared({ tags, encodeTag });
 
-/** @typedef {{ tags: typeof tags, encodeTag: typeof encodeTag } | undefined} SharedTags */
+/** @typedef {{ tags: tags, encodeTag: encodeTag } | undefined} Shared */
 
 module.exports = Module;
