@@ -144,7 +144,7 @@ const data = {
   },
 
   igns: new Schemas.ObjectSchema("system", {
-    aliases: { key: "Aliases", arraySplitter: " " },
+    aliases: { key: "Aliases", splitter: " " },
     category: { key: "Category", defaultValue: "Game Platforms" },
     link: { key: "Link", possiblyNull: true },
     name: { key: "Name" },
@@ -165,7 +165,7 @@ const data = {
     channels: new Schemas.ObjectSchema("channelId", {
       posts: { key: "PostMultiplier", type: "number", defaultValue: 1 },
       channelId: { key: "ChannelId" },
-      emoji: { key: "Emoji", arraySplitter: ", ", possiblyNull: true },
+      emoji: { key: "Emoji", splitter: ", " },
       preferMedia: { key: "PreferMedia", type: "boolean", defaultValue: false }
     })
   },

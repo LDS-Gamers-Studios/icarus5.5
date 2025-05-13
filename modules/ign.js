@@ -293,7 +293,7 @@ const Module = new Augur.Module()
       /** @type {{name: string, value: string}[]} */
       const systems = [];
       const val = option.value.toLowerCase();
-      let igns = u.db.sheets.igns;
+      let igns = u.db.sheets.igns.map(i => i);
 
       // filter IGN systems they can remove. Uses a cache so that it's not calling the db every 5 seconds
       if (int.options.getSubcommand() === "remove") {
@@ -309,13 +309,13 @@ const Module = new Augur.Module()
           autocompleteCache.set(int.user.id, { systems: sys, expires: Date.now() + 60_000 });
         }
 
-        igns = u.db.sheets.igns.filter(i => sys.has(i.system));
+        igns = igns.filter(i => sys.has(i.system));
       }
 
-      for (const [system, ign] of igns) {
-        if (system === "birthday" && int.options.getSubcommand() === "set") continue;
+      for (const ign of igns) {
+        if (ign.system === "birthday" && int.options.getSubcommand() === "set") continue;
         if (
-          system.toLowerCase().includes(val) ||
+          ign.system.toLowerCase().includes(val) ||
           ign.name.toLowerCase().includes(val) ||
           ign.aliases.find(a => a.includes(val))
         ) systems.push({ name: ign.name, value: ign.name });

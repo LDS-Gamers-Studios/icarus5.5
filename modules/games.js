@@ -76,25 +76,29 @@ function currentPlayers(int, game) {
 async function slashGameGetPlaying(inter) {
   const game = inter.options.getString("game") ?? u.db.sheets.wipChannels.get(inter.channelId)?.name;
   if (game) return inter.reply({ embeds: [currentPlayers(inter, game)], flags: ["Ephemeral"] });
+
   // List *all* games played
+  /** @type {Discord.Collection<string, { game: string, players: number }>} */
   const games = new u.Collection();
   for (const [, member] of inter.guild.members.cache) {
     if (member.user.bot) continue;
     const playing = member.presence?.activities?.find(a => a.type === Discord.ActivityType.Playing);
-    if (playing && !games.has(playing.name)) games.set(playing.name, { game: playing.name, players: 0 });
-    if (playing) games.get(playing.name).players++;
+    if (playing) games.ensure(playing.name, () => ({ game: playing.name, players: 0 })).players++;
   }
 
-  const gameList = games.sort((a, b) => {
+  games.sort((a, b) => {
     if (b.players === a.players) return a.game.localeCompare(b.game);
     return b.players - a.players;
-  }).toJSON();
-  const s = gameList.length > 0 ? 's' : '';
+  });
+
+  const s = games.size > 0 ? 's' : '';
   const embed = u.embed().setTimestamp()
     .setTitle(`Currently played game${s} in ${inter.guild.name}`)
-    .setDescription(`The top ${Math.min(gameList.length, 25)} game${s} currently being played in ${inter.guild.name}:`);
-  if (gameList.length > 0) gameList.map((g, i) => i < 25 ? embed.addFields({ name: g.game, value: `${g.players}` }) : null);
-  else embed.setDescription("Well, this is awkward ... Nobody is playing anything.");
+    .setDescription(`The top ${Math.min(games.size, 25)} game${s} currently being played in ${inter.guild.name}:`)
+    .setFields(games.first(25).map(g => ({ name: g.game, value: `${g.players} Player${g.players === 1 ? "" : "s"}` })));
+
+  if (games.size === 0) embed.setDescription("Well, this is awkward ... Nobody is playing anything.");
+
   inter.reply({ embeds: [embed], flags: ["Ephemeral"] });
 }
 

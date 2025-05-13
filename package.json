@@ -40,7 +40,7 @@
     "fuzzysort": "^3.1.0",
     "google-auth-library": "^9.14.1",
     "google-spreadsheet": "^4.1.4",
-    "google-spreadsheet-schema": "github:bobbythecatfish/google-spreadsheet-schema#main",
+    "google-spreadsheet-schema": "github:bobbythecatfish/google-spreadsheet-schema#dev",
     "jimp": "^0.22.10",
     "moment": "^2.29.1",
     "moment-timezone": "^0.5.45",

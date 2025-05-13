@@ -4,7 +4,6 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   config = require("../config/config.json"),
   { customAlphabet } = require("nanoid");
-const { GoogleSpreadsheetRow } = require("google-spreadsheet");
 const Discord = require("discord.js");
 
 const Module = new Augur.Module(),
@@ -16,11 +15,10 @@ const chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const nanoid = customAlphabet(chars, 8);
 
 /**
- * @param {import("../database/sheetTypes").Game} game
- * @param {GoogleSpreadsheetRow} rawGame
+ * @param {ReturnType<import("../database/sheets")["data"]["games"]["available"]["ensure"]>} game
  * @param {Discord.GuildMember} user
  */
-async function buyGame(game, rawGame, user) {
+async function buyGame(game, user) {
   // get store assets
   /** @type {Record<string, { redeem: string, img: string}>} */
   const systems = {
@@ -60,15 +58,12 @@ async function buyGame(game, rawGame, user) {
       .setThumbnail(sys.img);
   }
 
-  rawGame.set("Recipient", user.displayName);
-  rawGame.set("Recipient ID", user.id);
-  rawGame.set("Date", new Date().valueOf());
-  rawGame.save();
-  u.db.sheets.games.purchased.set(game.code, u.db.sheets.mappers.games(rawGame));
+  u.db.sheets.games.available.delete(game.code);
+  await u.db.sheets.games.purchased.update({ ...game, recipient: user.displayName, date: new Date() });
+
   // sometimes there are multiple games
-  const backupGame = u.db.sheets.data.games.find(g => g.get("Title") === game.title && g.get("Code") !== game.code && !g.get("Recipient ID") && !g.get("Date"));
-  if (backupGame) u.db.sheets.games.available.set(game.code, u.db.sheets.mappers.games(backupGame));
-  else u.db.sheets.games.available.delete(game.code);
+  const backupGame = u.db.sheets.games.available.rows.find(g => g.get("Title") === game.title && g.get("Code") !== game.code && !g.get("Recipient ID") && !g.get("Date"));
+  if (backupGame) u.db.sheets.games.available.set(backupGame.get("Code"), u.db.sheets.games.available.parseRow(backupGame));
 
   const embed2 = u.embed({ author: user })
     .setDescription(`${user.displayName} just redeemed ${gb}${game.cost} for a ${game.title} (${game.system}) key.`)
@@ -189,11 +184,10 @@ async function slashBankGameList(interaction) {
   await interaction.deferReply({ flags: ["Ephemeral"] });
 
   try {
-    if (!u.db.sheets.data.docs?.games) throw new Error("Games List Error");
-
     // Filter Rated M, unless the member has the Rated M Role
-    let gameList = u.db.sheets.games.available;
+    let gameList = u.uniqueObj(u.db.sheets.games.available.map(g => g), "title");
     if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.rating.toUpperCase() !== "M");
+
     const games = gameList.sort((a, b) => a.title.localeCompare(b.title))
       .map(g => {
         const title = `**${g.title}** (${g.system})`;
@@ -219,19 +213,19 @@ async function slashBankGameList(interaction) {
 async function slashBankGameRedeem(interaction) {
   try {
     await interaction.deferReply({ flags: ["Ephemeral"] });
-    if (!u.db.sheets.data.docs?.games) throw new Error("Get Game List Error");
+
     // find the game they're trying to redeem
     const code = interaction.options.getString("code", true).toUpperCase();
     const game = u.db.sheets.games.available.get(code);
-    const rawGame = u.db.sheets.data.games.find(g => g.get("Code") === game?.code);
-    if (!game || !rawGame) {
+    if (!game) {
       return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);
+    // @ts-ignore
     } else if (game.recipient || game.date) {
       return interaction.editReply("Looks like someone else already bought the game! Sorry about that.");
     }
 
     // buy the game (or fail)
-    const embed = await buyGame(game, rawGame, interaction.member);
+    const embed = await buyGame(game, interaction.member);
     if (!embed) return interaction.editReply(`You don't currently have enough ${gb}. Sorry!`);
 
     await interaction.editReply({ content: "I also DMed this message to you so you don't lose the code!", embeds: [embed] });
