@@ -171,8 +171,8 @@ async function slashMissionaryRemove(int) {
 async function slashMissionaryList(int) {
   const missionaries = u.db.sheets.missionaries.map((m) => {
     const member = int.guild.members.cache.get(m.userId);
-    if (!member) return `<@${m.userId}> (${m.userId}, unknown user): **${m}**`;
-    return `${member} (${member.displayName}): **${m}**`;
+    if (!member) return `<@${m.userId}> (${m.userId}, unknown user): **${m.email}**`;
+    return `${member} (${member.displayName}): **${m.email}**`;
   });
   const embed = u.embed().setTitle("Missionary Emails")
     .setDescription(`I have the following missionary emails stored:\n\n${missionaries.join("\n")}`);

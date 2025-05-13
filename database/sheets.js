@@ -171,7 +171,7 @@ const data = {
     channels: new Schemas.ObjectSchema("channelId", {
       posts: { key: "PostMultiplier", type: "number", defaultValue: 1 },
       channelId: { key: "ChannelId" },
-      emoji: { key: "Emoji", splitter: ", " },
+      emoji: { key: "Emoji", splitter: ", ", type: "stringSet" },
       preferMedia: { key: "PreferMedia", type: "boolean", defaultValue: false }
     })
   },
