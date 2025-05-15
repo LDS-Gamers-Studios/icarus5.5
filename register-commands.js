@@ -126,12 +126,12 @@ async function patch(filepaths, global) {
   }).catch(displayError);
 
   if (registered) {
-    console.log(`=====${global ? "Global" : "Guild"} commands registered=====`);
+    console.log(`\n=====${global ? "Global" : "Guild"} commands registered=====`);
     const cmds = registered.data;
     console.log(cmds.map(c => {
       const commandType = getCommandType(c.type);
       return `${c.name} (${commandType}): ${c.id}`;
-    }));
+    }).join("\n"));
   }
 
   return registered?.data;
@@ -168,7 +168,7 @@ async function register() {
 
   if (diff.length > 0) fs.writeFileSync(path.resolve(__dirname, "./config/snowflakes-commands-example.json"), JSON.stringify({ commands: Object.fromEntries(newKeys.map(f => [f, ""])) }, null, 2));
 
-  console.log("Command snowflake files updated");
+  console.log("\nCommand snowflake files updated\n");
   process.exit();
 }
 

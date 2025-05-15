@@ -261,7 +261,7 @@ const Module = new Augur.Module()
           .setComponents(
             new u.TextInput()
               .setCustomId("content")
-              .setLabel("Message Content")
+              .setLabel("Message Content (leave blank to delete)")
               .setValue(msg.content)
               .setPlaceholder("Leave blank to delete")
               .setStyle(Discord.TextInputStyle.Paragraph)
@@ -270,7 +270,7 @@ const Module = new Augur.Module()
           )
       )
       .setTitle("Message Edit/Delete")
-      .setCustomId("sudoMessageEdit");
+      .setCustomId(`sme${int.id}`);
 
     await int.showModal(modal);
     const res = await int.awaitModalSubmit({ time: 5 * 60_000, dispose: true }).catch(u.noop);
@@ -278,13 +278,16 @@ const Module = new Augur.Module()
 
     const content = res.fields.getTextInputValue("content");
     await res.deferReply({ flags: ["Ephemeral"] });
+
     if (!content) {
-      const d = await msg.delete().catch(u.noop);
-      if (!d) return res.editReply("Sorry, I couldn't delete the message.");
+      const del = await msg.delete().catch(u.noop);
+      if (!del) return res.editReply("Sorry, I couldn't delete the message.");
       return res.editReply("Message deleted!");
     }
-    const e = await msg.edit({ content }).catch(u.noop);
-    if (!e) return res.editReply("Sorry, I couldn't edit the message.");
+
+    const edit = await msg.edit({ content }).catch(u.noop);
+    if (!edit) return res.editReply("Sorry, I couldn't edit the message.");
+
     return res.editReply("Message edited!");
   }
 })
