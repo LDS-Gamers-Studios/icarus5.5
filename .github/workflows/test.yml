@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install Node v20
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -31,6 +31,7 @@ jobs:
           cp ./config/config-example.json config/config.json 
           cp ./config/snowflakes-commands-example.json config/snowflakes-commands.json 
           cp ./config/siteConfig-example.json config/siteConfig.json 
+          cp ./data/banned-example.json data/banned.json 
           exit 0
 
       - name: Check TypeScript Version

@@ -2,9 +2,9 @@
 const Ign = require("../models/Ign.model");
 /**
  * @typedef IGN
- * @prop {string} discordId
- * @prop {string} system
- * @prop {string} ign
+ * @prop {string} discordId The ID fo the user
+ * @prop {string} system What the IGN is for
+ * @prop {string} ign The stored value
  */
 
 module.exports = {
@@ -20,7 +20,7 @@ module.exports = {
   },
   /**
    * Find a specific IGN
-   * @param {string | string[]} discordId
+   * @param {string} discordId
    * @param {string} system
    * @returns {Promise<IGN | null>}
    */
@@ -28,14 +28,26 @@ module.exports = {
     return Ign.findOne({ discordId, system }, undefined, { lean: true }).exec();
   },
   /**
+   * Find someone by their IGN
+   * @param {string | string[]} ign
+   * @param {string} system
+   * @returns {Promise<IGN | null>}
+   */
+  findOneByIgn: function(ign, system) {
+    if (Array.isArray(ign)) return Ign.findOne({ ign: { $in: ign }, system }, undefined, { lean: true }).exec();
+    return Ign.findOne({ ign, system }, undefined, { lean: true }).exec();
+  },
+  /**
    * Find a list of all IGNs for a given system
    * @function getList
    * @param {string | string[]} discordId
-   * @param {string} [system] Which system list to fetch
+   * @param {string | null} [system] Which system list to fetch
    * @returns {Promise<IGN[]>}
    */
   findMany: function(discordId, system) {
+    /** @type {string[] | string | { $in: string[] }} */
     let ids;
+    /** @type {any} */
     let query;
     if (Array.isArray(discordId)) ids = { $in: discordId };
     else ids = discordId;

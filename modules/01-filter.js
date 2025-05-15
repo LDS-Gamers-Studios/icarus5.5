@@ -111,7 +111,9 @@ function filter(text) {
  */
 async function processMessageLanguage(msg) {
   if (!msg.member) return;
+  /** @type {string[]} */
   let matchedContent = [];
+  /** @type {string[]} */
   const reasons = [];
   let warned = false;
   let pingMods = false;
@@ -137,6 +139,7 @@ async function processMessageLanguage(msg) {
   const linkMap = (l) => (l.tld ?? "") + l.url;
 
   /** @param {string} prop @param {{tld: string | undefined, url: string}} l */
+  // @ts-ignore
   const linkFilter = (prop, l) => new RegExp(banned[prop].join('|'), 'gi').test(linkMap(l));
 
 
@@ -149,6 +152,7 @@ async function processMessageLanguage(msg) {
   while ((link = hasLink.exec(msg.cleanContent)) !== null) {
     matchedLinks.set((link[3] ?? "") + link[4], { tld: link[3], url: link[4] });
   }
+  const bannedExeced = bannedWords.exec(msg.cleanContent);
   if (matchedLinks.size > 0) {
     const bannedLinks = matchedLinks.filter(l => linkFilter("links", l)).map(linkMap);
     const scamLinks = matchedLinks.filter(l => linkFilter("scam", l)).filter(l => !linkFilter("exception", l)).map(linkMap);
@@ -163,13 +167,13 @@ async function processMessageLanguage(msg) {
       warned = true;
       matchedContent = matchedContent.concat(scamLinks);
       reasons.push("Suspected Scam Links (Auto-Removed)");
-    } else if (bannedWords.exec(msg.cleanContent) && matchedLinks.find(l => l.url.includes("tenor") || l.url.includes("giphy"))) {
+    } else if (bannedExeced && matchedLinks.find(l => l.url.includes("tenor") || l.url.includes("giphy"))) {
       // Bad gif link
       u.clean(msg, 0);
       if (!warned) msg.reply({ content: "Looks like that link might have some harsh language. Please be careful!", failIfNotExists: false }).catch(u.noop);
       warned = true;
       gif = true;
-      matchedContent = matchedContent.concat(matchedLinks.map(linkMap), bannedWords.exec(msg.cleanContent));
+      matchedContent = matchedContent.concat(matchedLinks.map(linkMap), bannedExeced);
       reasons.push("Gif Link Language (Auto-Removed)");
     } else if (!msg.webhookId && !msg.author.bot && !msg.member?.roles.cache.has(u.sf.roles.moderation.trusted)) {
       // General untrusted link flag
@@ -291,7 +295,7 @@ async function processCardAction(interaction) {
     const flag = interaction.message;
     // Prevent double-processing
     if (processing.has(flag.id)) {
-      interaction.reply({ content: "Someone is already processing this flag!", ephemeral: true });
+      interaction.reply({ content: "Someone is already processing this flag!", flags: ["Ephemeral"] });
       return;
     }
 
@@ -328,14 +332,14 @@ async function processCardAction(interaction) {
       return processing.delete(flag.id);
     }
     if (!infraction) {
-      interaction.reply({ content: "I couldn't find that flag!", ephemeral: true });
+      interaction.reply({ content: "I couldn't find that flag!", flags: ["Ephemeral"] });
       return processing.delete(flag.id);
     }
 
     if (interaction.customId === "modCardInfo") {
       // Don't count this as processing
       processing.delete(flag.id);
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: ["Ephemeral"] });
       const member = await interaction.guild.members.fetch(infraction.discordId);
       let roleString = member.roles.cache.sort((a, b) => b.comparePositionTo(a)).map(role => role.name).join(", ");
       if (roleString.length > 1024) roleString = roleString.substring(0, roleString.indexOf(", ", 1000)) + " ...";
@@ -350,7 +354,7 @@ async function processCardAction(interaction) {
     } else if (interaction.customId === "modCardLink") {
       // LINK TO #MODDISCUSSION
       const md = interaction.client.getTextChannel(u.sf.channels.mods.discussion);
-      await interaction.reply({ content: `Sending the flag over to ${md}...`, ephemeral: true });
+      await interaction.reply({ content: `Sending the flag over to ${md}...`, flags: ["Ephemeral"] });
 
       embed.setFooter({ text: `Linked by ${u.escapeText(mod.displayName)}` });
       md?.send({ embeds: [embed] }).catch(u.noop);
@@ -359,7 +363,7 @@ async function processCardAction(interaction) {
 
     // The buttons after this actually need mod filtering
     if (infraction && mod.id === infraction.discordId) {
-      await interaction.reply({ content: "You can't handle your own flag!", ephemeral: true });
+      await interaction.reply({ content: "You can't handle your own flag!", flags: ["Ephemeral"] });
       return processing.delete(flag.id);
     }
 
@@ -375,7 +379,7 @@ async function processCardAction(interaction) {
       await interaction.editReply({ embeds: [embed], components: [c.revert] });
     } else if (interaction.customId === "modCardRetract") {
       // Only the person who acted on the card (or someone in management) can retract an action
-      if (infraction.handler !== mod.id && !u.perms.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", ephemeral: true });
+      if (infraction.handler !== mod.id && !u.perms.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", flags: ["Ephemeral"] });
       await interaction.deferUpdate();
       const verbal = embed.data.fields?.find(f => f.value.includes("verbal"));
       const revertedMsg = "The offending message can't be restored" + (infraction.value > 9 ? " and the Muted role may have to be removed and the user unwatched." : ".");
@@ -459,7 +463,7 @@ async function processCardAction(interaction) {
 
       const dummy = { value: "" };
       embed.data.fields = embed.data.fields?.filter(f => !f.name || !f.name.startsWith("Jump") && !f.name.startsWith("Reverted"));
-      (embed.data.fields?.find(f => f.name?.startsWith("Infraction")) ?? dummy).vlaue = `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}`;
+      (embed.data.fields?.find(f => f.name?.startsWith("Infraction")) ?? dummy).value = `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}`;
 
       await interaction.editReply({ embeds: [embed], components: [c.revert] }).catch(() => {
         interaction.message.edit({ embeds: [embed], components: [c.revert] }).catch((error) => u.errorHandler(error, interaction));
@@ -490,12 +494,13 @@ const Module = new Augur.Module()
   if (!['clear', 'verbal', 'minor', 'major', 'mute', 'info', 'link', 'retract', 'censor'] // mod card actions minus the modCard part
     .includes(int.customId.replace("modCard", "").toLowerCase())) return;
   if (!u.perms.calc(int.member, ["mod", "mcMod", "mgr"])) {
-    return int.reply({ content: "You don't have permissions to interact with this flag!", ephemeral: true });
+    return int.reply({ content: "You don't have permissions to interact with this flag!", flags: ["Ephemeral"] });
   }
   processCardAction(int);
 })
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
+.setShared(() => pf)
 .addEvent("ready", () => {
   // eslint-disable-next-line no-unused-vars
   const forWhenSpamWorks = () => setInterval(() => {

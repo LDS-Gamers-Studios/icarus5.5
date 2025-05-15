@@ -2,8 +2,7 @@
 const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   roleInfo = require("../utils/roleInfo"),
-  u = require("../utils/utils"),
-  c = require("../utils/modCommon");
+  u = require("../utils/utils");
 
 const Module = new Augur.Module();
 
@@ -24,27 +23,16 @@ function giveableRole(int, role) {
 }
 
 /**
- * @param {Discord.BaseInteraction<"cached">} int
- * @param {string} level
- */
-function calcGivePerms(int, level) {
-  /** @type {("mgr"|"mod"|"team")[]} */
-  const permArr = ['mgr'];
-  if (['team', 'mod'].includes(level)) permArr.push("mod");
-  if (level === 'team') permArr.push("team");
-  return u.perms.calc(int.member, permArr);
-}
-
-/**
  * @param {Augur.GuildInteraction<"CommandSlash">} int
  * @param {Boolean} give
 */
 async function slashRoleAdd(int, give = true) {
-  await int.deferReply({ ephemeral: true });
+  await int.deferReply({ flags: ["Ephemeral"] });
   const input = int.options.getString("role", true);
   const admin = u.perms.calc(int.member, ["mgr"]);
 
   // role finding!
+  /** @type {Discord.Role | undefined} */
   let role;
   if (admin) role = int.guild.roles.cache.find(r => r.name.toLowerCase() === input.toLowerCase());
   else role = u.db.sheets.optRoles.find(r => r.role.name.toLowerCase() === input.toLowerCase())?.role;
@@ -70,13 +58,17 @@ async function slashRoleList(int) {
 
   const ephemeral = int.channel?.id !== u.sf.channels.botSpam;
   const embed = u.embed().setTitle("Opt-In Roles")
-    .setDescription(`You can add these roles with </role add:${u.sf.commands.slashRole}> to recieve pings and access to certain channels`);
-  let lines = [];
-  if (has.size > 0) lines = [ "**Already Have**\n", ...has.values()];
+    .setDescription(`You can add these roles with </role add:${u.sf.commands.slashRole}> to recieve pings and gain access to certain channels\n`);
+
+  /** @type {string[]} */
+  const lines = [];
+  if (has.size > 0) lines.push("**Already Have**", ...has.map(h => h.toString()));
   lines.push("\n**Available to Add**");
-  if (without.size > 0) lines = lines.concat([...without.values()]);
+  if (without.size > 0) lines.push(...without.map(w => w.toString()));
   else lines.push("You already have all the opt-in roles!");
-  return u.pagedEmbeds(int, embed, lines, ephemeral);
+
+  const processedEmbeds = u.pagedEmbedsDescription(embed, lines).map(e => ({ embeds: [e] }));
+  return u.manyReplies(int, processedEmbeds, ephemeral);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -88,32 +80,12 @@ async function slashRoleWhoHas(int) {
     if (role.id === u.sf.ldsg) return int.editReply("Everyone has that role, silly!");
     const members = role.members.map(m => m.displayName).sort();
     if (members.length === 0) return int.editReply("I couldn't find any members with that role. :shrug:");
-    return u.pagedEmbeds(int, u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`), members, ephemeral);
+
+    const embed = u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`);
+    const processedEmbeds = u.pagedEmbedsDescription(embed, members).map(e => ({ embeds: [e] }));
+    return u.manyReplies(int, processedEmbeds, ephemeral);
   } catch (error) { u.errorHandler(error, int); }
 }
-
-/**
- * @param {Augur.GuildInteraction<"CommandSlash">} int
- * @param {Boolean} give
-*/
-async function slashRoleGive(int, give = true) {
-  try {
-    await int.deferReply({ ephemeral: true });
-    const recipient = int.options.getMember("user");
-    if (!u.perms.calc(int.member, ["team", "mod", "mgr"])) return int.editReply("*Nice try!* This command is for Team+ only.");
-    if (!recipient) return int.editReply("I couldn't find that user!");
-
-    const input = int.options.getString("role", true);
-    const role = u.db.sheets.roles.team.find(r => r.base.name.toLowerCase() === input.toLowerCase());
-    if (!role) return int.editReply("I couldn't find that role!");
-
-    if (!calcGivePerms(int, role.level)) return int.editReply(`You don't have the right permissions to ${give ? "give" : "take"} this role.`);
-
-    const response = await c.assignRole(int, recipient, role.base, give);
-    return int.editReply(response);
-  } catch (error) { u.errorHandler(error, int); }
-}
-
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashRoleInventory(int) {
@@ -126,15 +98,15 @@ async function slashRoleInventory(int) {
     const embed = u.embed({ author: member })
       .setTitle("Equippable Color Inventory")
       .setDescription(`Equip a color role with </role equip:${u.sf.commands.slashRole}>\n\n${inv.join("\n")}`);
-    if (inv.length === 0) int.reply({ content: "You don't have any colors in your inventory!", ephemeral: true });
-    else int.reply({ embeds: [embed], ephemeral: int.channel?.id !== u.sf.channels.botSpam });
+    if (inv.length === 0) int.reply({ content: "You don't have any colors in your inventory!", flags: ["Ephemeral"] });
+    else int.reply({ embeds: [embed], flags: u.ephemeralChannel(int) });
   } catch (e) { u.errorHandler(e, int); }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashRoleEquip(int) {
   try {
-    await int.deferReply({ ephemeral: int.channel?.id !== u.sf.channels.botSpam });
+    await int.deferReply({ flags: u.ephemeralChannel(int) });
 
     const input = int.options.getString("color")?.toLowerCase() || null;
     const passed = await roleInfo.equip(int.member, input);
@@ -165,16 +137,16 @@ Module.addInteraction({
   guildId: u.sf.ldsg,
   onlyGuild: true,
   id: u.sf.commands.slashRole,
+  options: { registry: "slashRole" },
   process: async (interaction) => {
     switch (interaction.options.getSubcommand(true)) {
       case "add": return slashRoleAdd(interaction);
       case "remove": return slashRoleAdd(interaction, false);
       case "list": return slashRoleList(interaction);
-      case "give": return slashRoleGive(interaction);
-      case "take": return slashRoleGive(interaction, false);
       case "inventory": return slashRoleInventory(interaction);
       case "equip": return slashRoleEquip(interaction);
       case "whohas": return slashRoleWhoHas(interaction);
+      // case "give" || "take": located in team.js
       default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   },
@@ -189,12 +161,13 @@ Module.addInteraction({
         if (!u.perms.calc(interaction.member, ["team", "mod", "mgr"])) return;
         const withPerms = u.db.sheets.roles.team.filter(r => {
           if (option.value && !r.base.name.toLowerCase().includes(option.value.toLowerCase())) return false;
-          return calcGivePerms(interaction, r.level);
+          return u.perms.calc(interaction.member, [r.level]);
         }).sort((a, b) => b.base.comparePositionTo(a.base)).map(r => r.base.name);
         return interaction.respond(withPerms.map(r => ({ name: r, value: r })));
       }
       // /role add/remove
       const adding = sub === "add";
+      /** @type {string[]} */
       let roles;
       if (u.perms.calc(interaction.member, ["mgr"])) {
         roles = interaction.guild.roles.cache.filter(r => addFilter(interaction, r, input, adding))

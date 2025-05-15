@@ -2,13 +2,15 @@
 const { AxiosError } = require("axios");
 const Discord = require("discord.js"),
   { escapeMarkdown, ComponentType } = require('discord.js'),
-  sf = require("../config/snowflakes.json"),
+  rsf = require("../config/snowflakes.json"),
   tsf = require("../config/snowflakes-testing.json"),
   csf = require("../config/snowflakes-commands.json"),
   db = require("../database/dbControllers.js"),
   p = require('./perms.js'),
   moment = require('moment-timezone'),
   config = require("../config/config.json");
+
+const sf = { ...(config.devMode ? tsf : rsf), ...csf };
 
 const errorLog = new Discord.WebhookClient({ url: config.webhooks.error });
 const { nanoid } = require("nanoid");
@@ -77,13 +79,13 @@ const utils = {
    * @returns {Discord.TextBasedChannel | null}
    */
   botSpam: function(msg) {
-    if (msg.inGuild() && msg.guild.id === utils.sf.ldsg && // Is in server
-      ![utils.sf.channels.botSpam, utils.sf.channels.botTesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
-      msg.channel.parentId !== utils.sf.channels.team.category) { // Isn't in the moderation category
+    if (msg.inGuild() && msg.guild.id === sf.ldsg && // Is in server
+      ![sf.channels.botSpam, sf.channels.botTesting].includes(msg.channelId) && // Isn't in bot-lobby or bot-testing
+      msg.channel.parentId !== sf.channels.team.category) { // Isn't in the moderation category
 
-      msg.reply(`I've placed your results in <#${utils.sf.channels.botSpam}> to keep things nice and tidy in here. Hurry before they get cold!`)
+      msg.reply(`I've placed your results in <#${sf.channels.botSpam}> to keep things nice and tidy in here. Hurry before they get cold!`)
         .then(utils.clean);
-      return msg.client.getTextChannel(utils.sf.channels.botSpam);
+      return msg.client.getTextChannel(sf.channels.botSpam);
     }
     return msg.channel;
 
@@ -126,7 +128,7 @@ const utils = {
   ModalActionRow: () => new Discord.ActionRowBuilder(),
   TextInput: Discord.TextInputBuilder,
   /**
-   * Confirm Dialog
+   * Prompts the user to confirm their actions before proceeding by having them press a button
    * @param {Discord.RepliableInteraction<"cached">} interaction The interaction to confirm
    * @param {String} prompt The prompt for the confirmation
    * @returns {Promise<Boolean|null>}
@@ -151,7 +153,7 @@ const utils = {
     };
 
     if (interaction.replied || interaction.deferred) await interaction.editReply(response);
-    else await interaction.reply({ ...response, ephemeral: true, content: undefined });
+    else await interaction.reply({ ...response, flags: ["Ephemeral"], content: undefined });
 
     const confirm = await interaction.channel?.awaitMessageComponent({
       filter: (button) => button.user.id === interaction.user.id && (button.customId === confirmTrue || button.customId === confirmFalse),
@@ -163,6 +165,7 @@ const utils = {
     else if (confirm?.customId === confirmFalse) return false;
     return null;
   },
+  /** Database controllers */
   db: db,
   /**
    * Create an embed from a message
@@ -185,18 +188,14 @@ const utils = {
     else if (msg.stickers.size > 0) embed.setImage(msg.stickers.first()?.url ?? null);
     return embed;
   },
-  /**
-   * Shortcut to nanoid. See docs there for reference.
-   */
+  /** Shortcut to nanoid. See docs there for reference. */
   customId: nanoid,
-  /**
-   * Shortcut to Discord.Util.escapeMarkdown. See docs there for reference.
-   */
+  /** Shortcut to Discord.Util.escapeMarkdown. See docs there for reference. */
   escapeText: escapeMarkdown,
   /**
-   * Returns a MessageEmbed with basic values preset, such as color and timestamp.
+   * Returns an embed with basic values preset, such as color and timestamp.
+   * You can use a Discord User or GuildMember as the value for the author property for convenience.
    * @param {{author?: Discord.GuildMember|Discord.User|Discord.APIEmbedAuthor|Discord.EmbedAuthorData|null} & Omit<(Discord.Embed | Discord.APIEmbed | Discord.EmbedData), "author">} [data] The data object to pass to the MessageEmbed constructor.
-   *   You can override the color and timestamp here as well.
    */
   embed: function(data = {}) {
     const newData = JSON.parse(JSON.stringify(data));
@@ -212,34 +211,89 @@ const utils = {
     return embed;
   },
   /**
- * @param {Discord.CommandInteraction | null} int
- * @param {Discord.EmbedBuilder} embed
- * @param {string[]} lines
- */
-  pagedEmbeds: async (int, embed, lines, ephemeral = true) => {
-    const descriptions = [];
+   * Splits lines of text among multiple embeds in order to bypass message length requirements. Places the text in the descriptions
+   * @param {Discord.EmbedBuilder} embed
+   * @param {string[]} lines
+   */
+  pagedEmbedsDescription: (embed, lines) => {
+    /** @type {Discord.APIEmbed[]} */
+    const embeds = [];
+    let currentEmbed = embed.toJSON();
     let active = "";
     lines.forEach((line) => {
       if (active.length + line.length > 4000) {
-        descriptions.push(active);
+        currentEmbed.description = (currentEmbed.description ?? "") + active;
+        embeds.push(currentEmbed);
+        currentEmbed = embed.toJSON();
+        currentEmbed.title = (embed.data.title ?? "") + " (Cont.)";
         active = "";
       }
       active += `${line}\n`;
     });
-    descriptions.push(active);
-    if (!int) return descriptions;
-    let i = 0;
-    while (i < descriptions.length) {
-      const desc = descriptions[i];
-      if (!desc) return;
-      const e = utils.embed(embed.toJSON()).setDescription(desc);
-      if (i === 0) {
-        if (int.deferred || int.replied) await int.editReply({ embeds: [e] });
-        else await int.reply({ embeds: [e], ephemeral });
-      } else {
-        await int.followUp({ embeds: [e.setTitle(`${e.data.title ?? ""} Cont.`)], ephemeral });
+    currentEmbed.description = (currentEmbed.description ?? "") + active;
+    embeds.push(currentEmbed);
+    return embeds;
+  },
+  /**
+   * Splits lines of text among multiple embeds in order to bypass message length requirements. Places the text in fields
+   * @param {Discord.EmbedBuilder} embed
+   * @param {Map<string, string[]>} lines Map of field names to values
+   */
+  pagedEmbedFields: (embed, lines, inline = false) => {
+    const embeds = [];
+    let fields = [];
+    let em = embed.toJSON();
+    const embedLength = () => {
+      return (em.title?.length ?? 0) +
+        (em.author?.name.length ?? 0) +
+        (em.description?.length ?? 0) +
+        (em.footer?.text.length ?? 0);
+    };
+    let strTotal = embedLength();
+    for (const [fieldName, fieldLines] of lines) {
+      let field = "";
+      let name = fieldName;
+      for (const line of fieldLines) {
+        // reset
+        if (strTotal + line.length > 5500 || fields.length === 25) {
+          if (!em.fields) em.fields = [];
+          em.fields.push(...fields);
+          embeds.push(em);
+          em = embed.toJSON();
+          if (em.title) em.title = em.title + " (Cont.)";
+          fields = [];
+          strTotal = embedLength();
+        }
+        if (field.length + line.length > 1200) {
+          fields.push({ name, value: field, inline });
+          field = "";
+          name = fieldName + " (Cont.)";
+        }
+
+        field += `${line}\n`;
+        strTotal += line.length + 2;
       }
-      i++;
+      fields.push({ name, value: field, inline });
+    }
+    if (!em.fields) em.fields = [];
+    em.fields.push(...fields);
+    embeds.push(em);
+    return embeds;
+  },
+  /**
+   * For when just one reply won't cut it. Makes several interaction replies with given payloads
+   * @param {Discord.ChatInputCommandInteraction | Discord.ButtonInteraction} int
+   * @param {(Discord.InteractionEditReplyOptions & Discord.InteractionReplyOptions)[]} payloads The things to send
+   */
+  manyReplies: async (int, payloads, ephemeral = int.ephemeral ?? true) => {
+    for (let i = 0; i < payloads.length; i++) {
+      const payload = payloads[i];
+      if (i === 0) {
+        if (int.deferred || int.replied) await int.editReply(payload);
+        else await int.reply({ ...payload, flags: ephemeral ? ["Ephemeral"] : undefined });
+      } else {
+        await int.followUp({ ...payload, flags: ephemeral ? ["Ephemeral"] : undefined });
+      }
     }
   },
   parseInteraction,
@@ -273,11 +327,12 @@ const utils = {
       /* eslint-disable-next-line no-console*/
       console.error(`Interaction by ${message.user.username} in ${loc}`);
       if (message.isRepliable() && (message.deferred || message.replied)) message.editReply("I've run into an error. I've let my devs know.").catch(utils.noop).then(utils.clean);
-      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", ephemeral: true }).catch(utils.noop).then(utils.clean);
+      else if (message.isRepliable()) message.reply({ content: "I've run into an error. I've let my devs know.", flags: ["Ephemeral"] }).catch(utils.noop).then(utils.clean);
       embed.addFields(
         { name: "User", value: message.user?.username, inline: true },
         { name: "Location", value: loc, inline: true }
       );
+      /** @type {string[]} */
       const descriptionLines = [];
       const { command, data } = parseInteraction(message);
       if (command) descriptionLines.push(command);
@@ -306,6 +361,7 @@ const utils = {
     embed.setDescription(stack);
     return errorLog.send({ embeds: [embed] });
   },
+  /** The webhook that handles error logging */
   errorLog,
   /**
    * Filter the terms keys by filterTerm and sort by startsWith and then includes
@@ -330,9 +386,12 @@ const utils = {
   /**
    * Shortcut to moment with the correct UTC offset (Mountain Time)
    * @param {moment.MomentInput} [input]
-   * @param {boolean} [strict]
+   * @param {string} [format]
    */
-  moment: (input, strict) => moment(input, strict).tz("America/Denver"),
+  moment: (input, format) => {
+    if (input && format) return moment.tz(input?.toString(), format, "America/Denver");
+    return moment.tz(input, "America/Denver");
+  },
   /**
    * This task is extremely complicated.
    * You need to understand it perfectly to use it.
@@ -383,19 +442,11 @@ const utils = {
   rand: function(selections) {
     return selections[Math.floor(Math.random() * selections.length)];
   },
-  /**
-   * Convert to a fancier time string
-   * @param {Date} time The input time
-   * @param {Discord.TimestampStylesString} format The format to display in
-   * @returns {string} <t:time:format>
-   */
-  time: function(time, format = "f") {
-    return Discord.time(time, format);
-  },
+  time: Discord.time,
   /**
    * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
    */
-  sf: { ...(config.devMode ? tsf : sf), ...csf },
+  sf,
 
   /**
    * Returns a promise that will fulfill after the given amount of time.
@@ -427,18 +478,28 @@ const utils = {
   },
   /** @param {Discord.GuildMember | null} [member]*/
   getHouseInfo: function(member) {
-    const houseInfo = new Map([
-      [utils.sf.roles.houses.housebb, { name: "Brightbeam", color: 0x00a1da }],
-      [utils.sf.roles.houses.housefb, { name: "Freshbeast", color: 0xfdd023 }],
-      [utils.sf.roles.houses.housesc, { name: "Starcamp", color: 0xe32736 }]
-    ]);
+    const houseInfo = [
+      { id: sf.roles.houses.housebb, name: "Brightbeam", color: 0x00a1da },
+      { id: sf.roles.houses.housefb, name: "Freshbeast", color: 0xfdd023 },
+      { id: sf.roles.houses.housesc, name: "Starcamp", color: 0xe32736 }
+    ];
 
     if (member) {
-      for (const [k, v] of houseInfo) {
-        if (member.roles.cache.has(k)) return v;
+      for (const v of houseInfo) {
+        if (member.roles.cache.has(v.id)) return v;
       }
     }
-    return { name: "Unsorted", color: 0x402a37 };
+    return { name: "Unsorted", color: 0x402a37, id: "" };
+  },
+  /**
+   * Makes an interaction response ephemeral UNLESS it's in the specified channel
+   * @param {Discord.Interaction} int
+   * @param {string} [channelId] The channel where it SHOULDN'T be ephemeral
+   * @returns {["Ephemeral"] | undefined}
+   */
+  ephemeralChannel: function(int, channelId = sf.channels.botSpam) {
+    if (int.inGuild() && int.channelId !== channelId) return ["Ephemeral"];
+    return undefined;
   }
 };
 

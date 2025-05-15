@@ -1,4 +1,5 @@
 // @ts-check
+const moment = require("moment-timezone");
 const Bank = require("../models/Bank.model");
 const Discord = require("discord.js");
 /**
@@ -26,6 +27,26 @@ module.exports = {
     return Bank.find({ discordId }, undefined, { lean: true }).exec();
   },
   /**
+   * @param {string[]} discordIds
+   * @param {moment.Moment} [startDate]
+   * @return {Promise<CurrencyRecord[]>}
+   */
+  getReport: async function(discordIds, startDate) {
+    if (!startDate) {
+      const seasonStart = moment.tz("America/Denver").startOf("month").hour(19);
+      const monthsAgo = seasonStart.month() % 4;
+      seasonStart.subtract(monthsAgo, "months");
+      startDate ??= seasonStart;
+    }
+
+    return Bank.find({
+      discordId: { $in: discordIds },
+      currency: "em",
+      hp: true,
+      timestamp: { $gte: startDate.toDate() }
+    }, undefined, { lean: true }).exec();
+  },
+  /**
    * Gets a user's current balance for a given currency.
    * @param {String} discordId The user whose balance you want to view.
    * @return {Promise<{discordId: string, gb: number, em: number}>} Object with `discordId` and `balance` properties.
@@ -46,10 +67,18 @@ module.exports = {
      * Adds currency to a user's account.
      * @param {Omit<CurrencyRecord, "timestamp">} data The data object.
      * @return {Promise<CurrencyRecord>} A record of the addition.
-     */
+  */
   addCurrency: function(data) {
     if (typeof data.discordId !== 'string' || typeof data.giver !== 'string') throw new TypeError(outdated);
     return new Bank(data).save();
+  },
+  /**
+   * Adds many currency records
+   * @param {CurrencyRecord[]} data The data object.
+   * @return {Promise<CurrencyRecord[]>} A record of the addition.
+   */
+  addManyTransactions: function(data) {
+    return Bank.insertMany(data.map(d => new Bank(d)), { lean: true });
   },
   fixUp: async function() {
     /**
@@ -96,6 +125,7 @@ module.exports = {
         return;
       }
       const split = a.description.split(": ");
+      /** @type {string} */
       let reason;
       if (split[0].endsWith("Spicy McPie") || split[0].endsWith("Spicy McArchives") && (split[1].toLowerCase().endsWith("trash") || ["verified homie", "Trash Gift Giver", "Single compost", "Goody two shoes"].includes(split[1]))) {
         reason = split.slice(2).join(": ");

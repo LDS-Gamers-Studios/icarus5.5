@@ -225,6 +225,7 @@ const modCommon = {
     embed.addFields({ name: `Infraction Summary (${infractionSummary.time} Days)`, value: `Infractions: ${infractionSummary.count}\nPoints: ${infractionSummary.points}` });
     if (bot) embed.setFooter({ text: "The user is a bot and the flag likely originated elsewhere. No action will be processed." });
 
+    /** @type {(string|undefined)[]} */
     const content = [];
     if (pingMods) {
       if (msg) u.clean(msg, 0);
@@ -518,7 +519,7 @@ const modCommon = {
   },
 
   /**
-   *
+   * Change someone's server nickname
    * @param {Augur.GuildInteraction<"CommandSlash"|"Modal">} interaction
    * @param {Discord.GuildMember} target
    * @param {string} newNick
@@ -569,6 +570,7 @@ const modCommon = {
   },
 
   /**
+   * Delete spam messages similar to a given message
    * @param {string[]} searchContent
    * @param {Discord.Guild} guild
    * @param {Discord.Message<true>} message
@@ -577,6 +579,7 @@ const modCommon = {
   spamCleanup: async function(searchContent, guild, message, auto = false) {
     const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2) * 1000;
     const contents = u.unique(searchContent);
+    /** @type {Promise<Discord.Collection<Discord.Snowflake, Discord.Message | Discord.PartialMessage | undefined>>[]} */
     const promises = [];
     for (const [, channel] of guild.channels.cache) {
       const perms = channel.permissionsFor(message.client.user);
@@ -765,7 +768,7 @@ const modCommon = {
       if (apply && (watchStatus?.watching || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
       if (!apply && watchStatus && !watchStatus.watching && !modCommon.watchlist.has(id)) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
 
-      await u.db.user.updateWatch(id, apply);
+      await u.db.user.update(id, { watching: apply });
       if (apply) modCommon.watchlist.add(id);
       else modCommon.watchlist.delete(id);
       success = true;
@@ -790,6 +793,7 @@ const modCommon = {
   },
 
   /**
+   * Issue a warning to a user
    * @param {Discord.Interaction<"cached">} interaction
    * @param {string} reason
    * @param {number} value
@@ -847,7 +851,7 @@ const modCommon = {
   },
   /** @type {Set<string>} */
   watchlist: new Set(),
-  /** @type {Discord.Collection<string, any>} */
+  /** @type {Discord.Collection<string, NodeJS.Timeout>} */
   grownups: new u.Collection()
 };
 

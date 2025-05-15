@@ -47,7 +47,7 @@ const permFuncs = {
 
 const perms = {
   /**
-   * Generate a boolean based on a list of provided roles. Bot Owner and MGMT always bypass.
+   * Perform a check to see if a user has specific roles. Bot Owner and MGMT always bypass.
    * @param {Discord.GuildMember | null | undefined} member
    * @param {(keyof permFuncs)[]} permArr
    */
@@ -60,10 +60,16 @@ const perms = {
     }
     return false;
   },
-  /**
-   * @param {Discord.GuildMember | null |undefined } m
-   */
+  /** @param {Discord.GuildMember | null |undefined } m */
   isOwner: (m) => m && permFuncs.botOwner(m),
+
+  /** @param {Discord.GuildMember | null |undefined } m */
+  inHouse: (m) => m && permFuncs.inHouse(m),
+
 };
+
+/**
+ * @typedef {keyof permFuncs} Perms
+ */
 
 module.exports = perms;

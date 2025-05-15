@@ -1,43 +1,28 @@
 // @ts-check
 const u = require('./regUtils');
 
-const month = new u.string()
-.setName("month")
-.setDescription("The month to run it for")
-.setChoices(
-  { name: "January", value: "Jan" },
-  { name: "February", value: "Feb" },
-  { name: "March", value: "Mar" },
-  { name: "April", value: "Apr" },
-  { name: "May", value: "May" },
-  { name: "June", value: "Jun" },
-  { name: "July", value: "Jul" },
-  { name: "August", value: "Aug" },
-  { name: "September", value: "Sept" },
-  { name: "October", value: "Oct" },
-  { name: "November", value: "Nov" },
-  { name: "December", value: "Dec" },
-)
-.setRequired(true);
-
-const day = new u.int()
-.setName("day")
-.setDescription("The day to run it for")
-.setRequired(true)
-.setMinValue(1)
-.setMaxValue(31);
+const date = new u.string()
+.setName("date")
+.setDescription("The date to run it for");
 
 const cakeday = new u.sub()
   .setName("cakeday")
   .setDescription("Run cakeday (tenure) for a specific Date")
-  .addStringOption(month)
-  .addIntegerOption(day);
+  .addStringOption(date);
 
 const birthday = new u.sub()
   .setName("birthday")
   .setDescription("Run birthday for a specific Date")
-  .addStringOption(month)
-  .addIntegerOption(day);
+  .addStringOption(date)
+  .addUserOption(
+    new u.user()
+      .setName("user")
+      .setDescription("Run birthdays for someone specific")
+  );
+
+const celebrate = new u.sub()
+  .setName("celebrate")
+  .setDescription("Run birthday and cakeday celebrations");
 
 const banner = new u.sub()
   .setName("banner")
@@ -50,36 +35,18 @@ const banner = new u.sub()
       .setAutocomplete(true)
   );
 
-
-const team = new u.sub()
-  .setName("promote")
-  .setDescription("Promote a member to team")
-  .addUserOption(
-    new u.user()
-      .setName("user")
-      .setDescription("The user to promote")
-      .setRequired(true)
-  )
-  .addStringOption(
-    new u.string()
-    .setName("position")
-    .setDescription("The position to promote the user to")
-    .setRequired(true)
-    .setAutocomplete(true)
-  )
-  .addStringOption(
-    new u.string()
-    .setName("reason")
-    .setDescription("The reason to be sent with the welcome message to the team chat")
-  );
+const channelActivity = new u.sub()
+  .setName("channel-activity")
+  .setDescription("Get a list of inactive channels");
 
 module.exports = new u.cmd()
   .setName("management")
   .setDescription("Management Commands")
-  .setDMPermission(false)
-  .setDefaultMemberPermissions(u.devMode)
+  .setContexts(u.contexts.Guild)
+  .setDefaultMemberPermissions(u.privateCommand)
+  .addSubcommand(celebrate)
   .addSubcommand(cakeday)
   .addSubcommand(banner)
   .addSubcommand(birthday)
-  .addSubcommand(team)
+  .addSubcommand(channelActivity)
   .toJSON();

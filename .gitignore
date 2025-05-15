@@ -13,6 +13,8 @@ site
 .DS_Store
 media/badges/*
 media/banners/*
+!media/banners/README.md
+media/tags/*
 naughty.csv
 
 # For Visual Studio's temp directory
