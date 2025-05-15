@@ -37,7 +37,7 @@ async function makeProfileCard(member) {
     card.blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h, () => h += ICON_PADDING);
 
     const avatarImg = await Jimp.read(member.displayAvatarURL({ size: ICON_SIZE, extension: "png" }));
-    const avatarCubby = badgeCubby.clone().blit(avatarImg, ICON_PADDING, ICON_PADDING);
+    const avatarCubby = badgeCubby.clone().blit(avatarImg.resize(ICON_SIZE, ICON_SIZE), ICON_PADDING, ICON_PADDING);
 
     const joined = u.moment(member.joinedAt).subtract(rank?.priorTenure ?? 0, "days");
     const now = u.moment();
