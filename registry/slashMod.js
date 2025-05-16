@@ -44,7 +44,7 @@ const ban = new u.sub()
   );
 const trustaudit = new u.sub()
   .setName("trustaudit")
-  .setDescription("See all of the people that have talked without the trusted role")
+  .setDescription("Get a list of people who have talked talked without the trusted role")
   .addIntegerOption(
     new u.int()
     .setName("posts")
