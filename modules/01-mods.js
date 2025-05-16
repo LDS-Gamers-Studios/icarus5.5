@@ -310,7 +310,7 @@ async function slashModTrust(interaction) {
 async function slashModTrustAudit(interaction) {
   try {
     await interaction.deferReply({ flags: u.ephemeralChannel(interaction, u.sf.channels.mods.discussion) });
-    const threshold = interaction.options.getInteger("posts", false) ?? 100;
+    const threshold = interaction.options.getInteger("posts", false) ?? 10;
     const members = interaction.guild.members.cache;
     const pool = members.filter(member => ((Date.now() - (member.joinedTimestamp || 0)) > (7 * 24 * 60 * 60_000)) && !member.roles.cache.has(u.sf.roles.moderation.trusted));
     const users = await u.db.user.getUsers({ posts: { $gt: threshold }, discordId: { $in: pool.map(m => m.id) } });
