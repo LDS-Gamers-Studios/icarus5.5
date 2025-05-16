@@ -310,7 +310,7 @@ async function slashModTrust(interaction) {
 async function slashModTrustAudit(interaction) {
   try {
     await interaction.deferReply({ flags: u.ephemeralChannel(interaction, u.sf.channels.mods.discussion) });
-    const threshold = interaction.options.getInteger("posts", false) || 100;
+    const threshold = interaction.options.getInteger("posts", false) ?? 100;
     const members = interaction.guild.members.cache;
     const pool = members.filter(member => ((Date.now() - (member.joinedTimestamp || 0)) > (7 * 24 * 60 * 60_000)) && !member.roles.cache.has(u.sf.roles.moderation.trusted));
     const users = await u.db.user.getUsers({ posts: { $gt: threshold }, discordId: { $in: pool.map(m => m.id) } });
@@ -323,9 +323,9 @@ async function slashModTrustAudit(interaction) {
     if (response.length === 0) return interaction.editReply(`No untrusted users who have been in the server longer than a week with ${threshold}+ posts found.`);
 
     const embed = u.embed().setTitle("Trust Audit").setDescription("All of the people that have talked without the trusted role");
-    const processedembed = u.pagedEmbedsDescription(embed, response);
+    const processedEmbeds = u.pagedEmbedsDescription(embed, response);
 
-    return u.manyReplies(interaction, processedembed.map(a => ({ embeds: [a] })));
+    return u.manyReplies(interaction, processedEmbeds.map(a => ({ embeds: [a] })));
   } catch (e) {
     u.errorHandler(e, interaction);
   }
