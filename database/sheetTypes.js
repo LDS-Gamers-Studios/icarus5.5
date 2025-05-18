@@ -39,6 +39,10 @@ const Discord = require("discord.js");
  * @prop { string | null } badge
  */
 
+/** @typedef {Omit<Role, "color"> & { color: Discord.Role }} ColorRole  */
+/** @typedef {Omit<Role, "level"> & { level: string }} LevelStrRole  */
+/** @typedef {Omit<Role, "level"> & { level: number }} LevelNumRole  */
+
 /**
  * @typedef {Omit<Role, "level" | "color"> & { level: string, color: Discord.Role }} FullRole
  */

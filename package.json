@@ -40,6 +40,7 @@
     "fuzzysort": "^3.1.0",
     "google-auth-library": "^9.14.1",
     "google-spreadsheet": "^4.1.4",
+    "google-spreadsheet-schema": "^0.1.0",
     "html-to-text": "^9.0.5",
     "imapflow": "^1.0.184",
     "jimp": "^0.22.10",

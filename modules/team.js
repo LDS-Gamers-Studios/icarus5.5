@@ -98,14 +98,16 @@ async function slashTeamTournamentChampions(int) {
 
   /** @param {string} str */
   const user = (str) => int.options.getMember(str);
-
   const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr));
-  const date = u.moment().add(3, "weeks").valueOf();
+  const date = u.moment().add(3, "weeks").toDate();
 
-  const rows = await u.db.sheets.data.docs?.config.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr?.id ?? "", "Take Role At": date, Key: u.customId(5) })));
-  for (const row of rows ?? []) {
-    u.db.sheets.tourneyChampions.set(row.get("Key"), u.db.sheets.mappers.tourneyChampions(row));
-  }
+  await u.db.sheets.tourneyChampions.update(users.map(usr => ({
+    tourneyName: tName || "",
+    userId: usr?.id || "",
+    takeAt: date,
+    key: u.customId(5)
+  })));
+
   for (const usr of users) {
     usr?.roles.add(u.sf.roles.tournament.champion);
   }

@@ -19,6 +19,7 @@ const Module = new Augur.Module();
 
 async function loadEmails() {
   const creds = config.google.mail;
+  if (!creds.enabled) return "<FEATURE DISABLED>";
   try {
     const receiver = new receive.ImapFlow({
       auth: {
@@ -49,7 +50,7 @@ async function loadEmails() {
 async function sendUnsent(receiver) {
   if (!receiver.usable) throw new Error("Missionary Email Receiver not usable, cannot check for new emails.");
 
-  const messageIds = await receiver.search({ or: u.db.sheets.missionaries.map((email) => ({ from: email })), seen: false, since: u.moment().subtract(1, "week").toDate() });
+  const messageIds = await receiver.search({ or: u.db.sheets.missionaries.map((m) => ({ from: m.email })), seen: false, since: u.moment().subtract(1, "week").toDate() });
   const messages = await receiver.fetchAll(messageIds, { source: true });
 
   const approvals = Module.client.getTextChannel(u.sf.channels.missionary.approvals);
@@ -68,11 +69,11 @@ async function sendUnsent(receiver) {
 
     // figure out who it is from
     const fromEmail = parsed.from?.[0].address ?? "Err:NoFromAddress";
-    const missionaryId = u.db.sheets.missionaries.findKey(address => fromEmail.includes(address));
+    const missionary = u.db.sheets.missionaries.find(m => fromEmail.includes(m.email));
 
     // get the server member. if they don't show up, they're probably not a member anymore
-    const missionary = Module.client.guilds.cache.get(u.sf.ldsg)?.members.cache.get(missionaryId ?? "");
-    if (!missionary) continue;
+    const user = Module.client.guilds.cache.get(u.sf.ldsg)?.members.cache.get(missionary?.userId ?? "");
+    if (!user) continue;
 
     // make sure there is text
     if (!parsed.text) {
@@ -101,12 +102,12 @@ async function sendUnsent(receiver) {
     // now that we've removed the reply...
     if (!parsed.text && parsed.attachments?.length === 0) continue;
 
-    const text = parsed.text?.replace(fromEmail, missionary.displayName)
+    const text = parsed.text?.replace(fromEmail, user.displayName)
       .replace(/\n(\n|[a-z])/g, " $1")
       .split("\n");
 
-    const embed = u.embed({ author: missionary })
-      .setTitle(`${missionary.displayName} - ${parsed.subject}`)
+    const embed = u.embed({ author: user })
+      .setTitle(`${user.displayName} - ${parsed.subject}`)
       .setTimestamp(parsed.receivedDate);
 
     const embeds = text ? u.pagedEmbedsDescription(embed, text) : [embed.setDescription("Attachments:")];
@@ -124,7 +125,7 @@ async function sendUnsent(receiver) {
 
     // pop the question
     await approvals.send({
-      content: `Missionary Email from ${missionary.toString()} (\`${fromEmail}\`)`,
+      content: `Missionary Email from ${user.toString()} (\`${fromEmail}\`)`,
       files,
       components: [actionRow]
     });
@@ -150,17 +151,7 @@ async function slashMissionaryRegister(int) {
   const email = int.options.getString("email", true);
 
   if (!email.endsWith("@missionary.org")) return int.editReply("Missionary emails must end with `@missionary.org`");
-
-  const entry = u.db.sheets.data.missionaries.find(m => m.get("UserId") === user.id);
-  if (entry) {
-    // update db entry
-    entry.set("Email", email);
-    await entry.save();
-  } else {
-    const row = await u.db.sheets.data.docs?.config.sheetsByTitle.Mail.addRow({ "UserId": user.id, "Email": email });
-    if (row) u.db.sheets.data.missionaries.push(row);
-  }
-  u.db.sheets.missionaries.set(user.id, email);
+  await u.db.sheets.missionaries.update({ email, userId: user.id });
 
   return int.editReply(`I set ${user}'s email to \`${email}\`.`);
 }
@@ -171,18 +162,18 @@ async function slashMissionaryRemove(int) {
 
   if (!u.db.sheets.missionaries.has(user.id)) return int.editReply(`${user} doesn't have a missionary email set up!`);
 
-  await u.db.sheets.data.missionaries.find((row) => row.get("UserId") === user.id)?.delete();
-  await u.db.sheets.loadData(int.client, true, true, "missionaries");
+  u.db.sheets.missionaries.delete(user.id);
+  await u.db.sheets.missionaries.rows.find((row) => row.get("UserId") === user.id)?.delete();
 
   return int.editReply(`${user} has been removed from the mailing list!`);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashMissionaryList(int) {
-  const missionaries = u.db.sheets.missionaries.map((email, id) => {
-    const member = int.guild.members.cache.get(id);
-    if (!member) return `<@${id}> (${id}, unknown user): **${email}**`;
-    return `${member} (${member.displayName}): **${email}**`;
+  const missionaries = u.db.sheets.missionaries.map((m) => {
+    const member = int.guild.members.cache.get(m.userId);
+    if (!member) return `<@${m.userId}> (${m.userId}, unknown user): **${m.email}**`;
+    return `${member} (${member.displayName}): **${m.email}**`;
   });
   const embed = u.embed().setTitle("Missionary Emails")
     .setDescription(`I have the following missionary emails stored:\n\n${missionaries.join("\n")}`);
