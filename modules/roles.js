@@ -154,18 +154,8 @@ Module.addInteraction({
     const option = interaction.options.getFocused(true);
     const input = option.value.toLowerCase();
     const sub = interaction.options.getSubcommand(true);
-    // /role give/take, /role add/remove
+    // /role add/remove
     if (option.name === 'role') {
-      // /role give/take
-      if (["give", "take"].includes(sub)) {
-        if (!u.perms.calc(interaction.member, ["team", "mod", "mgr"])) return;
-        const withPerms = u.db.sheets.roles.team.filter(r => {
-          if (option.value && !r.base.name.toLowerCase().includes(option.value.toLowerCase())) return false;
-          return u.perms.calc(interaction.member, [r.level]);
-        }).sort((a, b) => b.base.comparePositionTo(a.base)).map(r => r.base.name);
-        return interaction.respond(withPerms.map(r => ({ name: r, value: r })));
-      }
-      // /role add/remove
       const adding = sub === "add";
       /** @type {string[]} */
       let roles;
