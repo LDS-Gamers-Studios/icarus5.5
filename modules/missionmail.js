@@ -19,6 +19,7 @@ const Module = new Augur.Module();
 
 async function loadEmails() {
   const creds = config.google.mail;
+  if (!creds.enabled) return "<FEATURE DISABLED>";
   try {
     const receiver = new receive.ImapFlow({
       auth: {
