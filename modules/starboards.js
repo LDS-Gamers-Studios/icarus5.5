@@ -14,15 +14,17 @@ async function checkStarBoard(reaction, user) {
 
     const react = reaction.emoji.id || reaction.emoji.name;
     const msg = reaction.message;
+    const banned = u.db.sheets.starboards.banned;
 
     if (
-      user.bot || msg.author.bot || msg.author.system ||
-      msg.guildId !== u.sf.ldsg || !msg.inGuild() ||
-      msg.createdTimestamp < Date.now() - 7 * 24 * 60 * 60_000 ||
-      msg.channel.parentId === u.sf.channels.starboardCategory ||
-      !react
+      user.bot || msg.author.bot || msg.author.system || // no bots
+      msg.guildId !== u.sf.ldsg || !msg.inGuild() || // in the server
+      msg.createdTimestamp < Date.now() - 7 * 24 * 60 * 60_000 || // recent posts only
+      banned.channels.has(msg.channelId) || banned.channels.has(msg.channel.parentId || "") || // not a banned channel
+      !react || banned.emoji.has(react) // not a banned emoji
     ) return;
-    const boards = u.db.sheets.starboards;
+
+    const boards = u.db.sheets.starboards.boards;
     const board = boards.find(b => b.priorityChannels.has(msg.channelId) || b.priorityChannels.has(msg.channel.parentId || "")) || boards.find(b => b.priorityEmoji.has(react)) || boards.find(b => b.priorityEmoji.has("ALL"));
 
     if (!board || board.threshold !== reaction.count) return;
@@ -33,16 +35,17 @@ async function checkStarBoard(reaction, user) {
 
     await u.db.starboard.saveMessage(msg.id, msg.createdTimestamp);
 
-    if (board.approval) {
-      embed.addFields({ name: "Destination", value: `${board.channel} | ${board.channel.id}` });
-      const row = u.MessageActionRow().addComponents(
-        new u.Button().setCustomId("starboardApprove").setLabel("Approve").setStyle(Discord.ButtonStyle.Success),
-        new u.Button().setCustomId("starboardReject").setLabel("Reject").setStyle(Discord.ButtonStyle.Danger)
-      );
-      reaction.client.getTextChannel(u.sf.channels.starboardApprovals)?.send({ embeds: [embed], components: [row] });
-      return;
-    }
-    await board.channel.send({ embeds: [embed] });
+    if (!board.approval) return await board.channel.send({ embeds: [embed] });
+
+    // add to the approval queue
+    embed.addFields({ name: "Destination", value: `${board.channel} | ${board.channel.id}` });
+    const row = u.MessageActionRow().addComponents(
+      new u.Button().setCustomId("starboardApprove").setLabel("Approve").setStyle(Discord.ButtonStyle.Success),
+      new u.Button().setCustomId("starboardReject").setLabel("Reject").setStyle(Discord.ButtonStyle.Danger)
+    );
+    reaction.client.getTextChannel(u.sf.channels.starboardApprovals)?.send({ embeds: [embed], components: [row] });
+    return;
+
   } catch (error) {
     u.errorHandler(error, `Starboard - ${reaction.message.id}`);
   }
