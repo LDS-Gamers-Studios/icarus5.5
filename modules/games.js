@@ -91,7 +91,7 @@ async function slashGameGetPlaying(inter) {
     return b.players - a.players;
   });
 
-  const s = games.size > 0 ? 's' : '';
+  const s = games.size !== 1 ? 's' : '';
   const embed = u.embed().setTimestamp()
     .setTitle(`Currently played game${s} in ${inter.guild.name}`)
     .setDescription(`The top ${Math.min(games.size, 25)} game${s} currently being played in ${inter.guild.name}:`)

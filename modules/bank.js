@@ -219,9 +219,6 @@ async function slashBankGameRedeem(interaction) {
     const game = u.db.sheets.games.available.get(code);
     if (!game) {
       return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);
-    // @ts-ignore
-    } else if (game.recipient || game.date) {
-      return interaction.editReply("Looks like someone else already bought the game! Sorry about that.");
     }
 
     // buy the game (or fail)

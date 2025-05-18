@@ -68,11 +68,11 @@ async function sendUnsent(receiver) {
 
     // figure out who it is from
     const fromEmail = parsed.from?.[0].address ?? "Err:NoFromAddress";
-    const missionaryId = u.db.sheets.missionaries.find(m => fromEmail.includes(m.email));
+    const missionary = u.db.sheets.missionaries.find(m => fromEmail.includes(m.email));
 
     // get the server member. if they don't show up, they're probably not a member anymore
-    const missionary = Module.client.guilds.cache.get(u.sf.ldsg)?.members.cache.get(missionaryId?.userId ?? "");
-    if (!missionary) continue;
+    const user = Module.client.guilds.cache.get(u.sf.ldsg)?.members.cache.get(missionary?.userId ?? "");
+    if (!user) continue;
 
     // make sure there is text
     if (!parsed.text) {
@@ -101,12 +101,12 @@ async function sendUnsent(receiver) {
     // now that we've removed the reply...
     if (!parsed.text && parsed.attachments?.length === 0) continue;
 
-    const text = parsed.text?.replace(fromEmail, missionary.displayName)
+    const text = parsed.text?.replace(fromEmail, user.displayName)
       .replace(/\n(\n|[a-z])/g, " $1")
       .split("\n");
 
-    const embed = u.embed({ author: missionary })
-      .setTitle(`${missionary.displayName} - ${parsed.subject}`)
+    const embed = u.embed({ author: user })
+      .setTitle(`${user.displayName} - ${parsed.subject}`)
       .setTimestamp(parsed.receivedDate);
 
     const embeds = text ? u.pagedEmbedsDescription(embed, text) : [embed.setDescription("Attachments:")];
@@ -124,7 +124,7 @@ async function sendUnsent(receiver) {
 
     // pop the question
     await approvals.send({
-      content: `Missionary Email from ${missionary.toString()} (\`${fromEmail}\`)`,
+      content: `Missionary Email from ${user.toString()} (\`${fromEmail}\`)`,
       files,
       components: [actionRow]
     });
