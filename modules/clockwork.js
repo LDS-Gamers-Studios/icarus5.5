@@ -143,7 +143,7 @@ async function timerCheck(client) {
       const embed = u.embed()
         .setTitle(reminder.isTimer ? "TIMER ENDED" : "REMINDER")
         .setDescription(reminder.reminder)
-        .addFields({ name: reminder.isTimer ? "Timer started on" : "Reminder requested on", value: toTime(reminder.timestamp) });
+        .addFields({ name: reminder.isTimer ? "Timer started on" : "Reminder requested on", value: toTime(reminder.started) });
 
       user.send({ embeds: [embed] }).catch(u.noop);
     }
