@@ -179,10 +179,7 @@ const utils = {
       .setTimestamp(msg.editedAt ?? msg.createdAt);
     if (msg.editedAt) embed.setFooter({ text: "[EDITED]" });
     if (channel) {
-      embed.addFields(
-        { name: "Channel", value: msg.inGuild() ? `#${msg.channel.name}` : "DMs" },
-        { name: "Jump to Post", value: msg.url }
-      );
+      embed.addFields({ name: "Jump to Post", value: msg.url });
     }
     if (files && msg.attachments.size > 0) embed.setImage(msg.attachments.first()?.url ?? null);
     else if (msg.stickers.size > 0) embed.setImage(msg.stickers.first()?.url ?? null);

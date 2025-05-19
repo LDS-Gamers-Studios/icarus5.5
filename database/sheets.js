@@ -36,6 +36,7 @@ const sheetMap = {
   missionaries: "Mail",
   roles: "Roles",
   sponsors: "Sponsor Channels",
+  starboards: "Starboards",
   tourneyChampions: "Tourney Champions",
   vcNames: "Voice Channel Names",
   xpSettings: "XP Settings",
@@ -76,6 +77,19 @@ const functionSchemas = {
       emojiId: row.get("Emoji") || null,
       enabled: row.get("Enabled") === "TRUE",
       archiveAt: isNaN(date.valueOf()) ? null : date
+    };
+  },
+  /** @type {Schemas.Mapper<types.Starboard>} */
+  starboards: (row) => {
+    const cId = row.get("ChannelID");
+    const channel = client.getTextChannel(cId);
+    if (!channel) throw new Error(`Sheet Error - Missing Starboard Channel: Row ${row.rowNumber}, ${cId}`);
+    return {
+      approval: row.get("Approval") === "TRUE",
+      channel,
+      priorityChannels: new Set(row.get("PriorityChannels")?.split(", ") || []),
+      priorityEmoji: new Set(row.get("Reactions")?.split(", ") || []),
+      threshold: parseInt(row.get("Threshold")),
     };
   },
   /** @type {Schemas.Mapper<types.Role>} */
@@ -166,6 +180,14 @@ const data = {
 
   vcNames: new Schemas.ArraySchema("Name"),
 
+  starboards: {
+    boards: new Schemas.SchemaFunction("ChannelID", functionSchemas.starboards),
+    banned: {
+      channels: new Schemas.SetSchema("Excluded Channel IDs", "string"),
+      emoji: new Schemas.SetSchema("Excluded Emoji IDs", "string")
+    }
+  },
+
   xpSettings: {
     banned: new Schemas.SetSchema("BannedEmoji", "string"),
     channels: new Schemas.ObjectSchema("channelId", {
@@ -225,6 +247,15 @@ async function setData(sheet, doc) {
     await data.roles.rank.load(worksheet, (row) => row.get("Type") === "Rank", rows);
     await data.roles.team.load(worksheet, (row) => row.get("Type") === "Team Assign", rows);
     await data.roles.year.load(worksheet, (row) => row.get("Type") === "Year", rows);
+    return;
+  }
+
+  if (sheet === "starboards") {
+    const rows = await worksheet.getRows();
+
+    await data.starboards.boards.load(worksheet, undefined, rows);
+    await data.starboards.banned.channels.load(worksheet, undefined, rows);
+    await data.starboards.banned.emoji.load(worksheet, undefined, rows);
     return;
   }
 

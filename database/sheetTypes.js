@@ -57,6 +57,15 @@ const Discord = require("discord.js");
  */
 
 /**
+ * @typedef Starboard
+ * @prop {Discord.GuildTextBasedChannel} channel
+ * @prop {Set<string>} priorityChannels
+ * @prop {Set<string>} priorityEmoji
+ * @prop {number} threshold
+ * @prop {boolean} approval
+ */
+
+/**
  * @typedef TourneyChampion
  * @prop { string } tourneyName
  * @prop { string } userId
