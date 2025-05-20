@@ -78,6 +78,7 @@ async function slashRoleWhoHas(int) {
     await int.deferReply({ ephemeral });
     const role = int.options.getRole("role", true);
     if (role.id === u.sf.ldsg) return int.editReply("Everyone has that role, silly!");
+    if (role.id === u.sf.roles.moderation.muted) return int.editReply("I'm not gonna tell you that silly!");
     const members = role.members.map(m => m.displayName).sort();
     if (members.length === 0) return int.editReply("I couldn't find any members with that role. :shrug:");
 
