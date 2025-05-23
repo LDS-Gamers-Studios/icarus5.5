@@ -37,7 +37,6 @@ async function buyGame(game, user) {
     discordId: user.id,
     description: `${game.title} (${game.system}) Game Key`,
     value: -1 * game.cost,
-    giver: user.id,
     otherUser: user.client.user.id,
     hp: false
   });
@@ -120,9 +119,8 @@ async function slashBankGive(interaction) {
       const deposit = {
         currency,
         discordId: recipient.id,
-        description: `From ${giver.displayName}: ${reason}`,
+        description: reason,
         value,
-        giver: giver.id,
         otherUser: giver.id,
         hp: false
       };
@@ -142,9 +140,8 @@ async function slashBankGive(interaction) {
     const withdrawal = {
       currency,
       discordId: giver.id,
-      description: `To ${recipient.displayName}: ${reason}`,
+      description: reason,
       value: -value,
-      giver: giver.id,
       otherUser: recipient.id,
       hp: false
     };
@@ -263,7 +260,6 @@ async function slashBankDiscount(interaction) {
         discordId: interaction.user.id,
         description: "LDSG Store Discount Code",
         value: -amount,
-        giver: interaction.user.id,
         otherUser: interaction.client.user.id,
         hp: false
       };
