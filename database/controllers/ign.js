@@ -81,5 +81,14 @@ module.exports = {
       };
     });
     return Ign.bulkWrite(actions).then((i) => i.modifiedCount + i.insertedCount + i.deletedCount);
+  },
+  /**
+   * Transfer an old account's IGNs to their new account
+   * @param {string} oldUserId
+   * @param {string} newUserId
+   */
+  transfer: async function(oldUserId, newUserId) {
+    const existing = await Ign.find({ discordId: newUserId });
+    return Ign.updateMany({ discordId: oldUserId, system: { $nin: existing.map(e => e.system) } }, { discordId: newUserId }, { lean: true }).exec();
   }
 };

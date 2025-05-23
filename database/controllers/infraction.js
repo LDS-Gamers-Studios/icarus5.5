@@ -103,5 +103,18 @@ module.exports = {
    */
   update: function(infraction) {
     return Infraction.findOneAndUpdate({ flag: infraction.flag }, { handler: infraction.handler, value: infraction.value }, { new: true, lean: true }).exec();
+  },
+  /**
+   * Transfer an old account's infractions to their new account
+   * @param {string} oldUserId
+   * @param {string} newUserId
+   */
+  transfer: function(oldUserId, newUserId) {
+    return Infraction.bulkWrite([
+      { updateMany: { filter: { discordId: oldUserId }, update: { discordId: newUserId } } },
+      { updateMany: { filter: { snitch: oldUserId }, update: { snitch: newUserId } } },
+      { updateMany: { filter: { mod: oldUserId }, update: { mod: newUserId } } },
+      { updateMany: { filter: { handler: oldUserId }, update: { handler: newUserId } } },
+    ]);
   }
 };

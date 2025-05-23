@@ -46,4 +46,12 @@ module.exports = {
   deleteById: (id, discordId) => {
     return Reminder.findOneAndDelete({ id: id.toUpperCase(), discordId }, { lean: true, new: false });
   },
+  /**
+   * Transfer an old account's reminders to their new account
+   * @param {string} oldUserId
+   * @param {string} newUserId
+   */
+  transfer: function(oldUserId, newUserId) {
+    return Reminder.updateMany({ discordId: oldUserId }, { discordId: newUserId }, { lean: true }).exec();
+  }
 };

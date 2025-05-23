@@ -222,5 +222,17 @@ module.exports = {
       }
     });
     return failed;
+  },
+  /**
+   * Transfer an old account's transactions to their new account
+   * @param {string} oldUserId
+   * @param {string} newUserId
+   */
+  transfer: function(oldUserId, newUserId) {
+    return Bank.bulkWrite([
+      { updateMany: { filter: { discordId: oldUserId }, update: { discordId: newUserId } } },
+      { updateMany: { filter: { giver: oldUserId }, update: { giver: newUserId } } },
+      { updateMany: { filter: { otherUser: oldUserId }, update: { otherUser: newUserId } } },
+    ]);
   }
 };
