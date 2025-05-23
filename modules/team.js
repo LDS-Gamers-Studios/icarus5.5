@@ -56,9 +56,8 @@ async function slashTeamBankAward(int) {
     const award = {
       currency: "em",
       discordId: recipient.id,
-      description: `From ${giver.displayName} (House Points): ${reason}`,
+      description: `House Points: ${reason}`,
       value,
-      giver: giver.id,
       otherUser: giver.id,
       hp: true
     };
@@ -186,7 +185,6 @@ async function slashTeamRankReset(int) {
             description: `Chat Rank Reset - ${new Date().toLocaleDateString()}`,
             discordId: user.discordId,
             value: award,
-            giver: int.client.user.id,
             otherUser: int.client.user.id,
             hp: true,
             timestamp: new Date()

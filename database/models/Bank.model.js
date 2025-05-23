@@ -23,14 +23,9 @@ const BankSchema = new Schema({
     type: String,
     default: "em"
   },
-  giver: {
-    type: String,
-    required: true,
-    default: "UNKNOWN"
-  },
   otherUser: {
     type: String,
-    required: false
+    required: true
   },
   hp: {
     type: Boolean,
