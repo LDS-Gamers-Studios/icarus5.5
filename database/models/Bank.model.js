@@ -25,11 +25,12 @@ const BankSchema = new Schema({
   },
   giver: {
     type: String,
-    required: true
+    required: true,
+    default: "UNKNOWN"
   },
   otherUser: {
     type: String,
-    required: true
+    required: false
   },
   hp: {
     type: Boolean,

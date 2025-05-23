@@ -9,8 +9,8 @@ const Discord = require("discord.js");
  * @prop {String} description Description about the transaction
  * @prop {Number} value  The amount given.
  * @prop {String} currency The type of currency to give. (em or gb) Defaults to em
- * @prop {String} otherUser  The user who gave the currency.
- * @prop {String} giver  The user who gave the currency. (old)
+ * @prop {String} [otherUser]  The user who gave the currency.
+ * @prop {String} [giver]  The user who gave the currency. (old)
  * @prop {Boolean} hp Whether the addition counts for house points.
  */
 
@@ -81,146 +81,162 @@ module.exports = {
     return Bank.insertMany(data.map(d => new Bank(d)), { lean: true });
   },
   fixUp: async function() {
-    /**
-     * Record A: {
-     *  discordId: 1
-     *  giver: 1
-     *  value: -5
-     *  description: "To ...: message"
-     *  time: 5ms
-     * }
-     *
-     * Record B: {
-     *  discordId: 2
-     *  giver: 1
-     *  value: 5
-     *  description: "From ...: message"
-     *  time: 7ms
-     * }
-     */
-    const icarus = "1067667220571901982";
-    // problem names
-    // Kitten Atomic: I will monch you
-    // LDSG Penguin: .* Edition
-    // LDSG Benguin: .* Edition
-    // ♛ LDSG Benguin: A mood ♛
-    // LDSG Benguwuin: #TeamSeas Ed.
-    // Amethyst Penguin: Dendro Villain
-    // Spicy McPie: .* Trash
-    // Spicy McPie: verified homie
-    // Spicy McPie: Trash Gift Giver
-    // Spicy McPie: Single compost
-    // Spicy McPie: Goody two shoes
-    // Ally ?: Vibing with Fam
 
-    const all = await Bank.find({}, undefined, { lean: false }).exec();
-    const allCol = new Discord.Collection(all.filter(a => !(a.hp && a.currency === "em")).map(a => {
-      /** @type {CurrencyRecord & { _id: string, reason: string }} */
-      const obj = a.toObject();
-      return [a._id.toString(), obj];
-    }));
-    allCol.forEach(a => {
-      if (!a.description.startsWith("To ") && !a.description.startsWith("From ")) {
-        a.reason = a.description;
-        return;
-      }
-      const split = a.description.split(": ");
-      /** @type {string} */
-      let reason;
-      if (split[0].endsWith("Spicy McPie") || split[0].endsWith("Spicy McArchives") && (split[1].toLowerCase().endsWith("trash") || ["verified homie", "Trash Gift Giver", "Single compost", "Goody two shoes"].includes(split[1]))) {
-        reason = split.slice(2).join(": ");
-      } else if (split[0].match(/(LDSG)|(Amethyst) (P|B)enguin/) && (split[1].endsWith("Edition") || ["A mood ♛", "#TeamSeas Ed.", "Dendro Villain"].includes(split[1]))) {
-        reason = split.slice(2).join(": ");
-      } else if (a.description.match(/Ally ?: Vibing with fam/i)) {
-        reason = split.slice(2).join(": ");
-      } else if (a.description.match(/Kitten Atomic: I will monch you/)) {
-        reason = split.slice(2).join(": ");
-      } else {
-        reason = split.slice(1).join(": ");
-        if (reason === "") reason = "No particular reason";
-      }
-      if (reason === "No particular reason.") reason = "No particular reason";
-      a.reason = reason;
-    });
-    /** @type {CurrencyRecord[][]} */
-    const pairs = [];
-    const negs = new Discord.Collection(all.filter(r => r.value < 1 && !(r.hp && r.currency === "em")).map(a => [a._id.toString(), a]));
-    const pos = all.filter(r => r.value > 0 && !["209007104852230145", "1067667220571901982"].includes(r.giver) && !r.description.startsWith("LDSG Twitch")
-      && !(r.hp && r.currency === "em")
-    );
+    const icarus = ["1067667220571901982", "209007104852230145"];
 
-    for (const neg of Array.from(negs.values())) {
-      if (neg.description.startsWith("LDSG Store") ||
-        (!neg.description.startsWith("From") && neg.description.endsWith(" Game Key")) ||
+    const namesIncluded = 1520312400000;
+    const mgmtDeducted = 1622776344000;
+
+    const updated = [];
+
+    await Bank.deleteMany({ value: 0 }).exec();
+
+    const awards = await Bank.find({ otherUser: null, hp: true, currency: "em" }).exec();
+    for (const award of awards) {
+      award.set("otherUser", award.giver);
+      updated.push(award);
+    }
+    await Bank.bulkSave(awards);
+
+    const problems = [
+      "Kitten Atomic: I will monch you: ",
+      "LDSG Penguin: GG Fluffy Edition: ",
+      "LDSG Penguin: 2021 Edition: ",
+      "LDSG Penguin: Spoopy Edition: ",
+      "LDSG Benguin: NaNoWriMo Edition: ",
+      "♛ LDSG Benguin: A mood ♛: ",
+      "LDSG Benguwuin: #TeamSeas Ed.: ",
+      "Amethyst Penguin: Dendro Villain: ",
+      "Ally : Vibing with Fam: ",
+      "Ally: Vibing with Fam: ",
+      "Spicy McPie: Wise Trash: ",
+      "Spicy McPie: Christmas Trash: ",
+      "Spicy McPie: Cuwute Trash: ",
+      "Spicy McPie: Spooky Trash: ",
+      "Spicy McPie: Valentines Trash: ",
+      "Spicy McPie: Cozy Trash: ",
+      "Spicy McPie: Bouncy Trash: ",
+      "Spicy McPie: Bouncy trash: ",
+      "Spicy McPie: Stabby Trash: ",
+      "Spicy McPie: verified homie: ",
+      "Spicy McPie: Trash Gift Giver: ",
+      "Spicy McPie: Single compost: ",
+      "Spicy McPie: Garnelen's Trash: ",
+      "Spicy McPie: Amazed Trash: ",
+      "Spicy McPie: Thankful Trash: ",
+      "Spicy McPie: Goody two shoes: ",
+      "Spicy McArchives: Bouncy trash: ",
+    ];
+
+    const all = await Bank.find({});
+    // eslint-disable-next-line no-unused-vars
+    for (const record of all) {
+      if (record.timestamp.valueOf() < namesIncluded) continue;
+
+      if (!record.description.includes(":")) continue;
+
+      if (record.description.startsWith("To Icarus: ") || record.description.startsWith("To Icarus - Bot Bird of Legend: ")) record.set("otherUser", icarus[0]);
+
+      let split = record.description.split(": ");
+
+      // either an emoji or a colon in the username
+      if (split[2]) {
+        const problem = problems.find(p => record.description.includes(p));
+        if (problem) {
+          split = record.description.split(problem);
+        }
+      }
+      record.set("description", (split.slice(1).join(": ") || record.description).trim());
+    }
+
+    await Bank.bulkSave(all);
+
+    const nA = await Bank.find({ otherUser: null, $or: [{ currency: "gb" }, { hp: false, currency: "em" } ] }).exec();
+    const nonAwards = new Discord.Collection(nA.map(a => [a._id.toString(), a]));
+
+    const positiveOG = new Discord.Collection(nonAwards.filter(a => a.value > 0).map(a => [a._id.toString(), a]));
+    const positive = positiveOG.clone();
+    const negativeOG = new Discord.Collection(nonAwards.filter(a => a.value < 0).map(a => [a._id.toString(), a]));
+    const negative = negativeOG.clone();
+
+    const admins = ["96335658997526528", "96354827579174912", "117454089385803780", "96356134809526272", "111232201848295424"];
+
+    for (const [id, neg] of negativeOG) {
+      // giving to icarus
+      if (icarus.includes(neg.giver) ||
+        neg.description.startsWith("LDSG Store") ||
+        neg.description.endsWith(" Game Key") ||
         neg.description.endsWith(" SHIELD BREAK") ||
         neg.description.endsWith(" SHIELD BREAK!") ||
-        neg.description.endsWith(" shield!") ||
-        neg.description.startsWith("To Icarus: ") ||
-        neg.description.startsWith("To Icarus - Bot Bird of Legend: ")
+        neg.description.endsWith(" shield!")
       ) {
-        if (!neg.otherUser) {
-          neg.otherUser = icarus;
-          neg.save();
-        }
-        allCol.delete(neg._id.toString());
-        negs.delete(neg._id.toString());
-      }
-      // staff overwrite
-      if (["96354827579174912", "117454089385803780"].includes(neg.giver)) {
-        negs.delete(neg._id.toString());
+        neg.set("otherUser", icarus[0]);
+        updated.push(neg);
+        negative.delete(id);
+      } else if (admins.includes(neg.giver) && neg.timestamp.valueOf() < mgmtDeducted) {
+        neg.set("otherUser", neg.giver);
+        updated.push(neg);
+        negative.delete(id);
       }
     }
-    const posCol = new Discord.Collection(pos.map(p => [p._id.toString(), p]));
 
-    for (const p of pos) {
-      const t = [p.timestamp.valueOf() + 1000, p.timestamp.valueOf() - 1000];
-      const pReason = allCol.get(p._id.toString())?.reason;
-      const a = negs.find(n => {
-        const nReason = allCol.get(n._id.toString())?.reason;
-        return n.discordId === p.giver && n.value === (0 - p.value) && p.currency === n.currency && nReason === pReason && n.timestamp.valueOf() < t[0] && n.timestamp.valueOf() > t[1];
-      });
-      if (!a) {
-        if (["96354827579174912", "117454089385803780"].includes(p.giver)) {
-          if (!p.otherUser) {
-            p.otherUser = p.giver;
-            p.save();
-          }
-          posCol.delete(p._id.toString());
-          allCol.delete(p._id.toString());
-        }
+    for (const [id, pos] of positiveOG) {
+      if (icarus.includes(pos.giver) || pos.description.startsWith("Chat Rank Reset") ||
+      pos.description.startsWith("Feather drop in") ||
+      pos.description.startsWith("LDSG Twitch")
+      ) {
+        pos.set("otherUser", icarus[0]);
+        updated.push(pos);
+        positive.delete(id);
         continue;
+      }
+
+      const timeRange = [pos.timestamp.valueOf() + 1000, pos.timestamp.valueOf() - 1000];
+      const withdrawl = negative.find(neg =>
+        neg.discordId === pos.giver &&
+        neg.value === (0 - pos.value) &&
+        pos.currency === neg.currency &&
+        neg.description === pos.description &&
+        neg.timestamp.valueOf() < timeRange[0] && neg.timestamp.valueOf() > timeRange[1]
+      );
+
+      if (!withdrawl) {
+        if (admins.includes(pos.giver) && pos.timestamp.valueOf() < mgmtDeducted) {
+          pos.set("otherUser", pos.giver);
+          updated.push(pos);
+          positive.delete(id);
+          continue;
+        }
       } else {
-        if (!a.otherUser) {
-          a.otherUser = p.discordId;
-          a.save();
-        }
-        if (!p.otherUser) {
-          p.otherUser = a.discordId;
-          p.save();
-        }
-        pairs.push([p, a]);
-        negs.delete(a._id.toString());
-        allCol.delete(a._id.toString());
+        pos.set("otherUser", withdrawl.discordId);
+        negativeOG.get(withdrawl._id.toString())?.set("otherUser", pos.discordId);
+        updated.push(pos, withdrawl);
+
+        positive.delete(id);
+        negative.delete(withdrawl._id.toString());
       }
-      posCol.delete(p._id.toString());
-      allCol.delete(p._id.toString());
     }
-    /** @type {string[]} */
-    const failed = [];
-    allCol.forEach((a, id) => {
-      const rec = all.find(al => al._id.toString() === id);
-      if (!rec) return failed.push(id);
-      if (!rec.otherUser) {
-        rec.otherUser = rec.giver;
-        rec.save();
-      }
-    });
-    all.filter(a => (a.hp && a.currency === "em")).forEach(a => {
-      if (!a.otherUser) {
-        a.otherUser = a.giver;
-        a.save();
-      }
-    });
-    return failed;
+    console.log(positive.size, negative.size);
+
+    /**
+     * Final few queries
+     * { description: { $regex: RegExp("To ") } }
+     * Update description to "No particular reason.", then do a manual lookup with the csv
+     * 
+      * {
+          otherUser: { $exists: false },
+          giver: { $ne: "418541234387288064" },
+          value: { $gt: 0 }
+        }
+
+        Update otherUser to giver
+
+        {
+          otherUser: { $exists: false },
+          giver: { $ne: "418541234387288064" }
+        }
+        Do a manual lookup with the csv
+     */
+    return Bank.bulkSave(updated);
   }
 };
