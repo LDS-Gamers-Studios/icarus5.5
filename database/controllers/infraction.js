@@ -111,10 +111,9 @@ module.exports = {
    */
   transfer: function(oldUserId, newUserId) {
     return Infraction.bulkWrite([
-      { updateMany: { filter: { discordId: oldUserId }, update: { discordId: newUserId } } },
-      { updateMany: { filter: { snitch: oldUserId }, update: { snitch: newUserId } } },
-      { updateMany: { filter: { mod: oldUserId }, update: { mod: newUserId } } },
-      { updateMany: { filter: { handler: oldUserId }, update: { handler: newUserId } } },
+      { updateMany: { filter: { discordId: oldUserId }, update: { $set: { discordId: newUserId } } } },
+      { updateMany: { filter: { mod: oldUserId }, update: { $set: { mod: newUserId } } } },
+      { updateMany: { filter: { handler: oldUserId }, update: { $set: { handler: newUserId } } } },
     ]);
   }
 };

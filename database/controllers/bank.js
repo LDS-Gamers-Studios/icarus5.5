@@ -230,9 +230,9 @@ module.exports = {
    */
   transfer: function(oldUserId, newUserId) {
     return Bank.bulkWrite([
-      { updateMany: { filter: { discordId: oldUserId }, update: { discordId: newUserId } } },
-      { updateMany: { filter: { giver: oldUserId }, update: { giver: newUserId } } },
-      { updateMany: { filter: { otherUser: oldUserId }, update: { otherUser: newUserId } } },
+      { updateMany: { filter: { discordId: oldUserId }, update: { $set: { discordId: newUserId } } } },
+      { updateMany: { filter: { giver: oldUserId }, update: { $set: { giver: newUserId } } } },
+      { updateMany: { filter: { otherUser: oldUserId }, update: { $set: { otherUser: newUserId } } } },
     ]);
   }
 };
