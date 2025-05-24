@@ -75,17 +75,21 @@ async function slashRoleList(int) {
 async function slashRoleWhoHas(int) {
   try {
     const ephemeral = int.channel?.id === u.sf.channels.general;
-    await int.deferReply({ ephemeral });
+    await int.deferReply({ flags: ephemeral ? ["Ephemeral"] : undefined });
+
     const role = int.options.getRole("role", true);
     if (role.id === u.sf.ldsg) return int.editReply("Everyone has that role, silly!");
     if (role.id === u.sf.roles.moderation.muted && !u.perms.calc(int.member, ["mod"])) return int.editReply("I'm not gonna tell you that, ya silly goose!").then(u.clean);
+
     const members = role.members.map(m => m.displayName).sort();
     if (members.length === 0) return int.editReply("I couldn't find any members with that role. :shrug:");
 
     const embed = u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`);
     const processedEmbeds = u.pagedEmbedsDescription(embed, members).map(e => ({ embeds: [e] }));
     return u.manyReplies(int, processedEmbeds, ephemeral);
-  } catch (error) { u.errorHandler(error, int); }
+  } catch (error) {
+    u.errorHandler(error, int);
+  }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
