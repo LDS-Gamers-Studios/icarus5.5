@@ -78,5 +78,16 @@ module.exports = {
    */
   addManyTransactions: function(data) {
     return Bank.insertMany(data.map(d => new Bank(d)), { lean: true });
+  },
+  /**
+   * Transfer an old account's transactions to their new account
+   * @param {string} oldUserId
+   * @param {string} newUserId
+   */
+  transfer: function(oldUserId, newUserId) {
+    return Bank.bulkWrite([
+      { updateMany: { filter: { discordId: oldUserId }, update: { $set: { discordId: newUserId } } } },
+      { updateMany: { filter: { otherUser: oldUserId }, update: { $set: { otherUser: newUserId } } } },
+    ]);
   }
 };
