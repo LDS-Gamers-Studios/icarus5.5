@@ -1,7 +1,7 @@
 // @ts-check
 const Augur = require("augurbot-ts");
-const u = require("../utils/utils");
 const Rank = require("../utils/rankInfo");
+const u = require("../utils/utils");
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashManagerUserTransfer(int) {
@@ -33,7 +33,7 @@ async function slashManagerUserTransfer(int) {
   // update user roles (and kick if applicable)
   const newRoles = newUser.roles.cache.clone();
   if (oldUser) {
-    const oldRoles = oldUser.roles.cache;
+    const oldRoles = oldUser.roles.cache.clone();
     oldRoles.delete(u.sf.roles.houses.housebb);
     oldRoles.delete(u.sf.roles.houses.housefb);
     oldRoles.delete(u.sf.roles.houses.housesc);
