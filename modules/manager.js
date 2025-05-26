@@ -8,12 +8,12 @@ async function slashManagerUserTransfer(int) {
   await int.deferReply({ flags: ["Ephemeral"] });
 
   // get users
-  const oldUser = int.options.getMember("old");
-  const oldId = oldUser?.id ?? int.options.getString("old-id");
-  if (!oldId) return int.editReply("I couldnt find the old user!");
-
-  const newUser = int.options.getMember("new");
+  const newUser = int.options.getMember("new-user");
   if (!newUser) return int.editReply("I couldnt find the new user!");
+
+  const oldUser = int.options.getMember("old-user");
+  const oldId = oldUser?.id ?? int.options.getString("old-user-id");
+  if (!oldId) return int.editReply("I couldnt find the old user!");
 
   // get user db records
   const oldUserDoc = await u.db.user.fetchUser(oldId);
@@ -31,9 +31,9 @@ async function slashManagerUserTransfer(int) {
   newUserDoc.priorTenure += oldUserDoc.priorTenure;
 
   // update user roles (and kick if applicable)
-  const roles = newUser.roles.cache;
+  const newRoles = newUser.roles.cache.clone();
   if (oldUser) {
-    const oldRoles = oldUser.roles.cache.clone();
+    const oldRoles = oldUser.roles.cache;
     oldRoles.delete(u.sf.roles.houses.housebb);
     oldRoles.delete(u.sf.roles.houses.housefb);
     oldRoles.delete(u.sf.roles.houses.housesc);
@@ -42,11 +42,11 @@ async function slashManagerUserTransfer(int) {
       if (
         role.comparePositionTo(u.sf.roles.icarus) >= 0 ||
         role.managed ||
-        roles.has(id) ||
+        newRoles.has(id) ||
         u.db.sheets.roles.equip.has(id)
       ) continue;
 
-      roles.set(id, role);
+      newRoles.set(id, role);
     }
 
     await oldUser.kick("Account Transfer");
@@ -58,20 +58,20 @@ async function slashManagerUserTransfer(int) {
         !role ||
         role.comparePositionTo(u.sf.roles.icarus) >= 0 ||
         role.managed ||
-        roles.has(roleId) ||
+        newRoles.has(roleId) ||
         u.db.sheets.roles.equip.has(roleId)
       ) continue;
 
-      roles.set(roleId, role);
+      newRoles.set(roleId, role);
     }
   }
 
   // calculate new rank and give appropriate rank role
-  u.db.sheets.roles.rank.forEach(r => roles.delete(r.base.id));
+  u.db.sheets.roles.rank.forEach(r => newRoles.delete(r.base.id));
 
   const level = Rank.level(newUserDoc.totalXP);
   const levelRole = u.db.sheets.roles.rank.find(r => level >= r.level);
-  if (levelRole) roles.set(levelRole.base.id, levelRole.base);
+  if (levelRole) newRoles.set(levelRole.base.id, levelRole.base);
 
   // same thing but with tenure
   const joined = u.moment(newUser.joinedTimestamp).subtract(newUserDoc.priorTenure);
@@ -79,11 +79,11 @@ async function slashManagerUserTransfer(int) {
   const yearRole = u.db.sheets.roles.year.get(year);
 
   if (yearRole && !newUser.roles.cache.has(yearRole.base.id)) {
-    u.db.sheets.roles.year.forEach(r => roles.delete(r.base.id));
-    roles.set(yearRole.base.id, yearRole.base);
+    u.db.sheets.roles.year.forEach(r => newRoles.delete(r.base.id));
+    newRoles.set(yearRole.base.id, yearRole.base);
   }
 
-  if (roles.size > 0) await newUser.roles.set(roles);
+  if (newRoles.size > 0) await newUser.roles.set(newRoles);
 
   // update db entries
   const updatedUser = await u.db.user.update(newUser.id, {
