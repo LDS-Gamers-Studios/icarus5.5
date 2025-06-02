@@ -41,8 +41,8 @@ async function makeProfileCard(member) {
 
     const joined = u.moment(member.joinedAt).subtract(rank?.priorTenure ?? 0, "days");
     const now = u.moment();
-    const days = now.diff(joined, "days") % 365;
     const years = now.diff(joined, "years");
+    const days = now.subtract(years, "years").diff(joined, "days");
     const tenure = `Tenure: ${years > 0 ? `${years} year${years !== 1 ? "s" : ""}, ` : ""}${days} day${days !== 1 ? "s" : ""}`;
 
     // eslint-disable-next-line no-control-regex
