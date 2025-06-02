@@ -20,7 +20,7 @@ async function checkStarBoard(reaction, user) {
       user.bot || msg.author.bot || msg.author.system || // no bots
       msg.guildId !== u.sf.ldsg || !msg.inGuild() || // in the server
       msg.createdTimestamp < Date.now() - 7 * 24 * 60 * 60_000 || // recent posts only
-      banned.channels.has(msg.channelId) || banned.channels.has(msg.channel.parentId || "") || // not a banned channel
+      banned.channels.hasAny(msg.channelId, msg.channel.parentId || "") || // not a banned channel
       !react || banned.emoji.has(react) // not a banned emoji
     ) return;
 
@@ -46,10 +46,12 @@ async function checkStarBoard(reaction, user) {
       embeds.unshift(refEmbed);
     }
 
-
     await u.db.starboard.saveMessage(msg.id, msg.createdTimestamp);
 
-    if (!board.approval) return await board.channel.send({ embeds });
+    if (!board.approval) {
+      await board.channel.send({ embeds });
+      return;
+    }
 
     // add to the approval queue
     embed.addFields({ name: "Destination", value: `${board.channel} | ${board.channel.id}` });
