@@ -97,7 +97,6 @@ async function featherCheck(msg) {
           currency: "em",
           description: `XP feather drop in #${msg.channel.name}`,
           discordId: finder.id,
-          giver: msg.client.user.id,
           hp: true,
           value,
           otherUser: msg.client.user.id
