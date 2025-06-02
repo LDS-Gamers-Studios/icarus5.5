@@ -59,7 +59,7 @@ async function makeProfileCard(member) {
       h = ICON_SIZE + ICON_PADDING;
       const level = RankInfo.level(rank.totalXP);
       card.print(font, ICON_PADDING * 2, h, `Current Level: ${level} (${rank.totalXP.toLocaleString()} XP)`, () => h += 35)
-        .print(font, ICON_PADDING * 2, h, `Next Level: ${RankInfo.minXp(level + 1).toLocaleString()} XP`, () => h += ICON_PADDING + 35)
+        .print(font, ICON_PADDING * 2, h, `Next Level At: ${RankInfo.minXp(level + 1).toLocaleString()} XP`, () => h += ICON_PADDING + 35)
         .blit(new Jimp(WIDTH, ICON_PADDING, BORDER), 0, h, () => h += ICON_PADDING * 2)
         .print(font, ICON_PADDING * 2, h, `Season Rank:\n${rank.rank.season}/${member.guild.memberCount}`)
         .print(font, ICON_PADDING * 2 + 242, h, `Lifetime Rank:\n${rank.rank.lifetime}/${member.guild.memberCount}`, () => h += 64 + ICON_PADDING * 2);

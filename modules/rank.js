@@ -68,7 +68,7 @@ async function slashRankView(interaction) {
       .setFooter({ text: "https://my.ldsgamers.com/leaderboard" })
       .addFields(
         { name: "Rank", value: `Season: ${record.rank.season} / ${members.size}\nLifetime: ${record.rank.lifetime} / ${members.size}`, inline: true },
-        { name: "Level", value: `Current Level: ${level}\nNext Level: ${nextLevel} XP`, inline: true },
+        { name: "Level", value: `Current Level: ${level}\nNext Level At: ${nextLevel} XP`, inline: true },
         { name: "Exp.", value: `Season: ${record.currentXP} XP\nLifetime: ${record.totalXP} XP`, inline: true }
       );
 
