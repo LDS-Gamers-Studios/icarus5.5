@@ -25,17 +25,31 @@ async function checkStarBoard(reaction, user) {
     ) return;
 
     const boards = u.db.sheets.starboards.boards;
-    const board = boards.find(b => b.priorityChannels.has(msg.channelId) || b.priorityChannels.has(msg.channel.parentId || "")) || boards.find(b => b.priorityEmoji.has(react)) || boards.find(b => b.priorityEmoji.has("ALL"));
+
+    const board = boards.find(b => b.priorityChannels.has(msg.channelId) || b.priorityChannels.has(msg.channel.parentId || "")) ||
+      boards.find(b => b.priorityEmoji.has(react)) ||
+      boards.find(b => b.priorityEmoji.has("ALL"));
 
     if (!board || board.threshold !== reaction.count) return;
     if (await u.db.starboard.getMessage(msg.id)) return;
 
-    const embed = u.msgReplicaEmbed(msg, "", false, true);
+    const embeds = [];
+    const embed = u.msgReplicaEmbed(msg, "", true, true)
+      .setColor(0xf0de76);
     if (reaction.emoji.name) embed.setFooter({ text: reaction.emoji.name });
+    embeds.push(embed);
+
+    const ref = await reaction.message.fetchReference().catch(u.noop);
+    if (ref) {
+      const refEmbed = u.msgReplicaEmbed(ref, `Replying to ${ref.member?.displayName || ref.author.displayName}`, false, true)
+        .setColor(0x202020);
+      embeds.unshift(refEmbed);
+    }
+
 
     await u.db.starboard.saveMessage(msg.id, msg.createdTimestamp);
 
-    if (!board.approval) return await board.channel.send({ embeds: [embed] });
+    if (!board.approval) return await board.channel.send({ embeds });
 
     // add to the approval queue
     embed.addFields({ name: "Destination", value: `${board.channel} | ${board.channel.id}` });
@@ -43,7 +57,7 @@ async function checkStarBoard(reaction, user) {
       new u.Button().setCustomId("starboardApprove").setLabel("Approve").setStyle(Discord.ButtonStyle.Success),
       new u.Button().setCustomId("starboardReject").setLabel("Reject").setStyle(Discord.ButtonStyle.Danger)
     );
-    reaction.client.getTextChannel(u.sf.channels.starboardApprovals)?.send({ embeds: [embed], components: [row] });
+    reaction.client.getTextChannel(u.sf.channels.starboardApprovals)?.send({ embeds, components: [row] });
     return;
 
   } catch (error) {
@@ -62,18 +76,26 @@ const Module = new Augur.Module()
       await int.deferUpdate();
 
       if (int.message.partial) await int.message.fetch();
-      const embed = int.message.embeds?.[0];
+      const embed1 = int.message.embeds?.[0];
+      const embed2 = int.message.embeds?.[1];
 
-      const channelId = embed?.fields?.find(f => f.name === "Destination")?.value.split(" | ")[1];
+      const modifyingEmbed = embed2 ?? embed1;
+      // there was a reply embed
+
+      const channelId = modifyingEmbed?.fields?.find(f => f.name === "Destination")?.value.split(" | ")[1];
       const channel = int.client.getTextChannel(channelId || "");
 
-      if (!embed || !channel) return int.editReply("Sorry, I couldn't repost this message.");
+      if (!modifyingEmbed || !channel) return int.editReply("Sorry, I couldn't repost this message.");
 
-      const richEmbed = u.embed(embed)
-        .setFields(embed.fields.filter(f => f.name !== "Destination"));
+      const richEmbed = u.embed(modifyingEmbed)
+        .setFields(modifyingEmbed.fields.filter(f => f.name !== "Destination"));
+
+      /** @type {(Discord.Embed | Discord.EmbedBuilder)[]} */
+      const embeds = [richEmbed];
+      if (embed2 && embed1) embeds.unshift(embed1);
 
       await int.editReply({ components: [], content: "Approved" });
-      channel.send({ embeds: [richEmbed] });
+      channel.send({ embeds });
     }
   })
   .addInteraction({
