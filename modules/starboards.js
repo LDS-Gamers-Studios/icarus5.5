@@ -104,10 +104,18 @@ const Module = new Augur.Module()
     onlyGuild: true,
     permissions: (int) => u.perms.calc(int.member, ["team"]),
     process: async (int) => {
-      const embed = int.message.embeds?.[0];
-      if (embed) {
-        const richEmbed = u.embed(embed).setColor(0xff0000);
-        return int.update({ components: [], content: "Denied", embeds: [richEmbed] });
+      const embed1 = int.message.embeds?.[0];
+      const embed2 = int.message.embeds?.[1];
+
+      const modifyingEmbed = embed2 ?? embed1;
+      if (modifyingEmbed) {
+
+        const richEmbed = u.embed(modifyingEmbed).setColor(0xff0000);
+        /** @type {(Discord.Embed | Discord.EmbedBuilder)[]} */
+        const embeds = [richEmbed];
+        if (embed2 && embed1) embeds.unshift(embed1);
+
+        return int.update({ components: [], content: "Denied", embeds });
       }
       return int.update({ components: [], content: "Denied" });
     }
