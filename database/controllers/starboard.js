@@ -4,7 +4,7 @@ const Starboard = require("../models/Starboard.model");
 /**
  * @typedef StarboardPost
  * @prop {string} messageId
- * @prop {number} posted
+ * @prop {number} postedAt
  */
 
 module.exports = {
@@ -17,13 +17,13 @@ module.exports = {
   },
   /**
    * @param {string} messageId
-   * @param {number} posted
+   * @param {number} postedAt
    * @returns {Promise<StarboardPost>}
    */
-  saveMessage: (messageId, posted) => {
-    return new Starboard({ messageId, posted }).save().then(d => d.toObject());
+  saveMessage: (messageId, postedAt) => {
+    return new Starboard({ messageId, postedAt }).save().then(d => d.toObject());
   },
   cleanup: () => {
-    return Starboard.deleteMany({ posted: { $lt: Date.now() - 8 * 24 * 60 * 60_000 } }, { lean: true, new: false }).exec();
+    return Starboard.deleteMany({ postedAt: { $lt: Date.now() - 8 * 24 * 60 * 60_000 } }, { lean: true, new: false }).exec();
   }
 };

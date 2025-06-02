@@ -7,7 +7,7 @@ const StarboardSchema = new Schema({
     type: String,
     required: true
   },
-  posted: {
+  postedAt: {
     type: Number,
     required: true
   }
