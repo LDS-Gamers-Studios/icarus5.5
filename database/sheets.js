@@ -40,7 +40,8 @@ const sheetMap = {
   tourneyChampions: "Tourney Champions",
   vcNames: "Voice Channel Names",
   xpSettings: "XP Settings",
-  wipChannels: "WIP Channel Defaults"
+  wipChannels: "WIP Channel Defaults",
+  siteSurvey: "Site Feedback"
 };
 
 const functionSchemas = {
@@ -213,7 +214,7 @@ const data = {
   optRoles: new Schemas.SchemaFunction("RoleID", functionSchemas.optRoles),
   sponsors: new Schemas.SchemaFunction("Sponsor", functionSchemas.sponsors),
   wipChannels: new Schemas.SchemaFunction("ChannelId", functionSchemas.wipChannels),
-
+  siteSurvey: new Schemas.SetSchema("NOT A REAL COLUMN")
 };
 
 
