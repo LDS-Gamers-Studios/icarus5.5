@@ -132,8 +132,10 @@ const functionSchemas = {
 };
 
 const data = {
-  /** @type {{ config: GoogleSpreadsheet, games: GoogleSpreadsheet } | null}} */
-  docs: null,
+  docs: {
+    config: makeDocument(),
+    games: makeDocument(config.google.sheets.games)
+  },
 
   games: {
     purchased: new Schemas.ObjectSchema("code", {
@@ -268,7 +270,7 @@ async function setData(sheet, doc) {
  */
 async function loadData(cli, loggedIn = true, justRows = false, sheet) {
   client = cli;
-  if (!loggedIn) data.docs = { config: makeDocument(), games: makeDocument(config.google.sheets.games) };
+  loggedIn; // remove if the change worked
   if (!data.docs) throw new Error("Something has gone terribly wrong during sheets loadData");
 
   if (!justRows) {
