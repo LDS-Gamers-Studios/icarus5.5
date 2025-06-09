@@ -53,6 +53,7 @@ const functionSchemas = {
     return {
       name: row.get("Role Tag"),
       badge: row.get("Badge") || null,
+      badgeLore: row.get("Badge Lore") || null,
       role
     };
   },
@@ -109,6 +110,7 @@ const functionSchemas = {
       parents: row.get("Parent Roles")?.split(" ").filter(/** @param {string} a */a => noBlank(a)) ?? [],
       level: row.get("Level") || null,
       badge: row.get("Badge") || null,
+      badgeLore: row.get("Badge Lore") || null
     };
   },
   /** @type {Schemas.Mapper<types.ColorRole>} */
