@@ -75,7 +75,7 @@ async function makeProfileCard(member) {
     const badges = badgeUtils.getBadges(member.roles.cache);
     const extra = 4 - (badges.length % 4 || 4);
     for (let i = 0; i < extra; i++) {
-      badges.push({ image: "", name: "", overrides: [] });
+      badges.push({ image: "", name: "", overrides: [], lore: "" });
     }
 
     const placement = ICON_PADDING * 1.5;
