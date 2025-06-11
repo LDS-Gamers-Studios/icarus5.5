@@ -49,7 +49,14 @@
     "userUpdate",
     "voiceStateUpdate"
   ],
+  "getMessageContent": true,
+  "processDMs": true,
   "google": {
+    "mail": {
+      "enabled": false,
+      "email": "missionmail@ldsgamers.com",
+      "pass": "Use an app password. Google it if you need more info"
+    },
     "creds": {
       "type": "Create a project, give it access to google sheets, and create a service account credential. Download the JSON and that should fit in this object",
       "project_id": "",
@@ -88,6 +95,7 @@
     "count": 5000
   },
   "badgePath": "./media/badges",
+  "tagFilePath": "./media/tags",
   "xp": {
     "base": 25,
     "featherCooldown": 3,

@@ -27,6 +27,7 @@ const Discord = require("discord.js");
  * @prop { string } name
  * @prop {Discord.Role} role
  * @prop { string | null } badge
+ * @prop { string | null } badgeLore
 */
 
 /**
@@ -37,7 +38,12 @@ const Discord = require("discord.js");
  * @prop { string[] } parents
  * @prop { string | null } level
  * @prop { string | null } badge
+ * @prop { string | null } badgeLore
  */
+
+/** @typedef {Omit<Role, "color"> & { color: Discord.Role }} ColorRole  */
+/** @typedef {Omit<Role, "level"> & { level: string }} LevelStrRole  */
+/** @typedef {Omit<Role, "level"> & { level: number }} LevelNumRole  */
 
 /**
  * @typedef {Omit<Role, "level" | "color"> & { level: string, color: Discord.Role }} FullRole
@@ -50,6 +56,15 @@ const Discord = require("discord.js");
  * @prop { string | null } emojiId
  * @prop { boolean } enabled
  * @prop { Date | null } archiveAt
+ */
+
+/**
+ * @typedef Starboard
+ * @prop {Discord.GuildTextBasedChannel} channel
+ * @prop {Set<string>} priorityChannels
+ * @prop {Set<string>} priorityEmoji
+ * @prop {number} threshold
+ * @prop {boolean} approval
  */
 
 /**

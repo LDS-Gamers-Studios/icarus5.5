@@ -1,10 +1,12 @@
 {
   "commands": {
     "messageBookmark": "",
+    "messageEditMessage": "",
     "messageModeration": "",
     "slashAvatar": "",
     "slashBank": "",
     "slashBot": "",
+    "slashClockwork": "",
     "slashFun": "",
     "slashGame": "",
     "slashGospel": "",
@@ -12,12 +14,15 @@
     "slashIgn": "",
     "slashLdsg": "",
     "slashManagement": "",
+    "slashManager": "",
+    "slashMissionary": "",
     "slashMod": "",
     "slashRank": "",
     "slashRole": "",
     "slashTag": "",
     "slashTournament": "",
     "slashTwitch": "",
+    "slashTeam": "",
     "slashUser": "",
     "slashVoice": "",
     "userModeration": ""

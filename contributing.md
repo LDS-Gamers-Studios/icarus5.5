@@ -44,8 +44,8 @@ Instructions for local installation
 Explanations of these files can be found in the [File Explanations section](#file-explanations).
 
 6. Within the root folder of the repo, run `npm ci` to install the dependencies.
-7. Run `node register-commands.js` to register all of the interaction commands with the Discord API.
-8. Start the bot by running `node .`
+
+Steps 7 and 8 occur after setting up config.json, and will be explained later.
 
 ## File Explanations
 For the bot to successfully run, you'll need to edit your configuration file first. This file, for obvious security reasons, are excluded from the repository. However, an example file is provided to make setup easier.
@@ -84,6 +84,11 @@ This contains words that trigger an auto-mute when someone says one of them. The
 
 ### `config/snowflakes-testing-commands.json`
 This contains the IDs of the slash and context commands. The provided example can be copied without modification. It will be automatically filled out when you run `node register-commands.js`.
+
+## Setup (cont.)
+7. Run `node register-commands.js` to register all of the interaction commands with the Discord API.
+8. Start the bot by running `node .`
+
 
 # Contributing
 

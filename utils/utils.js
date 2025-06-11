@@ -128,7 +128,7 @@ const utils = {
   ModalActionRow: () => new Discord.ActionRowBuilder(),
   TextInput: Discord.TextInputBuilder,
   /**
-   * Confirm Dialog
+   * Prompts the user to confirm their actions before proceeding by having them press a button
    * @param {Discord.RepliableInteraction<"cached">} interaction The interaction to confirm
    * @param {String} prompt The prompt for the confirmation
    * @returns {Promise<Boolean|null>}
@@ -165,6 +165,7 @@ const utils = {
     else if (confirm?.customId === confirmFalse) return false;
     return null;
   },
+  /** Database controllers */
   db: db,
   /**
    * Create an embed from a message
@@ -176,29 +177,24 @@ const utils = {
       .setTitle(title || null)
       .setDescription(msg.content || null)
       .setTimestamp(msg.editedAt ?? msg.createdAt);
+
     if (msg.editedAt) embed.setFooter({ text: "[EDITED]" });
     if (channel) {
-      embed.addFields(
-        { name: "Channel", value: msg.inGuild() ? `#${msg.channel.name}` : "DMs" },
-        { name: "Jump to Post", value: msg.url }
-      );
+      embed.addFields({ name: "Jump to Post", value: msg.url });
     }
+
     if (files && msg.attachments.size > 0) embed.setImage(msg.attachments.first()?.url ?? null);
     else if (msg.stickers.size > 0) embed.setImage(msg.stickers.first()?.url ?? null);
     return embed;
   },
-  /**
-   * Shortcut to nanoid. See docs there for reference.
-   */
+  /** Shortcut to nanoid. See docs there for reference. */
   customId: nanoid,
-  /**
-   * Shortcut to Discord.Util.escapeMarkdown. See docs there for reference.
-   */
+  /** Shortcut to Discord.Util.escapeMarkdown. See docs there for reference. */
   escapeText: escapeMarkdown,
   /**
-   * Returns a MessageEmbed with basic values preset, such as color and timestamp.
+   * Returns an embed with basic values preset, such as color and timestamp.
+   * You can use a Discord User or GuildMember as the value for the author property for convenience.
    * @param {{author?: Discord.GuildMember|Discord.User|Discord.APIEmbedAuthor|Discord.EmbedAuthorData|null} & Omit<(Discord.Embed | Discord.APIEmbed | Discord.EmbedData), "author">} [data] The data object to pass to the MessageEmbed constructor.
-   *   You can override the color and timestamp here as well.
    */
   embed: function(data = {}) {
     const newData = JSON.parse(JSON.stringify(data));
@@ -214,6 +210,7 @@ const utils = {
     return embed;
   },
   /**
+   * Splits lines of text among multiple embeds in order to bypass message length requirements. Places the text in the descriptions
    * @param {Discord.EmbedBuilder} embed
    * @param {string[]} lines
    */
@@ -237,6 +234,7 @@ const utils = {
     return embeds;
   },
   /**
+   * Splits lines of text among multiple embeds in order to bypass message length requirements. Places the text in fields
    * @param {Discord.EmbedBuilder} embed
    * @param {Map<string, string[]>} lines Map of field names to values
    */
@@ -282,12 +280,9 @@ const utils = {
     return embeds;
   },
   /**
-   * @typedef {Discord.MessagePayload & { flags: Discord.BitFieldResolvable<"SuppressEmbeds"> }} payload
-   */
-  /**
-   * For when just one reply won't cut it.
+   * For when just one reply won't cut it. Makes several interaction replies with given payloads
    * @param {Discord.ChatInputCommandInteraction | Discord.ButtonInteraction} int
-   * @param {(Discord.InteractionEditReplyOptions & Discord.InteractionReplyOptions) []} payloads
+   * @param {(Discord.InteractionEditReplyOptions & Discord.InteractionReplyOptions)[]} payloads The things to send
    */
   manyReplies: async (int, payloads, ephemeral = int.ephemeral ?? true) => {
     for (let i = 0; i < payloads.length; i++) {
@@ -365,6 +360,7 @@ const utils = {
     embed.setDescription(stack);
     return errorLog.send({ embeds: [embed] });
   },
+  /** The webhook that handles error logging */
   errorLog,
   /**
    * Filter the terms keys by filterTerm and sort by startsWith and then includes
@@ -445,15 +441,7 @@ const utils = {
   rand: function(selections) {
     return selections[Math.floor(Math.random() * selections.length)];
   },
-  /**
-   * Convert to a fancier time string
-   * @param {Date} time The input time
-   * @param {Discord.TimestampStylesString} format The format to display in
-   * @returns {string} <t:time:format>
-   */
-  time: function(time, format = "f") {
-    return Discord.time(time, format);
-  },
+  time: Discord.time,
   /**
    * Shortcut to snowflakes.json or snowflakes-testing.json depending on if devMode is turned on
    */
@@ -489,22 +477,23 @@ const utils = {
   },
   /** @param {Discord.GuildMember | null} [member]*/
   getHouseInfo: function(member) {
-    const houseInfo = new Map([
-      [sf.roles.houses.housebb, { name: "Brightbeam", color: 0x00a1da }],
-      [sf.roles.houses.housefb, { name: "Freshbeast", color: 0xfdd023 }],
-      [sf.roles.houses.housesc, { name: "Starcamp", color: 0xe32736 }]
-    ]);
+    const houseInfo = [
+      { id: sf.roles.houses.housebb, name: "Brightbeam", color: 0x00a1da },
+      { id: sf.roles.houses.housefb, name: "Freshbeast", color: 0xfdd023 },
+      { id: sf.roles.houses.housesc, name: "Starcamp", color: 0xe32736 }
+    ];
 
     if (member) {
-      for (const [k, v] of houseInfo) {
-        if (member.roles.cache.has(k)) return v;
+      for (const v of houseInfo) {
+        if (member.roles.cache.has(v.id)) return v;
       }
     }
-    return { name: "Unsorted", color: 0x402a37 };
+    return { name: "Unsorted", color: 0x402a37, id: "" };
   },
   /**
+   * Makes an interaction response ephemeral UNLESS it's in the specified channel
    * @param {Discord.Interaction} int
-   * @param {string} [channelId]
+   * @param {string} [channelId] The channel where it SHOULDN'T be ephemeral
    * @returns {["Ephemeral"] | undefined}
    */
   ephemeralChannel: function(int, channelId = sf.channels.botSpam) {

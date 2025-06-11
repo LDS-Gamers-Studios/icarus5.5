@@ -519,7 +519,7 @@ const modCommon = {
   },
 
   /**
-   *
+   * Change someone's server nickname
    * @param {Augur.GuildInteraction<"CommandSlash"|"Modal">} interaction
    * @param {Discord.GuildMember} target
    * @param {string} newNick
@@ -570,6 +570,7 @@ const modCommon = {
   },
 
   /**
+   * Delete spam messages similar to a given message
    * @param {string[]} searchContent
    * @param {Discord.Guild} guild
    * @param {Discord.Message<true>} message
@@ -769,7 +770,7 @@ const modCommon = {
       if (apply && (watchStatus?.watching || modCommon.watchlist.has(id))) return `${target} was already on the watchlist!`;
       if (!apply && watchStatus && !watchStatus.watching && !modCommon.watchlist.has(id)) return `${target} wasn't on the watchlist. They might not have the trusted role.`;
 
-      await u.db.user.updateWatch(id, apply);
+      await u.db.user.update(id, { watching: apply });
       if (apply) modCommon.watchlist.add(id);
       else modCommon.watchlist.delete(id);
       success = true;
@@ -794,6 +795,7 @@ const modCommon = {
   },
 
   /**
+   * Issue a warning to a user
    * @param {Discord.Interaction<"cached">} interaction
    * @param {string} reason
    * @param {number} value
@@ -851,7 +853,7 @@ const modCommon = {
   },
   /** @type {Set<string>} */
   watchlist: new Set(),
-  /** @type {Discord.Collection<string, any>} */
+  /** @type {Discord.Collection<string, NodeJS.Timeout>} */
   grownups: new u.Collection()
 };
 

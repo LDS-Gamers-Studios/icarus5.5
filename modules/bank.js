@@ -4,7 +4,6 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   config = require("../config/config.json"),
   { customAlphabet } = require("nanoid");
-const { GoogleSpreadsheetRow } = require("google-spreadsheet");
 const Discord = require("discord.js");
 
 const Module = new Augur.Module(),
@@ -16,11 +15,10 @@ const chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const nanoid = customAlphabet(chars, 8);
 
 /**
- * @param {import("../database/sheetTypes").Game} game
- * @param {GoogleSpreadsheetRow} rawGame
+ * @param {ReturnType<import("../database/sheets")["data"]["games"]["available"]["ensure"]>} game
  * @param {Discord.GuildMember} user
  */
-async function buyGame(game, rawGame, user) {
+async function buyGame(game, user) {
   // get store assets
   /** @type {Record<string, { redeem: string, img: string}>} */
   const systems = {
@@ -39,7 +37,6 @@ async function buyGame(game, rawGame, user) {
     discordId: user.id,
     description: `${game.title} (${game.system}) Game Key`,
     value: -1 * game.cost,
-    giver: user.id,
     otherUser: user.client.user.id,
     hp: false
   });
@@ -60,15 +57,12 @@ async function buyGame(game, rawGame, user) {
       .setThumbnail(sys.img);
   }
 
-  rawGame.set("Recipient", user.displayName);
-  rawGame.set("Recipient ID", user.id);
-  rawGame.set("Date", new Date().valueOf());
-  rawGame.save();
-  u.db.sheets.games.purchased.set(game.code, u.db.sheets.mappers.games(rawGame));
+  u.db.sheets.games.available.delete(game.code);
+  await u.db.sheets.games.purchased.update({ ...game, recipient: user.displayName, date: new Date() });
+
   // sometimes there are multiple games
-  const backupGame = u.db.sheets.data.games.find(g => g.get("Title") === game.title && g.get("Code") !== game.code && !g.get("Recipient ID") && !g.get("Date"));
-  if (backupGame) u.db.sheets.games.available.set(game.code, u.db.sheets.mappers.games(backupGame));
-  else u.db.sheets.games.available.delete(game.code);
+  const backupGame = u.db.sheets.games.available.rows.find(g => g.get("Title") === game.title && g.get("Code") !== game.code && !g.get("Recipient ID") && !g.get("Date"));
+  if (backupGame) u.db.sheets.games.available.set(backupGame.get("Code"), u.db.sheets.games.available.parseRow(backupGame));
 
   const embed2 = u.embed({ author: user })
     .setDescription(`${user.displayName} just redeemed ${gb}${game.cost} for a ${game.title} (${game.system}) key.`)
@@ -125,9 +119,8 @@ async function slashBankGive(interaction) {
       const deposit = {
         currency,
         discordId: recipient.id,
-        description: `From ${giver.displayName}: ${reason}`,
+        description: reason,
         value,
-        giver: giver.id,
         otherUser: giver.id,
         hp: false
       };
@@ -147,9 +140,8 @@ async function slashBankGive(interaction) {
     const withdrawal = {
       currency,
       discordId: giver.id,
-      description: `To ${recipient.displayName}: ${reason}`,
+      description: reason,
       value: -value,
-      giver: giver.id,
       otherUser: recipient.id,
       hp: false
     };
@@ -189,11 +181,10 @@ async function slashBankGameList(interaction) {
   await interaction.deferReply({ flags: ["Ephemeral"] });
 
   try {
-    if (!u.db.sheets.data.docs?.games) throw new Error("Games List Error");
-
     // Filter Rated M, unless the member has the Rated M Role
-    let gameList = u.db.sheets.games.available;
+    let gameList = u.uniqueObj(u.db.sheets.games.available.map(g => g), "title");
     if (!interaction.member.roles.cache.has(u.sf.roles.rated_m)) gameList = gameList.filter(g => g.rating.toUpperCase() !== "M");
+
     const games = gameList.sort((a, b) => a.title.localeCompare(b.title))
       .map(g => {
         const title = `**${g.title}** (${g.system})`;
@@ -219,19 +210,16 @@ async function slashBankGameList(interaction) {
 async function slashBankGameRedeem(interaction) {
   try {
     await interaction.deferReply({ flags: ["Ephemeral"] });
-    if (!u.db.sheets.data.docs?.games) throw new Error("Get Game List Error");
+
     // find the game they're trying to redeem
     const code = interaction.options.getString("code", true).toUpperCase();
     const game = u.db.sheets.games.available.get(code);
-    const rawGame = u.db.sheets.data.games.find(g => g.get("Code") === game?.code);
-    if (!game || !rawGame) {
+    if (!game) {
       return interaction.editReply(`I couldn't find that game. Use </bank game list:${u.sf.commands.slashBank}> to see available games.`);
-    } else if (game.recipient || game.date) {
-      return interaction.editReply("Looks like someone else already bought the game! Sorry about that.");
     }
 
     // buy the game (or fail)
-    const embed = await buyGame(game, rawGame, interaction.member);
+    const embed = await buyGame(game, interaction.member);
     if (!embed) return interaction.editReply(`You don't currently have enough ${gb}. Sorry!`);
 
     await interaction.editReply({ content: "I also DMed this message to you so you don't lose the code!", embeds: [embed] });
@@ -272,7 +260,6 @@ async function slashBankDiscount(interaction) {
         discordId: interaction.user.id,
         description: "LDSG Store Discount Code",
         value: -amount,
-        giver: interaction.user.id,
         otherUser: interaction.client.user.id,
         hp: false
       };
@@ -296,69 +283,6 @@ async function slashBankDiscount(interaction) {
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
-/** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
-async function slashBankAward(interaction) {
-  try {
-    const giver = interaction.member;
-    const recipient = interaction.options.getMember("user");
-    const reason = interaction.options.getString("reason") || "Astounding feats of courage, wisdom, and heart";
-    let value = interaction.options.getInteger("amount", true);
-    if (!recipient) return interaction.reply({ content: "You can't just award *nobody*!", flags: ["Ephemeral"] });
-
-    let reply = "";
-
-    if (!u.perms.calc(giver, ["team", "volunteer", "mgr"])) {
-      reply = `*Nice try!* This command is for Volunteers and Team+ only!`;
-    } else if (recipient.id === giver.id) {
-      reply = `You can't award ***yourself*** ${ember}, silly.`;
-    } else if (recipient.id === interaction.client.user.id) {
-      reply = `You can't award ***me*** ${ember}, silly.`;
-    } else if (recipient.id !== interaction.client.user.id && recipient.user.bot) {
-      reply = `Bots don't really have a use for awarded ${ember}.`;
-    } else if (value === 0) {
-      reply = "You can't award ***nothing***.";
-    }
-
-    if (reply) return interaction.reply({ content: reply, flags: ["Ephemeral"] });
-
-    value = value < 0 ? Math.max(value, -1 * limit.ember) : Math.min(value, limit.ember);
-
-    const award = {
-      currency: "em",
-      discordId: recipient.id,
-      description: `From ${giver.displayName} (House Points): ${reason}`,
-      value,
-      giver: giver.id,
-      otherUser: giver.id,
-      hp: true
-    };
-
-    const receipt = await u.db.bank.addCurrency(award);
-    const balance = await u.db.bank.getBalance(recipient.id);
-    const str = (/** @type {string} */ m) => value > 0 ? `awarded ${m} ${ember}${receipt.value}` : `docked ${ember}${-receipt.value} from ${m}`;
-    let embed = u.embed({ author: interaction.client.user })
-      .addFields(
-        { name: "Reason", value: reason },
-        { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
-      )
-      .setDescription(`${u.escapeText(giver.displayName)} just ${str("you")}! This counts toward your House's Points.`);
-
-    await interaction.reply(`Successfully ${str(recipient.displayName)} for ${reason}. This counts towards their House's Points.`);
-    recipient.send({ embeds: [embed] }).catch(() => interaction.followUp({ content: `I wasn't able to alert ${recipient} about the award. Please do so yourself.`, flags: ["Ephemeral"] }));
-    u.clean(interaction, 60000);
-
-    const house = u.getHouseInfo(recipient);
-
-    embed = u.embed({ author: recipient })
-      .setColor(house.color)
-      .addFields(
-        { name: "House", value: house.name },
-        { name: "Reason", value: reason }
-      )
-      .setDescription(`**${giver}** ${str(recipient.toString())}`);
-    interaction.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed] });
-  } catch (e) { u.errorHandler(e, interaction); }
-}
 
 Module.addInteraction({
   name: "bank",
@@ -373,10 +297,15 @@ Module.addInteraction({
       case "list": return slashBankGameList(interaction);
       case "redeem": return slashBankGameRedeem(interaction);
       case "discount": return slashBankDiscount(interaction);
-      case "award": return slashBankAward(interaction);
+      // case "award": located in team.js
       default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   }
-});
+})
+.setShared({ buyGame, limit, gb, ember });
 
-module.exports = { buyGame, ...Module };
+/**
+ * @typedef {{ buyGame: buyGame, limit: limit, gb: gb, ember: ember }} BankShared
+ */
+
+module.exports = Module;

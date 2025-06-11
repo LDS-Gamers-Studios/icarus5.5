@@ -1,18 +1,11 @@
 // @ts-check
 const Discord = require("discord.js");
+const banned = (require("../data/banned.json")).features.xp;
 const Augur = require("augurbot-ts");
 const u = require("../utils/utils");
 const mc = require("../utils/modCommon");
 const Rank = require("../utils/rankInfo");
 const config = require("../config/config.json");
-
-/**
- * @typedef XPDropSettings
- * @prop {Date} [cooltime]
- * @prop {NodeJS.Timeout} [cooldown]
- * @prop {number} count
- * @prop {boolean} drop
- */
 
 /**
  * @typedef ActiveUser
@@ -43,7 +36,7 @@ let dropCode = false;
 
 function resetFeatherDrops() {
   // rand(x) hours until the next drop
-  const time = ((Math.random() * (config.xp.featherCooldown - 1)) + 1) * 60 * 60_000;
+  const time = (Math.floor(Math.random() * 5) + config.xp.featherCooldown) * 60 * 60_000;
   cooltime = new Date(Date.now() + time);
   cooldown = setTimeout(() => {
     dropCode = true;
@@ -104,7 +97,6 @@ async function featherCheck(msg) {
           currency: "em",
           description: `XP feather drop in #${msg.channel.name}`,
           discordId: finder.id,
-          giver: msg.client.user.id,
           hp: true,
           value,
           otherUser: msg.client.user.id
@@ -112,12 +104,10 @@ async function featherCheck(msg) {
         const house = u.getHouseInfo(msg.guild.members.cache.get(finder.id));
         const embed = u.embed({ author: finder })
           .setColor(house.color)
-          .addFields(
-            { name: "House", value: house.name }
-          )
+          .addFields({ name: "House", value: house.name })
           .setDescription(`${finder} found an <:xpfeather:${u.sf.emoji.xpFeather}> in ${msg.url} and got <:ember:${u.sf.emoji.ember}>${value}!`);
 
-        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ embeds: [embed], allowedMentions: { parse: ["users"] } });
+        msg.client.getTextChannel(u.sf.channels.houses.awards)?.send({ content: finder.toString(), embeds: [embed], allowedMentions: { parse: ["users"] }, flags: ["SuppressNotifications"] });
       }
 
       // give em xp
@@ -150,7 +140,7 @@ function addXp(discordId, multiplier, channelId, isVoice = false, isMessage = fa
 }
 
 /**
- * @param {Discord.PartialMessageReaction | Discord.MessageReaction} reaction
+ * @param {Augur.NonPartialMessageReaction | Discord.PartialMessageReaction | Discord.MessageReaction} reaction
  * @param {Discord.User | Discord.PartialUser} user
  * @param {Boolean} add
  */
@@ -159,38 +149,43 @@ async function reactionXp(reaction, user, add = true) {
   await reaction.message.fetch();
   await reaction.message.member?.fetch();
 
+  if (banned.reactionsGiving.includes(user.id)) return;
+  if (banned.reactionsReceiving.includes(reaction.message.author?.id ?? "")) return;
+
   // check if custom id, then check if unicode emoji
   const identifier = reaction.emoji.id ?? reaction.emoji.name ?? "";
 
   // voice channel IDs aren't very helpful since they get replaced, so we use Voice instead
   const channelId = reaction.message.channel.type === Discord.ChannelType.GuildVoice ? "Voice" : reaction.message.channelId;
   const settings = u.db.sheets.xpSettings.channels.get(channelId);
+
   if (
-    !reaction.message.inGuild() || // must be in the server
-    user.bot || user.system || reaction.message.author?.bot || reaction.message.author?.system || // no fun for the bots
+    !reaction.message.inGuild() || reaction.message.guildId !== u.sf.ldsg || // must be in the right server
     !reaction.message.author || user.id === reaction.message.author.id || // no reacting to yourself. also funny business with the member object
+    user.bot || user.system || reaction.message.author.bot || reaction.message.author.system || // no fun for the bots
     u.db.sheets.xpSettings.banned.has(identifier) || // no banned reactions
     settings?.posts === 0 || // no xp excluded channels
-    u.moment().subtract(1, "week").isAfter(u.moment(reaction.message.createdAt)) // no ancient posts
+    u.moment(reaction.message.createdAt).isBefore(u.moment().subtract(7, "days")) // no posts older than a week
   ) return;
-
-  // more reactions means more xp for the poster. If it was removed we have to get the pre-removal count
-  const countMultiplier = await reaction.users.fetch().then(usrs => (Math.min(5, usrs.size) + (add ? 0 : 1)) * 1.3).catch(u.noop) ?? 1;
 
   // reactions should mean more or less depending on the channel
   const channelMultiplier = settings?.posts ?? 1;
 
   // some emoji are worth more in certain channels
   const channelEmoji = settings?.emoji.has(identifier) ? 1.5 : 1;
+
   // add the xp to the queue
-  const recipient = 0.5 * countMultiplier * channelEmoji * channelMultiplier * (add ? 1 : -1);
-  const giver = 0.5 * channelEmoji * channelMultiplier * (add ? 1 : -1);
+  const recipient = 0.2 * channelEmoji * channelMultiplier * (add ? 1 : -1);
+  const giver = recipient * 0.5;
+
+  if (recipient === 0) return;
 
   addXp(user.id, giver, channelId);
 
   // if it's a public readonly, (like announcements), don't give xp to the poster
   const perms = reaction.message.channel.permissionsFor(u.sf.ldsg);
   if (perms?.has("ViewChannel") && !perms.has("SendMessages")) return;
+
   addXp(reaction.message.author.id, recipient, channelId);
 
 }
@@ -203,10 +198,12 @@ async function rankClockwork(client) {
   // give xp to people active in voice chats
   ldsg.members.cache.filter(m => m.voice.channel && !m.voice.mute && !m.voice.deaf && m.voice.channel.members.size > 1)
     .forEach(m => {
+      if (banned.voice.includes(m.id)) return;
+
       // vcs get deleted, stage channels don't
       const channelId = m.voice.channel?.type === Discord.ChannelType.GuildVoice ? "Voice" : m.voice.channelId ?? "No VC";
       const members = m.voice.channel?.members.size ?? 0;
-      return addXp(m.id, 0.05 * Math.max(5, members), channelId, true);
+      return addXp(m.id, 0.01 * Math.max(5, members), channelId, true);
     });
 
   // no reason to do anything
@@ -294,9 +291,10 @@ Module.setUnload(() => active)
   .addCommand({ name: "status", process: DEBUGFeatherState, onlyOwner: true })
   .addEvent("messageCreate", (msg) => {
     if (
-      !msg.inGuild() || msg.guild?.id !== u.sf.ldsg || // only in LDSG
+      !msg.inGuild() || msg.guild.id !== u.sf.ldsg || // only in LDSG
       msg.member?.roles.cache.has(u.sf.roles.moderation.muted) || // no muted allowed
       msg.author.bot || msg.author.system || msg.webhookId || // no bots
+      banned.posts.includes(msg.author.id) || // not banned from the feature
       u.parse(msg) // not a command
     ) return;
 
@@ -309,7 +307,7 @@ Module.setUnload(() => active)
 
     // different multipliers for different channels
     const channelMultiplier = settings?.posts ?? 1;
-    const mediaMultiplier = (msg.attachments.size * (settings?.preferMedia ? 0.3 : 0)) + 1;
+    const mediaMultiplier = (msg.attachments.size * (settings?.preferMedia ? 0.1 : 0)) + 1;
     const highlight = highlights.has(msg.channelId) ? 1.3 : 1;
 
     // time specific multipliers
@@ -325,10 +323,12 @@ Module.setUnload(() => active)
   .addEvent("messageUpdate", async (msg, newMsg) => {
     // see if it's a finished poll outside of a VC
     if (!msg.inGuild() || !msg.poll || !(!msg.poll.resultsFinalized && newMsg.poll?.resultsFinalized) || msg.channel.type === Discord.ChannelType.GuildVoice) return;
+    if (banned.polls.includes(msg.author.id)) return;
 
     // people can only get xp once per poll. no multiple answers shenanigans
     const voters = new Set();
-    const hours = Math.min(24 * 2, Math.max(1, u.moment(msg.poll.expiresTimestamp).diff(msg.createdTimestamp, "hours", false))) / 8;
+    const hours = Math.min(48, Math.max(1, u.moment(msg.poll.expiresTimestamp).diff(msg.createdTimestamp, "hours", false))) / 8;
+
     /** @type {Discord.Collection<string, Discord.User>[]} */
     const answers = await Promise.all(newMsg.poll.answers.map(/** @param {Discord.PollAnswer} s */s => s.fetchVoters()));
     const voterCount = answers.reduce((p, c) => p + c.size, 0);
@@ -336,6 +336,7 @@ Module.setUnload(() => active)
     // assign xp to people who voted, favoring those with the right answer
     for (const answer of answers) {
       if (answer.size === 0) continue;
+
       const percentage = answer.size / voterCount;
       for (const [id, user] of answer) {
         if (!voters.has(id) && !user.bot && !user.system) {
@@ -343,7 +344,7 @@ Module.setUnload(() => active)
           // factor in the percentage of voters who voted for this and how long the poll lasted
           // for example, a 24hr 2 option poll with 1/3 voters for an option would give 11.8 to that person
           // the same situation with a a 1hr poll would give 1.45 to that person
-          const mult = hours * percentage + 1;
+          const mult = 0.25 * hours * (percentage + 1);
           addXp(id, mult, msg.channelId);
         }
       }

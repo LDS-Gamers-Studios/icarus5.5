@@ -118,10 +118,13 @@ async function cakedays(testDate, testJoinDate, testMember) {
           continue;
         }
 
-        const previousYearRole = u.db.sheets.roles.year.get(years - 1)?.base;
-
         const userRoles = member.roles.cache.clone();
-        userRoles.delete(previousYearRole?.id ?? "");
+        const previousYearRoles = u.db.sheets.roles.year.filter(r => userRoles.has(r.base.id));
+
+        for (const role of previousYearRoles.values()) {
+          userRoles.delete(role.base.id);
+        }
+
         userRoles.set(currentYearRole.id, currentYearRole);
 
         await member.roles.set(userRoles).catch(() => {
@@ -191,6 +194,8 @@ Module.addEvent("ready", () => {
       }
     }, 60 * 60 * 1000);
   })
-  .addShared("cake.js", { cakedays, birthdays, celebrate });
+  .setShared({ cakedays, birthdays, celebrate });
+
+/** @typedef {{ cakedays: cakedays, birthdays: birthdays, celebrate: celebrate } | undefined} Shared */
 
 module.exports = Module;
