@@ -3,6 +3,15 @@ const Augur = require("augurbot-ts");
 const config = require("../config/config.json");
 const { createServer } = require("http");
 
+/** @type {ReturnType<import("express")>} */
+let app;
+
+/** @type {ReturnType<createServer>} */
+let httpServer;
+
+/** @type {import("socket.io").Server} */
+let io;
+
 if (config.siteOn) {
   // require modules!
   // @ts-ignore
@@ -25,7 +34,7 @@ if (config.siteOn) {
   // @ts-ignore
   const streamingWS = require("../site/backend/routes/streaming/ws");
 
-  const app = express();
+  app = express();
   const socket = require("express-ws")(app);
 
   // encoders
@@ -114,8 +123,8 @@ if (config.siteOn) {
     });
   }
 
-  const httpServer = createServer(app);
-  const io = new Server(httpServer, { path: "/ws/streams" });
+  httpServer = createServer(app);
+  io = new Server(httpServer, { path: "/ws/streams" });
 
   /**
    * @param {import("express").Handler} middleware
@@ -151,4 +160,28 @@ if (config.siteOn) {
   httpServer.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
 }
 
-module.exports = new Augur.Module();
+module.exports = new Augur.Module()
+.setUnload(() => {
+  if (!config.siteOn) return;
+
+  httpServer?.close();
+  io.disconnectSockets();
+
+  delete require.cache[require.resolve("../config/siteConfig.json")];
+  delete require.cache[require.resolve("../data/site/daedalus-q.js")];
+  delete require.cache[require.resolve("../data/site/lore-found.json")];
+
+  const fs = require("fs");
+  const routes = fs.readdirSync("./site/backend/routes", { recursive: true, encoding: "utf8" });
+  const wu = fs.readdirSync("./site/backend/utils");
+
+  for (const route of routes) {
+    if (!route.endsWith(".js") && !route.endsWith(".json")) continue;
+    delete require.cache[require.resolve(`../site/backend/routes/${route}`)];
+  }
+
+  for (const file of wu) {
+    delete require.cache[require.resolve(`../site/backend/utils/${file}`)];
+  }
+
+});
