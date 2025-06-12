@@ -559,36 +559,18 @@ Module.addInteraction({
     }
   }
 })
-.addInteraction({
-  id: "streamerIgn",
-  type: "Modal",
-  onlyGuild: true,
-  process: modalStreamerIgn
-})
-.addInteraction({
-  id: "streamerAgree",
-  type: "Button",
-  onlyGuild: true,
-  process: buttonStreamerAgree
-})
-.addInteraction({
-  id: "streamerDeny",
-  type: "Button",
-  onlyGuild: true,
-  process: (int) => int.update({ content: "No worries! Feel free to apply again when you're ready.", components: [], embeds: [] })
-})
-.addInteraction({
-  id: "approveStreamer",
-  type: "Button",
-  onlyGuild: true,
-  permissions: (int) => u.perms.calc(int.member, ["team", "mod"]),
-  process: buttonApproveStreamer
-})
-.addInteraction({
-  id: "denyStreamer",
-  type: "Button", onlyGuild: true,
-  permissions: (int) => u.perms.calc(int.member, ["team", "mod"]),
-  process: buttonDenyStreamer
+.addEvent("interactionCreate", (int) => {
+  if (!int.inCachedGuild()) return;
+  if (int.isButton()) {
+    switch (int.customId) {
+      case "approveStreamer": return buttonApproveStreamer(int);
+      case "denyStreamer": return buttonDenyStreamer(int);
+      case "streamerAgree": return buttonStreamerAgree(int);
+      case "streamerDeny": return int.update({ content: "No worries! Feel free to apply again when you're ready.", components: [], embeds: [] });
+      default: return;
+    }
+  }
+  if (int.isModalSubmit() && int.customId === "streamerIgn") return modalStreamerIgn(int);
 })
 // twitch sub notifications
 .addEvent("guildMemberUpdate", (oldMember, newMember) => {
@@ -617,9 +599,18 @@ Module.addInteraction({
     alertChannel?.send(`**${c.userBackup(newMember)}**${alert}`);
   }
 })
+.addCommand({
+  name: "checkstreams",
+  permissions: () => config.devMode,
+  process: checkStreams
+})
+.setClockwork(() => {
+  const interval = 5 * 60_000;
+  return setInterval(checkStreams, interval);
+})
 .setInit(async (data) => {
   if (data) {
-    for (const [key, status] of data.twitchStatus) {
+    for (const [key, status] of data) {
       twitchStatus.set(key, status);
     }
   } else {
@@ -631,14 +622,9 @@ Module.addInteraction({
   }
   if (config.devMode) checkStreams();
 })
-.addCommand({
-  name: "checkstreams",
-  permissions: () => config.devMode,
-  process: () => checkStreams()
-})
-.setClockwork(() => {
-  const interval = 5 * 60_000;
-  return setInterval(checkStreams, interval);
+.setUnload(() => {
+  delete require.cache[require.resolve("../data/streams.json")];
+  return twitchStatus;
 });
 
 module.exports = Module;

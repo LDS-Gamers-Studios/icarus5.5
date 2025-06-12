@@ -31,7 +31,7 @@
           "type": "string"
         }
       },
-      "required": ["tenor", "snipcart", "challonge"]
+      "required": ["tenor", "snipcart", "challonge", "thegamesdb"]
     },
     "applicationId": {
       "description": "https://discord.com/developers/applications",
