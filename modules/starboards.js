@@ -44,6 +44,7 @@ async function checkStarBoard(reaction, user) {
       const refEmbed = u.msgReplicaEmbed(ref, `Replying to ${ref.member?.displayName || ref.author.displayName}`, false, true)
         .setColor(0x202020);
       embeds.unshift(refEmbed);
+      await u.db.starboard.saveMessage(ref.id, ref.createdTimestamp);
     }
 
     await u.db.starboard.saveMessage(msg.id, msg.createdTimestamp);
