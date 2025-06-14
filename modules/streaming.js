@@ -26,11 +26,11 @@ function twitchURL(name) {
 }
 
 
-/** @type {Map<string, Twitch.HelixGame & { rating?: string }>} */
-const twitchGames = new Map();
+/** @type {Discord.Collection<string, Twitch.HelixGame & { rating?: string }>} */
+const twitchGames = new u.Collection();
 
-/** @type {Map<string, {live: boolean, since: number}>} */
-const twitchStatus = new Map();
+/** @type {Discord.Collection<string, {live: boolean, since: number, userId?: string}>} */
+const twitchStatus = new u.Collection();
 
 const twitch = new Twitch.ApiClient({ authProvider: new TwitchAuth(config.twitch.clientId, config.twitch.clientSecret) });
 const bonusStreams = require("../data/streams.json");
@@ -289,13 +289,14 @@ async function processTwitch(igns) {
             content = `**<@&${ldsg.roles.cache.get(u.sf.roles.streaming.twitchraiders)}>, we're live!**`;
           }
 
-          // mark as live
-          twitchStatus.set(stream.userDisplayName.toLowerCase(), { live: true, since: Date.now() });
 
           // apply live role if applicable
           const ign = streamers.find(streamer => streamer.ign.toLowerCase() === stream.userDisplayName.toLowerCase());
           const member = ldsg.members.cache.get(ign?.discordId ?? "");
           if (member && isPartnered(member)) member.roles.add(u.sf.roles.streaming.live).catch(u.noop);
+
+          // mark as live
+          twitchStatus.set(stream.userDisplayName.toLowerCase(), { live: true, since: Date.now(), userId: member?.id });
 
           // generate embed
           const embed = u.embed()
@@ -334,7 +335,8 @@ async function processTwitch(igns) {
 
         twitchStatus.set(channel.ign.toLowerCase(), {
           live: false,
-          since: Date.now()
+          since: Date.now(),
+          userId: member?.id
         });
       }
     }
@@ -540,6 +542,10 @@ async function buttonDenyStreamer(int) {
   int.editReply({ content: `${member}'s application has been denied`, components: [] });
 }
 
+function writeCache() {
+  const cutoff = u.moment().add(1, "hour").valueOf();
+  fs.writeFileSync("./data/streamcache.txt", `${cutoff}\n${twitchStatus.map((s, n) => `${s.userId || ""};${s.live};${s.since};${n}`).join("\n")}`);
+}
 
 Module.addInteraction({
   id: u.sf.commands.slashTwitch,
@@ -614,10 +620,22 @@ Module.addInteraction({
       twitchStatus.set(key, status);
     }
   } else {
+    if (fs.existsSync("./data/streamcache.txt")) {
+      const cache = fs.readFileSync("./data/streamcache.txt", "utf-8").split("\n");
+      const saved = cache.shift();
+      if (parseInt(saved ?? "") > Date.now()) {
+        for (const row of cache) {
+          const [userId, live, since, name] = row.split(";");
+          twitchStatus.set(name, { userId, live: live === "true", since: parseInt(since) });
+        }
+      }
+
+      fs.unlinkSync("./data/streamcache.txt");
+    }
     // reset live role on restart
     const members = Module.client.guilds.cache.get(u.sf.ldsg)?.roles.cache.get(u.sf.roles.streaming.live)?.members ?? new u.Collection();
-    for (const member of members.values()) {
-      await member.roles.remove(u.sf.roles.streaming.live);
+    for (const [id, member] of members) {
+      if (!twitchStatus.find(s => s.userId === id)) await member.roles.remove(u.sf.roles.streaming.live);
     }
   }
   if (config.devMode) checkStreams();
@@ -625,6 +643,7 @@ Module.addInteraction({
 .setUnload(() => {
   delete require.cache[require.resolve("../data/streams.json")];
   return twitchStatus;
-});
+})
+.setShared(writeCache);
 
 module.exports = Module;
