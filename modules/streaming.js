@@ -8,10 +8,9 @@ const Twitch = require("@twurple/api");
 const TwitchAuth = require("@twurple/auth").AppTokenAuthProvider;
 const u = require("../utils/utils");
 const c = require("../utils/modCommon");
-const axios = require("axios");
-const teamId = config.twitch.elTeam;
-const extralifeApi = require("../utils/extralife");
+const api = require("../utils/streamingApis");
 
+const teamId = config.twitch.elTeam;
 const Module = new Augur.Module();
 
 const colors = { elGreen: 0x7fd836, elBlue: 0x26c2eb, twitch: 0x6441A4 };
@@ -26,7 +25,7 @@ function twitchURL(name) {
 }
 
 
-/** @type {Discord.Collection<string, Twitch.HelixGame & { rating?: string }>} */
+/** @type {Discord.Collection<string, { name: string, rating?: string }>} */
 const twitchGames = new u.Collection();
 
 /** @type {Discord.Collection<string, {live: boolean, since: number, userId?: string}>} */
@@ -43,45 +42,46 @@ const approvalText = "## Congratulations!\n" +
 
 const notEL = "Extra Life isn't quite ready yet! Try again in November.";
 
-/** @param {string} gameId */
-async function gameInfo(gameId) {
+/** @param {string} gameName */
+async function gameInfo(gameName) {
   try {
+    // can't find ratings, so no need to continue
+    if (!config.api.thegamesdb || !gameName) return { name: gameName };
+
     // use cache if possible
-    const got = twitchGames.get(gameId);
+    const got = twitchGames.get(gameName);
     if (got) return got;
 
-    const game = await twitch.games.getGameById(gameId).catch(u.noop);
-    if (game && config.api.thegamesdb) {
-      twitchGames.set(game.id, game);
+    // fetch rating from thegamesdb
+    const apiGame = await api.fetchGameRating(gameName);
 
-      /** @type {{ game_title: string, rating: string }[] | undefined} */
-      // @ts-ignore
-      const apiGame = await axios(`https://api.thegamesdb.net/v1/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(game.name)}&fields=rating`)
-        .then(/** @param {any} res */ (res) => res.data?.games);
+    // the api can return multiple games since we use the alternates field
+    const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === gameName.toLowerCase() && g.rating !== "Not Rated");
+    const withRating = { name: gameName, rating: ratings?.[0]?.rating };
 
-      const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === game.name.toLowerCase() && g.rating !== "Not Rated");
-      const withRating = Object.assign(game, { rating: ratings?.[0]?.rating });
+    twitchGames.set(gameName, withRating);
+    return withRating;
 
-      twitchGames.set(game.id, withRating);
-      return withRating;
-    }
   } catch (error) {
-    twitchErrorHandler(error);
+    return { name: gameName };
   }
 }
 
 /** @param {string} error  */
 function twitchErrorHandler(error) {
-  error = error.toString().replace(new RegExp(config.twitch.clientSecret, "g"), "<SECRET>");
+  error = error.toString()
+    .replace(new RegExp(config.twitch.clientSecret, "g"), "<SECRET>")
+    .replace(new RegExp(config.api.thegamesdb, "g"), "<SECRET>");
   u.errorHandler(new Error(error), "Twitch API");
 }
 
 async function checkStreams() {
   try {
-    // Approved Streamers
+    // Get people with the approved streamers role
     const streamers = Module.client.guilds.cache.get(u.sf.ldsg)?.roles.cache.get(u.sf.roles.streaming.approved)?.members.map(member => member.id) ?? [];
     if (streamers.length === 0) return;
 
+    // Look up their twitch IGN
     const igns = await u.db.ign.findMany(streamers, "twitch");
     const streams = bonusStreams.filter(s => s.length > 0)
       .map(s => ({ ign: s, discordId: s }))
@@ -90,12 +90,14 @@ async function checkStreams() {
     processTwitch(streams);
 
     // Check for Extra Life
-    if (extraLife() && (new Date().getMinutes() < 5)) {
-      const embeds = await extraLifeEmbeds();
-      for (const embed of embeds) {
-        await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
-      }
+    const now = new Date();
+    if (!extraLife() || now.getHours() % 2 === 1 || now.getMinutes() > 5) return;
+
+    const embeds = await extraLifeEmbeds();
+    for (const embed of embeds) {
+      await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
     }
+
   } catch (e) {
     u.errorHandler(e, "Stream Check");
   }
@@ -123,13 +125,13 @@ async function extraLifeEmbeds() {
   }
 }
 
-/** @param {extralifeApi.Team | null} [team] */
+/** @param {import("../utils/extralifeTypes").Team | null} [team] */
 async function fetchExtraLifeStreams(team) {
   /** @type {Twitch.HelixStream[]} */
   const defaultValue = [];
 
   try {
-    if (!team) team = await fetchExtraLifeTeam().catch(() => null);
+    if (!team) team = await fetchExtraLifeTeam();
     if (!team) return defaultValue;
 
     const users = team.participants.filter(m => m.links.stream)
@@ -174,14 +176,16 @@ const prices = new NoRepeat([
 
 async function fetchExtraLifeTeam() {
   try {
-    const team = await extralifeApi.getTeam().catch(() => null);
+    const team = await api.extraLife.getTeam();
     if (!team) return null;
 
     // Check donors while we're at it.
-    const donations = await extralifeApi.getTeamDonations().catch(() => null);
-    if (!donations) return team;
+    const donations = await api.extraLife.getTeamDonations();
 
     let update = false;
+
+    /** @type {import("../utils/extralifeTypes").Donation[]}*/
+    const newDonors = [];
 
     for (const donation of donations) {
       if (donationIDs.has(donation.donationID)) continue;
@@ -191,15 +195,10 @@ async function fetchExtraLifeTeam() {
 
       if (donation.displayName && !donors.has(donation.displayName)) {
         donors.add(donation.displayName);
-        const embed = u.embed().setColor(colors.elBlue)
-          .setTitle("New Extra Life Donor(s)")
-          .setThumbnail(donation.avatarImageURL)
-          .setDescription(donation.displayName)
-          .setTimestamp(new Date(donation.createdDateUTC));
-        Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
+        newDonors.push(donation);
       }
 
-      const embed = u.embed()
+      const privateEmbed = u.embed()
         .setColor(colors.elBlue)
         .setAuthor({ name: `Donation From ${donation.displayName || "Anonymous Donor"}`, iconURL: donation.avatarImageURL })
         .setDescription(donation.message || "[ No Message ]")
@@ -209,16 +208,26 @@ async function fetchExtraLifeTeam() {
           { name: "Incentive", value: donation.incentiveID || "[ None ]", inline: true }
         ])
         .setTimestamp(new Date(donation.createdDateUTC));
-      Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
+      Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [privateEmbed] });
 
       const publicEmbed = u.embed().setColor(colors.elBlue)
         .setTitle("New Extra Life Donation")
         .setURL(`https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${teamId}`)
         .setThumbnail("https://assets.donordrive.com/extralife/images/$event550$/facebookImage.png")
         .setTimestamp(new Date(donation.createdDateUTC))
-        .setDescription(`Someone just donated **$${donation.amount}** to our Extra Life team! That's ${almosts.getRandom()} **${prices.getRandom}!**\n(btw, that means we're at **$${team.sumDonations}**, which is **${team.sumDonations / team.fundraisingGoal * 100}%** of the way to our goal!)`);
+        .setDescription(`Someone just donated **$${donation.amount}** to our Extra Life team! That's ${almosts.getRandom()} **${prices.getRandom}!**\n(btw, that means we're at **$${team.sumDonations}**, which is **${(team.sumDonations / team.fundraisingGoal * 100).toFixed(2)}%** of the way to our goal!)`);
 
       Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [publicEmbed] });
+    }
+
+    if (newDonors.length > 0) {
+      const embed = u.embed().setColor(colors.elBlue)
+        .setTitle(`${newDonors.length} New Extra Life Donor(s)`)
+        .setThumbnail(donations[0].avatarImageURL)
+        .setDescription(donations.map(d => d.displayName).join("\n"))
+        .setTimestamp(new Date(donations[0].createdDateUTC));
+
+      Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
     }
 
     if (update) {
@@ -239,6 +248,7 @@ async function fetchExtraLifeTeam() {
 function isPartnered(member) {
   // icarus is always partnered
   if (member.id === member.client.user.id) return true;
+
   const roles = [
     u.sf.roles.sponsors.onyx,
     u.sf.roles.sponsors.pro,
@@ -258,7 +268,7 @@ async function processTwitch(igns) {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     if (!ldsg) return;
 
-    const liveRole = ldsg.roles.cache.get(u.sf.roles.streaming.live);
+    const liveRole = u.sf.roles.streaming.live;
     const notificationChannel = ldsg.client.getTextChannel(u.sf.channels.general);
 
     const perPage = 50;
@@ -269,54 +279,60 @@ async function processTwitch(igns) {
       const streams = await twitch.streams.getStreamsByUserNames(users)
         .catch(twitchErrorHandler);
 
-      if (!streams) return;
+      if (!streams) continue;
+
+      const sinceThreshold = Date.now() - 30 * 60_000;
 
       // Handle Live
       for (const stream of streams) {
         const status = twitchStatus.get(stream.userDisplayName.toLowerCase());
-        if (!status || ((status.live === false) && ((Date.now() - status.since) >= (30 * 60 * 1000)))) {
-          const game = await gameInfo(stream.gameId);
 
-          // filter out bad games
-          if (game?.rating === "M - Mature 17+") return;
+        // If they were streaming recently (within half an hour), don't post notifications
+        if (status && (status.live || status.since > sinceThreshold)) continue;
 
-          const url = twitchURL(stream.userDisplayName);
+        const game = await gameInfo(stream.gameName);
 
-          // set activity and change status
-          let content;
-          if (stream.userDisplayName.toLowerCase() === "ldsgamers") {
-            Module.client.user?.setActivity({ name: stream.title, url, type: Discord.ActivityType.Streaming });
-            content = `**<@&${ldsg.roles.cache.get(u.sf.roles.streaming.twitchraiders)}>, we're live!**`;
-          }
+        // filter out bad games
+        if (game?.rating === "M - Mature 17+") continue;
 
+        const url = twitchURL(stream.userDisplayName);
 
-          // apply live role if applicable
-          const ign = streamers.find(streamer => streamer.ign.toLowerCase() === stream.userDisplayName.toLowerCase());
-          const member = ldsg.members.cache.get(ign?.discordId ?? "");
-          if (member && isPartnered(member)) member.roles.add(u.sf.roles.streaming.live).catch(u.noop);
-
-          // mark as live
-          twitchStatus.set(stream.userDisplayName.toLowerCase(), { live: true, since: Date.now(), userId: member?.id });
-
-          // generate embed
-          const embed = u.embed()
-            .setColor(colors.twitch)
-            .setThumbnail(stream.getThumbnailUrl(480, 270))
-            .setAuthor({ name: `${stream.userDisplayName} ${game ? `playing ${game.name}` : ""}` })
-            .setTitle(`🔴 ${stream.title}`)
-            .setDescription(`${member || stream.userDisplayName} went live on Twitch!`)
-            .setURL(url);
-
-          // check for extralife
-          if (extraLife() && member?.roles.cache.has(u.sf.roles.streaming.elteam) && stream.title.toLowerCase().match(/extra ?life/)) {
-            if (content) content = `**<@&${ldsg.roles.cache.get(u.sf.roles.streaming.elraiders)}>** ${content}`;
-            else content = `<@&${ldsg.roles.cache.get(u.sf.roles.streaming.elraiders)}>, **${member.displayName}** is live for Extra Life!`;
-            embed.setColor(colors.elGreen);
-          }
-
-          // send it!
-          notificationChannel?.send({ content, embeds: [embed], allowedMentions: { parse: ["roles"] } }).catch(u.noop);
+        // set activity and change bot status if LDSG is live
+        let content;
+        let allowMentions = false;
+        if (stream.userDisplayName.toLowerCase() === "ldsgamers") {
+          Module.client.user?.setActivity({ name: stream.title, url, type: Discord.ActivityType.Streaming });
+          content = `**<@&${ldsg.roles.cache.get(u.sf.roles.streaming.twitchraiders)}>, we're live!**`;
+          allowMentions = true;
         }
+
+        // apply live role if applicable
+        const ign = streamers.find(streamer => streamer.ign.toLowerCase() === stream.userDisplayName.toLowerCase());
+        const member = ldsg.members.cache.get(ign?.discordId ?? "");
+        if (member && isPartnered(member)) member.roles.add(liveRole).catch(u.noop);
+
+        // mark as live
+        twitchStatus.set(stream.userDisplayName.toLowerCase(), { live: true, since: Date.now(), userId: member?.id });
+
+        // generate embed
+        const embed = u.embed()
+          .setColor(colors.twitch)
+          .setThumbnail(stream.getThumbnailUrl(480, 270))
+          .setAuthor({ name: `${stream.userDisplayName} ${game ? `is playing ${game.name}` : ""}` })
+          .setTitle(`🔴 ${stream.title}`)
+          .setDescription(`${member || stream.userDisplayName} went live on Twitch!`)
+          .setURL(url);
+
+        // check for extralife (has extralife role and extra life in title)
+        if (extraLife() && (member ? member?.roles.cache.has(u.sf.roles.streaming.elteam) : true) && stream.title.toLowerCase().match(/extra ?life/)) {
+          if (content) content = `**<@&${ldsg.roles.cache.get(u.sf.roles.streaming.elraiders)}>** ${content}`;
+          else content = `<@&${ldsg.roles.cache.get(u.sf.roles.streaming.elraiders)}>, **${member?.displayName ?? stream.userDisplayName}** is live for Extra Life!`;
+          allowMentions = true;
+          embed.setColor(colors.elGreen);
+        }
+
+        // send it!
+        notificationChannel?.send({ content, embeds: [embed], allowedMentions: allowMentions ? { parse: ["roles"] } : undefined }).catch(u.noop);
       }
 
       // Handle Offline
@@ -329,7 +345,7 @@ async function processTwitch(igns) {
         if (channel.ign.toLowerCase() === "ldsgamers") Module.client.user?.setActivity({ name: "Tiddlywinks", type: Discord.ActivityType.Playing });
 
         const member = ldsg.members.cache.get(channel.discordId);
-        if (member && liveRole?.members.has(member.id)) {
+        if (member?.roles.cache.has(liveRole)) {
           member.roles.remove(liveRole).catch(error => u.errorHandler(error, `Remove Live role from ${member.displayName}`));
         }
 
@@ -362,7 +378,7 @@ async function slashTwitchExtralifeTeam(int) {
 
   // sort by live, then donations, then name
   members.sort((a, b) => {
-    if (a.isLive !== b.isLive) return (a.isLive === b.isLive) ? 0 : a.isLive ? -1 : 1;
+    if (a.isLive !== b.isLive) return a.isLive ? -1 : 1;
     if (a.sumDonations !== b.sumDonations) return b.sumDonations - a.sumDonations;
     return a.displayName.localeCompare(b.displayName);
   });
@@ -393,54 +409,87 @@ async function slashTwitchExtralifeTeam(int) {
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function slashTwitchExtralifeStreaming(int) {
-  if (!extraLife()) return int.reply({ content: notEL, flags: ["Ephemeral"] });
-  await int.deferReply();
-
-  const embeds = await extraLifeEmbeds();
-  if (embeds.length > 0) return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })));
-
-  int.editReply("Doesn't look like anyone's live right now!").then(u.clean);
-}
-
-/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashTwitchLive(int) {
   const ephemeral = u.ephemeralChannel(int, u.sf.channels.botSpam);
   await int.deferReply({ flags: ephemeral });
 
-  const approved = int.guild.roles.cache.get(u.sf.roles.streaming.approved);
-  const igns = await u.db.ign.findMany([...(approved?.members.keys() ?? [])], "twitch")
-    .then(i => i.map(ign => ign.ign));
+  const approved = int.guild.roles.cache.get(u.sf.roles.streaming.approved)?.members ?? new u.Collection();
+  // if (extraLife()) {
+  //   const elTeam = int.guild.roles.cache.get(u.sf.roles.streaming.elteam)?.members;
+  //   if (elTeam) approved = approved.concat(elTeam);
+  // }
 
+  let igns = await u.db.ign.findMany(approved.map(m => m.id) ?? [], "twitch")
+    .then(i => i.map(ign => ign.ign.toLowerCase()));
+
+  // Add extra life team members if applicable
+  /** @type {Discord.Collection<string, import("../utils/extralifeTypes").Participant>} */
+  let elParticipants = new u.Collection();
+  if (extraLife()) {
+    const team = await fetchExtraLifeTeam();
+
+    elParticipants = new u.Collection(team?.participants.map(p => {
+      const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase() ?? "";
+      return [username, p];
+    }) ?? []);
+
+    if (elParticipants.size > 0) igns = u.unique(igns.concat([...elParticipants.keys()]));
+  }
+
+  // This method only returns streams that are currently live
   /** @type {Promise<Twitch.HelixStream[]>[]} */
   const streamFetch = [];
   for (let i = 0; i < igns.length; i += 100) {
-    const userName = igns.slice(i, i + 100);
-    streamFetch.push(twitch.streams.getStreams({ userName }).catch(u.noop).then(s => s?.data ?? []));
+    const usernames = igns.slice(i, i + 100);
+    streamFetch.push(twitch.streams.getStreamsByUserNames(usernames).catch(u.noop).then(s => s ?? []));
   }
 
-  const res = await Promise.all(streamFetch);
+  const res = await Promise.all(streamFetch).then(p => p.flat());
 
   const embed = u.embed()
     .setTitle(`Currently Streaming in ${int.guild.name}`)
     .setColor(colors.twitch)
     .setTimestamp();
 
-  const chanPromises = res.flat().map(stream => {
-    return gameInfo(stream.gameId).then(game => {
-      return {
-        name: stream.userDisplayName,
-        game,
-        title: stream.title,
-        url: twitchURL(stream.userDisplayName)
-      };
+  const channels = [];
+  const elChannels = [];
+  for (const stream of res) {
+    const game = await gameInfo(stream.gameName);
+    if (game.rating === "M - Mature 17+") continue;
+    const participant = elParticipants.get(stream.userName);
+
+    const data = {
+      name: stream.userDisplayName,
+      game,
+      title: stream.title,
+      url: twitchURL(stream.userDisplayName),
+      participant
+    };
+
+    if (elParticipants.has(stream.userName)) elChannels.push(data);
+    else channels.push(data);
+  }
+
+  channels.sort((a, b) => a.name.localeCompare(b.name));
+  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game.name || "something"}**\n[${ch.title}](${ch.url})`);
+  let embeds = u.pagedEmbedsDescription(embed, lines);
+
+  // Handle extra life embeds on their own
+  if (elChannels.length > 0) {
+    const elEmbed = u.embed()
+      .setTitle(`Currently Streaming for Extra Life in ${int.guild.name}`)
+      .setColor(colors.elGreen)
+      .setTimestamp();
+
+    const elLines = elChannels.map(ch => {
+      const title = `**${ch.name} is playing ${ch.game.name || "something"}**\n[${ch.title}](${ch.url})`;
+      const donation = `Goal Progress: $${ch.participant?.sumDonations}/$${ch.participant?.fundraisingGoal}`;
+      return `${title}\n${donation}`;
     });
-  });
 
-  const channels = await Promise.all(chanPromises).then(ch => ch.sort((a, b) => a.name.localeCompare(b.name)));
-  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game?.name ?? "something"}**\n[${ch.title}](${ch.url})`);
+    embeds = embeds.concat(u.pagedEmbedsDescription(elEmbed, elLines));
+  }
 
-  const embeds = u.pagedEmbedsDescription(embed, lines);
   return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), Boolean(ephemeral));
 }
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -554,8 +603,7 @@ Module.addInteraction({
     try {
       const subcommand = int.options.getSubcommand(true);
       switch (subcommand) {
-        case "team": return slashTwitchExtralifeTeam(int);
-        case "streaming": return slashTwitchExtralifeStreaming(int);
+        case "extralife-team": return slashTwitchExtralifeTeam(int);
         case "live": return slashTwitchLive(int);
         case "application": return slashTwitchApplication(int);
         default: return u.errorHandler(new Error("Unhandled Subcommand"), int);

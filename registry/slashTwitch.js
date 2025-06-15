@@ -1,19 +1,8 @@
 const u = require("./regUtils");
 
-const team = new u.sub()
-  .setName("team")
+const extralife = new u.sub()
+  .setName("extralife-team")
   .setDescription("Get info on this year's Extra Life team!");
-
-const streaming = new u.sub()
-  .setName("streaming")
-  .setDescription("See who is currently streaming for Extra Life.");
-
-
-const extralife = new u.subGroup()
-  .setName("extralife")
-  .setDescription("Get info on our charity streams.")
-  .addSubcommand(team)
-  .addSubcommand(streaming);
 
 const live = new u.sub()
   .setName("live")
@@ -26,7 +15,7 @@ const approve = new u.sub()
 module.exports = new u.cmd()
   .setName("twitch")
   .setDescription("Get info on our Twitch team!")
-  .addSubcommandGroup(extralife)
+  .addSubcommand(extralife)
   .addSubcommand(live)
   .addSubcommand(approve)
-  .setDMPermission(false);
+  .setContexts(u.contexts.Guild);
