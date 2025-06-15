@@ -1,19 +1,10 @@
 // @ts-check
-const axios = require("axios");
-const config = require("../config/config.json");
 
-// this is only in its own file because of the huge types lol
 /**
- * @typedef Links
- * @prop {string} [join]
- * @prop {string} [stream]
- * @prop {string} [page]
- * @prop {string} [donate]
- *
  * @typedef Team
  * @prop {number} numParticipants
  * @prop {number} fundraisingGoal
- * @prop {Links} links
+ * @prop {Record<string, string>} links
  * @prop {boolean} streamIsLive
  * @prop {number} numIncentives
  * @prop {number} sumDonations
@@ -59,27 +50,5 @@ const config = require("../config/config.json");
  * @typedef {Omit<Team, "numParticipants"|"streamIsLive"|"name"|"streamingChannel"> & ParticipantExclusive} Participant
  */
 
-const teamId = config.twitch.elTeam;
 
-/** @param {string} path */
-async function call(path) {
-  // @ts-ignore
-  return axios(`https://extralife.donordrive.com/api${path}`).then(/** @param {any} res */ res => res.data);
-}
-
-/** @returns {Promise<Team>} */
-async function getTeam() {
-  const team = await call(`/teams/${encodeURIComponent(teamId)}`);
-  team.milestones = await call(`/teams/${encodeURIComponent(teamId)}/milestones`);
-  team.participants = await call(`/teams/${encodeURIComponent(teamId)}/participants`);
-
-  return team;
-}
-
-/** @returns {Promise<Donation[]>} */
-function getTeamDonations() {
-  return call(`/teams/${encodeURIComponent(teamId)}/donations`);
-}
-
-
-module.exports = { getTeam, getTeamDonations };
+module.exports = { };
