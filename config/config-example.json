@@ -7,6 +7,7 @@
   "api": {
     "tenor": "You can get your API key for this and more info at https://console.cloud.google.com/apis/library/tenor.googleapis.com",
     "snipcart": "we don't have a way to test the API right now",
+    "thegamesdb": "",
     "challonge": "https://api.challonge.com/v1"
   },
   "applicationId": "https://discord.com/developers/applications",
@@ -73,6 +74,12 @@
       "games": "",
       "applications": ""
     }
+  },
+  "twitch": {
+    "enabled": false,
+    "clientId": "https://dev.twitch.tv",
+    "clientSecret": "^",
+    "elTeam": "Extra Life Team ID"
   },
   "prefix": "! (change this to something unique)",
   "spamThreshold":  {
