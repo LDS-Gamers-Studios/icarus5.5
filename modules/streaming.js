@@ -1,13 +1,13 @@
 // @ts-check
 const Augur = require("augurbot-ts");
 const Discord = require("discord.js");
-const NoRepeat = require("no-repeat");
-const fs = require("fs");
 const config = require("../config/config.json");
-const Twitch = require("@twurple/api");
-const TwitchAuth = require("@twurple/auth").AppTokenAuthProvider;
 const u = require("../utils/utils");
 const c = require("../utils/modCommon");
+const Twitch = require("@twurple/api");
+const TwitchAuth = require("@twurple/auth").AppTokenAuthProvider;
+const NoRepeat = require("no-repeat");
+const fs = require("fs");
 const api = require("../utils/streamingApis");
 
 const teamId = config.twitch.elTeam;
@@ -24,12 +24,22 @@ function twitchURL(name) {
   return `https://twitch.tv/${encodeURIComponent(name)}`;
 }
 
+/*********************
+ * CACHED API VALUES *
+ *********************/
 
 /** @type {Discord.Collection<string, { name: string, rating?: string }>} */
 const twitchGames = new u.Collection();
 
 /** @type {Discord.Collection<string, {live: boolean, since: number, userId?: string}>} */
 const twitchStatus = new u.Collection();
+
+/** @type {Set<string>} */
+const donors = new Set();
+
+/** @type {Set<string>} */
+const donationIDs = new Set();
+
 
 const twitch = new Twitch.ApiClient({ authProvider: new TwitchAuth(config.twitch.clientId, config.twitch.clientSecret) });
 const bonusStreams = require("../data/streams.json");
@@ -43,7 +53,7 @@ const approvalText = "## Congratulations!\n" +
 const notEL = "Extra Life isn't quite ready yet! Try again in November.";
 
 /** @param {string} gameName */
-async function gameInfo(gameName) {
+async function fetchGameRating(gameName) {
   try {
     // can't find ratings, so no need to continue
     if (!config.api.thegamesdb || !gameName) return { name: gameName };
@@ -67,14 +77,6 @@ async function gameInfo(gameName) {
   }
 }
 
-/** @param {string} error  */
-function twitchErrorHandler(error) {
-  error = error.toString()
-    .replace(new RegExp(config.twitch.clientSecret, "g"), "<SECRET>")
-    .replace(new RegExp(config.api.thegamesdb, "g"), "<SECRET>");
-  u.errorHandler(new Error(error), "Twitch API");
-}
-
 async function checkStreams() {
   try {
     // Get people with the approved streamers role
@@ -91,7 +93,7 @@ async function checkStreams() {
 
     // Check for Extra Life
     const now = new Date();
-    if (!extraLife() || now.getHours() % 2 === 1 || now.getMinutes() > 5) return;
+    if (!extraLife() || now.getHours() % 2 !== 1 || now.getMinutes() > 5) return;
 
     const embeds = await extraLifeEmbeds();
     for (const embed of embeds) {
@@ -146,10 +148,9 @@ async function fetchExtraLifeStreams(team) {
   }
 }
 
-/** @type {Set<string>} */
-const donors = new Set();
-/** @type {Set<string>} */
-const donationIDs = new Set();
+/******************************
+ * DONATION PRICE COMPARISONS *
+ ******************************/
 
 const almosts = new NoRepeat([
   "almost",
@@ -160,19 +161,20 @@ const almosts = new NoRepeat([
 ]);
 
 /** @param {number} num */
-const rnd = num => Math.round((num + Number.EPSILON) * 100) / 100;
+const round = num => Math.round((num + Number.EPSILON) * 100) / 100;
 
 /** @type {NoRepeat<(num: number) => string>} */
 const prices = new NoRepeat([
-  (num) => `${rnd(num * 3.84615384)} buttermelons`,
-  (num) => `${rnd(num * 15.5)}oz of beans`,
-  (num) => `${rnd(num / 4.99)} handicorn sets`,
-  (num) => `${rnd(num * 12 / 2.97)} ice cream sandwiches`,
-  (num) => `${rnd(num / 29.99)} copies of Minecraft`,
-  (num) => `${rnd(num / 100)} <:gb:493084576470663180>`,
-  (num) => `${rnd(num / 5)} copies of Shrek`,
-  (num) => `${rnd(num / 27.47)} ink cartridges`
+  (num) => `${round(num * 3.84615384)} buttermelons`,
+  (num) => `${round(num * 15.5)}oz of beans`,
+  (num) => `${round(num * 100)} <:gb:493084576470663180>`,
+  (num) => `${round(num * 12 / 2.97)} ice cream sandwiches`,
+  (num) => `${round(num / 4.99)} handicorn sets`,
+  (num) => `${round(num / 29.99)} copies of Minecraft`,
+  (num) => `${round(num / 5)} copies of Shrek`,
+  (num) => `${round(num / 27.47)} ink cartridges`
 ]);
+
 
 async function fetchExtraLifeTeam() {
   try {
@@ -244,6 +246,11 @@ async function fetchExtraLifeTeam() {
   }
 }
 
+
+/************************
+ * TWITCH NOTIFICATIONS *
+ ************************/
+
 /** @param {Discord.GuildMember} member */
 function isPartnered(member) {
   // icarus is always partnered
@@ -277,7 +284,7 @@ async function processTwitch(igns) {
       const users = streamers.map(s => s.ign);
 
       const streams = await twitch.streams.getStreamsByUserNames(users)
-        .catch(twitchErrorHandler);
+        .catch(api.twitchErrorHandler);
 
       if (!streams) continue;
 
@@ -290,7 +297,7 @@ async function processTwitch(igns) {
         // If they were streaming recently (within half an hour), don't post notifications
         if (status && (status.live || status.since > sinceThreshold)) continue;
 
-        const game = await gameInfo(stream.gameName);
+        const game = await fetchGameRating(stream.gameName);
 
         // filter out bad games
         if (game?.rating === "M - Mature 17+") continue;
@@ -361,6 +368,11 @@ async function processTwitch(igns) {
   }
 }
 
+
+/******************
+ * SLASH COMMANDS *
+ ******************/
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashTwitchExtralifeTeam(int) {
   if (!extraLife()) return int.reply({ content: notEL, flags: ["Ephemeral"] });
@@ -386,7 +398,7 @@ async function slashTwitchExtralifeTeam(int) {
   const total = members.reduce((p, cur) => p + cur.sumDonations, 0);
 
   const teamStrings = members.map(m => {
-    const percent = Math.round(100 * m.sumDonations / m.fundraisingGoal);
+    const percent = round(100 * m.sumDonations / m.fundraisingGoal);
     let str = `**${m.displayName}**\n` +
       `$${m.sumDonations} / $${m.fundraisingGoal} (${percent}%)\n` +
       `**[[Donate]](${m.links.donate})**`;
@@ -398,7 +410,8 @@ async function slashTwitchExtralifeTeam(int) {
   const nextMilestone = team.milestones.sort((a, b) => a.fundraisingGoal - b.fundraisingGoal)
     .find(m => m.fundraisingGoal > team.sumDonations);
 
-  const wallOfText = `LDSG is raising money for Extra Life! We are currently at **$${total}** of our team's **$${team.fundraisingGoal}** goal for ${new Date().getFullYear()}. **That's ${Math.round(100 * total / team.fundraisingGoal)}% of the way there!**\n\nYou can help by donating to one of the Extra Life Team members below.`;
+  const wallOfText = `LDSG is raising money for Extra Life! We are currently at **$${total}** of our team's **$${team.fundraisingGoal}** goal for ${new Date().getFullYear()}. **That's ${round(100 * total / team.fundraisingGoal)}% of the way there!**\n\n` +
+    "You can help by donating to one of the Extra Life Team members below.";
 
   const embed = u.embed().setTitle("LDSG Extra Life Team")
     .setThumbnail("https://assets.donordrive.com/extralife/images/fbLogo.jpg?v=202009241356")
@@ -414,13 +427,9 @@ async function slashTwitchLive(int) {
   await int.deferReply({ flags: ephemeral });
 
   const approved = int.guild.roles.cache.get(u.sf.roles.streaming.approved)?.members ?? new u.Collection();
-  // if (extraLife()) {
-  //   const elTeam = int.guild.roles.cache.get(u.sf.roles.streaming.elteam)?.members;
-  //   if (elTeam) approved = approved.concat(elTeam);
-  // }
 
   let igns = await u.db.ign.findMany(approved.map(m => m.id) ?? [], "twitch")
-    .then(i => i.map(ign => ign.ign.toLowerCase()));
+    .then(i => i.map(ign => ign.ign.toLowerCase()).concat(bonusStreams));
 
   // Add extra life team members if applicable
   /** @type {Discord.Collection<string, import("../utils/extralifeTypes").Participant>} */
@@ -433,8 +442,10 @@ async function slashTwitchLive(int) {
       return [username, p];
     }) ?? []);
 
-    if (elParticipants.size > 0) igns = u.unique(igns.concat([...elParticipants.keys()]));
+    if (elParticipants.size > 0) igns = igns.concat([...elParticipants.keys()]);
   }
+
+  igns = u.unique(igns);
 
   // This method only returns streams that are currently live
   /** @type {Promise<Twitch.HelixStream[]>[]} */
@@ -444,17 +455,16 @@ async function slashTwitchLive(int) {
     streamFetch.push(twitch.streams.getStreamsByUserNames(usernames).catch(u.noop).then(s => s ?? []));
   }
 
-  const res = await Promise.all(streamFetch).then(p => p.flat());
+  const streams = await Promise.all(streamFetch).then(p => p.flat());
 
   const embed = u.embed()
     .setTitle(`Currently Streaming in ${int.guild.name}`)
-    .setColor(colors.twitch)
-    .setTimestamp();
+    .setColor(colors.twitch);
 
   const channels = [];
   const elChannels = [];
-  for (const stream of res) {
-    const game = await gameInfo(stream.gameName);
+  for (const stream of streams) {
+    const game = await fetchGameRating(stream.gameName);
     if (game.rating === "M - Mature 17+") continue;
     const participant = elParticipants.get(stream.userName);
 
@@ -478,8 +488,7 @@ async function slashTwitchLive(int) {
   if (elChannels.length > 0) {
     const elEmbed = u.embed()
       .setTitle(`Currently Streaming for Extra Life in ${int.guild.name}`)
-      .setColor(colors.elGreen)
-      .setTimestamp();
+      .setColor(colors.elGreen);
 
     const elLines = elChannels.map(ch => {
       const title = `**${ch.name} is playing ${ch.game.name || "something"}**\n[${ch.title}](${ch.url})`;
@@ -492,9 +501,10 @@ async function slashTwitchLive(int) {
 
   return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), Boolean(ephemeral));
 }
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTwitchApplication(int) {
-  if (int.member.roles.cache.has(u.sf.roles.streaming.approved)) return int.reply({ content: "You're already approved!", flags: ["Ephemeral"] });
+  if (int.member.roles.cache.has(u.sf.roles.streaming.approved)) return int.reply({ content: "You're already an approved streamer!", flags: ["Ephemeral"] });
 
   const agreement = u.MessageActionRow().addComponents([
     new u.Button({ customId: "streamerAgree", emoji: "✅", label: "Agree", style: Discord.ButtonStyle.Success }),
@@ -507,29 +517,37 @@ async function slashTwitchApplication(int) {
   return int.reply({ embeds: [applicationEmbed], components: [agreement], flags: ["Ephemeral"] });
 }
 
+
+/************************
+ * APPLICATION HANDLERS *
+ ************************/
+
 /** @param {Augur.GuildInteraction<"Button">} int*/
 async function buttonStreamerAgree(int) {
-  const name = await u.db.ign.findOne(int.member.id, "twitch").then(i => i?.ign);
+  const ign = await u.db.ign.findOne(int.member.id, "twitch");
+
   // make modal
-  const ignModal = new u.Modal().addComponents(
-    u.ModalActionRow().addComponents(
-      new u.TextInput()
-        .setLabel("Twitch Username")
-        .setRequired(true)
-        .setPlaceholder("https://twitch.tv/___this_part___")
-        .setValue(name || "")
-        .setCustomId("username")
-        .setStyle(Discord.TextInputStyle.Short)
-    ),
-    u.ModalActionRow().addComponents(
-      new u.TextInput()
-        .setLabel("What games do you usually stream?")
-        .setRequired(true)
-        .setCustomId("games")
-        .setStyle(Discord.TextInputStyle.Short)
-    )
-  ).setCustomId("streamerIgn")
-  .setTitle("Approved Streamer Application (Part 2)");
+  const ignModal = new u.Modal()
+    .setTitle("Approved Streamer Application (Part 2)")
+    .setCustomId("streamerIgn")
+    .addComponents(
+      u.ModalActionRow().addComponents(
+        new u.TextInput()
+          .setLabel("Twitch Username (This will be saved as an IGN)")
+          .setRequired(true)
+          .setPlaceholder("https://twitch.tv/___this_part___")
+          .setValue(ign?.ign || "")
+          .setCustomId("username")
+          .setStyle(Discord.TextInputStyle.Short)
+      ),
+      u.ModalActionRow().addComponents(
+        new u.TextInput()
+          .setLabel("What games do you usually stream?")
+          .setRequired(true)
+          .setCustomId("games")
+          .setStyle(Discord.TextInputStyle.Short)
+      )
+    );
 
   return int.showModal(ignModal);
 }
@@ -546,17 +564,18 @@ async function modalStreamerIgn(int) {
   const name = int.fields.getTextInputValue("username");
   const games = int.fields.getTextInputValue("games");
 
+  if (name.includes("twitch.tv/")) return int.editReply("It looks like you've included a URL in your Twitch username. We take care of that on our end, so please leave it out.");
   await u.db.ign.save(int.member.id, "twitch", name);
 
   // generate and send the request
   const embed = u.embed().setTitle("Approved Streamer Request")
-    .setDescription(`${c.userBackup(int.member)} has requested to become an approved streamer.`)
+    .setDescription(`${c.userBackup(int.member)} has requested to become an approved streamer. It's reccomended that you watch a stream or two of theirs before approving them.`)
     .setColor(c.colors.info)
+    .setFooter({ text: int.member.id })
     .addFields(
       { name: "Twitch", value: `[${name}](https://twitch.tv/${name})` },
       { name: "Usual Games", value: games }
-    )
-    .setFooter({ text: int.member.id });
+    );
 
   await int.client.getTextChannel(u.sf.channels.team.publicAffairs)?.send({ embeds: [embed], components: [approveButtons] });
   return int.editReply({ content: "Your application has been submitted! Please wait for the moderators to handle your request.", components: [], embeds: [] });
@@ -564,8 +583,8 @@ async function modalStreamerIgn(int) {
 
 /** @param {Augur.GuildInteraction<"Button">} int*/
 async function buttonApproveStreamer(int) {
-  const id = int.message.embeds[0]?.data.footer?.text;
-  const member = int.guild.members.cache.get(id ?? "");
+  const id = int.message.embeds[0]?.data.footer?.text ?? "";
+  const member = int.guild.members.cache.get(id);
 
   if (!member) return int.reply({ content: "Sorry, I couldn't find that user!", flags: ["Ephemeral"] });
   if (!member.roles.cache.has(u.sf.roles.moderation.trusted)) return int.reply({ content: `${member} needs the Trusted role first!` });
@@ -580,16 +599,17 @@ async function buttonApproveStreamer(int) {
 
 /** @param {Augur.GuildInteraction<"Button">} int*/
 async function buttonDenyStreamer(int) {
-  const id = int.message.embeds[0]?.data.footer?.text;
-  const member = int.guild.members.cache.get(id ?? "");
+  const id = int.message.embeds[0]?.data.footer?.text ?? "";
+  const member = int.guild.members.cache.get(id);
 
   if (!member) return int.reply({ content: "Sorry, I couldn't find that user!", flags: ["Ephemeral"] });
 
   await int.deferUpdate();
 
   await member.send(`Hey ${member.displayName}, unfortunately your application to become an approved streamer has been denied. This was likely due to the type of content being streamed, but please reach out to someone on the Public Affairs team if you have any questions.`).catch(u.noop);
-  int.editReply({ content: `${member}'s application has been denied`, components: [] });
+  int.editReply({ content: `${member}'s application has been denied by ${int.member}`, components: [] });
 }
+
 
 function writeCache() {
   const cutoff = u.moment().add(1, "hour").valueOf();
@@ -664,33 +684,43 @@ Module.addInteraction({
 })
 .setInit(async (data) => {
   if (data) {
-    for (const [key, status] of data) {
+    for (const [key, status] of data.twitchStatus) {
       twitchStatus.set(key, status);
     }
+
+    for (const [key, game] of data.twitchGames) {
+      twitchGames.set(key, game);
+    }
   } else {
+    // read from the cache if it exists
     if (fs.existsSync("./data/streamcache.txt")) {
       const cache = fs.readFileSync("./data/streamcache.txt", "utf-8").split("\n");
-      const saved = cache.shift();
-      if (parseInt(saved ?? "") > Date.now()) {
+      const cutoffTime = cache.shift();
+
+      // data after the cutoff is too old and shouldn't be used.
+      if (parseInt(cutoffTime ?? "") > Date.now()) {
         for (const row of cache) {
-          const [userId, live, since, name] = row.split(";");
-          twitchStatus.set(name, { userId, live: live === "true", since: parseInt(since) });
+          const [userId, live, since, ...name] = row.split(";");
+          twitchStatus.set(name.join(";"), { userId, live: live === "true", since: parseInt(since) });
         }
       }
 
+      // delete the cache
       fs.unlinkSync("./data/streamcache.txt");
     }
+
     // reset live role on restart
     const members = Module.client.guilds.cache.get(u.sf.ldsg)?.roles.cache.get(u.sf.roles.streaming.live)?.members ?? new u.Collection();
     for (const [id, member] of members) {
       if (!twitchStatus.find(s => s.userId === id)) await member.roles.remove(u.sf.roles.streaming.live);
     }
   }
+
   if (config.devMode) checkStreams();
 })
 .setUnload(() => {
   delete require.cache[require.resolve("../data/streams.json")];
-  return twitchStatus;
+  return { twitchStatus, twitchGames };
 })
 .setShared(writeCache);
 

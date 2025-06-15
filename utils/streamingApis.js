@@ -59,5 +59,6 @@ function call(url) {
 
 module.exports = {
   extraLife,
-  fetchGameRating
+  fetchGameRating,
+  twitchErrorHandler
 };
