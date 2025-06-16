@@ -346,21 +346,32 @@ async function processTwitch(igns) {
       const offline = streamers.filter(streamer => !streams.find(stream => stream.userDisplayName.toLowerCase() === streamer.ign.toLowerCase()));
 
       for (const channel of offline) {
-        const status = twitchStatus.get(channel.ign.toLowerCase());
+        const ign = channel.ign.toLowerCase();
+        const status = twitchStatus.get(ign);
+
+        // remove if they're past the threshold
+        if (status && status.live && status.since > sinceThreshold) {
+          twitchStatus.delete(ign);
+          continue;
+        }
+
+        // don't bother continuing if they're already marked live
         if (!status?.live) continue;
 
         if (channel.ign.toLowerCase() === "ldsgamers") Module.client.user?.setActivity({ name: "Tiddlywinks", type: Discord.ActivityType.Playing });
 
+        // remove the live role
         const member = ldsg.members.cache.get(channel.discordId);
         if (member?.roles.cache.has(liveRole)) {
           member.roles.remove(liveRole).catch(error => u.errorHandler(error, `Remove Live role from ${member.displayName}`));
         }
 
-        twitchStatus.set(channel.ign.toLowerCase(), {
+        twitchStatus.set(ign, {
           live: false,
           since: Date.now(),
           userId: member?.id
         });
+
       }
     }
   } catch (e) {
@@ -679,8 +690,7 @@ Module.addInteraction({
   process: checkStreams
 })
 .setClockwork(() => {
-  const interval = 5 * 60_000;
-  return setInterval(checkStreams, interval);
+  return setInterval(checkStreams, 5 * 60_000);
 })
 .setInit(async (data) => {
   if (data) {
@@ -720,6 +730,7 @@ Module.addInteraction({
 })
 .setUnload(() => {
   delete require.cache[require.resolve("../data/streams.json")];
+  delete require.cache[require.resolve("../utils/streamingApis.js")];
   return { twitchStatus, twitchGames };
 })
 .setShared(writeCache);
