@@ -2,6 +2,7 @@
 const Augur = require("augurbot-ts");
 const config = require("../config/config.json");
 const { createServer } = require("http");
+const u = require("../utils/utils");
 
 /** @type {ReturnType<import("express")>} */
 let app;
@@ -43,10 +44,12 @@ if (config.siteOn) {
     limit: 5,
     windowMs: 3_000,
     message: { msg: "You're going too fast! Slow down!" },
-    skip: (r) => r.url.startsWith("/streaming")
+    skip: (r) => r.url.startsWith("/streaming") && Boolean(r.user) && u.perms.calc(r.user, ["team"])
   });
 
   app.use(express.json())
+    .disable("x-powered-by")
+    .set("trust proxy", siteConfig.deployBuild ? 1 : 0)
     .use(express.urlencoded({ extended: false }))
     .use(cors({
       origin: siteConfig.allowedCorsOrigins,
