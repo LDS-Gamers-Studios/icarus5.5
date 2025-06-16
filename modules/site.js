@@ -35,6 +35,9 @@ if (config.siteOn) {
   // @ts-ignore
   const streamingWS = require("../site/backend/routes/streaming/ws");
 
+  // @ts-ignore
+  require("../site/backend/types/global");
+
   app = express();
   const socket = require("express-ws")(app);
 
