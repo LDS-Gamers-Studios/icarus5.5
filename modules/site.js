@@ -56,7 +56,7 @@ if (config.siteOn) {
       res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
       res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
       res.setHeader("X-Frame-Options", "DENY");
-      // res.setHeader("Content-Security-Policy", siteConfig.cspHeaders.join("");
+      // res.setHeader("Content-Security-Policy", siteConfig.cspHeaders.join(""));
       next();
     });
 
@@ -94,9 +94,11 @@ if (config.siteOn) {
   // expose backend routes
   app.use('/api', globalLimit, (req, res, next) => {
     if (siteConfig.monitoring) {
-      // @ts-ignore sometimes it picks on some nonsense
-      // eslint-disable-next-line no-console
-      console.log(`${req.user?.displayName ?? "Unauthorized User"} [${req.method}] ${req.path}`);
+      if (!(req.path.startsWith("/streaming/overlay") && !req.path.endsWith(".html"))) {
+        // @ts-ignore sometimes it picks on some nonsense
+        // eslint-disable-next-line no-console
+        console.log(`${req.user?.displayName ?? "Unauthorized User"} [${req.method}] ${req.path}`);
+      }
     }
     next();
   }, routes);
