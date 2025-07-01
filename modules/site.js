@@ -35,9 +35,6 @@ if (config.siteOn) {
   // @ts-ignore
   const streamingWS = require("../site/backend/routes/streaming/ws");
 
-  // @ts-ignore
-  require("../site/backend/types/global");
-
   app = express();
   const socket = require("express-ws")(app);
 
@@ -47,6 +44,7 @@ if (config.siteOn) {
     limit: 5,
     windowMs: 3_000,
     message: { msg: "You're going too fast! Slow down!" },
+    // @ts-ignore
     skip: (r) => r.url.startsWith("/streaming") && Boolean(r.user) && u.perms.calc(r.user, ["team"])
   });
 
