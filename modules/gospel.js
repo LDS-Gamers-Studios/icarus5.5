@@ -25,6 +25,7 @@ const Augur = require("augurbot-ts"),
 const abbreviationTable = new u.Collection();
 
 const jstRegex = /\[JST ([0-9]{1,2})\]$/;
+let searchExp = new RegExp("");
 
 const works = {
   "ot": "old-testament",
@@ -70,9 +71,12 @@ function refAbbrBuild(book) {
 function getScriptureMastery(book, chapter) {
   const scriptureMasteries = require("../data/gospel/scripture-mastery-reference.json");
   let m = scriptureMasteries;
+
   if (book) m = scriptureMasteries.filter(s => s.book === book);
   else if (chapter) m = scriptureMasteries.filter(s => s.chapter === chapter);
+
   const reference = u.rand(m.length === 0 ? scriptureMasteries : m);
+
   return {
     book: reference.book,
     chapter: reference.chapter,
@@ -87,6 +91,7 @@ function getScriptureMastery(book, chapter) {
  */
 async function slashGospelVerse(interaction, parsed) {
   let book, chapter, verses;
+
   if (parsed) {
     if (interaction instanceof Discord.ChatInputCommandInteraction) return; // Interaction and parsed are mutually exclusive
     ({ book, chapter, verses } = parsed);
@@ -96,6 +101,7 @@ async function slashGospelVerse(interaction, parsed) {
     chapter = interaction.options.getInteger("chapter", false);
     verses = interaction.options.getString("verses", false);
   }
+
   if (!book || !chapter) {
     // Get a random one from scripture mastery.
     ({ book, chapter, verses } = getScriptureMastery(abbreviationTable.get(book?.toLowerCase() ?? "")?.bookName, chapter?.toString()));
@@ -103,6 +109,7 @@ async function slashGospelVerse(interaction, parsed) {
 
   const intCheck = !parsed && interaction instanceof Discord.ChatInputCommandInteraction;
   const bookRef = abbreviationTable.get(book.toLowerCase());
+
   if (!bookRef) {
     if (intCheck) interaction.reply({ content: "I don't understand what book you're mentioning.", flags: ["Ephemeral"] });
     return;
@@ -116,6 +123,7 @@ async function slashGospelVerse(interaction, parsed) {
     .setTitle(bookRef.bookName + " " + chapter.toString() + (text ? ":" + text : ""))
     .setURL(`https://www.churchofjesuschrist.org/study/scriptures/${bookRef.work}/${bookRef.urlAbbrev}/${chapter}${(versesNums[0] ? ("." + text.replace(/ /g, "") + "?lang=eng#p" + versesNums[0]) : "?lang=eng")}`)
     .setColor(0x012b57);
+
   // @ts-ignore
   const bookJson = require("../data/gospel/" + works[bookRef.work] + "-reference.json");
   if (!bookJson[bookRef.bookName][chapter]) {
@@ -136,11 +144,13 @@ async function slashGospelVerse(interaction, parsed) {
     for (const num of versesNums) {
       if (bookJson[bookRef.bookName][chapter][num]) {
         let verse = bookJson[bookRef.bookName][chapter][num];
+
         const jst = jstRegex.exec(verse);
         if (jst) {
           jstLookups.add(jst[1]);
           verse = verse.replace(jstRegex, "");
         }
+
         verseContent.push(num.toString() + " " + verse);
       }
     }
@@ -156,6 +166,7 @@ async function slashGospelVerse(interaction, parsed) {
     if (jstLookups.size > 0) {
       content = "JST is available for this section";
       embed.setFooter({ text: `JST | ${bookRef.bookName} | ${chapter} | ${[...jstLookups].join(",")}` });
+
       components.push(u.MessageActionRow().addComponents([
         new u.Button().setCustomId("verseJST").setLabel("View JST").setStyle(Discord.ButtonStyle.Primary)
       ]));
@@ -175,13 +186,17 @@ function parseVerseRange(verses) {
   let versesNums = [];
   /** @type {string[]} */
   let textVerses = [];
+
   if (verses) {
     if (verses.charAt(0) === "-") return { versesNums: [], text: "" }; // catch people giving negative verse to be silly
+
     verses = verses.replace(/ /g, "");
     const versesList = verses.split(/[,;]/);
+
     // const rangeRegex = /(\d+)(?:-(\d+))?/;
     for (const range of versesList) {
       const [low, high] = range.split("-").map(r => parseInt(r));
+
       if (!low && !high) {
         return { versesNums: [], text: "" };
       } else if (!high) {
@@ -191,6 +206,7 @@ function parseVerseRange(verses) {
         let lowNum = low;
         let highNum = high;
         if (lowNum > highNum) [lowNum, highNum] = [highNum, lowNum];
+
         textVerses.push(`${lowNum}-${highNum}`);
         for (let i = lowNum; i <= highNum; i++) versesNums.push(i);
       }
@@ -243,23 +259,23 @@ function slashGospelComeFollowMe(interaction) {
 /** @param {Discord.ChatInputCommandInteraction} interaction */
 async function slashGospelNews(interaction) {
   await interaction.deferReply();
+
   const parser = new Parser();
   const feed = await parser.parseURL("https://newsroom.churchofjesuschrist.org/rss");
   const newsItem = feed.items[0];
+
   const embed = u.embed()
     .setAuthor({ name: "Newsroom", url: feed.link?.startsWith("http") ? feed.link : "https://" + feed.link, iconURL: "attachment://image.png" })
     .setTitle(newsItem.title || "Title")
     .setURL(newsItem.link || "Url")
     .setDescription((newsItem.content || "Description").replace(/<[\s\S]+?>/g, "")) // Remove all HTML tags from the description
     .setTimestamp(new Date(newsItem.pubDate || 1));
+
   const image = new u.Attachment('./media/ldsnewsroom.png', { name: "image.png" });
   interaction.editReply({ embeds: [embed], files: [image] });
 }
 
 const Module = new Augur.Module()
-.setInit(() => {
-  books.map(refAbbrBuild);
-})
 .addInteraction({
   name: "gospel",
   id: u.sf.commands.slashGospel,
@@ -316,10 +332,11 @@ const Module = new Augur.Module()
 })
 .addEvent("messageCreate", msg => {
   if (!msg.inGuild()) return;
+
   if (msg.channel.parent?.id === u.sf.channels.gospelCategory && !u.parse(msg) && !msg.author.bot) {
-    const searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")})\\W(\\d+)[: ]?([\\d\\-;,\\W]+)`, "ig");
     const match = searchExp.exec(msg.cleanContent);
     if (!match) return;
+
     return slashGospelVerse(msg, { book: match[1], chapter: match[2], verses: match[3] });
   }
 })
@@ -328,16 +345,24 @@ const Module = new Augur.Module()
   process: (msg) => {
     const fakeDay = new Date("Dec 31 2023");
     let i = 0;
+
     const dates = new u.Collection();
     while (i <= 365) {
       fakeDay.setDate(fakeDay.getDate() + 1);
       const calc = calculateDate(fakeDay, true);
+
       if (dates.has(calc)) dates.set(calc, dates.get(calc) + 1);
       else dates.set(calc, 1);
+
       i++;
     }
+
     msg.reply(`Results:\n\`\`\`${dates.map((v, k) => `${k} => ${v}/7 days`).join("\n")}\`\`\``);
   }
+})
+.setInit(() => {
+  books.map(refAbbrBuild);
+  searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")})\\W(\\d+)[: ]?([\\d\\-;,\\W]+)`, "ig");
 });
 
 
