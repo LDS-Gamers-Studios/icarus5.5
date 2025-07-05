@@ -3,6 +3,8 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   Parser = require("rss-parser"),
   u = require("../utils/utils"),
+  /** @type {Record<string, Record<string, string[][]>>} */
+  jstRef = require("../data/gospel/jst-reference.json"),
   books = require("../data/gospel/books.json");
 
 /**
@@ -21,6 +23,8 @@ const Augur = require("augurbot-ts"),
 
 /** @type {Discord.Collection<string, Omit<Book, "abbreviations">>} */
 const abbreviationTable = new u.Collection();
+
+const jstRegex = /\[JST ([0-9]{1,2})\]$/;
 
 const works = {
   "ot": "old-testament",
@@ -49,8 +53,10 @@ const manuals = new u.Collection([
  */
 function refAbbrBuild(book) {
   const { bookName, abbreviations, urlAbbrev, work } = book;
+
   abbreviationTable.set(bookName.toLowerCase(), { bookName, work, urlAbbrev });
   abbreviationTable.set(urlAbbrev.toLowerCase(), { bookName, work, urlAbbrev });
+
   for (const abbr of abbreviations) {
     abbreviationTable.set(abbr.toLowerCase(), { bookName, work, urlAbbrev });
   }
@@ -116,22 +122,47 @@ async function slashGospelVerse(interaction, parsed) {
     if (intCheck) interaction.reply({ content: `That chapter doesn't exist in ${bookRef.bookName}!`, flags: ["Ephemeral"] });
     return;
   }
+
+  /** @type {Discord.ActionRowBuilder<Discord.MessageActionRowComponentBuilder>[]} */
+  const components = [];
+  let content;
+
   if (versesNums.length > 0) {
     /** @type {string[]} */
     const verseContent = [];
+    /** @type {Set<string>} */
+    const jstLookups = new Set();
+
     for (const num of versesNums) {
       if (bookJson[bookRef.bookName][chapter][num]) {
-        verseContent.push(num.toString() + " " + bookJson[bookRef.bookName][chapter][num]);
+        let verse = bookJson[bookRef.bookName][chapter][num];
+        const jst = jstRegex.exec(verse);
+        if (jst) {
+          jstLookups.add(jst[1]);
+          verse = verse.replace(jstRegex, "");
+        }
+        verseContent.push(num.toString() + " " + verse);
       }
     }
+
     const verseJoinedContent = verseContent.join("\n\n");
     if (verses && verseJoinedContent.length === 0) {
       if (intCheck) interaction.reply({ content: "The verse(s) you requested weren't found.", flags: ["Ephemeral"] });
       return;
     }
+
     embed.setDescription(verseJoinedContent.length > 2048 ? verseJoinedContent.slice(0, 2048) + "…" : verseJoinedContent);
+
+    if (jstLookups.size > 0) {
+      content = "JST is available for this section";
+      embed.setFooter({ text: `JST | ${bookRef.bookName} | ${chapter} | ${[...jstLookups].join(",")}` });
+      components.push(u.MessageActionRow().addComponents([
+        new u.Button().setCustomId("verseJST").setLabel("View JST").setStyle(Discord.ButtonStyle.Primary)
+      ]));
+    }
+
   }
-  interaction.reply({ embeds: [embed] });
+  interaction.reply({ content, embeds: [embed], components });
 }
 
 /**
@@ -175,9 +206,11 @@ function parseVerseRange(verses) {
 function calculateDate(inputDate, debug = false) {
   inputDate.setHours(10); // weird moment stuff
   const date = u.moment(inputDate);
+
   // Set the day to Monday. If the day is Sunday (0), set it to subtract a week
   const monday = date;
   monday.day(monday.day() === 0 ? -6 : 1);
+
   // Account for the end of the year;
   if (monday.month() === 11 && monday.date() > 25) monday.day(-6);
   const str = `${u.moment(monday).format("MMMM Do YYYY")}`;
@@ -248,6 +281,37 @@ const Module = new Augur.Module()
 
       return int.respond(u.unique(values).map(v => ({ name: v, value: v })));
     }
+  }
+})
+.addInteraction({
+  name: "View JST",
+  id: "verseJST",
+  type: "Button",
+  process: async (int) => {
+    await int.deferReply();
+
+    const msg = await int.message.fetch();
+    const footer = msg.embeds[0]?.footer?.text;
+    if (!footer) return int.editReply("Sorry, I couldn't understand my own message.").then(u.clean);
+
+    const [book, chapter, index] = footer.split(" | ").slice(1);
+    const bookRef = books.find(b => b.bookName === book);
+
+    /** @type {string[]} */
+    const lines = [];
+    const indexes = index.split(",");
+    for (const i of indexes) {
+      const numIndex = parseInt(i);
+      lines.push(jstRef[book][chapter][numIndex].join("\n\n"));
+    }
+
+    const embed = u.embed(msg.embeds[0])
+      .setTitle(`${book} ${chapter} - JST`)
+      .setURL(`https://www.churchofjesuschrist.org/study/scriptures/jst/jst-${bookRef?.urlAbbrev}/${chapter}`)
+      .setDescription(lines.join("\n\n------------------\n\n"))
+      .setFooter(null);
+
+    int.editReply({ embeds: [embed] });
   }
 })
 .addEvent("messageCreate", msg => {
