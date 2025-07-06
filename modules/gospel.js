@@ -327,7 +327,8 @@ const Module = new Augur.Module()
       .setDescription(lines.join("\n\n------------------\n\n"))
       .setFooter(null);
 
-    int.editReply({ embeds: [embed] });
+    await int.editReply({ embeds: [embed] });
+    await msg.edit({ components: [] });
   }
 })
 .addEvent("messageCreate", msg => {
