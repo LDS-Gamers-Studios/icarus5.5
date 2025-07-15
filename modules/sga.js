@@ -67,7 +67,7 @@ async function handleMessage(msg) {
         .setStyle(Discord.ButtonStyle.Primary),
     );
 
-  return await msg.reply({
+  await msg.reply({
     components: [row]
   });
 }

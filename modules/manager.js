@@ -1,7 +1,9 @@
 // @ts-check
 const Augur = require("augurbot-ts");
+const Discord = require("discord.js");
 const Rank = require("../utils/rankInfo");
 const u = require("../utils/utils");
+const c = require("../utils/modCommon");
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashManagerUserTransfer(int) {
@@ -115,6 +117,78 @@ async function slashManagerUserTransfer(int) {
   return int.editReply({ embeds: [embed] });
 }
 
+/** @param {Discord.GuildMember} sponsor */
+async function createSponsorChannel(sponsor) {
+  // Create the channel
+  const guild = sponsor.guild;
+  const channel = await guild.channels.create({
+    name: `${sponsor.displayName}-hangout`,
+    type: Discord.ChannelType.GuildText,
+    parent: u.sf.channels.sponsorCategory,
+    permissionOverwrites: [
+      { id: sponsor.client.user.id, allow: ["ViewChannel"] },
+      { id: guild.id, deny: ["ViewChannel"] },
+      { id: sponsor.id, allow: ["ViewChannel", "ManageChannels", "ManageMessages", "ManageWebhooks"] }
+    ],
+    reason: "Sponsor Perk"
+  });
+
+  // Add it to the sheets database
+  /** @type {import("google-spreadsheet").GoogleSpreadsheetRow} */
+  let row;
+  const existingRow = u.db.sheets.sponsors.rows.find(r => r.get("Sponsor") === sponsor.id);
+  if (!existingRow) {
+    row = await u.db.sheets.docs.config.sheetsByTitle["Sponsor Channels"].addRow({
+      "Sponsor Name (Ref)": sponsor.displayName,
+      Sponsor: sponsor.id,
+      Channel: channel.id,
+      Enabled: "TRUE"
+    });
+  } else {
+    existingRow.set("Channel", channel.id);
+    await existingRow.save();
+
+    row = existingRow;
+  }
+
+  u.db.sheets.sponsors.set(sponsor.id, u.db.sheets.schemas.sponsors(row));
+  u.db.sheets.sponsors.rows.push(row);
+
+  // Send welcome message
+  await channel.send({
+    content: `${sponsor}, welcome to your private channel! Thank you for being a Pro Sponsor! Your contributions each month are very much appreciated! Please accept this channel as a token of our appreciation.\n\n` +
+      "You should have some administrative abilities for this channel (including changing the name and description), as well as the ability to add people to the channel with `/sponsor invite @user`." +
+      "If you would like to change default permissions for users in the channel, please contact a member of Management directly.",
+
+    allowedMentions: { parse: ["users"] }
+  }).catch((e) => u.errorHandler(e, "Couldn't send sponsor channel creation welcome"));
+
+  // Send mod log
+  const embed = u.embed({ author: sponsor })
+    .setTitle("Sponsor Channel Created")
+    .setDescription(`A Pro Sponsor channel was created for ${sponsor}. They have a few extra permissions there.`)
+    .setColor(c.colors.info);
+
+  await guild.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] }).catch(u.noop);
+
+  return channel;
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashManagerSponsorChannel(int) {
+  const sponsor = int.options.getMember("sponsor");
+  if (!sponsor) return int.reply({ content: "Sorry, I couldn't find that user.", flags: ["Ephemeral"] });
+  if (!sponsor.roles.cache.hasAny(u.sf.roles.sponsors.pro, u.sf.roles.sponsors.legendary)) return int.reply({ content: `${sponsor} isn't a Pro Sponsor!`, flags: ["Ephemeral"] });
+
+  const sponsorChannel = u.db.sheets.sponsors.get(sponsor.id)?.channel;
+  if (sponsorChannel) return int.reply({ content: `Looks like ${sponsor} already has a Pro Sponsor channel at ${sponsorChannel}!`, flags: ["Ephemeral"] });
+
+  await int.deferReply({ flags: ["Ephemeral"] });
+
+  const channel = await createSponsorChannel(sponsor);
+  await int.editReply(`Alright! ${sponsor} should be all set. Their Pro Sponsor channel (${channel}) has been created and they should be able to see it.`);
+}
+
 const Module = new Augur.Module()
 .addInteraction({
   id: u.sf.commands.slashManager,
@@ -123,8 +197,20 @@ const Module = new Augur.Module()
   process: async (int) => {
     switch (int.options.getSubcommand()) {
       case "transfer": return slashManagerUserTransfer(int);
+      case "channel": return slashManagerSponsorChannel(int);
       default: throw new Error("Unhandled Subcommand - /mgr");
     }
+  }
+})
+.addEvent("guildMemberUpdate", async (oldMember, member) => {
+  const sponsorRoles = [u.sf.roles.sponsors.pro, u.sf.roles.sponsors.legendary];
+  // They recieved a pro sponsor role
+  if (!oldMember.roles.cache.hasAny(...sponsorRoles) && member.roles.cache.hasAny(...sponsorRoles)) {
+    const sponsorChannel = u.db.sheets.sponsors.get(member.id)?.channel;
+    if (sponsorChannel) return;
+
+    await createSponsorChannel(member);
+    return;
   }
 });
 

@@ -28,10 +28,26 @@ const user = new u.subGroup()
   .setDescription("Manage users")
   .addSubcommand(transfer);
 
+const channel = new u.sub()
+  .setName("channel")
+  .setDescription("Set up a Pro Sponsor channel")
+  .addUserOption(
+    new u.user()
+      .setName("sponsor")
+      .setDescription("The sponsor whose channel needs to be set up")
+      .setRequired(true)
+  );
+
+const sponsor = new u.subGroup()
+  .setName("sponsor")
+  .setDescription("Manage sponsor channels and emoji")
+  .addSubcommand(channel);
+
 module.exports = new u.cmd()
   .setName("manager")
   .setDescription("Commands for the Discord Managers")
   .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.privateCommand)
   .addSubcommandGroup(user)
+  .addSubcommandGroup(sponsor)
   .toJSON();

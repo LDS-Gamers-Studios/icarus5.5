@@ -34,12 +34,6 @@ const dangerRoles = [
   u.sf.roles.live, u.sf.roles.houses.head, u.sf.roles.houses.emberGuardian,
 ];
 
-const emojis = [
-  ["buttermelon", u.sf.emoji.buttermelon],
-  ["noice", u.sf.emoji.noice],
-  ["carp", "🐟"]
-];
-
 /**
  * Log user updates
  * @param {Discord.GuildMember | Discord.PartialGuildMember | Discord.User | Discord.PartialUser} oldUser
@@ -268,18 +262,6 @@ const Module = new Augur.Module()
 })
 .addEvent("guildMemberUpdate", update)
 .addEvent("userUpdate", update)
-.addEvent("messageCreate", async (msg) => {
-  if (!msg.author.bot && msg.guild?.id === u.sf.ldsg) {
-    // sponsor pings
-    for (const [sponsor, info] of u.db.sheets.sponsors) {
-      if (info.enabled && info.emojiId && msg.mentions.members?.has(sponsor)) await msg.react(info.emojiId).catch(u.noop);
-    }
-    // trigger words
-    for (const [word, emoji] of emojis) {
-      if (Math.random() < 0.3 && msg.content.toLowerCase().includes(word)) await msg.react(emoji).catch(u.noop);
-    }
-  }
-})
 .setClockwork(() => {
   return setInterval(() => {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
