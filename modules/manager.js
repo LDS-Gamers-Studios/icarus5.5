@@ -119,14 +119,15 @@ async function slashManagerUserTransfer(int) {
 
 /** @param {Discord.GuildMember} sponsor */
 async function createSponsorChannel(sponsor) {
-// Create the channel
-  const channel = await sponsor.guild.channels.create({
+  // Create the channel
+  const guild = sponsor.guild;
+  const channel = await guild.channels.create({
     name: `${sponsor.displayName}-hangout`,
     type: Discord.ChannelType.GuildText,
     parent: u.sf.channels.sponsorCategory,
     permissionOverwrites: [
       { id: sponsor.client.user.id, allow: ["ViewChannel"] },
-      { id: sponsor.guild.id, deny: ["ViewChannel"] },
+      { id: guild.id, deny: ["ViewChannel"] },
       { id: sponsor.id, allow: ["ViewChannel", "ManageChannels", "ManageMessages", "ManageWebhooks"] }
     ],
     reason: "Sponsor Perk"
@@ -153,6 +154,7 @@ async function createSponsorChannel(sponsor) {
   u.db.sheets.sponsors.set(sponsor.id, u.db.sheets.schemas.sponsors(row));
   u.db.sheets.sponsors.rows.push(row);
 
+  // Send welcome message
   await channel.send({
     content: `${sponsor}, welcome to your private channel! Thank you for being a Pro Sponsor! Your contributions each month are very much appreciated! Please accept this channel as a token of our appreciation.\n\n` +
       "You should have some administrative abilities for this channel (including changing the name and description), as well as the ability to add people to the channel with `/sponsor invite @user`." +
@@ -161,12 +163,13 @@ async function createSponsorChannel(sponsor) {
     allowedMentions: { parse: ["users"] }
   }).catch((e) => u.errorHandler(e, "Couldn't send sponsor channel creation welcome"));
 
+  // Send mod log
   const embed = u.embed({ author: sponsor })
     .setTitle("Sponsor Channel Created")
     .setDescription(`A Pro Sponsor channel was created for ${sponsor}. They have a few extra permissions there.`)
     .setColor(c.colors.info);
 
-  await sponsor.guild.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] }).catch(u.noop);
+  await guild.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed] }).catch(u.noop);
 
   return channel;
 }
