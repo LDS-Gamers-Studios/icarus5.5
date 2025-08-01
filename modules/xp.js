@@ -224,7 +224,7 @@ async function rankClockwork(client) {
 
     // Remind mods to trust people!
     try {
-      if (!member.roles.cache.has(u.sf.roles.moderation.trusted)) {
+      if (!member.roles.cache.has(u.sf.roles.moderation.trusted) && !banned.trustedAlerts.includes(user.discordId)) {
         let content;
         // they posted 25 messages
         if (user.posts % 25 === 0 && backupActive.get(user.discordId)?.find(v => v.isMessage)) {
