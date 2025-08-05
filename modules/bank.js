@@ -425,7 +425,7 @@ Module.addInteraction({
 })
 .setShared({ buyGame, limit, gb, ember })
 .addEvent("interactionCreate", (int) => {
-  if (!int.isButton() || !int.inCachedGuild()) return;
+  if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("rac")) return;
   if (!u.perms.calc(int.member, ["mgr"])) return int.reply({ content: "This button is for MGR+", flags: ["Ephemeral"] });
 
   switch (int.customId) {
