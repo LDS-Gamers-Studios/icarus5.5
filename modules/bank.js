@@ -283,6 +283,128 @@ async function slashBankDiscount(interaction) {
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
+async function slashBankRedeemRac(interaction) {
+  const balance = await u.db.bank.getBalance(interaction.user.id);
+  if (balance.em < 700) return interaction.reply({ content: `Sorry, that costs ${ember}700. You only have ${balance.em}.`, flags: ["Ephemeral"] });
+
+  const nameModal = new u.Modal()
+    .setTitle("Rent A Channel")
+    .setCustomId(u.customId())
+    .addComponents(
+      u.ModalActionRow().addComponents(
+        new u.TextInput()
+          .setCustomId("channelName")
+          .setLabel("Channel Name")
+          .setRequired(true)
+          .setStyle(Discord.TextInputStyle.Short)
+      ),
+      u.ModalActionRow().addComponents(
+        new u.TextInput()
+          .setCustomId("description")
+          .setLabel("Description/Context")
+          .setRequired(false)
+          .setStyle(Discord.TextInputStyle.Paragraph)
+      )
+    );
+
+  await interaction.showModal(nameModal);
+
+  const response = await interaction.awaitModalSubmit({ time: 5 * 60_000 }).catch(() => null);
+  if (!response) return interaction.editReply("I fell asleep waiting for your input...");
+
+  await response.deferReply({ flags: ["Ephemeral"] });
+
+  const channelName = response.fields.getTextInputValue("channelName");
+  const embed = u.embed({ author: interaction.member })
+    .setTitle("RAC Thread Request")
+    .setDescription(`${interaction.member} has requested a RAC thread.`)
+    .addFields([
+      { name: "Channel Name", value: channelName },
+      { name: "Description/Context", value: response.fields.getTextInputValue("description") || "None Provided" }
+    ])
+    .setFooter({ text: interaction.member.id });
+
+  const buttons = u.MessageActionRow().addComponents(
+    new u.Button().setCustomId("racApprove").setLabel("Approve").setStyle(Discord.ButtonStyle.Success),
+    new u.Button().setCustomId("racApproveRateM").setLabel("Approve (Rated M RAC)").setStyle(Discord.ButtonStyle.Secondary),
+    new u.Button().setCustomId("racReject").setLabel("Reject").setStyle(Discord.ButtonStyle.Danger),
+  );
+
+  const alertChannel = interaction.client.getTextChannel(u.sf.channels.team.logistics);
+  if (!alertChannel) throw new Error("Couldn't find logistics channel");
+
+  await alertChannel.send({ content: `<@&${u.sf.roles.team.manager}>`, embeds: [embed], components: [buttons], allowedMentions: { parse: ["roles"] } });
+  await u.db.bank.addCurrency({
+    discordId: interaction.member.id,
+    currency: "em",
+    description: `RAC Thread - ${channelName.slice(0, 20)}`,
+    hp: false,
+    otherUser: interaction.client.user.id,
+    value: -700
+  });
+
+  embed.addFields({ name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em - 700}` });
+  return response.editReply({ content: "Your RAC Thread request was successful!", embeds: [embed] });
+}
+
+/** @param {Augur.GuildInteraction<"Button">} int */
+async function buttonRacApprove(int, ratedM = false) {
+  const channelId = ratedM ? u.sf.channels.racHub2 : u.sf.channels.racHub;
+  const channel = int.client.getTextChannel(channelId);
+  if (!channel) throw new Error(`Couldn't find the RAC ${ratedM ? "2" : ""} channel.`);
+
+  const embed = int.message.embeds[0]?.data;
+  if (!embed?.fields || !embed?.footer?.text) throw new Error("Couldn't parse RAC request embed");
+
+  await int.deferUpdate();
+
+  const thread = await channel.threads.create({
+    name: embed.fields[0].value,
+    autoArchiveDuration: Discord.ThreadAutoArchiveDuration.OneWeek,
+    reason: "New RAC"
+  });
+
+  const user = int.guild.members.cache.get(embed.footer.text);
+  if (user) {
+    await thread.send({ content: `${user}, your requested Rent-A-Channel Thread has been approved.`, allowedMentions: { parse: ["users"] } });
+    if (ratedM && !user.roles.cache.has(u.sf.roles.rated_m)) await user.send({ content: "Your requested Rent-A-Channel Thread has been approved. You'll need the Rated M role to access it." }).catch(u.noop);
+  } else {
+    await thread.send({ content: `Description/Context: ${embed.fields[1]?.value}` });
+  }
+
+  const updatedEmbed = u.embed(embed).setColor("Green");
+  return int.editReply({ components: [], content: "RAC Channel Approved", embeds: [updatedEmbed] });
+}
+
+/** @param {Augur.GuildInteraction<"Button">} int */
+async function buttonRacReject(int) {
+  const embed = int.message.embeds[0]?.data;
+  if (!embed?.fields || !embed?.footer?.text) throw new Error("Couldn't parse RAC request embed");
+
+  await int.deferUpdate();
+
+  const user = int.guild.members.cache.get(embed.footer.text);
+
+  await u.db.bank.addCurrency({
+    discordId: embed.footer.text,
+    currency: "em",
+    description: `RAC Thread Refund`,
+    hp: false,
+    otherUser: int.client.user.id,
+    value: 700
+  });
+
+  const updatedEmbed = u.embed(embed).setColor("Red");
+
+  const response = await user?.send({
+    content: `Unfortunately your RAC Thread request for ${embed.fields[0].value} was rejected. It might already exist, violate our code of conduct, or not be a good fit for the server, among other reasons.\n` +
+      `If you have any questions, feel free to contact a Discord Manager.\nYour ${ember}700 has been refunded.`,
+    embeds: [updatedEmbed]
+  }).catch(u.noop);
+
+  await int.editReply({ content: `RAC Thread Rejected. ${response ? "" : "I wasn't able to notify the user."}`, components: [], embeds: [updatedEmbed] });
+}
 
 Module.addInteraction({
   name: "bank",
@@ -297,12 +419,31 @@ Module.addInteraction({
       case "list": return slashBankGameList(interaction);
       case "redeem": return slashBankGameRedeem(interaction);
       case "discount": return slashBankDiscount(interaction);
+      case "redeem-ember": {
+        switch (interaction.options.getString("item")) {
+          case "rac": return slashBankRedeemRac(interaction);
+          default: return u.errorHandler(new Error("Unhandled Bank Purchase"), interaction);
+        }
+      }
       // case "award": located in team.js
       default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
     }
   }
 })
-.setShared({ buyGame, limit, gb, ember });
+.setShared({ buyGame, limit, gb, ember })
+.addEvent("interactionCreate", (int) => {
+  if (!int.isButton() || !int.inCachedGuild()) return;
+  if (!u.perms.calc(int.member, ["mgr"])) return int.reply({ content: "This button is for MGR+", flags: ["Ephemeral"] });
+
+  switch (int.customId) {
+    case "racApprove": buttonRacApprove(int); break;
+    case "racApproveRateM": buttonRacApprove(int, true); break;
+    case "racReject": buttonRacReject(int); break;
+    default: return;
+  }
+
+  return true;
+});
 
 /**
  * @typedef {{ buyGame: buyGame, limit: limit, gb: gb, ember: ember }} BankShared
