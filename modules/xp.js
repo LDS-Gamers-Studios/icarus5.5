@@ -1,6 +1,5 @@
 // @ts-check
 const Discord = require("discord.js");
-const banned = (require("../data/banned.json")).features.xp;
 const Augur = require("augurbot-ts");
 const u = require("../utils/utils");
 const mc = require("../utils/modCommon");
@@ -149,6 +148,7 @@ async function reactionXp(reaction, user, add = true) {
   await reaction.message.fetch();
   await reaction.message.member?.fetch();
 
+  const banned = mc.getBanList().features.xp;
   if (banned.reactionsGiving.includes(user.id)) return;
   if (banned.reactionsReceiving.includes(reaction.message.author?.id ?? "")) return;
 
@@ -195,6 +195,7 @@ async function rankClockwork(client) {
   const ldsg = client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) throw new Error("Couldn't get LDSG - Rank Clockwork");
 
+  const banned = mc.getBanList().features.xp;
   // give xp to people active in voice chats
   ldsg.members.cache.filter(m => m.voice.channel && !m.voice.mute && !m.voice.deaf && m.voice.channel.members.size > 1)
     .forEach(m => {
@@ -290,6 +291,7 @@ Module.setUnload(() => active)
   .addCommand({ name: "prime", process: DEBUGFeatherPrime, onlyOwner: true })
   .addCommand({ name: "status", process: DEBUGFeatherState, onlyOwner: true })
   .addEvent("messageCreate", (msg) => {
+    const banned = mc.getBanList().features.xp;
     if (
       !msg.inGuild() || msg.guild.id !== u.sf.ldsg || // only in LDSG
       msg.member?.roles.cache.has(u.sf.roles.moderation.muted) || // no muted allowed
@@ -323,6 +325,8 @@ Module.setUnload(() => active)
   .addEvent("messageUpdate", async (msg, newMsg) => {
     // see if it's a finished poll outside of a VC
     if (!msg.inGuild() || !msg.poll || !(!msg.poll.resultsFinalized && newMsg.poll?.resultsFinalized) || msg.channel.type === Discord.ChannelType.GuildVoice) return;
+
+    const banned = mc.getBanList().features.xp;
     if (banned.polls.includes(msg.author.id)) return;
 
     // people can only get xp once per poll. no multiple answers shenanigans

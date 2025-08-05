@@ -3,9 +3,7 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  config = require('../config/config.json'),
-  /** @type {string[]} */
-  banned = require("../data/banned.json").features.welcome;
+  config = require('../config/config.json');
 
 const mutedPerms = {
   // text
@@ -227,7 +225,7 @@ const Module = new Augur.Module()
 
       const { enabled, count } = config.memberMilestone;
       if (enabled && (guild.memberCount < count)) welcomeString += `\n*${count - guild.memberCount} more members until we have a pizza party!*`;
-      if (!member.roles.cache.has(u.sf.roles.moderation.muted) && !member.user.bot && !banned.includes(member.id)) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
+      if (!member.roles.cache.has(u.sf.roles.moderation.muted) && !member.user.bot && !c.getBanList().features.welcome.includes(member.id)) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
       if (guild.memberCount === count) {
         await general?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:`);
         await modLogs?.send({ content: `:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: <@${u.sf.other.ghost}> <@${config.ownerId}> <@&${u.sf.roles.team.management}*`, allowedMentions: { parse: ['roles', 'users'] } });

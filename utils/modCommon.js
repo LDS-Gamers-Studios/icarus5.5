@@ -91,6 +91,8 @@ const modCommon = {
   messageFromMods,
   revert: retract,
   colors: embedColors,
+  getBanList: () => require("../data/banned.json"),
+  refreshBanList: () => delete require.cache[require.resolve("../data/banned.json")],
   /**
    * BAN HAMMER!!!
    * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
