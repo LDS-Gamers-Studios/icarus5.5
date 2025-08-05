@@ -87,19 +87,14 @@ async function slashBankGive(interaction) {
     const value = Math.min(MAX, interaction.options.getInteger("amount", true));
     let reason = interaction.options.getString("reason");
 
-    const toIcarus = recipient?.id === interaction.client.user.id;
     let reply = "";
 
     if (!recipient) {
       return interaction.reply({ content: "You can't give to ***nobody***, silly.", flags: ["Ephemeral"] });
     } else if (recipient?.id === giver.id) {
       reply = "You can't give to ***yourself***, silly.";
-    } else if (toIcarus && currency === "gb") {
-      reply = `I don't need any ${coin}! Keep em for yourself.`;
-    } else if (!toIcarus && recipient?.user.bot) {
+    } else if (recipient?.user.bot) {
       reply = `Bots don't really have a use for ${coin}.`;
-    } else if (toIcarus && (!reason || reason.length === 0)) {
-      reply = `You need to have a reason to give ${coin} to me!`;
     } else if (value === 0) {
       reply = "You can't give ***nothing***.";
     } else if (value < 0) {
@@ -115,7 +110,8 @@ async function slashBankGive(interaction) {
       return interaction.reply({ content: `You don't have enough ${coin} to give! You can give up to ${coin}${account[currency]}`, flags: ["Ephemeral"] });
     }
 
-    if (!toIcarus) {
+    // DEPOSIT BLOCK
+    {
       const deposit = {
         currency,
         discordId: recipient.id,
@@ -134,34 +130,31 @@ async function slashBankGive(interaction) {
         .setDescription(`${u.escapeText(giver.toString())} just gave you ${coin}${receipt.value}.`);
       recipient.send({ embeds: [embed] }).catch(u.noop);
     }
+
     await interaction.reply(`${coin}${value} sent to ${u.escapeText(recipient.displayName)} for: ${reason}`);
     u.clean(interaction);
 
-    const withdrawal = {
-      currency,
-      discordId: giver.id,
-      description: reason,
-      value: -value,
-      otherUser: recipient.id,
-      hp: false
-    };
-    const receipt = await u.db.bank.addCurrency(withdrawal);
-    const balance = await u.db.bank.getBalance(giver.id);
-    const embed = u.embed({ author: interaction.client.user })
-      .addFields(
-        { name: "Reason", value: reason },
-        { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
-      )
-      .setDescription(`You just gave ${coin}${-receipt.value} to ${u.escapeText(recipient.displayName)}.`);
-    giver.send({ embeds: [embed] }).catch(u.noop);
-
-    if (toIcarus) {
-      const hoh = interaction.client.getTextChannel(u.sf.channels.team.logistics);
-      const hohEmbed = u.embed({ author: giver })
-        .setDescription(`**${u.escapeText(giver.displayName)}** gave me ${coin}${value}.`)
-        .addFields({ name: "Reason", value: reason });
-      hoh?.send({ embeds: [hohEmbed] });
+    // WITHDRAWAL BLOCK
+    {
+      const withdrawal = {
+        currency,
+        discordId: giver.id,
+        description: reason,
+        value: -value,
+        otherUser: recipient.id,
+        hp: false
+      };
+      const receipt = await u.db.bank.addCurrency(withdrawal);
+      const balance = await u.db.bank.getBalance(giver.id);
+      const embed = u.embed({ author: interaction.client.user })
+        .addFields(
+          { name: "Reason", value: reason },
+          { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
+        )
+        .setDescription(`You just gave ${coin}${-receipt.value} to ${u.escapeText(recipient.displayName)}.`);
+      giver.send({ embeds: [embed] }).catch(u.noop);
     }
+
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
