@@ -13,15 +13,6 @@ let httpServer;
 /** @type {import("socket.io").Server} */
 let io;
 
-/** @type {ReturnType<import("express")>} */
-let app;
-
-/** @type {ReturnType<createServer>} */
-let httpServer;
-
-/** @type {import("socket.io").Server} */
-let io;
-
 if (config.siteOn) {
   // require modules!
   // @ts-ignore
