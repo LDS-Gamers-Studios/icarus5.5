@@ -69,7 +69,7 @@ const getid = new u.sub()
 
 const register = new u.sub()
   .setName("register")
-  .setDescription("Register slash commands");
+  .setDescription("[ADMIN] Register slash commands");
 
 const status = new u.sub()
   .setName("status")

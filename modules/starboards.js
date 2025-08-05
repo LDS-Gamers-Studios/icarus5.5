@@ -41,7 +41,7 @@ async function checkStarBoard(reaction, user) {
 
     const ref = await reaction.message.fetchReference().catch(u.noop);
     if (ref) {
-      const refEmbed = u.msgReplicaEmbed(ref, `Replying to ${ref.member?.displayName || ref.author.displayName}`, false, true)
+      const refEmbed = u.msgReplicaEmbed(ref, "", false, true)
         .setColor(0x202020);
       embeds.unshift(refEmbed);
       await u.db.starboard.saveMessage(ref.id, ref.createdTimestamp);
@@ -55,12 +55,16 @@ async function checkStarBoard(reaction, user) {
     }
 
     // add to the approval queue
-    embed.addFields({ name: "Destination", value: `${board.channel} | ${board.channel.id}` });
-    const row = u.MessageActionRow().addComponents(
-      new u.Button().setCustomId("starboardApprove").setLabel("Approve").setStyle(Discord.ButtonStyle.Success),
-      new u.Button().setCustomId("starboardReject").setLabel("Reject").setStyle(Discord.ButtonStyle.Danger)
-    );
-    reaction.client.getTextChannel(u.sf.channels.starboardApprovals)?.send({ embeds, components: [row] });
+    const components = [
+      u.MessageActionRow().addComponents(
+        new u.Button().setCustomId("starboardReject").setLabel("Reject").setStyle(Discord.ButtonStyle.Danger),
+      ),
+      u.MessageActionRow().addComponents(
+        new u.SelectMenu.String().setCustomId("starboardApprove").setMaxValues(1).setMinValues(1).setPlaceholder("Select Destination")
+          .addOptions(u.db.sheets.starboards.boards.map(b => ({ label: `#${b.channel.name}`, value: b.channel.id, emoji: [...b.priorityEmoji.values()][0] || undefined })))
+      )
+    ];
+    reaction.client.getTextChannel(u.sf.channels.starboardApprovals)?.send({ embeds, components });
     return;
 
   } catch (error) {
@@ -72,33 +76,19 @@ const Module = new Augur.Module()
   .addEvent("messageReactionAdd", checkStarBoard)
   .addInteraction({
     id: "starboardApprove",
-    type: "Button",
+    type: "SelectMenuString",
     onlyGuild: true,
     permissions: (int) => u.perms.calc(int.member, ["team"]),
     process: async (int) => {
       await int.deferUpdate();
 
       if (int.message.partial) await int.message.fetch();
-      const embed1 = int.message.embeds?.[0];
-      const embed2 = int.message.embeds?.[1];
 
-      const modifyingEmbed = embed2 ?? embed1;
-      // there was a reply embed
-
-      const channelId = modifyingEmbed?.fields?.find(f => f.name === "Destination")?.value.split(" | ")[1];
-      const channel = int.client.getTextChannel(channelId || "");
-
-      if (!modifyingEmbed || !channel) return int.editReply("Sorry, I couldn't repost this message.");
-
-      const richEmbed = u.embed(modifyingEmbed)
-        .setFields(modifyingEmbed.fields.filter(f => f.name !== "Destination"));
-
-      /** @type {(Discord.Embed | Discord.EmbedBuilder)[]} */
-      const embeds = [richEmbed];
-      if (embed2 && embed1) embeds.unshift(embed1);
+      const channel = int.client.getTextChannel(int.values[0] || "");
+      if (!channel) return int.editReply("Sorry, I couldn't repost this message.");
 
       await int.editReply({ components: [], content: "Approved" });
-      channel.send({ embeds });
+      channel.send({ embeds: int.message.embeds });
     }
   })
   .addInteraction({

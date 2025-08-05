@@ -11,7 +11,7 @@ const bank = require("./controllers/bank"),
   starboard = require("./controllers/starboard"),
   tournament = require("./controllers/tournament");
 
-const { data, loadData } = require("./sheets");
+const { data, loadData, schemas } = require("./sheets");
 
 mongoose.connect(config.db.db, config.db.settings);
 
@@ -24,5 +24,5 @@ module.exports = {
   reminder,
   starboard,
   tournament,
-  sheets: { ...data, loadData }
+  sheets: { ...data, loadData, schemas }
 };

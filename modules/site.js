@@ -2,6 +2,16 @@
 const Augur = require("augurbot-ts");
 const config = require("../config/config.json");
 const { createServer } = require("http");
+const u = require("../utils/utils");
+
+/** @type {ReturnType<import("express")>} */
+let app;
+
+/** @type {ReturnType<createServer>} */
+let httpServer;
+
+/** @type {import("socket.io").Server} */
+let io;
 
 /** @type {ReturnType<import("express")>} */
 let app;
@@ -43,10 +53,13 @@ if (config.siteOn) {
     limit: 5,
     windowMs: 3_000,
     message: { msg: "You're going too fast! Slow down!" },
-    skip: (r) => r.url.startsWith("/streaming")
+    // @ts-ignore
+    skip: (r) => r.url.startsWith("/streaming") && Boolean(r.user) && u.perms.calc(r.user, ["team"])
   });
 
   app.use(express.json())
+    .disable("x-powered-by")
+    .set("trust proxy", siteConfig.deployBuild ? 1 : 0)
     .use(express.urlencoded({ extended: false }))
     .use(cors({
       origin: siteConfig.allowedCorsOrigins,
@@ -56,7 +69,7 @@ if (config.siteOn) {
       res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
       res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
       res.setHeader("X-Frame-Options", "DENY");
-      // res.setHeader("Content-Security-Policy", siteConfig.cspHeaders.join("");
+      // res.setHeader("Content-Security-Policy", siteConfig.cspHeaders.join(""));
       next();
     });
 
@@ -94,9 +107,11 @@ if (config.siteOn) {
   // expose backend routes
   app.use('/api', globalLimit, (req, res, next) => {
     if (siteConfig.monitoring) {
-      // @ts-ignore sometimes it picks on some nonsense
-      // eslint-disable-next-line no-console
-      console.log(`${req.user?.displayName ?? "Unauthorized User"} [${req.method}] ${req.path}`);
+      if (!(req.path.startsWith("/streaming/overlay") && !req.path.endsWith(".html"))) {
+        // @ts-ignore sometimes it picks on some nonsense
+        // eslint-disable-next-line no-console
+        console.log(`${req.user?.displayName ?? "Unauthorized User"} [${req.method}] ${req.path}`);
+      }
     }
     next();
   }, routes);

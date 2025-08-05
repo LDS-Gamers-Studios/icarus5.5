@@ -3,9 +3,7 @@ const Augur = require("augurbot-ts"),
   Discord = require('discord.js'),
   u = require("../utils/utils"),
   c = require("../utils/modCommon"),
-  config = require('../config/config.json'),
-  /** @type {string[]} */
-  banned = require("../data/banned.json").features.welcome;
+  config = require('../config/config.json');
 
 const mutedPerms = {
   // text
@@ -32,12 +30,6 @@ const tier3 = 14;
 const dangerRoles = [
   ...Object.values(u.sf.roles.team).filter(sf => ![u.sf.roles.team.botTeam, u.sf.roles.team.emeritus].includes(sf)),
   u.sf.roles.streaming.live, u.sf.roles.houses.head, u.sf.roles.houses.emberGuardian,
-];
-
-const emojis = [
-  ["buttermelon", u.sf.emoji.buttermelon],
-  ["noice", u.sf.emoji.noice],
-  ["carp", "🐟"]
 ];
 
 /**
@@ -233,7 +225,7 @@ const Module = new Augur.Module()
 
       const { enabled, count } = config.memberMilestone;
       if (enabled && (guild.memberCount < count)) welcomeString += `\n*${count - guild.memberCount} more members until we have a pizza party!*`;
-      if (!member.roles.cache.has(u.sf.roles.moderation.muted) && !member.user.bot && !banned.includes(member.id)) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
+      if (!member.roles.cache.has(u.sf.roles.moderation.muted) && !member.user.bot && !c.getBanList().features.welcome.includes(member.id)) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
       if (guild.memberCount === count) {
         await general?.send(`:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:`);
         await modLogs?.send({ content: `:tada: :confetti_ball: We're now at ${count} members! :confetti_ball: :tada:\n*pinging for effect: <@${u.sf.other.ghost}> <@${config.ownerId}> <@&${u.sf.roles.team.management}*`, allowedMentions: { parse: ['roles', 'users'] } });
@@ -268,18 +260,6 @@ const Module = new Augur.Module()
 })
 .addEvent("guildMemberUpdate", update)
 .addEvent("userUpdate", update)
-.addEvent("messageCreate", async (msg) => {
-  if (!msg.author.bot && msg.guild?.id === u.sf.ldsg) {
-    // sponsor pings
-    for (const [sponsor, info] of u.db.sheets.sponsors) {
-      if (info.enabled && info.emojiId && msg.mentions.members?.has(sponsor)) await msg.react(info.emojiId).catch(u.noop);
-    }
-    // trigger words
-    for (const [word, emoji] of emojis) {
-      if (Math.random() < 0.3 && msg.content.toLowerCase().includes(word)) await msg.react(emoji).catch(u.noop);
-    }
-  }
-})
 .setClockwork(() => {
   return setInterval(() => {
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
