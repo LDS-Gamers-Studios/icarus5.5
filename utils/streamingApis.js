@@ -3,19 +3,41 @@ const axios = require("axios");
 const u = require("./utils");
 const config = require("../config/config.json");
 const extralife = require("./extralifeTypes");
+const { Collection } = require("discord.js");
 
 const GAMES_DB_API = "https://api.thegamesdb.net/v1";
 const EXTRA_LIFE_API = "https://extralife.donordrive.com/api";
 const EXTRA_LIFE_TEAM = config.twitch.elTeam;
+
+
 /**
  * Find the rating for a game given its name
  * @param {string} gameName
- * @returns {Promise<{ game_title: string, rating: string }[] | undefined>}
+ * @param {Collection<string, {name: string, rating?: string}>} cache
+ * @returns {Promise<{ name: string, rating?: string }>}
  */
-function fetchGameRating(gameName) {
-  return call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
-    .then(data => data.games);
+async function fetchGameRating(gameName, cache) {
+  try {
+    if (!config.api.thegamesdb || !gameName) return { name: gameName };
+
+    const got = cache.get(gameName);
+    if (got) return got;
+
+    /** @type {{ game_title: string, rating: string }[] | undefined} */
+    const apiGame = await call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
+      .then(d => d.games);
+
+    // the api can return multiple games since we use the alternates field
+    const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === gameName.toLowerCase() && g.rating !== "Not Rated");
+    const withRating = { name: gameName, rating: ratings?.[0].rating };
+    cache.set(gameName, withRating);
+
+    return withRating;
+  } catch (error) {
+    return { name: gameName };
+  }
 }
+
 
 const extraLife = {
   getTeam: async () => {
@@ -38,13 +60,16 @@ const extraLife = {
   }
 };
 
+
 /** @param {string} error  */
 function twitchErrorHandler(error) {
-  error = error.toString()
-    .replace(new RegExp(config.twitch.clientSecret, "g"), "<SECRET>")
-    .replace(new RegExp(config.api.thegamesdb, "g"), "<SECRET>");
+  error = error.toString();
+  if (config.twitch.clientSecret) error = error.replace(new RegExp(config.twitch.clientSecret, "g"), "<TWITCH SECRET>");
+  if (config.api.thegamesdb) error = error.replace(new RegExp(config.api.thegamesdb, "g"), "<SECRET>");
+
   u.errorHandler(new Error(error), "Twitch API");
 }
+
 
 /**
  * @template T
@@ -56,6 +81,7 @@ function call(url) {
   return axios(url).catch(twitchErrorHandler)
     .then(/** @param {{ data: T }} res */res => res?.data);
 }
+
 
 module.exports = {
   extraLife,

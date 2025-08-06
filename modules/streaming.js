@@ -1,19 +1,27 @@
 // @ts-check
 const Augur = require("augurbot-ts");
 const Discord = require("discord.js");
-const config = require("../config/config.json");
-const u = require("../utils/utils");
-const c = require("../utils/modCommon");
+const fs = require("fs");
 const Twitch = require("@twurple/api");
 const TwitchAuth = require("@twurple/auth").AppTokenAuthProvider;
 const NoRepeat = require("no-repeat");
-const fs = require("fs");
+
+const config = require("../config/config.json");
+const u = require("../utils/utils");
+const c = require("../utils/modCommon");
 const api = require("../utils/streamingApis");
 
 const teamId = config.twitch.elTeam;
 const Module = new Augur.Module();
 
 const colors = { elGreen: 0x7fd836, elBlue: 0x26c2eb, twitch: 0x6441A4 };
+
+const assets = {
+  el: {
+    logo: "https://assets.donordrive.com/extralife/images/$event550$/facebookImage.png",
+    teamIcon: `https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${teamId}`
+  }
+};
 
 function extraLife() {
   return config.devMode || [9, 10].includes(new Date().getMonth());
@@ -50,32 +58,7 @@ const approvalText = "## Congratulations!\n" +
   "While streaming, please remember the [Streaming Guidelines](<https://goo.gl/Pm3mwS>) and [LDSG Code of Conduct](<http://ldsgamers.com/code-of-conduct>).\n" +
   "-# LDSG may make changes to the Approved Streamers list from time to time at its discretion.";
 
-const notEL = "Extra Life isn't quite ready yet! Try again in November.";
-
-/** @param {string} gameName */
-async function fetchGameRating(gameName) {
-  try {
-    // can't find ratings, so no need to continue
-    if (!config.api.thegamesdb || !gameName) return { name: gameName };
-
-    // use cache if possible
-    const got = twitchGames.get(gameName);
-    if (got) return got;
-
-    // fetch rating from thegamesdb
-    const apiGame = await api.fetchGameRating(gameName);
-
-    // the api can return multiple games since we use the alternates field
-    const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === gameName.toLowerCase() && g.rating !== "Not Rated");
-    const withRating = { name: gameName, rating: ratings?.[0]?.rating };
-
-    twitchGames.set(gameName, withRating);
-    return withRating;
-
-  } catch (error) {
-    return { name: gameName };
-  }
-}
+const notEL = "Extra Life isn't quite ready yet! Try again in October.";
 
 async function checkStreams() {
   try {
@@ -112,15 +95,15 @@ async function extraLifeEmbeds() {
 
     const embed = u.embed()
       .setTitle("Live from the Extra Life Team!")
+      .setImage(assets.el.logo)
       .setColor(colors.elGreen);
 
     const channels = streams.sort((a, b) => a.userDisplayName.localeCompare(b.userDisplayName)).map(s => {
       const game = twitchGames.get(s.gameId)?.name;
-      return `**${s.userDisplayName} ${game ? ` playing ${game}` : ""}**\n[${u.escapeText(s.title)}](${twitchURL(s.userDisplayName)}`;
+      return `**${s.userDisplayName} ${game ? `playing ${game}` : ""}**\n[${u.escapeText(s.title)}](${twitchURL(s.userDisplayName)}\n`;
     });
 
-    const embeds = u.pagedEmbedsDescription(embed, channels);
-    return embeds;
+    return u.pagedEmbedsDescription(embed, channels);
   } catch (error) {
     u.errorHandler(error, "Extra Life Embed Fetch");
     return [];
@@ -214,8 +197,8 @@ async function fetchExtraLifeTeam() {
 
       const publicEmbed = u.embed().setColor(colors.elBlue)
         .setTitle("New Extra Life Donation")
-        .setURL(`https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${teamId}`)
-        .setThumbnail("https://assets.donordrive.com/extralife/images/$event550$/facebookImage.png")
+        .setURL(assets.el.teamIcon)
+        .setThumbnail(assets.el.logo)
         .setTimestamp(new Date(donation.createdDateUTC))
         .setDescription(`Someone just donated **$${donation.amount}** to our Extra Life team! That's ${almosts.getRandom()} **${prices.getRandom}!**\n(btw, that means we're at **$${team.sumDonations}**, which is **${(team.sumDonations / team.fundraisingGoal * 100).toFixed(2)}%** of the way to our goal!)`);
 
@@ -297,7 +280,7 @@ async function processTwitch(igns) {
         // If they were streaming recently (within half an hour), don't post notifications
         if (status && (status.live || status.since > sinceThreshold)) continue;
 
-        const game = await fetchGameRating(stream.gameName);
+        const game = await api.fetchGameRating(stream.gameName, twitchGames);
 
         // filter out bad games
         if (game?.rating === "M - Mature 17+") continue;
@@ -475,7 +458,7 @@ async function slashTwitchLive(int) {
   const channels = [];
   const elChannels = [];
   for (const stream of streams) {
-    const game = await fetchGameRating(stream.gameName);
+    const game = await api.fetchGameRating(stream.gameName, twitchGames);
     if (game.rating === "M - Mature 17+") continue;
     const participant = elParticipants.get(stream.userName);
 
