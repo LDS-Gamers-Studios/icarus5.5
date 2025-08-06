@@ -15,6 +15,46 @@ const chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const nanoid = customAlphabet(chars, 8);
 
 /**
+ * @param {Omit<import("../database/controllers/bank").CurrencyRecord, "timestamp" | "discordId" | "otherUser">} withdrawalTransaciton
+ * @param {Discord.GuildMember} giver
+ * @param {Discord.GuildMember | null} [recipient]
+ * @param {Discord.EmbedBuilder} [giverEmbed]
+ */
+async function transferCurrency(withdrawalTransaciton, giver, recipient, giverEmbed) {
+
+  giverEmbed ??= u.embed({ author: giver.client.user });
+
+  const withdrawal = await u.db.bank.addCurrency({ ...withdrawalTransaciton, discordId: giver.id, otherUser: recipient?.id ?? giver.client.user.id });
+  const postWithdrawalBalance = await u.db.bank.getBalance(giver.id);
+
+  giverEmbed.addFields([
+    { name: "Transaction Note", value: withdrawalTransaciton.description },
+    { name: "Your New Balance", value: `${gb}${postWithdrawalBalance.gb}\n${ember}${postWithdrawalBalance.em}` },
+  ]);
+  giver.send({ embeds: [giverEmbed] }).catch(u.noop);
+
+  if (recipient && recipient.id !== recipient.client.user.id) {
+    const depositTransaction = {
+      ...withdrawalTransaciton,
+      discordId: recipient.id,
+      otherUser: giver.id,
+      value: -withdrawalTransaciton.value
+    };
+
+    const deposit = await u.db.bank.addCurrency(depositTransaction);
+    const postDepositBalance = await u.db.bank.getBalance(deposit.discordId);
+
+    const recipientEmbed = u.embed({ author: giver.client.user })
+        .addFields([
+          { name: "Reason", value: deposit.description },
+          { name: "Your New Balance", value: `${gb}${postDepositBalance.gb}\n${ember}${postDepositBalance.em}` }
+        ])
+        .setDescription(`${u.escapeText(giver.toString())} just gave you ${withdrawal.currency === "gb" ? gb : ember}${withdrawal.value}.`);
+    recipient.send({ embeds: [recipientEmbed] }).catch(u.noop);
+  }
+}
+
+/**
  * @param {ReturnType<import("../database/sheets")["data"]["games"]["available"]["ensure"]>} game
  * @param {Discord.GuildMember} user
  */
@@ -32,23 +72,21 @@ async function buyGame(game, user) {
   if (balance.gb < game.cost) return false;
 
   // make the transaction
-  await u.db.bank.addCurrency({
-    currency: "gb",
-    discordId: user.id,
-    description: `${game.title} (${game.system}) Game Key`,
-    value: -1 * game.cost,
-    otherUser: user.client.user.id,
-    hp: false
-  });
-
   const embed1 = u.embed()
     .setTitle("Game Code Redemption")
     .setDescription(`You just redeemed a key for:\n${game.title} (${game.system})`)
     .addFields(
       { name: "Cost", value: gb + game.cost, inline: true },
-      { name: "Balance", value: `${gb}${balance.gb - game.cost}`, inline: true },
       { name: "Game Key", value: game.key ?? "Unknown" }
     );
+
+  await transferCurrency({
+    currency: "gb",
+    description: `${game.title} (${game.system}) Game Key`,
+    hp: false,
+    value: -1 * game.cost
+  }, user, null, embed1);
+
 
   if (systems[game.system?.toLowerCase()]) {
     const sys = systems[game.system.toLowerCase()];
@@ -110,50 +148,15 @@ async function slashBankGive(interaction) {
       return interaction.reply({ content: `You don't have enough ${coin} to give! You can give up to ${coin}${account[currency]}`, flags: ["Ephemeral"] });
     }
 
-    // DEPOSIT BLOCK
-    {
-      const deposit = {
-        currency,
-        discordId: recipient.id,
-        description: reason,
-        value,
-        otherUser: giver.id,
-        hp: false
-      };
-      const receipt = await u.db.bank.addCurrency(deposit);
-      const balance = await u.db.bank.getBalance(recipient.id);
-      const embed = u.embed({ author: interaction.client.user })
-        .addFields(
-          { name: "Reason", value: reason },
-          { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
-        )
-        .setDescription(`${u.escapeText(giver.toString())} just gave you ${coin}${receipt.value}.`);
-      recipient.send({ embeds: [embed] }).catch(u.noop);
-    }
+    await transferCurrency({
+      currency,
+      description: reason,
+      hp: false,
+      value
+    }, giver, recipient);
 
     await interaction.reply(`${coin}${value} sent to ${u.escapeText(recipient.displayName)} for: ${reason}`);
     u.clean(interaction);
-
-    // WITHDRAWAL BLOCK
-    {
-      const withdrawal = {
-        currency,
-        discordId: giver.id,
-        description: reason,
-        value: -value,
-        otherUser: recipient.id,
-        hp: false
-      };
-      const receipt = await u.db.bank.addCurrency(withdrawal);
-      const balance = await u.db.bank.getBalance(giver.id);
-      const embed = u.embed({ author: interaction.client.user })
-        .addFields(
-          { name: "Reason", value: reason },
-          { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
-        )
-        .setDescription(`You just gave ${coin}${-receipt.value} to ${u.escapeText(recipient.displayName)}.`);
-      giver.send({ embeds: [embed] }).catch(u.noop);
-    }
 
   } catch (e) { u.errorHandler(e, interaction); }
 }
@@ -161,11 +164,15 @@ async function slashBankGive(interaction) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
 async function slashBankBalance(interaction) {
   try {
-    const member = interaction.member;
-    const balance = await u.db.bank.getBalance(member.id);
-    const embed = u.embed({ author: member })
-      .setDescription(`${gb}${balance.gb}\n${ember}${balance.em}`);
-    interaction.reply({ embeds: [embed] });
+    await interaction.deferReply();
+    const balance = await u.db.bank.getBalance(interaction.member.id);
+
+    const embed = u.embed({
+      author: interaction.member,
+      description: `${gb}${balance.gb}\n${ember}${balance.em}`
+    });
+
+    interaction.editReply({ embeds: [embed] });
   } catch (e) { u.errorHandler(e, interaction); }
 }
 
@@ -248,28 +255,34 @@ async function slashBankDiscount(interaction) {
     const discount = await snipcart.newDiscount(discountInfo);
 
     if (discount.amount && discount.code) {
-      const withdrawal = {
+
+      const embed = u.embed({ author: interaction.member })
+        .setDescription(
+          `You have redeemed ${gb}${amount} for a $${discount.amount} discount code in the LDS Gamers Store! <http://ldsgamers.com/shop>\n\n` +
+          `Use code __**${discount.code}**__ at checkout to apply the discount. This code will be good for ${discount.maxNumberOfUsages} use. (Note that means that if you redeem a code and don't use its full value, the remaining value is lost.)\n\n`
+        )
+        .addFields([
+          { name: "Discount Code", value: discount.code },
+          { name: "Uses", value: discount.maxNumberOfUsages }
+        ]);
+
+      await transferCurrency({
         currency: "gb",
-        discordId: interaction.user.id,
         description: "LDSG Store Discount Code",
         value: -amount,
-        otherUser: interaction.client.user.id,
         hp: false
-      };
-      const withdraw = await u.db.bank.addCurrency(withdrawal);
-      const recieptMessage = `You have redeemed ${gb}${withdraw.value} for a $${discount.amount} discount code in the LDS Gamers Store! <http://ldsgamers.com/shop>\n\nUse code __**${discount.code}**__ at checkout to apply the discount. This code will be good for ${discount.maxNumberOfUsages} use. (Note that means that if you redeem a code and don't use its full value, the remaining value is lost.)\n\nYou now have ${gb}${balance.gb + withdraw.value}.`;
-      await interaction.editReply(recieptMessage + "\nI also DMed this message to you so you don't lose the code!");
-      interaction.user.send(recieptMessage)
-      .catch(() => {
-        interaction.followUp({ content: "I wasn't able to send you the code! Do you have DMs allowed for server members? Please copy down your code somewhere safe ASAP. Please check with a member of Management if you lose your discount code.", flags: ["Ephemeral"] });
-      });
-      const embed = u.embed({ author: interaction.member })
+      }, interaction.member, null, embed);
+
+      await interaction.editReply({ content: "I also DMed this message to you so you don't lose the code!", embeds: [embed] });
+
+      const alertEmbed = u.embed({ author: interaction.member })
+        .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb} for a store coupon code.`)
         .addFields(
-          { name: "Amount", value: `${gb}${-withdraw.value} ($${-withdraw.value / 100})` },
-          { name: "Balance", value: `${gb}${balance.gb + withdraw.value}` }
-        )
-        .setDescription(`**${u.escapeText(interaction.member.displayName)}** just redeemed ${gb} for a store coupon code.`);
-      interaction.client.getTextChannel(u.sf.channels.team.logistics)?.send({ embeds: [embed] });
+          { name: "Amount", value: `${gb}${amount} ($${amount / 100})` },
+          { name: "New Balance", value: `${gb}${balance.gb - amount}` }
+        );
+
+      interaction.client.getTextChannel(u.sf.channels.team.logistics)?.send({ embeds: [alertEmbed] });
     } else {
       interaction.editReply("Sorry, something went wrong. Please try again.");
     }
@@ -328,14 +341,13 @@ async function slashBankRedeemRac(interaction) {
   if (!alertChannel) throw new Error("Couldn't find logistics channel");
 
   await alertChannel.send({ content: `<@&${u.sf.roles.team.manager}>`, embeds: [embed], components: [buttons], allowedMentions: { parse: ["roles"] } });
-  await u.db.bank.addCurrency({
-    discordId: interaction.member.id,
+
+  await transferCurrency({
     currency: "em",
     description: `RAC Thread - ${channelName.slice(0, 20)}`,
     hp: false,
-    otherUser: interaction.client.user.id,
     value: -700
-  });
+  }, interaction.member, null, embed);
 
   embed.addFields({ name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em - 700}` });
   return response.editReply({ content: "Your RAC Thread request was successful!", embeds: [embed] });
