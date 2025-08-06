@@ -29,7 +29,7 @@ const tier3 = 14;
 // roles that SHOULD NOT be given when a user rejoins
 const dangerRoles = [
   ...Object.values(u.sf.roles.team).filter(sf => ![u.sf.roles.team.botTeam, u.sf.roles.team.emeritus].includes(sf)),
-  u.sf.roles.live, u.sf.roles.houses.head, u.sf.roles.houses.emberGuardian,
+  u.sf.roles.streaming.live, u.sf.roles.houses.head, u.sf.roles.houses.emberGuardian,
 ];
 
 /**

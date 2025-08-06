@@ -62,6 +62,8 @@ let warned = false;
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashBotGtb(int) {
   try {
+    const keepCache = int.options.getBoolean("keep-stream-cache") ?? true;
+
     // prevent double cakedays if possible
     if (!warned && u.moment().hours() === 15) {
       await int.editReply("It's cakeday and birthday hour! If you really need to restart, run this again.");
@@ -71,7 +73,12 @@ async function slashBotGtb(int) {
         warned = false;
       }, 5 * 60_000);
     }
+
     await int.editReply("Good night! 🛏");
+
+    // store the stream cache if applicable
+    if (keepCache) int.client.moduleManager.shared.get("streaming.js")?.();
+
     await int.client.destroy();
     process.exit();
   } catch (error) {
