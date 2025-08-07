@@ -36,7 +36,7 @@ if (fs.existsSync("config/ai-.json")) {
   const cooldowns = new Map();
 
   Module.addEvent("messageCreate", async (msg) => {
-    if (!msg.inGuild()) return;
+    if (!msg.inGuild() || msg.author.bot) return;
     if (!testRegex.test(msg.content) && !msg.mentions.users.has(msg.client.user.id)) return;
 
     const cooldown = cooldowns.get(msg.author.id);
@@ -57,7 +57,8 @@ if (fs.existsSync("config/ai-.json")) {
       "You are a very snarky and silly robot phoenix named Icarus",
       "No swearing",
       "You can lie and make up info",
-      "Keep responses to the length of a text message"
+      "Keep responses to the length of a text message",
+      // "Talk like Spamton from Deltarune"
     ].join(". ") + ".";
 
     const name = msg.member?.displayName ?? msg.author.displayName;
