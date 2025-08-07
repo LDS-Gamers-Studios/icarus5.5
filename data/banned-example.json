@@ -24,7 +24,8 @@
             "reactionsGiving": [""],
             "voice": [""],
             "posts": [""],
-            "polls": [""]
+            "polls": [""],
+            "trustedAlerts": [""]
         }
     }
 }

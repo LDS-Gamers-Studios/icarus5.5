@@ -50,6 +50,7 @@
     "mongoose": "^7.6.3",
     "nanoid": "^3.1.25",
     "node-emoji": "^2.1.3",
+    "openai": "^5.10.2",
     "passport": "^0.7.0",
     "passport-discord-auth": "^1.1.1",
     "pet-pet-gif": "^1.0.9",
