@@ -4,6 +4,8 @@ const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
   config = require("../config/config.json"),
   { customAlphabet } = require("nanoid");
+
+const snipcart = require("../utils/snipcart");
 const Discord = require("discord.js");
 
 const Module = new Augur.Module(),
@@ -241,7 +243,7 @@ async function slashBankDiscount(interaction) {
     }
 
     if (!config.api.snipcart) return interaction.editReply("Store discounts are currently unavailable. Sorry for the inconvenience. We're working on it!");
-    const snipcart = require("../utils/snipcart")(config.api.snipcart);
+
     const discountInfo = {
       name: `${interaction.user.username} ${Date().toLocaleString()}`,
       combinable: false,
@@ -263,7 +265,7 @@ async function slashBankDiscount(interaction) {
         )
         .addFields([
           { name: "Discount Code", value: discount.code },
-          { name: "Uses", value: discount.maxNumberOfUsages }
+          { name: "Uses", value: discount.maxNumberOfUsages.toString() }
         ]);
 
       await transferCurrency({
@@ -435,7 +437,7 @@ Module.addInteraction({
     }
   }
 })
-.setShared({ buyGame, limit, gb, ember })
+.setShared({ buyGame, limit, gb, ember, transferCurrency })
 .addEvent("interactionCreate", (int) => {
   if (!int.isButton() || !int.inCachedGuild() || !int.customId.startsWith("rac")) return;
   if (!u.perms.calc(int.member, ["mgr"])) return int.reply({ content: "This button is for MGR+", flags: ["Ephemeral"] });
@@ -451,7 +453,7 @@ Module.addInteraction({
 });
 
 /**
- * @typedef {{ buyGame: buyGame, limit: limit, gb: gb, ember: ember }} BankShared
+ * @typedef {{ buyGame: buyGame, limit: limit, gb: gb, ember: ember, transferCurrency: transferCurrency }} BankShared
  */
 
 module.exports = Module;
