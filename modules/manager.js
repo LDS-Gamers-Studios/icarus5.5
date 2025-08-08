@@ -128,12 +128,13 @@ async function getHouseStats() {
   const userData = await u.db.user.getUsers({ discordId: { $in: ldsg.members.cache.map(m => m.id) } });
 
   const houseMap = new u.Collection([
-    [u.sf.roles.houses.housesc, u.sf.emoji.houses.sc],
-    [u.sf.roles.houses.housebb, u.sf.emoji.houses.bb],
-    [u.sf.roles.houses.housefb, u.sf.emoji.houses.fb]
+    [u.sf.roles.houses.housesc, "sc"],
+    [u.sf.roles.houses.housebb, "bb"],
+    [u.sf.roles.houses.housefb, "fb"]
   ]);
-  const points = houseMap.map((house, emoji) => {
-    const houseRole = ldsg.roles.cache.get(house);
+
+  const points = houseMap.map((roleId, shorthand) => {
+    const houseRole = ldsg.roles.cache.get(roleId);
     const members = houseRole?.members ?? new u.Collection();
 
     const embers = awards
@@ -145,12 +146,14 @@ async function getHouseStats() {
       .reduce((p, cur) => p + cur.currentXP, 0);
 
     return {
-      house,
+      roleId,
       name: houseRole?.name ?? "Unknown House",
       embers,
       xp,
-      perCapita: embers / members.size,
-      emoji
+      perCapita: embers / (members.size || 1),
+      // @ts-ignore
+      emoji: u.sf.emoji.houses[shorthand],
+      shorthand
     };
   });
   return points;
@@ -274,7 +277,7 @@ async function getMopBucketWinner(client, time) {
   const perCapita = houseStats.map((house, i) => `${medals[i]} **${house.name}:** ${house.perCapita.toFixed(2)}`).join("\n");
 
   const winner = houseStats[0];
-  const emoji = `<:house:${winner.emoji}>`;
+  const emoji = `<:${winner.shorthand}:${winner.emoji}>`;
 
   const publicString = "And now, for the winner of this season's **House Mop Bucket!!!**\n\n" +
     "This season's mop bucket goes to...\ndrumroll please...\n\n" +
@@ -352,6 +355,12 @@ async function rankReset(client, dist = 10_000) {
 
   const mopBucket = await getMopBucketWinner(client);
   announcement += `\n\n${mopBucket.publicString}`;
+
+  /** @type {import("./management").ManagementShared | undefined} */
+  const managementShared = await client.moduleManager.shared.get("management.js");
+  if (!managementShared) throw new Error("Couldn't access banner set function");
+
+  managementShared.setBanner(`house-${mopBucket.house.shorthand}`);
 
   client.getTextChannel(u.sf.channels.announcements)?.send({ content: announcement, allowedMentions: { parse: ["users"] } });
   team?.send({ embeds: [mopBucket.privateEmbed] });
