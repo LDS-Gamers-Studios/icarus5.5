@@ -38,10 +38,21 @@ const channel = new u.sub()
       .setRequired(true)
   );
 
+
 const sponsor = new u.subGroup()
   .setName("sponsor")
   .setDescription("Manage sponsor channels and emoji")
   .addSubcommand(channel);
+
+const houseReport = new u.sub()
+  .setName("house-report")
+  .setDescription("Generate a report of the current house standings");
+
+const rank = new u.subGroup()
+  .setName("rank")
+  .setDescription("Manage leaderboard Settings")
+  .addSubcommand(houseReport);
+
 
 module.exports = new u.cmd()
   .setName("manager")
@@ -50,4 +61,5 @@ module.exports = new u.cmd()
   .setDefaultMemberPermissions(u.privateCommand)
   .addSubcommandGroup(user)
   .addSubcommandGroup(sponsor)
+  .addSubcommandGroup(rank)
   .toJSON();
