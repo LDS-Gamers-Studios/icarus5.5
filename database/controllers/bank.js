@@ -80,6 +80,15 @@ module.exports = {
     return Bank.insertMany(data.map(d => new Bank(d)), { lean: true });
   },
   /**
+   * Gets the house points
+   * @param {string[]} discordIds
+   * @param {number} time
+   * @return {Promise<CurrencyRecord[]>} A record of the addition.
+   */
+  getPointAwards(discordIds, time) {
+    return Bank.find({ discordId: { $in: discordIds }, timestamp: { $gt: time }, hp: true }, undefined, { lean: true }).exec();
+  },
+  /**
    * Transfer an old account's transactions to their new account
    * @param {string} oldUserId
    * @param {string} newUserId
