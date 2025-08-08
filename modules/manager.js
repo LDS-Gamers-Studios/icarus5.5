@@ -127,7 +127,12 @@ async function getHouseStats() {
   const awards = await u.db.bank.getReport(ldsg.members.cache.map(m => m.id));
   const userData = await u.db.user.getUsers({ discordId: { $in: ldsg.members.cache.map(m => m.id) } });
 
-  const points = [u.sf.roles.houses.housesc, u.sf.roles.houses.housebb, u.sf.roles.houses.housefb].map(house => {
+  const houseMap = new u.Collection([
+    [u.sf.roles.houses.housesc, u.sf.emoji.houses.sc],
+    [u.sf.roles.houses.housebb, u.sf.emoji.houses.bb],
+    [u.sf.roles.houses.housefb, u.sf.emoji.houses.fb]
+  ]);
+  const points = houseMap.map((house, emoji) => {
     const houseRole = ldsg.roles.cache.get(house);
     const members = houseRole?.members ?? new u.Collection();
 
@@ -144,7 +149,8 @@ async function getHouseStats() {
       name: houseRole?.name ?? "Unknown House",
       embers,
       xp,
-      perCapita: embers / members.size
+      perCapita: embers / members.size,
+      emoji
     };
   });
   return points;
@@ -257,12 +263,7 @@ async function getMopBucketWinner(client, time) {
   const ldsg = client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) throw new Error("Couldn't find LDSG - Rank Reset");
 
-  // replace this lol (spam is working on this function)
-  /** @type {{ getHouseStats: () => Promise<any[]> } | undefined } */
-  const managerShared = client.moduleManager.shared.get("manager.js");
-  if (!managerShared) throw new Error("Couldn't get mop bucket winner function");
-
-  const houseStats = await managerShared.getHouseStats();
+  const houseStats = await getHouseStats();
 
   const medals = ["🥇", "🥈", "🥉"];
 
@@ -273,7 +274,7 @@ async function getMopBucketWinner(client, time) {
   const perCapita = houseStats.map((house, i) => `${medals[i]} **${house.name}:** ${house.perCapita.toFixed(2)}`).join("\n");
 
   const winner = houseStats[0];
-  const emoji = `<:${winner.shorthand}:${winner.emoji}>`;
+  const emoji = `<:house:${winner.emoji}>`;
 
   const publicString = "And now, for the winner of this season's **House Mop Bucket!!!**\n\n" +
     "This season's mop bucket goes to...\ndrumroll please...\n\n" +
