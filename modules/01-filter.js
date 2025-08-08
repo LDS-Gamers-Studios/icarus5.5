@@ -1,15 +1,15 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
-  banned = require("../data/banned.json"),
   Discord = require("discord.js"),
   config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon");
 
+let banned = c.getBanList();
 
-const bannedWords = new RegExp(banned.words.join("|"), "i"),
-  hasLink = /(>?(>?http[s]?|ftp):\/\/)([\w.-]+\.)?([\w.-]+\.[^/\n ]+)(\/[^ \n]+)?/gi;
+let bannedWords = new RegExp(banned.words.join("|"), "i");
+const hasLink = /(>?(>?http[s]?|ftp):\/\/)([\w.-]+\.)?([\w.-]+\.[^/\n ]+)(\/[^ \n]+)?/gi;
 
 let pf = new profanityFilter();
 
@@ -500,6 +500,7 @@ const Module = new Augur.Module()
 })
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
+.setShared(() => pf)
 .addEvent("ready", () => {
   // eslint-disable-next-line no-unused-vars
   const forWhenSpamWorks = () => setInterval(() => {
@@ -512,6 +513,11 @@ const Module = new Augur.Module()
     }
   }, thresh.time * 1000);
   return;
+})
+// @ts-ignore custom event
+.addEvent("reloadBanned", () => {
+  banned = c.getBanList();
+  bannedWords = new RegExp(banned.words.join("|"), "i");
 })
 .setUnload(() => c.grownups)
 .setInit((grown) => grown ? c.grownups = grown : null);

@@ -10,6 +10,7 @@ const Discord = require("discord.js"),
  * @typedef Badge
  * @prop {string} image
  * @prop {string[]} overrides
+ * @prop {string} lore
  */
 
 /** @type {Discord.Collection<string, Badge>} */
@@ -30,7 +31,8 @@ function setBadgeData(optRoles, roles) {
     badges.set(id, {
       image: `${role.badge}.png`,
       // roles that have a higher level badge than this one
-      overrides: role.parents.filter(r => roles.all.get(r)?.badge)
+      overrides: role.parents.filter(r => roles.all.get(r)?.badge),
+      lore: role.badgeLore || ""
     });
   }
 
@@ -40,6 +42,7 @@ function setBadgeData(optRoles, roles) {
 
     badges.set(id, {
       image: `${role.badge}.png`,
+      lore: role.badgeLore || "",
       overrides: []
     });
   }

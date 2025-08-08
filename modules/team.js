@@ -1,4 +1,5 @@
 // @ts-check
+const fs = require("fs");
 const Augur = require("augurbot-ts");
 const u = require("../utils/utils");
 const c = require("../utils/modCommon");
@@ -25,7 +26,7 @@ async function slashTeamRoleGive(int, give = true) {
 async function slashTeamBankAward(int) {
   try {
     /** @type {import("./bank").BankShared} */
-    const bankUtils = int.client.moduleManager.shared.get("bank.js")?.shared;
+    const bankUtils = int.client.moduleManager.shared.get("bank.js");
     if (!bankUtils) throw new Error("Could not access bank utilities from shared.");
     const { ember, gb, limit } = bankUtils;
 
@@ -55,9 +56,8 @@ async function slashTeamBankAward(int) {
     const award = {
       currency: "em",
       discordId: recipient.id,
-      description: `From ${giver.displayName} (House Points): ${reason}`,
+      description: `House Points: ${reason}`,
       value,
-      giver: giver.id,
       otherUser: giver.id,
       hp: true
     };
@@ -97,14 +97,16 @@ async function slashTeamTournamentChampions(int) {
 
   /** @param {string} str */
   const user = (str) => int.options.getMember(str);
-
   const users = u.unique([user('1'), user('2'), user('3'), user('4'), user('5'), user('6')].filter(usr => usr));
-  const date = u.moment().add(3, "weeks").valueOf();
+  const date = u.moment().add(3, "weeks").toDate();
 
-  const rows = await u.db.sheets.data.docs?.config.sheetsByTitle["Tourney Champions"]?.addRows(users.map(usr => ({ "Tourney Name": tName || "", "User ID": usr?.id ?? "", "Take Role At": date, Key: u.customId(5) })));
-  for (const row of rows ?? []) {
-    u.db.sheets.tourneyChampions.set(row.get("Key"), u.db.sheets.mappers.tourneyChampions(row));
-  }
+  await u.db.sheets.tourneyChampions.update(users.map(usr => ({
+    tourneyName: tName || "",
+    userId: usr?.id || "",
+    takeAt: date,
+    key: u.customId(5)
+  })));
+
   for (const usr of users) {
     usr?.roles.add(u.sf.roles.tournament.champion);
   }
@@ -133,11 +135,77 @@ async function slashTeamTournamentReset(int) {
   return int.editReply(`Removed ${succeeded}/${members.size} people from the ${role} role`);
 }
 
-
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTeamRankReset(int) {
-  await int.deferReply({ flags: ["Ephemeral"] });
-  if (!u.perms.calc(int.member, ["mgr"])) return int.editReply("This command is reserved for MGR+");
+  try {
+    await int.deferReply({ flags: ["Ephemeral"] });
+    if (!u.perms.calc(int.member, ["mgr"])) return int.editReply("This command is reserved for MGR+");
+
+    // useful vars. Dist should be 10_000 for a normal season length
+    const ember = `<:ember:${u.sf.emoji.ember}>`;
+    const dist = Math.abs(int.options.getInteger("ember-reward", true));
+
+    // get people who opted in to xp
+    const members = await int.guild.members.fetch().then(mems => mems.map(m => m.id));
+    const users = await u.db.user.getUsers({ currentXP: { $gt: 0 }, discordId: { $in: members } });
+
+    // log for backup
+    fs.writeFileSync("./data/rankDetail-.json", JSON.stringify(users.map(usr => ({ discordId: usr.discordId, currentXP: usr.currentXP }))));
+
+    // formula for ideal ember distribution
+    const totalXP = users.reduce((p, cur) => p + cur.currentXP, 0);
+    const rate = dist / totalXP;
+
+    // top performers
+    const medals = ["🥇", "🥈", "🥉"];
+    const top3 = users.sort((a, b) => b.currentXP - a.currentXP)
+      .slice(0, 3)
+      .map((usr, i) => `${medals[i]} - <@${usr.discordId}>`)
+      .join("\n");
+
+    await int.editReply(`Here are the stats for this season:\nParticipants: ${users.length}\nTotal XP: ${totalXP}\nRate: ${rate}\n\nTop 3:\n${top3}`);
+
+    // announce!
+    let announcement = "# CHAT RANK RESET!!!\n\n" +
+      `Another chat season has come to a close! In the most recent season, we've had **${users.length}** active members who are tracking their chatting XP! Altogether, we earned **${totalXP} XP!**\n` +
+      `The three most active members were:\n${top3}`;
+
+    // in an ideal world this is if (true)
+    if (dist > 0) {
+      const rewardRows = ["id,season,life,award"];
+      /** @type {import("../database/controllers/bank").CurrencyRecord[]} */
+      const records = [];
+      // award ember to each user and log it in a csv
+      for (const user of users) {
+        const award = Math.round(rate * user.currentXP);
+        if (award) {
+          rewardRows.push(`${user.discordId},${user.currentXP},${user.totalXP},${award}`);
+          records.push({
+            currency: "em",
+            description: `Chat Rank Reset - ${new Date().toLocaleDateString()}`,
+            discordId: user.discordId,
+            value: award,
+            otherUser: int.client.user.id,
+            hp: true,
+            timestamp: new Date()
+          });
+        }
+      }
+      if (records.length > 0) await u.db.bank.addManyTransactions(records);
+      fs.writeFileSync("./data/awardDetail.csv", rewardRows.join("\n"));
+      announcement += `\n\n${ember}${dist} have been distributed among *all* of those ${users.length} XP trackers, proportional to their participation.`;
+    }
+
+    announcement += "\n\nIf you would like to participate in this season's chat ranks and *haven't* opted in, `/rank track` will get you in the mix. If you've previously used that command, you don't need to do so again.";
+
+    int.client.getTextChannel(u.sf.channels.announcements)?.send({ content: announcement, allowedMentions: { parse: ["users"] } })
+      .catch(() => int.editReply("I wasn't able to send the announcement!"));
+
+    // set everyone's xp back to 0
+    u.db.user.resetSeason();
+  } catch (error) {
+    u.errorHandler(error, int);
+  }
 }
 
 const Module = new Augur.Module()

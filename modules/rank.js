@@ -48,7 +48,7 @@ async function slashRankTrack(interaction) {
     }
 
     const enumed = u.db.user.TrackXPEnum[track] ?? u.db.user.TrackXPEnum.FULL;
-    await u.db.user.trackXP(interaction.user.id, enumed);
+    await u.db.user.update(interaction.user.id, { trackXP: enumed });
     const str = track === "FULL" ? "track your XP and notify you of level ups!" : track === "SILENT" ? "silently track your XP!" : "stop tracking your XP.";
     await interaction.editReply(`Ok! I'll ${str}`);
   } catch (error) { u.errorHandler(error, interaction); }
@@ -73,7 +73,7 @@ async function slashRankView(interaction) {
       .setFooter({ text: "https://my.ldsgamers.com/leaderboard" })
       .addFields(
         { name: "Rank", value: `Season: ${record.rank.season} / ${members.size}\nLifetime: ${record.rank.lifetime} / ${members.size}`, inline: true },
-        { name: "Level", value: `Current Level: ${level}\nNext Level: ${nextLevel} XP`, inline: true },
+        { name: "Level", value: `Current Level: ${level}\nNext Level At: ${nextLevel} XP`, inline: true },
         { name: "Exp.", value: `Season: ${record.currentXP} XP\nLifetime: ${record.totalXP} XP`, inline: true }
       );
 
@@ -204,7 +204,6 @@ async function rankReset() {
           description: `Chat Rank Reset - ${new Date().toLocaleDateString()}`,
           discordId: user.discordId,
           value: award,
-          giver: Module.client.user?.id ?? "Icarus",
           otherUser: Module.client.user?.id ?? "Icarus",
           hp: true,
           timestamp: new Date()

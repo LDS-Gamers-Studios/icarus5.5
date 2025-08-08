@@ -1,10 +1,9 @@
 // @ts-check
 const Augur = require("augurbot-ts"),
   u = require("../utils/utils"),
+  c = require("../utils/modCommon"),
   config = require("../config/config.json"),
-  Discord = require("discord.js"),
-  /** @type {string[]} */
-  banned = require("../data/banned.json").features.suggestions;
+  Discord = require("discord.js");
 
 /** @typedef {import("../database/controllers/tag").tag} tag */
 
@@ -80,7 +79,7 @@ const replyOption = [
 
 /** @param {Discord.ChatInputCommandInteraction} int */
 async function slashLdsgSuggest(int) {
-  if (banned.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
+  if (c.getBanList().features.suggestions.includes(int.user.id)) return int.editReply("Sorry, but you aren't allowed to make suggestions right now. Reach out to MGMT if you have questions.");
   const suggestion = int.options.getString("suggestion", true);
   await int.deferReply({ flags: ["Ephemeral"] });
   const embed = u.embed({ author: int.user })
@@ -205,8 +204,8 @@ const Module = new Augur.Module()
 
         // these commands are static tags
         default: {
-          /** @type {import("./tags").SharedTags} */
-          const tu = interaction.client.moduleManager.shared.get("tags.js")?.shared;
+          /** @type {import("./tags").Shared} */
+          const tu = interaction.client.moduleManager.shared.get("tags.js");
           if (!tu) return u.errorHandler(new Error("Couldn't get Tag Utils"), interaction);
 
           const tag = tu.tags.get(subcommand);

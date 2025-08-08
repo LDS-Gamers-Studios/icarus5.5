@@ -75,16 +75,21 @@ async function slashRoleList(int) {
 async function slashRoleWhoHas(int) {
   try {
     const ephemeral = int.channel?.id === u.sf.channels.general;
-    await int.deferReply({ ephemeral });
+    await int.deferReply({ flags: ephemeral ? ["Ephemeral"] : undefined });
+
     const role = int.options.getRole("role", true);
     if (role.id === u.sf.ldsg) return int.editReply("Everyone has that role, silly!");
+    if (role.id === u.sf.roles.moderation.muted && !u.perms.calc(int.member, ["mod"])) return int.editReply("I'm not gonna tell you that, ya silly goose!").then(u.clean);
+
     const members = role.members.map(m => m.displayName).sort();
     if (members.length === 0) return int.editReply("I couldn't find any members with that role. :shrug:");
 
     const embed = u.embed().setTitle(`Members with the ${role.name} role: ${role.members.size}`);
     const processedEmbeds = u.pagedEmbedsDescription(embed, members).map(e => ({ embeds: [e] }));
     return u.manyReplies(int, processedEmbeds, ephemeral);
-  } catch (error) { u.errorHandler(error, int); }
+  } catch (error) {
+    u.errorHandler(error, int);
+  }
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -154,18 +159,8 @@ Module.addInteraction({
     const option = interaction.options.getFocused(true);
     const input = option.value.toLowerCase();
     const sub = interaction.options.getSubcommand(true);
-    // /role give/take, /role add/remove
+    // /role add/remove
     if (option.name === 'role') {
-      // /role give/take
-      if (["give", "take"].includes(sub)) {
-        if (!u.perms.calc(interaction.member, ["team", "mod", "mgr"])) return;
-        const withPerms = u.db.sheets.roles.team.filter(r => {
-          if (option.value && !r.base.name.toLowerCase().includes(option.value.toLowerCase())) return false;
-          return u.perms.calc(interaction.member, [r.level]);
-        }).sort((a, b) => b.base.comparePositionTo(a.base)).map(r => r.base.name);
-        return interaction.respond(withPerms.map(r => ({ name: r, value: r })));
-      }
-      // /role add/remove
       const adding = sub === "add";
       /** @type {string[]} */
       let roles;

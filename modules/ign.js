@@ -13,11 +13,12 @@ const fuzzy = require("fuzzysort");
  * @param {IGN & { ign: string }} ign
  */
 function ignFieldMap(ign) {
-  let value = u.escapeText(ign.ign);
-
+  let value = ign.ign;
   if (ign.link) {
     const url = ign.link.replace(/{ign}/ig, encodeURIComponent(value));
     value = `[${value}](${url})`;
+  } else {
+    value = u.escapeText(value);
   }
 
   if (value.length > 1000) value = value.substring(0, 1000) + " ...";
@@ -109,7 +110,7 @@ async function slashIgnBirthday(int) {
 
 
   if (setting) {
-    await u.db.user.bdayMsgs(int.user.id, setting === "FULL");
+    await u.db.user.update(int.user.id, { sendBdays: setting === "FULL" });
   }
 
   if (month && day) {
@@ -179,11 +180,7 @@ async function slashIgnWhoPlays(int) {
   if (igns.length === 0) return int.editReply("Looks like nobody has an IGN set for that yet.").then(u.clean);
 
   const withName = igns.map(ig => {
-    ig.ign = u.escapeText(ig.ign);
-    if (found.link) {
-      const url = found.link.replace(/{ign}/ig, encodeURIComponent(ig.ign));
-      ig.ign = `[${ig.ign}](${url})`;
-    }
+    ig.ign = ignFieldMap({ ...found, ign: ig.ign }).value;
 
     return {
       ...ig,
@@ -197,7 +194,7 @@ async function slashIgnWhoPlays(int) {
 
   const lines = withName.map(ign => {
     const withoutLinkEmbed = ign.ign.startsWith("http") ? `<${ign.ign}>` : ign.ign;
-    return `· **${u.escapeText(ign.name)}**: ${u.escapeText(withoutLinkEmbed)}`;
+    return `· **${u.escapeText(ign.name)}**: ${withoutLinkEmbed}`;
   });
 
 
@@ -218,25 +215,26 @@ async function slashIgnWhoIs(int) {
 
   const igns = await u.db.ign.findMany([...members.keys()], found?.system);
 
-  /** @type {Discord.Collection<string, { score: number, igns: { ign: string, system: string, score: number }[] }>} */
+  /** @type {Discord.Collection<string, { score: number, igns: {text: string, score: number}[] }>} */
   const lines = new u.Collection();
 
   // do a fuzzy search
-  for (const i of igns) {
-    const pass = fuzzy.single(inputIgn, i.ign);
+  const results = fuzzy.go(inputIgn, igns, { keys: ["ign"], threshold: 0.4 });
+  for (const res of results) {
+    const ig = res.obj;
+    const system = findSystem(ig.system);
 
-    if (pass && pass.score > 0.4) {
-      const system = (found ?? u.db.sheets.igns.get(i.system))?.name ?? i.system;
-      const ign = pass.highlight("**", "**");
-      const withoutLinkEmbed = ign.startsWith("http") ? `<${ign}>` : ign;
-      const line = lines.ensure(i.discordId, () => ({ igns: [], score: 0 }));
-      line.igns.push({
-        ign: withoutLinkEmbed,
-        system,
-        score: pass.score
-      });
-      line.score += pass.score;
+    const line = lines.ensure(ig.discordId, () => ({ igns: [], score: 0 }));
+    line.score += res.score;
+
+    let ign = res[0].highlight("**", "**");
+
+    if (system?.link) {
+      const url = system.link.replace(/{ign}/ig, encodeURIComponent(ig.ign));
+      ign = `[${ig.ign}](${url})`;
     }
+
+    line.igns.push({ text: `· ${system?.name || ig.system}: ${ign}`, score: res.score });
   }
 
   lines.sort((a, b) => b.score - a.score);
@@ -248,15 +246,7 @@ async function slashIgnWhoIs(int) {
   const mappedLines = lines.map((l, id) => {
     const names = l.igns
       .sort((a, b) => b.score - a.score)
-      .map(i => {
-        const f = findSystem(i.system);
-        i.ign = u.escapeText(i.ign);
-        if (f?.link) {
-          const url = f.link.replace(/{ign}/ig, encodeURIComponent(i.ign));
-          i.ign = `[${i.ign}](${url})`;
-        }
-        return `· ${i.system}: ${i.ign}`;
-      });
+      .map(i => i.text);
 
     return `${members.get(id)?.displayName ?? "Unknown User"}\n${names.join("\n")}\n`;
   });
@@ -293,7 +283,7 @@ const Module = new Augur.Module()
       /** @type {{name: string, value: string}[]} */
       const systems = [];
       const val = option.value.toLowerCase();
-      let igns = u.db.sheets.igns;
+      let igns = u.db.sheets.igns.map(i => i);
 
       // filter IGN systems they can remove. Uses a cache so that it's not calling the db every 5 seconds
       if (int.options.getSubcommand() === "remove") {
@@ -309,13 +299,13 @@ const Module = new Augur.Module()
           autocompleteCache.set(int.user.id, { systems: sys, expires: Date.now() + 60_000 });
         }
 
-        igns = u.db.sheets.igns.filter(i => sys.has(i.system));
+        igns = igns.filter(i => sys.has(i.system));
       }
 
-      for (const [system, ign] of igns) {
-        if (system === "birthday" && int.options.getSubcommand() === "set") continue;
+      for (const ign of igns) {
+        if (ign.system === "birthday" && int.options.getSubcommand() === "set") continue;
         if (
-          system.toLowerCase().includes(val) ||
+          ign.system.toLowerCase().includes(val) ||
           ign.name.toLowerCase().includes(val) ||
           ign.aliases.find(a => a.includes(val))
         ) systems.push({ name: ign.name, value: ign.name });

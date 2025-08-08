@@ -6,15 +6,17 @@ const u = require("./utils");
  * @typedef {{baseId: string, inherited: string[], colorId: string }[]} equipRoles
  */
 /**
+ * Get the roles that a given member can equip
  * @param {GuildMember} member
  */
 function getInventory(member, override = true) {
   const equipRoles = u.db.sheets.roles.equip;
-  if (override && u.perms.calc(member, ["mgr"])) return equipRoles;
+  if (override && u.perms.calc(member, ["mgmt"])) return equipRoles;
   return equipRoles.filter(r => member.roles.cache.hasAny(r.base.id, ...r.parents));
 }
 
 /**
+ * null = no role, true = success, false = not equipable
  * @param {GuildMember} member
  * @param {string | null} baseName
  * @param {string} [baseId]
@@ -27,21 +29,28 @@ async function equip(member, baseName, baseId) {
     await member.roles.remove(allColors);
     return true;
   }
-  // role can't be equipped
-  if (!baseName) return null;
-  if (baseId ? !u.db.sheets.roles.equip.get(baseId) : !u.db.sheets.roles.equip.find(r => r.base.name.toLowerCase() === baseName.toLowerCase())) {
-    return null;
+
+  /** @type {(import("../database/sheetTypes").Role & { color: import("discord.js").Role }) | undefined} */
+  let role;
+  if (baseId) {
+    role = u.db.sheets.roles.equip.get(baseId);
+  } else if (baseName) {
+    role = u.db.sheets.roles.equip.find(r => r.base.name.toLowerCase() === baseName.toLowerCase());
   }
-  const colorRole = baseId ? inventory.get(baseId) : inventory.find(r => r.base.name.toLowerCase() === baseName.toLowerCase());
+
+  // role doesn't exist
+  if (!role) return null;
+
   // role isn't in their inventory
-  if (!colorRole) return false;
+  if (!inventory.has(role.base.id)) return false;
 
   // nothing changed
-  if (member.roles.cache.has(colorRole.color.id)) return true;
+  if (member.roles.cache.has(role.color.id)) return true;
 
-  const removal = allColors.filter(c => c !== colorRole.color.id);
+  // swap colors
+  const removal = allColors.filter(c => c !== role.color.id);
   if (removal.length > 0) await member.roles.remove(removal);
-  await member.roles.add(colorRole.color.id);
+  await member.roles.add(role.color.id);
   return true;
 }
 

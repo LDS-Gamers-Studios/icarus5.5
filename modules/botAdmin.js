@@ -244,6 +244,53 @@ const Module = new Augur.Module()
     int.respond(files.filter(file => file.includes(option)).slice(0, 24).map(f => ({ name: f, value: f })));
   }
 })
+.addInteraction({
+  id: u.sf.commands.messageEditMessage,
+  name: "Edit",
+  type: "ContextMessage",
+  onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["mgr"]),
+  process: async (int) => {
+    const msg = await int.targetMessage.fetch().catch(u.noop);
+    if (!msg) return int.reply({ content: "Sorry, I couldn't find the message.", flags: ["Ephemeral"] });
+    if (msg.author.id !== int.client.user.id || !msg.editable) return int.reply({ content: "Sorry, I can't edit that message.", flags: ["Ephemeral"] });
+
+    const modal = new u.Modal()
+      .addComponents(
+        u.ModalActionRow()
+          .setComponents(
+            new u.TextInput()
+              .setCustomId("content")
+              .setLabel("Message Content (leave blank to delete)")
+              .setValue(msg.content)
+              .setPlaceholder("Leave blank to delete")
+              .setStyle(Discord.TextInputStyle.Paragraph)
+              .setMaxLength(4000)
+              .setRequired(false)
+          )
+      )
+      .setTitle("Message Edit/Delete")
+      .setCustomId(`sme${int.id}`);
+
+    await int.showModal(modal);
+    const res = await int.awaitModalSubmit({ time: 5 * 60_000, dispose: true }).catch(u.noop);
+    if (!res) return await int.editReply("I fell asleep waiting for your input...");
+
+    const content = res.fields.getTextInputValue("content");
+    await res.deferReply({ flags: ["Ephemeral"] });
+
+    if (!content) {
+      const del = await msg.delete().catch(u.noop);
+      if (!del) return res.editReply("Sorry, I couldn't delete the message.");
+      return res.editReply("Message deleted!");
+    }
+
+    const edit = await msg.edit({ content }).catch(u.noop);
+    if (!edit) return res.editReply("Sorry, I couldn't edit the message.");
+
+    return res.editReply("Message edited!");
+  }
+})
 .addCommand({ name: "mcweb",
   hidden: true,
   permissions: () => config.devMode,
