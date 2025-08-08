@@ -133,7 +133,7 @@ async function getHouseStats() {
     [u.sf.roles.houses.housefb, "fb"]
   ]);
 
-  const points = houseMap.map((roleId, shorthand) => {
+  const points = houseMap.map((shorthand, roleId) => {
     const houseRole = ldsg.roles.cache.get(roleId);
     const members = houseRole?.members ?? new u.Collection();
 
@@ -374,14 +374,13 @@ async function slashManagerRankReset(int) {
   try {
 
     const confirmation = await u.confirmInteraction(int, "Are you sure you want to reset the Season?\n**This will reset everyone's XP to 0.**", "Confirmation:");
-    if (confirmation === null) return int.editReply({ content: "I fell asleep waiting for your input...", embeds: [], components: [] });
-    if (!confirmation) return int.editReply({ content: "Reset aborted.", embeds: [], components: [] });
+    if (!confirmation) return;
 
     // Dist should be 10_000 for a normal season length
     const dist = int.options.getInteger("ember-reward", false) ?? 10_000;
     await rankReset(int.client, dist);
 
-    return int.editReply({ content: "The season has been reset." });
+    return confirmation.editReply({ content: "The season has been reset." });
   } catch (error) {
     u.errorHandler(error, int);
   }

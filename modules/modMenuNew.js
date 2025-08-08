@@ -29,7 +29,7 @@ function msgErr(int) {
 
 /**
  * Handle replying to an interaction with components
- * @param {Discord.CommandInteraction|Discord.AnySelectMenuInteraction|Discord.ModalSubmitInteraction} int
+ * @param {Discord.CommandInteraction|Discord.AnySelectMenuInteraction|Discord.ModalSubmitInteraction|Discord.ButtonInteraction} int
  * @param {Discord.MessageEditOptions|string} payload
  */
 function edit(int, payload) {
@@ -292,8 +292,10 @@ async function kickUser(int, usr) {
   if (reason) {
     await reason.deferUpdate();
     const r = reason.fields.getTextInputValue("reason");
-    const timeout = await c.kick(int, usr, r);
-    return edit(reason, timeout);
+    const kickResponse = await c.kick(int, usr, r);
+    if (!kickResponse) return;
+
+    return edit(kickResponse.interaction, kickResponse.payload);
   }
   return int.update(noTime);
 
@@ -305,8 +307,10 @@ async function banUser(int, usr) {
   if (reason) {
     await reason.deferUpdate();
     const r = reason.fields.getTextInputValue("reason");
-    const timeout = await c.ban(int, usr, r);
-    return edit(reason, timeout);
+    const banResponse = await c.ban(int, usr, r);
+    if (!banResponse) return;
+
+    return edit(banResponse.interaction, banResponse.payload);
   }
   return int.update(noTime);
 
