@@ -91,17 +91,6 @@ const tourneyReset = new u.sub()
   .setName("reset")
   .setDescription("Reset the Tournament Participant role");
 
-// RANK
-const rankReset = new u.sub()
-  .setName("reset")
-  .setDescription("Resets everyone's season XP and awards ember")
-  .addIntegerOption(
-    new u.int()
-      .setName("ember-reward")
-      .setDescription("How many ember to award in total (ideal is about 10,000)")
-      .setMinValue(0)
-      .setRequired(true)
-  );
 
 module.exports = new u.cmd()
   .setName("team")
@@ -125,12 +114,6 @@ module.exports = new u.cmd()
       .setDescription("Manage tournaments")
       .addSubcommand(tourneyChampion)
       .addSubcommand(tourneyReset)
-  )
-  .addSubcommandGroup(
-    new u.subGroup()
-      .setName("rank")
-      .setDescription("Manage the leaderboard season")
-      .addSubcommand(rankReset)
   )
   .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.privateCommand)

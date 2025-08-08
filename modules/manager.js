@@ -200,6 +200,7 @@ async function getMopBucketWinner(client, time) {
   const ldsg = client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) throw new Error("Couldn't find LDSG - Rank Reset");
 
+  // replace this lol (spam is working on this function)
   /** @type {{ getHouseStats: () => Promise<any[]> } | undefined } */
   const managerShared = client.moduleManager.shared.get("manager.js");
   if (!managerShared) throw new Error("Couldn't get mop bucket winner function");
