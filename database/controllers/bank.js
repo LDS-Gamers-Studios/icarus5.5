@@ -28,7 +28,7 @@ module.exports = {
   /**
    * @param {string[]} discordIds
    * @param {moment.Moment} [startDate]
-   * @return {Promise<CurrencyRecord[]>}
+   * @return {Promise<{_id: string, em: number}[]>}
    */
   getReport: async function(discordIds, startDate) {
     if (!startDate) {
@@ -38,12 +38,18 @@ module.exports = {
       startDate ??= seasonStart;
     }
 
-    return Bank.find({
-      discordId: { $in: discordIds },
-      currency: "em",
-      hp: true,
-      timestamp: { $gte: startDate.toDate() }
-    }, undefined, { lean: true }).exec();
+    const record = await Bank.aggregate([
+      { $match: { discordId: { $in: discordIds }, currency: "em", timestamp: { $gte: startDate.toDate() }, hp: true } },
+      { $group: { _id: "$discordId", em: { $sum: { $cond: { if: { $eq: ["$currency", "em"] }, then: "$value", else: 0 } } } } }
+    ]).exec();
+    return record;
+
+    // return Bank.find({
+    //   discordId: { $in: discordIds },
+    //   currency: "em",
+    //   hp: true,
+    //   timestamp: { $gte: startDate.toDate() }
+    // }, undefined, { lean: true }).exec();
   },
   /**
    * Gets a user's current balance for a given currency.

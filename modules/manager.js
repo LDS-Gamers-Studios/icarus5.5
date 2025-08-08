@@ -6,6 +6,8 @@ const u = require("../utils/utils");
 const c = require("../utils/modCommon");
 const fs = require("fs");
 
+const Module = new Augur.Module();
+
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashManagerUserTransfer(int) {
   await int.deferReply({ flags: ["Ephemeral"] });
@@ -116,6 +118,61 @@ async function slashManagerUserTransfer(int) {
     );
 
   return int.editReply({ embeds: [embed] });
+}
+
+async function getHouseStats() {
+  const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+  if (!ldsg) throw new Error("Couldn't find LDSG");
+
+  const awards = await u.db.bank.getReport(ldsg.members.cache.map(m => m.id));
+  const userData = await u.db.user.getUsers({ discordId: { $in: ldsg.members.cache.map(m => m.id) } });
+
+  const points = [u.sf.roles.houses.housesc, u.sf.roles.houses.housebb, u.sf.roles.houses.housefb].map(house => {
+    const houseRole = ldsg.roles.cache.get(house);
+    const members = houseRole?.members ?? new u.Collection();
+
+    const embers = awards
+      .filter(a => members.has(a._id))
+      .reduce((p, cur) => p + cur.em, 0);
+
+    const xp = userData
+      .filter(a => members.has(a.discordId))
+      .reduce((p, cur) => p + cur.currentXP, 0);
+
+    return {
+      house,
+      name: houseRole?.name ?? "Unknown House",
+      embers,
+      xp,
+      perCapita: embers / members.size
+    };
+  });
+  return points;
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
+async function slashManagerRankHouseEmber(interaction) {
+  try {
+    await interaction.deferReply({ flags: ["Ephemeral"] });
+    const points = await getHouseStats();
+
+    const medals = ["🥇", "🥈", "🥉"];
+    const emoji = `<:ember:${u.sf.emoji.ember}>`;
+
+    points.sort((a, b) => b.perCapita - a.perCapita);
+
+    const perCapitaSorted = points.map((house, i) => `${medals[i]} **${house.name}:** ${emoji}${house.perCapita.toFixed(2)} (${emoji}${house.embers} total)`).join("\n");
+
+    points.sort((a, b) => b.xp - a.xp);
+    const xpSorted = points.map((house, i) => `${medals[i]} **${house.name}:** ${house.xp}`).join("\n");
+
+    const embed = u.embed().setTitle("Season House Points")
+      .setDescription("Current standings of the houses (Ember awards on a *per capita* basis):\n" + perCapitaSorted + "\n\n XP per house:\n" + xpSorted);
+
+    interaction.editReply({ embeds: [embed] });
+  } catch (e) {
+    u.errorHandler(e, interaction);
+  }
 }
 
 /** @param {Discord.GuildMember} sponsor */
@@ -320,8 +377,7 @@ async function slashManagerRankReset(int) {
   }
 }
 
-const Module = new Augur.Module()
-.addInteraction({
+Module.addInteraction({
   id: u.sf.commands.slashManager,
   onlyGuild: true,
   permissions: (int) => u.perms.calc(int.member, ["mgr"]),
@@ -330,6 +386,7 @@ const Module = new Augur.Module()
       case "transfer": return slashManagerUserTransfer(int);
       case "channel": return slashManagerSponsorChannel(int);
       case "reset": return slashManagerRankReset(int);
+      case "house-report": return slashManagerRankHouseEmber(int);
       default: throw new Error("Unhandled Subcommand - /mgr");
     }
   }
