@@ -262,7 +262,26 @@ const models = {
   update: function(discordId, update) {
     if (typeof discordId !== "string") throw new Error(outdated);
     return User.findOneAndUpdate({ discordId }, update, { lean: true, new: true, upsert: true });
-  }
+  },
+  /**
+   * @param {string[]} discordIds
+   * @param {moment.Moment} [startDate]
+   * @return {Promise<{discordId: string, em: number, currentXP: number}[]>}
+   */
+  getReport: async function(discordIds, startDate) {
+    if (!startDate) {
+      const seasonStart = moment.tz("America/Denver").startOf("month").hour(19);
+      const monthsAgo = seasonStart.month() % 4;
+      seasonStart.subtract(monthsAgo, "months");
+      startDate ??= seasonStart;
+    }
+
+    return User.aggregate([
+      { $match: { discordId: { $in: discordIds } } },
+      { $lookup: { from: "banks", localField: "discordId", foreignField: "discordId", as: "banks", pipeline: [{ $match: { hp: true, currency: "em" } }] } },
+      { $project: { discordId: true, currentXP: true, em: { $sum: "$banks.value" } } }
+    ]).exec();
+  },
 };
 
 module.exports = models;

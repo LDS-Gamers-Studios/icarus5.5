@@ -124,8 +124,7 @@ async function getHouseStats() {
   const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) throw new Error("Couldn't find LDSG");
 
-  const awards = await u.db.bank.getReport(ldsg.members.cache.map(m => m.id));
-  const userData = await u.db.user.getUsers({ discordId: { $in: ldsg.members.cache.map(m => m.id) } });
+  const report = await u.db.user.getReport(ldsg.members.cache.map(m => m.id));
 
   const houseMap = new u.Collection([
     [u.sf.roles.houses.housesc, "sc"],
@@ -137,20 +136,16 @@ async function getHouseStats() {
     const houseRole = ldsg.roles.cache.get(roleId);
     const members = houseRole?.members ?? new u.Collection();
 
-    const embers = awards
-      .filter(a => members.has(a._id))
-      .reduce((p, cur) => p + cur.em, 0);
-
-    const xp = userData
+    const houseReport = report
       .filter(a => members.has(a.discordId))
-      .reduce((p, cur) => p + cur.currentXP, 0);
+      .reduce((p, cur) => ({ em: p.em + cur.em, xp: p.xp + cur.currentXP }), { em: 0, xp: 0 });
 
     return {
       roleId,
       name: houseRole?.name ?? "Unknown House",
-      embers,
-      xp,
-      perCapita: embers / (members.size || 1),
+      embers: houseReport.em,
+      xp: houseReport.xp,
+      perCapita: houseReport.em / (members.size || 1),
       // @ts-ignore
       emoji: u.sf.emoji.houses[shorthand],
       shorthand

@@ -1,5 +1,4 @@
 // @ts-check
-const moment = require("moment-timezone");
 const Bank = require("../models/Bank.model");
 
 /**
@@ -24,32 +23,6 @@ module.exports = {
   getAll: async function(discordId) {
     if (typeof discordId !== "string") throw new TypeError(outdated);
     return Bank.find({ discordId }, undefined, { lean: true }).exec();
-  },
-  /**
-   * @param {string[]} discordIds
-   * @param {moment.Moment} [startDate]
-   * @return {Promise<{_id: string, em: number}[]>}
-   */
-  getReport: async function(discordIds, startDate) {
-    if (!startDate) {
-      const seasonStart = moment.tz("America/Denver").startOf("month").hour(19);
-      const monthsAgo = seasonStart.month() % 4;
-      seasonStart.subtract(monthsAgo, "months");
-      startDate ??= seasonStart;
-    }
-
-    const record = await Bank.aggregate([
-      { $match: { discordId: { $in: discordIds }, currency: "em", timestamp: { $gte: startDate.toDate() }, hp: true } },
-      { $group: { _id: "$discordId", em: { $sum: { $cond: { if: { $eq: ["$currency", "em"] }, then: "$value", else: 0 } } } } }
-    ]).exec();
-    return record;
-
-    // return Bank.find({
-    //   discordId: { $in: discordIds },
-    //   currency: "em",
-    //   hp: true,
-    //   timestamp: { $gte: startDate.toDate() }
-    // }, undefined, { lean: true }).exec();
   },
   /**
    * Gets a user's current balance for a given currency.
@@ -84,15 +57,6 @@ module.exports = {
    */
   addManyTransactions: function(data) {
     return Bank.insertMany(data.map(d => new Bank(d)), { lean: true });
-  },
-  /**
-   * Gets the house points
-   * @param {string[]} discordIds
-   * @param {number} time
-   * @return {Promise<CurrencyRecord[]>} A record of the addition.
-   */
-  getPointAwards(discordIds, time) {
-    return Bank.find({ discordId: { $in: discordIds }, timestamp: { $gt: time }, hp: true }, undefined, { lean: true }).exec();
   },
   /**
    * Transfer an old account's transactions to their new account
