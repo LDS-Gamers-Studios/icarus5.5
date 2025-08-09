@@ -300,7 +300,8 @@ async function rankReset(client, dist = 10_000) {
   const users = await u.db.user.getUsers({ currentXP: { $gt: 0 }, discordId: { $in: members } });
 
   // log for backup
-  fs.writeFileSync("./data/rankDetail-.json", JSON.stringify(users.map(usr => ({ discordId: usr.discordId, currentXP: usr.currentXP }))));
+  const date = u.moment().format("MM DD YYYY");
+  fs.writeFileSync(`./data/rankDetail ${date}-.json`, JSON.stringify(users.map(usr => ({ discordId: usr.discordId, currentXP: usr.currentXP }))));
 
   // formula for ideal ember distribution
   const totalXP = users.reduce((p, cur) => p + cur.currentXP, 0);
@@ -337,7 +338,7 @@ async function rankReset(client, dist = 10_000) {
       });
     }
 
-    fs.writeFileSync("./data/awardDetail.csv", rewardRows.join("\n"));
+    fs.writeFileSync(`./data/awardDetail ${date}.csv`, rewardRows.join("\n"));
     if (records.length > 0) await u.db.bank.addManyTransactions(records);
   }
 
