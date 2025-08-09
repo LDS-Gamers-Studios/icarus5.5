@@ -51,9 +51,9 @@ const rankReset = new u.sub()
   .addIntegerOption(
     new u.int()
       .setName("ember-reward")
-      .setDescription("How many ember to award in total (ideal is about 10,000)")
+      .setDescription("How many ember to award in total (default is 10,000)")
       .setMinValue(0)
-      .setRequired(true)
+      .setRequired(false)
   );
 
 const houseReport = new u.sub()
