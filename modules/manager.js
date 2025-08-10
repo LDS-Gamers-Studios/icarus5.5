@@ -317,36 +317,38 @@ async function rankReset(client, dist = 10_000) {
   const team = client.getTextChannel(u.sf.channels.team.team);
   await team?.send(`Here are the stats for this season:\nParticipants: ${users.length}\nTotal XP: ${totalXP}\nRate: ${rate}\n\nTop 3:\n${top3}`);
 
-  // generate CSV backup
-  const rewardRows = ["id,season,life,award"];
+  if (dist) {
+    // generate CSV backup
+    const rewardRows = ["id,season,life,award"];
 
-  /** @type {import("../database/controllers/bank").CurrencyRecord[]} */
-  const records = [];
+    /** @type {import("../database/controllers/bank").CurrencyRecord[]} */
+    const records = [];
 
-  for (const user of users) {
-    const award = Math.round(rate * user.currentXP);
-    if (award) {
-      rewardRows.push(`${user.discordId},${user.currentXP},${user.totalXP},${award}`);
-      records.push({
-        currency: "em",
-        description: `Chat Rank Reset - ${new Date().toLocaleDateString()}`,
-        discordId: user.discordId,
-        value: award,
-        otherUser: client.user.id ?? "Icarus",
-        hp: true,
-        timestamp: new Date()
-      });
+    for (const user of users) {
+      const award = Math.round(rate * user.currentXP);
+      if (award) {
+        rewardRows.push(`${user.discordId},${user.currentXP},${user.totalXP},${award}`);
+        records.push({
+          currency: "em",
+          description: `Chat Rank Reset - ${new Date().toLocaleDateString()}`,
+          discordId: user.discordId,
+          value: award,
+          otherUser: client.user.id ?? "Icarus",
+          hp: true,
+          timestamp: new Date()
+        });
+      }
+
+      fs.writeFileSync(`./data/awardDetail ${date}.csv`, rewardRows.join("\n"));
+      if (records.length > 0) await u.db.bank.addManyTransactions(records);
     }
-
-    fs.writeFileSync(`./data/awardDetail ${date}.csv`, rewardRows.join("\n"));
-    if (records.length > 0) await u.db.bank.addManyTransactions(records);
   }
 
   // announce!
   let announcement = "# CHAT RANK RESET!!!\n\n" +
     `Another chat season has come to a close! In the most recent season, we've had **${users.length}** active members who are tracking their chatting XP! Altogether, we earned **${totalXP} XP!**\n` +
     `The three most active members were:\n${top3}\n\n` +
-    `${ember}${dist} have been distributed among *all* of those ${users.length} XP trackers, proportional to their participation.\n\n` +
+    dist ? `${ember}${dist} have been distributed among *all* of those ${users.length} XP trackers, proportional to their participation.\n\n` : "" +
     "If you would like to participate in this season's chat ranks and *haven't* opted in, `/rank track` will get you in the mix. If you've previously used that command, you don't need to do so again.";
 
   const mopBucket = await getMopBucketWinner(client);
