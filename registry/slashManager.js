@@ -44,6 +44,18 @@ const sponsor = new u.subGroup()
   .setDescription("Manage sponsor channels and emoji")
   .addSubcommand(channel);
 
+// RANK
+const rankReset = new u.sub()
+  .setName("reset")
+  .setDescription("Resets everyone's season XP and awards ember")
+  .addIntegerOption(
+    new u.int()
+      .setName("ember-reward")
+      .setDescription("How many ember to award in total (default is 10,000)")
+      .setMinValue(0)
+      .setRequired(false)
+  );
+
 const houseReport = new u.sub()
   .setName("house-report")
   .setDescription("Generate a report of the current house standings");
@@ -51,7 +63,8 @@ const houseReport = new u.sub()
 const rank = new u.subGroup()
   .setName("rank")
   .setDescription("Manage leaderboard Settings")
-  .addSubcommand(houseReport);
+  .addSubcommand(houseReport)
+  .addSubcommand(rankReset);
 
 
 module.exports = new u.cmd()

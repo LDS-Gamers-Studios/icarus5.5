@@ -4,6 +4,7 @@ const Discord = require("discord.js");
 const Rank = require("../utils/rankInfo");
 const u = require("../utils/utils");
 const c = require("../utils/modCommon");
+const fs = require("fs");
 
 const Module = new Augur.Module();
 
@@ -123,34 +124,38 @@ async function getHouseStats() {
   const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) throw new Error("Couldn't find LDSG");
 
-  const awards = await u.db.bank.getReport(ldsg.members.cache.map(m => m.id));
-  const userData = await u.db.user.getUsers({ discordId: { $in: ldsg.members.cache.map(m => m.id) } });
+  const report = await u.db.user.getReport(ldsg.members.cache.map(m => m.id));
 
-  const points = [u.sf.roles.houses.housesc, u.sf.roles.houses.housebb, u.sf.roles.houses.housefb].map(house => {
-    const houseRole = ldsg.roles.cache.get(house);
+  const houseMap = new u.Collection([
+    [u.sf.roles.houses.housesc, "sc"],
+    [u.sf.roles.houses.housebb, "bb"],
+    [u.sf.roles.houses.housefb, "fb"]
+  ]);
+
+  const points = houseMap.map((shorthand, roleId) => {
+    const houseRole = ldsg.roles.cache.get(roleId);
     const members = houseRole?.members ?? new u.Collection();
 
-    const embers = awards
-      .filter(a => members.has(a._id))
-      .reduce((p, cur) => p + cur.em, 0);
-
-    const xp = userData
+    const houseReport = report
       .filter(a => members.has(a.discordId))
-      .reduce((p, cur) => p + cur.currentXP, 0);
+      .reduce((p, cur) => ({ em: p.em + cur.em, xp: p.xp + cur.currentXP }), { em: 0, xp: 0 });
 
     return {
-      house,
+      roleId,
       name: houseRole?.name ?? "Unknown House",
-      embers,
-      xp,
-      perCapita: embers / members.size
+      embers: houseReport.em,
+      xp: houseReport.xp,
+      perCapita: houseReport.em / (members.size || 1),
+      // @ts-ignore
+      emoji: u.sf.emoji.houses[shorthand],
+      shorthand
     };
   });
   return points;
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
-async function slashHouseEmber(interaction) {
+async function slashManagerRankHouseEmber(interaction) {
   try {
     await interaction.deferReply({ flags: ["Ephemeral"] });
     const points = await getHouseStats();
@@ -246,6 +251,138 @@ async function slashManagerSponsorChannel(int) {
   await int.editReply(`Alright! ${sponsor} should be all set. Their Pro Sponsor channel (${channel}) has been created and they should be able to see it.`);
 }
 
+/**
+ * @param {Discord.Client<true>} client
+ * @param {string} [time]
+ */
+async function getMopBucketWinner(client, time) {
+  const lastSeason = u.moment(time).startOf("month").subtract(4, "months").hour(19);
+
+  const ldsg = client.guilds.cache.get(u.sf.ldsg);
+  if (!ldsg) throw new Error("Couldn't find LDSG - Rank Reset");
+
+  const houseStats = await getHouseStats();
+
+  const medals = ["🥇", "🥈", "🥉"];
+
+  houseStats.sort((a, b) => b.embers - a.embers);
+  const perHouse = houseStats.map((house, i) => `${medals[i]} **${house.name}:** ${house.embers.toFixed(2)}`).join("\n");
+
+  houseStats.sort((a, b) => b.perCapita - a.perCapita);
+  const perCapita = houseStats.map((house, i) => `${medals[i]} **${house.name}:** ${house.perCapita.toFixed(2)}`).join("\n");
+
+  const winner = houseStats[0];
+  const emoji = `<:${winner.shorthand}:${winner.emoji}>`;
+
+  const publicString = "And now, for the winner of this season's **House Mop Bucket!!!**\n\n" +
+    "This season's mop bucket goes to...\ndrumroll please...\n\n" +
+    `# ${emoji} ${winner.name.toUpperCase()}!!! ${emoji}\n` +
+    "-# Wow, incredible!\n\n" +
+    `Congrats to all of you ${winner.name}-ers out there! Your house crest will be the server banner for a while, plus you get insane bragging rights!`;
+
+  const privateEmbed = u.embed()
+    .setTitle(`House Points Since ${lastSeason.format("MMMM Do")}`)
+    .setDescription("Final standings of the houses this season (*decided by per capita*):\n\nPer Capita:\n" + perCapita + "\n\nPer House:\n" + perHouse);
+
+  return { publicString, privateEmbed, house: winner };
+}
+
+/** @param {Discord.Client<true>} client  */
+async function rankReset(client, dist = 10_000) {
+  const ember = `<:ember:${u.sf.emoji.ember}>`;
+  dist = Math.abs(dist);
+
+  // get people who opted in to xp
+  const ldsg = client.guilds.cache.get(u.sf.ldsg);
+  if (!ldsg) throw new Error("No LDSG - Rank Reset");
+
+  const members = await ldsg.members.fetch().then(mems => mems.map(m => m.id));
+  const users = await u.db.user.getUsers({ currentXP: { $gt: 0 }, discordId: { $in: members } });
+
+  // log for backup
+  const date = u.moment().format("MM DD YYYY");
+  fs.writeFileSync(`./data/rankDetail ${date}-.json`, JSON.stringify(users.map(usr => ({ discordId: usr.discordId, currentXP: usr.currentXP }))));
+
+  // formula for ideal ember distribution
+  const totalXP = users.reduce((p, cur) => p + cur.currentXP, 0);
+  const rate = dist / totalXP;
+
+  // top performers
+  const medals = ["🥇", "🥈", "🥉"];
+  const top3 = users.sort((a, b) => b.currentXP - a.currentXP)
+    .slice(0, 3)
+    .map((usr, i) => `${medals[i]} - <@${usr.discordId}> (${usr.currentXP} XP)`)
+    .join("\n");
+
+  const team = client.getTextChannel(u.sf.channels.team.team);
+  await team?.send(`Here are the stats for this season:\nParticipants: ${users.length}\nTotal XP: ${totalXP}\nRate: ${rate}\n\nTop 3:\n${top3}`);
+
+  if (dist) {
+    // generate CSV backup
+    const rewardRows = ["id,season,life,award"];
+
+    /** @type {import("../database/controllers/bank").CurrencyRecord[]} */
+    const records = [];
+
+    for (const user of users) {
+      const award = Math.round(rate * user.currentXP);
+      if (award) {
+        rewardRows.push(`${user.discordId},${user.currentXP},${user.totalXP},${award}`);
+        records.push({
+          currency: "em",
+          description: `Chat Rank Reset - ${new Date().toLocaleDateString()}`,
+          discordId: user.discordId,
+          value: award,
+          otherUser: client.user.id ?? "Icarus",
+          hp: true,
+          timestamp: new Date()
+        });
+      }
+
+      fs.writeFileSync(`./data/awardDetail ${date}.csv`, rewardRows.join("\n"));
+      if (records.length > 0) await u.db.bank.addManyTransactions(records);
+    }
+  }
+
+  // announce!
+  let announcement = "# CHAT RANK RESET!!!\n\n" +
+    `Another chat season has come to a close! In the most recent season, we've had **${users.length}** active members who are tracking their chatting XP! Altogether, we earned **${totalXP} XP!**\n` +
+    `The three most active members were:\n${top3}\n\n` +
+    dist ? `${ember}${dist} have been distributed among *all* of those ${users.length} XP trackers, proportional to their participation.\n\n` : "" +
+    "If you would like to participate in this season's chat ranks and *haven't* opted in, `/rank track` will get you in the mix. If you've previously used that command, you don't need to do so again.";
+
+  const mopBucket = await getMopBucketWinner(client);
+  announcement += `\n\n${mopBucket.publicString}`;
+
+  /** @type {import("./management").ManagementShared | undefined} */
+  const managementShared = await client.moduleManager.shared.get("management.js");
+  if (!managementShared) throw new Error("Couldn't access banner set function");
+
+  managementShared.setBanner(`house-${mopBucket.house.shorthand}`);
+
+  client.getTextChannel(u.sf.channels.announcements)?.send({ content: announcement, allowedMentions: { parse: ["users"] } });
+  team?.send({ embeds: [mopBucket.privateEmbed] });
+
+  // set everyone's xp back to 0
+  u.db.user.resetSeason();
+}
+
+/** @param {Augur.GuildInteraction<"CommandSlash">} int */
+async function slashManagerRankReset(int) {
+  try {
+
+    const confirmation = await u.confirmInteraction(int, "Are you sure you want to reset the Season?\n**This will reset everyone's XP to 0.**", "Confirmation:");
+    if (!confirmation) return;
+
+    // Dist should be 10_000 for a normal season length
+    const dist = int.options.getInteger("ember-reward", false) ?? 10_000;
+    await rankReset(int.client, dist);
+
+    return confirmation.editReply({ content: "The season has been reset." });
+  } catch (error) {
+    u.errorHandler(error, int);
+  }
+}
 
 Module.addInteraction({
   id: u.sf.commands.slashManager,
@@ -255,7 +392,8 @@ Module.addInteraction({
     switch (int.options.getSubcommand()) {
       case "transfer": return slashManagerUserTransfer(int);
       case "channel": return slashManagerSponsorChannel(int);
-      case "house-report": return slashHouseEmber(int);
+      case "reset": return slashManagerRankReset(int);
+      case "house-report": return slashManagerRankHouseEmber(int);
       default: throw new Error("Unhandled Subcommand - /mgr");
     }
   }
@@ -270,6 +408,9 @@ Module.addInteraction({
     await createSponsorChannel(member);
     return;
   }
-});
+})
+.setShared({ rankReset });
+
+/** @typedef {{ rankReset: rankReset }} ManagerShared */
 
 module.exports = Module;

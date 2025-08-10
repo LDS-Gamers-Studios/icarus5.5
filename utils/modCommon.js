@@ -95,69 +95,74 @@ const modCommon = {
   refreshBanList: () => delete require.cache[require.resolve("../data/banned.json")],
   /**
    * BAN HAMMER!!!
-   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
+   * @template {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} T
+   * @param {T} interaction
    * @param {Discord.GuildMember} target
    * @param {string} reason
    * @param {number} days
+   * @returns {Promise<{ payload: Discord.InteractionEditReplyOptions | string, interaction: T | Discord.ButtonInteraction} | null>}
    */
   ban: async function(interaction, target, reason, days = 1) {
     let success = false;
+    let confirm;
     try {
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to ban ${target}!`;
-      else if (!target.bannable) return `I have insufficient permissions to ban ${target}!`;
+      if (!compareRoles(interaction.member, target)) return { payload: `You have insufficient permissions to ban ${target}!`, interaction };
+      else if (!target.bannable) return { payload: `I have insufficient permissions to ban ${target}!`, interaction };
 
-      const confirm = await u.confirmInteraction(interaction, `Ban ${target} for:\n${reason}?`, `Confirm Ban on ${u.escapeText(target.displayName)}`);
-      if (!confirm) {
-        return {
-          embeds: [u.embed({ author: interaction.member }).setColor(embedColors.handled).setDescription(`Ban ${confirm === false ? "cancelled" : "timed out"}`)],
-          components: []
-        };
-      } else if (confirm) {
+      confirm = await u.confirmInteraction(interaction, `Ban ${target} for:\n${reason}?`, `Confirm Ban on ${u.escapeText(target.displayName)}`);
+      if (!confirm) return null;
 
-        // The actual ban part
-        const targetRoles = target.roles.cache.clone();
-        await target.send({ content: messageFromMods, embeds: [ u.embed()
-          .setTitle("User Ban")
-          .setDescription(`You have been banned from ${interaction.guild.name}`)
-          .addFields({ name: "Details", value: reason })
-          .setFooter({ text: `${interaction.member} has issued this ban.` })
-        ] }).catch(() => blocked(target));
-        await target.ban({ deleteMessageSeconds: days * 24 * 60 * 60, reason });
-        success = true;
-        // Save infraction
-        u.db.infraction.save({
-          discordId: target.id,
-          description: `[User Ban]: ${reason}`,
-          value: 30,
-          mod: interaction.member.id
-        });
+      // The actual ban part
+      const targetRoles = target.roles.cache.clone();
+      await target.send({ content: messageFromMods, embeds: [ u.embed()
+        .setTitle("User Ban")
+        .setDescription(`You have been banned from ${interaction.guild.name}`)
+        .addFields({ name: "Details", value: reason })
+        .setFooter({ text: `${interaction.member} has issued this ban.` })
+      ] }).catch(() => blocked(target));
 
-        // Save roles
-        targetRoles.delete(u.sf.roles.moderation.trusted);
-        u.db.user.updateRoles(target, targetRoles.map(r => r.id));
+      await target.ban({ deleteMessageSeconds: days * 24 * 60 * 60, reason });
+      success = true;
 
-        // Log it
-        interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
-          logEmbed(interaction, target)
-            .setTitle(`${interaction.client.emojis.cache.get(u.sf.emoji.banhammer) ?? ""} User Ban`)
-            .addFields({ name: "Reason", value: reason })
-            .setColor(embedColors.info)
-            .setFooter({ text: `Deleted ${days} day(s) of messages` })
-        ] });
-        // Return results
-        return {
+      // Save infraction
+      await u.db.infraction.save({
+        discordId: target.id,
+        description: `[User Ban]: ${reason}`,
+        value: 30,
+        mod: interaction.member.id
+      });
+
+      // Save roles
+      targetRoles.delete(u.sf.roles.moderation.trusted);
+      u.db.user.updateRoles(target, targetRoles.map(r => r.id));
+
+      // Log it
+      interaction.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
+        logEmbed(interaction, target)
+          .setTitle(`${interaction.client.emojis.cache.get(u.sf.emoji.banhammer) ?? ""} User Ban`)
+          .addFields({ name: "Reason", value: reason })
+          .setColor(embedColors.info)
+          .setFooter({ text: `Deleted ${days} day(s) of messages` })
+      ] });
+
+      // Return results
+      return {
+        payload: {
           embeds: [
             u.embed({ author: target })
               .setColor(embedColors.success)
               .setDescription(`${target} banned for:\n${reason}`)
           ],
           components: []
-        };
-      }
-      return "...Nothing happened.";
+        },
+        interaction: confirm
+      };
     } catch (error) {
       await u.errorHandler(error, interaction);
-      return "I ran into an error! " + (success ? `${target} was banned though.` : `${target} wasn't banned.`);
+      return {
+        payload: "I ran into an error! " + (success ? `${target} was banned though.` : `${target} wasn't banned.`),
+        interaction: confirm ?? interaction
+      };
     }
   },
 
@@ -323,22 +328,29 @@ const modCommon = {
   },
   /**
    * They get the boot
-   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
+   * @template {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} T
+   * @param {T} interaction
    * @param {Discord.GuildMember} target
    * @param {string} reason
+   * @returns {Promise<{ payload: Discord.InteractionEditReplyOptions | string, interaction: T | Discord.ButtonInteraction} | null>}
    */
   kick: async function(interaction, target, reason) {
     let success = false;
+    let confirm;
     try {
-      if (!compareRoles(interaction.member, target)) return `You have insufficient permissions to kick ${target}!`;
-      else if (!target.kickable) return `I have insufficient permissions to kick ${target}!`;
+      if (!compareRoles(interaction.member, target)) return { payload: `You have insufficient permissions to kick ${target}!`, interaction };
+      else if (!target.kickable) return { payload: `I have insufficient permissions to kick ${target}!`, interaction };
 
-      const confirm = await u.confirmInteraction(interaction, `Kick ${target} for:\n${reason}?`, `Confirm Kick on ${u.escapeText(target.displayName)}`);
+      confirm = await u.confirmInteraction(interaction, `Kick ${target} for:\n${reason}?`, `Confirm Kick on ${u.escapeText(target.displayName)}`);
+      if (!confirm) return null;
 
       if (!confirm) {
         return {
-          embeds: [u.embed({ author: target }).setColor(embedColors.handled).setDescription(`Kick ${confirm === false ? "cancelled" : "timed out"}`)],
-          components: []
+          payload: {
+            embeds: [u.embed({ author: target }).setColor(embedColors.handled).setDescription(`Kick ${confirm === false ? "cancelled" : "timed out"}`)],
+            components: []
+          },
+          interaction: confirm
         };
       }
       // The actual kick part
@@ -350,10 +362,12 @@ const modCommon = {
         .addFields({ name: "Details", value: reason })
         .setFooter({ text: `${interaction.member.displayName} has issued this kick.` })
       ] }).catch(() => blocked(target));
+
       await target.kick(reason);
       success = true;
+
       // Save infraction
-      u.db.infraction.save({
+      await u.db.infraction.save({
         discordId: target.id,
         description: `[User Kick]: ${reason}`,
         value: 30,
@@ -372,16 +386,22 @@ const modCommon = {
           .setColor(embedColors.info)
       ] });
       return {
-        embeds: [
-          u.embed({ author: target })
-          .setColor(embedColors.success)
-          .setDescription(`${target} kicked for:\n${reason}`)
-        ],
-        components: []
+        payload: {
+          embeds: [
+            u.embed({ author: target })
+            .setColor(embedColors.success)
+            .setDescription(`${target} kicked for:\n${reason}`)
+          ],
+          components: []
+        },
+        interaction: confirm
       };
     } catch (error) {
       await u.errorHandler(error, interaction);
-      return `I ran into an error! ${target} ` + (success ? "*was* kicked though." : "wasn't kicked.");
+      return {
+        payload: `I ran into an error! ${target} ` + (success ? "*was* kicked though." : "wasn't kicked."),
+        interaction: confirm ?? interaction
+      };
     }
   },
 
