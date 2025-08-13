@@ -25,9 +25,13 @@
         "challonge": {
           "description": "https://api.challonge.com/v1",
           "type": "string"
+        },
+        "thegamesdb": {
+          "description": "We don't have a way to obtain keys easily",
+          "type": "string"
         }
       },
-      "required": ["tenor", "snipcart", "challonge"]
+      "required": ["tenor", "snipcart", "challonge", "thegamesdb"]
     },
     "applicationId": {
       "description": "https://discord.com/developers/applications",
@@ -158,6 +162,17 @@
       },
       "required": ["creds","sheets", "mail"]
     },
+    "twitch": {
+      "description": "Create an app at https://dev.twitch.tv/console",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "clientId": { "type": "string" },
+        "clientSecret": { "type": "string" },
+        "elTeam": { "type": "string" }
+      },
+      "required": ["enabled", "clientId", "clientSecret", "elTeam"]
+    },
     "prefix": {
       "description": "The bot will respond to commands starting with this string",
       "type": "string",
@@ -255,6 +270,7 @@
     "webhooks",
     "events",
     "google",
+    "twitch",
     "prefix",
     "spamThreshold",
     "token",
