@@ -99,6 +99,11 @@ const status = new u.sub()
       .setDescription("The URL for the activity")
       .setRequired(false)
   );
+
+const error = new u.sub()
+  .setName("error")
+  .setDescription("Throws an error");
+
 module.exports = new u.cmd()
   .setName("bot")
   .setDescription("Control the bot! Some actions are limited based on role.")
@@ -111,6 +116,7 @@ module.exports = new u.cmd()
   .addSubcommand(register)
   .addSubcommand(status)
   .addSubcommand(sheets)
+  .addSubcommand(error)
   .setContexts(u.contexts.Guild)
   .setDefaultMemberPermissions(u.privateCommand)
   .toJSON();
