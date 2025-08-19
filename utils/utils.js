@@ -317,7 +317,7 @@ const utils = {
     /* eslint-disable-next-line no-console*/
     console.error(Date());
 
-    const embed = utils.embed().setTitle(error?.name?.toString() ?? "Error");
+    const embed = utils.embed().setTitle(error?.name?.toString() ?? "Error").setFooter({ text: `Process ID: ${process.pid}` });
 
     if (message instanceof Discord.Message) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");

@@ -211,6 +211,12 @@ async function slashBotStatus(int) {
   return int.editReply("Status updated!");
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashBotError(int) {
+  await int.editReply("Throwing error! yEEEET!!!");
+  u.errorHandler(new Error(`${int.member.displayName} caused a controlled error!`));
+}
+
 const Module = new Augur.Module()
 .addInteraction({
   name: "bot",
@@ -235,6 +241,7 @@ const Module = new Augur.Module()
       case "register": return slashBotRegister(int);
       case "status": return slashBotStatus(int);
       case "sheets": return slashBotSheets(int);
+      case "error": return slashBotError(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },
