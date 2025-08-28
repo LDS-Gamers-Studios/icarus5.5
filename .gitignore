@@ -9,6 +9,7 @@ test.js
 *-.json
 *.csv
 data/banned.json
+data/streams.json
 site
 .DS_Store
 media/badges/*
