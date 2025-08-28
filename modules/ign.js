@@ -261,6 +261,7 @@ const autocompleteCache = new u.Collection();
 const Module = new Augur.Module()
 .addInteraction({
   id: u.sf.commands.slashIgn,
+  options: { registry: "slashIgn" },
   process: async (int) => {
     await int.deferReply({ flags: int.channelId !== u.sf.channels.botSpam ? ["Ephemeral"] : [] });
     switch (int.options.getSubcommand(true)) {

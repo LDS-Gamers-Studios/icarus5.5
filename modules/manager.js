@@ -387,6 +387,7 @@ async function slashManagerRankReset(int) {
 Module.addInteraction({
   id: u.sf.commands.slashManager,
   onlyGuild: true,
+  options: { registry: "slashManager" },
   permissions: (int) => u.perms.calc(int.member, ["mgr"]),
   process: async (int) => {
     switch (int.options.getSubcommand()) {

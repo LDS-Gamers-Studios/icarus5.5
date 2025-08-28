@@ -245,6 +245,7 @@ Module.addInteraction({
   guildId: u.sf.ldsg,
   id: u.sf.commands.slashGame,
   onlyGuild: true,
+  options: { registry: "slashGame" },
   process: async (interaction) => {
     try {
       switch (interaction.options.getSubcommand()) {

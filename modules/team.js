@@ -138,6 +138,7 @@ async function slashTeamTournamentReset(int) {
 const Module = new Augur.Module()
 .addInteraction({ id: u.sf.commands.slashTeam,
   onlyGuild: true,
+  options: { registry: "slashTeam" },
   permissions: int => u.perms.calc(int.member, ["team", "mgr"]),
   process: (int) => {
     const group = int.options.getSubcommandGroup(true);
