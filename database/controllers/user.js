@@ -278,9 +278,19 @@ const models = {
 
     return User.aggregate([
       { $match: { discordId: { $in: discordIds } } },
-      { $lookup: { from: "banks", localField: "discordId", foreignField: "discordId", as: "banks", pipeline: [{ $match: { hp: true, currency: "em" } }] } },
-      { $project: { discordId: true, currentXP: true, em: { $sum: "$banks.value" } } }
+      { $lookup: { from: "banks", localField: "discordId", foreignField: "discordId", as: "banks" } },
+      { $unwind: { path: "$banks", preserveNullAndEmptyArrays: true } },
+      { $match: { "banks.hp": true, "banks.currency": "em", "banks.timestamp": { $gte: startDate.toDate() } } },
+      { $group: { _id: "$_id", discordId: { $first: "$discordId" }, currentXP: { $first: "$currentXP" }, em: { $sum: "$banks.value" } } },
+      { $project: { discordId: true, currentXP: true, em: true } }
     ]).exec();
+
+    // Use this once mongo has been updated
+    // return User.aggregate([
+    // { $match: { discordId: { $in: discordIds } } },
+    //   { $lookup: { from: "banks", localField: "discordId", foreignField: "discordId", as: "banks", pipeline: [{ $match: { hp: true, currency: "em", timestamp: { $gte: startDate.toDate() } } }] } },
+    //   { $project: { discordId: true, currentXP: true, em: { $sum: "$banks.value" } } }
+    // ]).exec();
   },
 };
 

@@ -120,11 +120,12 @@ async function slashManagerUserTransfer(int) {
   return int.editReply({ embeds: [embed] });
 }
 
-async function getHouseStats() {
+async function getHouseStats(resetting = false) {
   const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) throw new Error("Couldn't find LDSG");
 
-  const report = await u.db.user.getReport(ldsg.members.cache.map(m => m.id));
+  const date = resetting ? u.moment().subtract(4, "months") : undefined;
+  const report = await u.db.user.getReport(ldsg.members.cache.map(m => m.id), date);
 
   const houseMap = new u.Collection([
     [u.sf.roles.houses.housesc, "sc"],
@@ -261,7 +262,7 @@ async function getMopBucketWinner(client, time) {
   const ldsg = client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) throw new Error("Couldn't find LDSG - Rank Reset");
 
-  const houseStats = await getHouseStats();
+  const houseStats = await getHouseStats(true);
 
   const medals = ["🥇", "🥈", "🥉"];
 
