@@ -339,10 +339,10 @@ async function rankReset(client, dist = 10_000) {
           timestamp: new Date()
         });
       }
-
-      fs.writeFileSync(`./data/awardDetail ${date}.csv`, rewardRows.join("\n"));
-      if (records.length > 0) await u.db.bank.addManyTransactions(records);
     }
+
+    fs.writeFileSync(`./data/awardDetail ${date}.csv`, rewardRows.join("\n"));
+    if (records.length > 0) await u.db.bank.addManyTransactions(records);
   }
 
   // announce!
