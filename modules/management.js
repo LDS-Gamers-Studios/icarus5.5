@@ -90,7 +90,6 @@ async function setBanner(holiday) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashChannelActivity(int) {
   try {
-    await int.deferReply({ flags: ["Ephemeral"] });
     const last = Date.now() - (14 * 24 * 60 * 60 * 60_000); // 14 days ago
 
     // makes sure that the bot can see the channel and that it isn't archive and that it is a text channel
