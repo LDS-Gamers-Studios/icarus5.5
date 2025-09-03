@@ -93,7 +93,7 @@ async function slashChannelActivity(int) {
     const last = Date.now() - (14 * 24 * 60 * 60 * 60_000); // 14 days ago
 
     // makes sure that the bot can see the channel and that it isn't archive and that it is a text channel
-    const channels = int.guild.channels.cache.filter(ch => (ch.isTextBased() && ch.permissionsFor(int.client.user)?.has("ViewChannel") && (ch.parentId !== u.sf.channels.archiveCategory)));
+    const channels = int.guild.channels.cache.filter(ch => (ch.isTextBased() && ch.permissionsFor(int.client.user)?.has(["ViewChannel", "ReadMessageHistory"]) && (ch.parentId !== u.sf.channels.archiveCategory)));
     const fetch = channels.map(ch => {
       if (ch.isTextBased()) {
         return ch.messages.fetch({ limit: 100 });
