@@ -91,6 +91,9 @@ async function slashRankView(interaction) {
 // Occurs every [Jan, May, Sept.] 1st at 6:00 PM MST
 const rule = new schedule.RecurrenceRule(undefined, [0, 4, 8], 1, undefined, 18, 0, undefined, "America/Denver");
 
+// Occurs every day at 6:00 PM MST
+const timeTest = new schedule.RecurrenceRule(undefined, undefined, undefined, undefined, 18, 0, undefined, "America/Denver");
+
 Module.addInteraction({
   name: "rank",
   guildId: u.sf.ldsg,
@@ -151,6 +154,11 @@ Module.addInteraction({
     // @ts-ignore
     managerShared.rankReset(Module.client);
   });
+
+  schedule.scheduleJob("timetest", timeTest, () => {
+    u.errorLog.send("It's 6:00 somewhere. Is that somewhere here?");
+  });
+
 })
 .addCommand({
   name: "debugcup",

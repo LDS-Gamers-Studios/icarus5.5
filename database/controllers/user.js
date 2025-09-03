@@ -287,7 +287,7 @@ const models = {
 
     // Use this once mongo has been updated
     // return User.aggregate([
-    // { $match: { discordId: { $in: discordIds } } },
+    //   { $match: { discordId: { $in: discordIds } } },
     //   { $lookup: { from: "banks", localField: "discordId", foreignField: "discordId", as: "banks", pipeline: [{ $match: { hp: true, currency: "em", timestamp: { $gte: startDate.toDate() } } }] } },
     //   { $project: { discordId: true, currentXP: true, em: { $sum: "$banks.value" } } }
     // ]).exec();
