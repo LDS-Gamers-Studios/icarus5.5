@@ -411,7 +411,7 @@ Module.addInteraction({
     return;
   }
 })
-.setShared({ rankReset });
+.setShared({ rankReset, getMopBucketWinner });
 
 /** @typedef {{ rankReset: rankReset }} ManagerShared */
 
