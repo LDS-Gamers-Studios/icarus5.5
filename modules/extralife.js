@@ -6,16 +6,11 @@ const u = require("../utils/utils");
 const fs = require("fs");
 const NoRepeat = require("no-repeat");
 
-/** @typedef {import("./twitchAlerts").LiveUser} LiveUser */
+/** @typedef {api.LiveUser} LiveUser */
 
 const teamId = config.twitch.elTeam;
-const colors = { elGreen: 0x7fd836, elBlue: 0x26c2eb };
-const urls = {
-  logo: "https://assets.donordrive.com/extralife/images/$event550$/facebookImage.png",
-  teamLink: `https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${teamId}`
-};
 
-const { twitchURL, extraLife: { isExtraLife } } = api;
+const { twitchURL, extraLife: { isExtraLife }, assets } = api;
 const notEL = "Extra Life isn't quite ready yet! Try again in October.";
 
 const Module = new Augur.Module();
@@ -30,12 +25,6 @@ async function slashTwitchExtralifeTeam(int) {
 
   const team = await api.extraLife.getTeam();
   if (!team) return int.editReply("Sorry, looks like the Extra Life API is down! Try later!").then(u.clean);
-
-  doDonationChecks(team);
-
-  /** @type {import("./twitchAlerts").AlertsShared | undefined} */
-  const alertUtils = int.client.moduleManager.shared.get("twitchAlerts.js");
-  if (!alertUtils) throw new Error("Couldn't find Twitch Altert Utils");
 
   const streams = await fetchExtraLifeStreams(team);
   const members = team.participants.map(p => {
@@ -78,24 +67,25 @@ async function slashTwitchExtralifeTeam(int) {
 }
 
 /**
+ * Also does donation checks
  * @param {import("../utils/extralifeTypes").Team | null} [team]
  */
 async function fetchExtraLifeStreams(team) {
   /** @type {LiveUser[]} */
   const defaultValue = [];
 
-  /** @type {import("./twitchAlerts").AlertsShared["twitchStatus"]} */
-  const twitchStatus = Module.client.moduleManager.shared.get("twitchAlerts.js")?.twitchStatus;
   try {
     if (!team) team = await api.extraLife.getTeam();
     if (!team) return defaultValue;
+
+    doDonationChecks(team);
 
     const users = team.participants.filter(m => m.links.stream)
       .map(p => p.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase() ?? "")
       .filter(channel => !(channel.includes(" ") || channel.includes("/")));
 
     if (users.length === 0) return defaultValue;
-    return [...twitchStatus.filter(s => users.includes(s.stream?.userName || "")).values()];
+    return [...api.twitchStatus.filter(s => users.includes(s.stream?.userName || "")).values()];
   } catch (error) {
     u.errorHandler(error, "Fetch Extra Life Streams");
     return defaultValue;
@@ -164,9 +154,9 @@ async function doDonationChecks(team) {
 
     const embed = u.embed()
       .setTitle("New Extra Life Donation")
-      .setURL(urls.teamLink)
-      .setThumbnail(urls.logo)
-      .setColor(colors.elBlue)
+      .setURL(assets.elTeamLink)
+      .setThumbnail(assets.elLogo)
+      .setColor(assets.colors.elBlue)
       .setAuthor({ name: `Donation From ${donation.displayName || "Anonymous Donor"}`, iconURL: donation.avatarImageURL })
       .setDescription(donation.message || "[ No Message ]")
       .setTimestamp(new Date(donation.createdDateUTC))
@@ -190,7 +180,7 @@ async function doDonationChecks(team) {
 
   if (newDonors.length > 0) {
     const dono = team.donations[0];
-    const embed = u.embed().setColor(colors.elBlue)
+    const embed = u.embed().setColor(assets.colors.elBlue)
       .setTitle(`${newDonors.length} New Extra Life Donor(s)`)
       .setThumbnail(dono.avatarImageURL)
       .setDescription(team.donations.map(d => d.displayName).join("\n"))
@@ -213,14 +203,11 @@ async function extraLifeEmbeds(streams) {
 
     const embed = u.embed()
       .setTitle("Live from the Extra Life Team!")
-      .setImage(urls.logo)
-      .setColor(colors.elGreen);
-
-    /** @type {import("./twitchAlerts").AlertsShared["twitchGames"]} */
-    const games = Module.client.moduleManager.shared.get("twitchAlerts.js")?.twitchGames;
+      .setImage(assets.elLogo)
+      .setColor(assets.colors.elGreen);
 
     const channels = streams.sort((a, b) => (a.stream?.userDisplayName ?? "").localeCompare(b.stream?.userDisplayName ?? "")).map(s => {
-      const game = games.get(s.stream?.gameId ?? "")?.name;
+      const game = api.twitchGames.get(s.stream?.gameId ?? "")?.name;
       return `**${s.stream?.userDisplayName} ${game ? `playing ${game}` : ""}**\n[${u.escapeText(s.stream?.title || "")}](${twitchURL(s.stream?.userDisplayName || "")}\n`;
     });
 
@@ -246,5 +233,8 @@ Module.setShared({
   loadDonationCache();
 });
 
+/**
+ * @typedef {{ slashTwitchExtralifeTeam: slashTwitchExtralifeTeam, alerts: alerts, doDonationChecks: doDonationChecks }} ExtraLifeShared
+ */
 
 module.exports = Module;

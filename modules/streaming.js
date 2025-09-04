@@ -2,9 +2,11 @@
 const Augur = require("augurbot-ts");
 const Discord = require("discord.js");
 const Twitch = require("@twurple/api");
+const fs = require("fs");
 
 const u = require("../utils/utils");
 const c = require("../utils/modCommon");
+const config = require("../config/config.json");
 const api = require("../utils/streamingApis");
 const bonusStreams = require("../data/streams.json");
 
@@ -31,8 +33,8 @@ async function slashTwitchLive(int) {
 
   const approved = int.guild.roles.cache.get(u.sf.roles.streaming.approved)?.members ?? new u.Collection();
 
-  let igns = await u.db.ign.findMany(approved.map(m => m.id) ?? [], "twitch")
-    .then(i => i.map(ign => ign.ign.toLowerCase()).concat(bonusStreams));
+  let igns = await u.db.ign.findMany(approved.map(m => m.id), "twitch")
+    .then(i => u.unique(i.map(ign => ign.ign.toLowerCase()).concat(bonusStreams)));
 
   // Add extra life team members if applicable
   /** @type {Discord.Collection<string, import("../utils/extralifeTypes").Participant>} */
@@ -41,14 +43,17 @@ async function slashTwitchLive(int) {
   if (isExtraLife()) {
     const team = await api.extraLife.getTeam();
     if (team) {
-      int.client.moduleManager.shared.get("extralife.js")?.doDonationChecks(team);
+      /** @type {import("./extralife").ExtraLifeShared} */
+      const extralife = int.client.moduleManager.shared.get("extralife.js");
+      if (!extralife) throw new Error("Couldn't find Extra Life module");
+      extralife.doDonationChecks(team);
 
       elParticipants = new u.Collection(team.participants.map(p => {
         const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase() ?? "";
         return [username, p];
       }) ?? []);
 
-      if (elParticipants.size > 0) igns = igns.concat([...elParticipants.keys()]);
+      if (elParticipants.size > 0) igns = u.unique(igns.concat([...elParticipants.keys()]));
     }
   }
 
@@ -70,12 +75,8 @@ async function slashTwitchLive(int) {
 
   const channels = [];
 
-  /** @type {import("./twitchAlerts").AlertsShared | undefined} */
-  const alertUtils = int.client.moduleManager.shared.get("twitchAlerts.js");
-  if (!alertUtils) throw new Error("Couldn't find Twitch Altert Utils");
-
   for (const stream of streams) {
-    const game = await api.fetchGameRating(stream.gameName, alertUtils.twitchGames);
+    const game = await api.fetchGameRating(stream.gameName);
     if (game.rating === "M - Mature 17+") continue;
     const participant = elParticipants.get(stream.userName);
 
@@ -157,15 +158,15 @@ const approveButtons = u.MessageActionRow().addComponents(
 async function modalStreamerIgn(int) {
   // get inputs
   await int.deferUpdate();
-  const name = int.fields.getTextInputValue("username");
+  const name = int.fields.getTextInputValue("username").toLowerCase().trim();
   const games = int.fields.getTextInputValue("games");
 
-  if (name.includes("twitch.tv/")) return int.editReply("It looks like you've included a URL in your Twitch username. We take care of that on our end, so please leave it out.");
+  if (name.includes("twitch.tv/")) return int.editReply("It looks like you've included a URL in your Twitch username. Please enter only your Twitch username (for example, 'ldsgamers'), not the full URL.");
   await u.db.ign.save(int.member.id, "twitch", name);
 
   // generate and send the request
   const embed = u.embed().setTitle("Approved Streamer Request")
-    .setDescription(`${c.userBackup(int.member)} has requested to become an approved streamer. It's reccomended that you watch a stream or two of theirs before approving them.`)
+    .setDescription(`${c.userBackup(int.member)} has requested to become an approved streamer. It's recommended that you watch a stream or two of theirs before approving them.`)
     .setColor(c.colors.info)
     .setFooter({ text: int.member.id })
     .addFields(
@@ -206,7 +207,184 @@ async function buttonDenyStreamer(int) {
   int.editReply({ content: `${member}'s application has been denied by ${int.member}`, components: [] });
 }
 
+/***********************
+ * TWITCH ALERT SYSTEM *
+ ***********************/
+const sinceThreshold = () => Date.now() - 30 * 60_000;
 
+/**
+ * @param {Twitch.HelixStream[]} streams
+ * @param {{ign: string, discordId: string}[]} streamers
+ * @param {Discord.Guild} ldsg
+*/
+async function handleOnline(streams, streamers, ldsg) {
+  /** @type {Discord.MessageCreateOptions[]} */
+  const messages = [];
+
+  for (const stream of streams) {
+    const status = api.twitchStatus.get(stream.userDisplayName.toLowerCase());
+
+    // If they were streaming recently (within half an hour), don't post notifications
+    if (status && (status.live || status.since > sinceThreshold())) continue;
+
+    // filter out bad games
+    const game = await api.fetchGameRating(stream.gameName);
+    if (game?.rating === "M - Mature 17+") continue;
+
+    const url = twitchURL(stream.userDisplayName);
+
+    // set activity and change bot status if LDSG is live
+    let content;
+    let allowMentions = false;
+    if (stream.userDisplayName.toLowerCase() === "ldsgamers") {
+      Module.client.user?.setActivity({ name: stream.title, url, type: Discord.ActivityType.Streaming });
+      content = `**<@&${u.sf.roles.streaming.twitchraiders}>, we're live!**`;
+      allowMentions = true;
+    }
+
+    // apply live role if applicable
+    const ign = streamers.find(streamer => streamer.ign.toLowerCase() === stream.userDisplayName.toLowerCase());
+    const member = ldsg.members.cache.get(ign?.discordId ?? "");
+    if (member && api.isPartnered(member)) {
+      member.roles.add(u.sf.roles.streaming.live).catch(u.noop);
+    }
+
+    // mark as live
+    api.twitchStatus.set(stream.userDisplayName.toLowerCase(), { live: true, since: Date.now(), userId: member?.id, stream });
+
+    // generate embed
+    const embed = u.embed()
+      .setColor(colors.twitch)
+      .setThumbnail(stream.getThumbnailUrl(480, 270))
+      .setAuthor({ name: `${stream.userDisplayName} ${game ? `is playing ${game.name}` : ""}` })
+      .setTitle(`🔴 ${stream.title}`)
+      .setDescription(`${member || stream.userDisplayName} went live on Twitch!`)
+      .setURL(url);
+
+    // check for extralife (has extralife role and extra life in title)
+    if (isExtraLife() && (member ? member?.roles.cache.has(u.sf.roles.streaming.elteam) : true) && stream.title.match(/extra ?life/i)) {
+      if (content) content = `**<@&${u.sf.roles.streaming.elraiders}>** ${content}`;
+      else content = `<@&${u.sf.roles.streaming.elraiders}>, **${member?.displayName ?? stream.userDisplayName}** is live for Extra Life!`;
+
+      allowMentions = true;
+      embed.setColor(colors.elGreen);
+    }
+
+    // send it!
+    messages.push({ content, embeds: [embed], allowedMentions: allowMentions ? { parse: ["roles"] } : undefined });
+  }
+
+  return messages;
+}
+
+/**
+ * @param {{ign: string, discordId: string}[]} streamers
+ * @param {Discord.Guild} ldsg
+ */
+async function handleOffline(streamers, ldsg) {
+  for (const channel of streamers) {
+    const ign = channel.ign.toLowerCase();
+    const status = api.twitchStatus.get(ign);
+
+    // remove if they're past the threshold
+    if (status && status.live && status.since < sinceThreshold()) {
+      api.twitchStatus.delete(ign);
+      continue;
+    }
+
+    // don't bother continuing if they're already marked live
+    if (!status?.live) continue;
+
+    if (channel.ign.toLowerCase() === "ldsgamers") Module.client.user?.setActivity({ name: "Tiddlywinks", type: Discord.ActivityType.Playing });
+
+    // remove the live role
+    const member = ldsg.members.cache.get(channel.discordId);
+    if (member?.roles.cache.has(u.sf.roles.streaming.live)) {
+      member.roles.remove(u.sf.roles.streaming.live).catch(error => u.errorHandler(error, `Remove Live role from ${member.displayName}`));
+    }
+
+    api.twitchStatus.set(ign, {
+      live: false,
+      since: Date.now(),
+      userId: member?.id,
+      stream: null
+    });
+  }
+}
+
+/** @param {{ign: string, discordId: string}[]} igns */
+async function processTwitch(igns) {
+  try {
+    const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
+    if (!ldsg) return;
+
+    const notificationChannel = ldsg.client.getTextChannel(u.sf.channels.general);
+
+    const perPage = 50;
+    for (let i = 0; i < igns.length; i += perPage) {
+      const streamers = igns.slice(i, i + perPage);
+      const users = streamers.map(s => s.ign);
+
+      const streams = await api.twitch.streams.getStreamsByUserNames(users)
+        .catch(api.twitchErrorHandler);
+
+      if (!streams) continue;
+
+      const messages = await handleOnline(streams, streamers, ldsg);
+      for (const message of messages) {
+        await notificationChannel?.send(message).catch(u.noop);
+      }
+
+      const offline = streamers.filter(streamer => !streams.find(stream => stream.userDisplayName.toLowerCase() === streamer.ign.toLowerCase()));
+      await handleOffline(offline, ldsg);
+    }
+  } catch (e) {
+    u.errorHandler(e, "Process Twitch");
+  }
+}
+
+async function checkStreamsClockwork() {
+  try {
+    // Get people with the approved streamers role
+    const streamers = Module.client.guilds.cache.get(u.sf.ldsg)
+      ?.roles.cache.get(u.sf.roles.streaming.approved)
+      ?.members.map(member => member.id) ?? [];
+
+    if (streamers.length === 0) return;
+
+    // Look up their twitch IGN
+    const igns = await u.db.ign.findMany(streamers, "twitch");
+    const streams = bonusStreams.filter(s => s.length > 0)
+      .map(s => ({ ign: s, discordId: s }))
+      .concat(igns);
+
+    processTwitch(streams);
+
+    // Check for Extra Life
+    const now = new Date();
+    if (!isExtraLife() || now.getHours() % 2 !== 1 || now.getMinutes() > 5) return;
+
+    /** @type {import("./extralife").ExtraLifeShared} */
+    const shared = Module.client.moduleManager.shared.get("extralife.js");
+    const embeds = await shared.alerts();
+
+    for (const embed of embeds) {
+      await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
+    }
+
+  } catch (e) {
+    u.errorHandler(e, "Stream Check");
+  }
+}
+
+function writeCache() {
+  const cutoff = u.moment().add(30, "minutes").valueOf();
+  fs.writeFileSync("./data/streamcache.txt", `${cutoff}\n${api.twitchStatus.map((s, n) => `${s.userId || ""};${s.live};${s.since};${n}`).join("\n")}`);
+}
+
+/****************
+ *    MODULE    *
+ ****************/
 Module.addInteraction({
   id: u.sf.commands.slashTwitch,
   onlyGuild: true,
@@ -215,8 +393,10 @@ Module.addInteraction({
       const subcommand = int.options.getSubcommand(true);
       switch (subcommand) {
         case "extralife-team": {
-          const cmd = int.client.moduleManager.shared.get("extralife.js");
-          return cmd?.slashTwitchExtralifeTeam(int);
+          /** @type {import("./extralife").ExtraLifeShared} */
+          const extralife = int.client.moduleManager.shared.get("extralife.js");
+          if (!extralife) throw new Error("Couldn't find Extra Life module");
+          return extralife.slashTwitchExtralifeTeam(int);
         }
         case "live": return slashTwitchLive(int);
         case "application": return slashTwitchApplication(int);
@@ -266,6 +446,54 @@ Module.addInteraction({
     newMember.send(content).catch(() => c.blocked(newMember));
     alertChannel?.send(`**${c.userBackup(newMember)}**${alert}`);
   }
-});
+})
+.addCommand({
+  name: "checkstreams",
+  permissions: () => config.devMode,
+  process: checkStreamsClockwork
+})
+.setClockwork(() => {
+  return setInterval(checkStreamsClockwork, 5 * 60_000);
+})
+.setInit(async (reset) => {
+  if (reset) return;
+
+  // read from the cache if it exists
+  if (fs.existsSync("./data/streamcache.txt")) {
+    const cache = fs.readFileSync("./data/streamcache.txt", "utf-8").split("\n");
+    const cutoffTime = cache.shift();
+
+    // data after the cutoff is too old and shouldn't be used.
+    if (parseInt(cutoffTime ?? "") > Date.now()) {
+      for (const row of cache) {
+        const [userId, live, since, ...name] = row.split(";");
+        api.twitchStatus.set(name.join(";"), { userId, live: live === "true", since: parseInt(since), stream: null });
+      }
+    }
+
+    // delete the cache
+    fs.unlinkSync("./data/streamcache.txt");
+  }
+
+  // reset live role on restart
+  const members = Module.client.guilds.cache.get(u.sf.ldsg)
+    ?.roles.cache.get(u.sf.roles.streaming.live)
+    ?.members ?? new u.Collection();
+
+  for (const [id, member] of members) {
+    if (!api.twitchStatus.find(s => s.userId === id)) await member.roles.remove(u.sf.roles.streaming.live);
+  }
+
+  if (config.devMode) checkStreamsClockwork();
+})
+.setUnload(() => {
+  delete require.cache[require.resolve("../data/streams.json")];
+  return true;
+})
+.setShared({ writeCache });
+
+/**
+ * @typedef {{ writeCache: writeCache }} StreamingShared
+ */
 
 module.exports = Module;

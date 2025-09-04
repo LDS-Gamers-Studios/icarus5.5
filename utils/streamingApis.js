@@ -3,42 +3,37 @@ const axios = require("axios");
 const u = require("./utils");
 const config = require("../config/config.json");
 const extralife = require("./extralifeTypes");
-const { Collection } = require("discord.js");
+const { Collection, GuildMember } = require("discord.js");
 const Twitch = require("@twurple/api");
 const TwitchAuth = require("@twurple/auth").AppTokenAuthProvider;
-
 
 const GAMES_DB_API = "https://api.thegamesdb.net/v1";
 const EXTRA_LIFE_API = "https://extralife.donordrive.com/api";
 const EXTRA_LIFE_TEAM = config.twitch.elTeam;
 
+const assets = {
+  colors: { twitch: 0x6441A4, elGreen: 0x7fd836, elBlue: 0x26c2eb },
+  elLogo: "https://assets.donordrive.com/extralife/images/$event550$/facebookImage.png",
+  elTeamLink: `https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${EXTRA_LIFE_TEAM}`
+};
+
+/*********************
+ * CACHED API VALUES *
+ *********************/
+/** @type {Collection<string, { name: string, rating?: string }>} */
+const twitchGames = new u.Collection();
+
 /**
- * Find the rating for a game given its name
- * @param {string} gameName
- * @param {Collection<string, {name: string, rating?: string}>} cache
- * @returns {Promise<{ name: string, rating?: string }>}
+ * @typedef LiveUser
+ * @prop {boolean} live
+ * @prop {number} since
+ * @prop {string} [userId]
+ * @prop {Twitch.HelixStream | null} stream
  */
-async function fetchGameRating(gameName, cache) {
-  try {
-    if (!config.api.thegamesdb || !gameName) return { name: gameName };
 
-    const got = cache.get(gameName);
-    if (got) return got;
+/** @type {Collection<string, LiveUser>} */
+const twitchStatus = new u.Collection();
 
-    /** @type {{ game_title: string, rating: string }[] | undefined} */
-    const apiGame = await call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
-      .then(d => d.games);
-
-    // the api can return multiple games since we use the alternates field
-    const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === gameName.toLowerCase() && g.rating !== "Not Rated");
-    const withRating = { name: gameName, rating: ratings?.[0].rating };
-    cache.set(gameName, withRating);
-
-    return withRating;
-  } catch (error) {
-    return { name: gameName };
-  }
-}
 
 /************************
  * EXTRA LIFE FUNCTIONS *
@@ -48,10 +43,6 @@ async function fetchGameRating(gameName, cache) {
 function round(num) {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 }
-
-const assets = {
-  colors: { twitch: 0x6441A4 }
-};
 
 
 const extraLife = {
@@ -80,6 +71,10 @@ const extraLife = {
 };
 
 
+/********************
+ * TWITCH FUNCTIONS *
+ ********************/
+
 /** @param {string} error  */
 function twitchErrorHandler(error) {
   error = error.toString();
@@ -89,6 +84,50 @@ function twitchErrorHandler(error) {
   u.errorHandler(new Error(error), "Twitch API");
 }
 
+/**
+ * Find the rating for a game given its name
+ * @param {string} gameName
+ * @returns {Promise<{ name: string, rating?: string }>}
+ */
+async function fetchGameRating(gameName) {
+  try {
+    if (!config.api.thegamesdb || !gameName) return { name: gameName };
+
+    const got = twitchGames.get(gameName);
+    if (got) return got;
+
+    /** @type {{ game_title: string, rating: string }[] | undefined} */
+    const apiGame = await call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
+      .then(d => d.games);
+
+    // the api can return multiple games since we use the alternates field
+    const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === gameName.toLowerCase() && g.rating !== "Not Rated");
+    const withRating = { name: gameName, rating: ratings?.[0].rating };
+    twitchGames.set(gameName, withRating);
+
+    return withRating;
+  } catch (error) {
+    return { name: gameName };
+  }
+}
+
+/** @param {GuildMember} member */
+function isPartnered(member) {
+  // icarus is always partnered
+  if (member.id === member.client.user.id) return true;
+
+  const roles = [
+    u.sf.roles.sponsors.onyx,
+    u.sf.roles.sponsors.pro,
+    u.sf.roles.sponsors.legendary,
+    u.sf.roles.team.team
+  ];
+
+  // check for EL Team
+  if (extraLife.isExtraLife()) roles.push(u.sf.roles.streaming.elteam);
+
+  return member.roles.cache.hasAny(...roles);
+}
 
 /**
  * @template T
@@ -108,12 +147,16 @@ function twitchURL(name) {
 
 const twitch = new Twitch.ApiClient({ authProvider: new TwitchAuth(config.twitch.clientId, config.twitch.clientSecret) });
 
+
 module.exports = {
   assets,
   extraLife,
   twitch,
+  twitchGames,
+  twitchStatus,
   round,
   fetchGameRating,
   twitchErrorHandler,
-  twitchURL
+  twitchURL,
+  isPartnered,
 };
