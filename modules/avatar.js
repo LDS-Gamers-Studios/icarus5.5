@@ -28,12 +28,14 @@ async function jimpRead(url) {
   try {
     if (!url) return null;
     const img = await Jimp.read(url);
+
     // resize large images so that the largest dimension is 256p
     if (img.getWidth() > 256 || img.getHeight() > 256) {
       const w = img.getWidth(), h = img.getHeight();
       const largest = Math.max(w, h);
       img.resize(w === largest ? 256 : Jimp.AUTO, w === largest ? Jimp.AUTO : 256);
     }
+
     return img;
   } catch (e) {
     return null;
@@ -64,6 +66,7 @@ function targetImg(int, size = 256) {
   let target;
   if (int.inCachedGuild()) target = int.options.getMember("user");
   target ??= int.options.getUser("user") ?? int.user;
+
   return { image: target.displayAvatarURL({ extension: 'png', size }), name: target.displayName };
 }
 
@@ -80,6 +83,7 @@ async function basicFilter(int, image, filter, params) {
   if (params) img[filter.toLowerCase()](...params);
   // @ts-ignore
   else img[filter.toLowerCase()]();
+
   const output = await img.getBufferAsync(Jimp.MIME_PNG);
   return await sendImg(int, output, `${filter} ${name}`);
 }
@@ -102,34 +106,41 @@ function fourCorners(img, o = 12, run) {
     const p = positions[i];
     run(p[0], p[1], canvas, i);
   }
+
   return canvas;
 }
 
 /** @type {filterFunction} */
 async function andywarhol(int, image) {
   const { name, img } = image;
-  const output = await fourCorners(img, 12, (x, y, c) => {
+
+  const output = await fourCorners(img, 12, (x, y, canvas) => {
     img.color([{ apply: ColorActionName.SPIN, params: [60] }]);
-    c.blit(img, x, y);
+    canvas.blit(img, x, y);
   }).getBufferAsync(Jimp.MIME_PNG);
+
   return await sendImg(int, output, `Andywarhol ${name}`);
 }
 
 /** @type {filterFunction} */
 async function colorme(int, image) {
   const { name, img } = image;
+
   const color = u.rand([45, 90, 135, 180]);
   const output = await img.color([{ apply: ColorActionName.HUE, params: [color] }]).getBufferAsync(Jimp.MIME_PNG);
+
   return await sendImg(int, output, `Colorize ${name} (Hue: ${color})`);
 }
 
 /** @type {filterFunction} */
 async function deepfry(int, image) {
   const { name, img } = image;
+
   const output = await img.posterize(20)
     .color([{ apply: ColorActionName.SATURATE, params: [100] }])
     .contrast(1)
     .getBufferAsync(Jimp.MIME_PNG);
+
   return await sendImg(int, output, `Deepfry ${name}`);
 }
 
@@ -138,14 +149,18 @@ async function flex(int, image) {
   const { name, img } = image;
   const right = await Jimp.read("./media/flexArm.png");
   const left = right.clone().flip(true, Math.random() > 0.5);
+
   right.flip(false, Math.random() > 0.5);
+
   const canvas = new Jimp(368, 128, 0x00000000);
   if (!img.hasAlpha()) img.circle();
   img.resize(128, 128);
+
   const output = await canvas.blit(left, 0, 4)
     .blit(right, 248, 4)
     .blit(img, 120, 0)
     .getBufferAsync(Jimp.MIME_PNG);
+
   return await sendImg(int, output, `Flex ${name}`);
 }
 
@@ -154,13 +169,17 @@ async function metal(int, image) {
   const { name, img } = image;
   const right = await Jimp.read('./media/metalHand.png');
   const left = right.clone().flip(true, false);
+
   const canvas = new Jimp(368, 128, 0x00000000);
+
   if (!img.hasAlpha()) img.circle();
   img.resize(128, 128);
+
   const output = await canvas.blit(right, 0, 4)
     .blit(left, 248, 4)
     .blit(img, 120, 0)
     .getBufferAsync(Jimp.MIME_PNG);
+
   return await sendImg(int, output, `Metal ${name}`);
 }
 
@@ -168,8 +187,10 @@ async function metal(int, image) {
 async function personal(int, image) {
   const { name, img } = image;
   const canvas = await Jimp.read('./media/personalBase.png');
+
   img.resize(350, 350);
   if (!img.hasAlpha()) img.circle();
+
   const output = await canvas.blit(img, 1050, 75).getBufferAsync(Jimp.MIME_PNG);
   return await sendImg(int, output, `${name} took that personally`);
 }
@@ -186,20 +207,22 @@ async function petpet(int) {
 /** @type {filterFunction} */
 async function popart(int, image) {
   const { name, img } = image;
-  const output = await fourCorners(img, 12, (x, y, c, i) => {
+
+  const output = await fourCorners(img, 12, (x, y, canvas, i) => {
     if (i === 0) img.color([{ apply: ColorActionName.DESATURATE, params: [100] }, { apply: ColorActionName.SATURATE, params: [50] }]);
     else img.color([{ apply: ColorActionName.SPIN, params: [i === 3 ? 120 : 60] }]);
-    c.blit(img, x, y);
+
+    canvas.blit(img, x, y);
   }).getBufferAsync(Jimp.MIME_PNG);
+
   return await sendImg(int, output, `Popart ${name}`);
 }
 
-/**
- * @param {Discord.ChatInputCommandInteraction} int
-*/
+/** @param {Discord.ChatInputCommandInteraction} int */
 async function avatar(int) {
   const targetImage = targetImg(int);
   if (!targetImage) return errorReading(int);
+
   const format = targetImage.image.includes('.gif') ? 'gif' : 'png';
   return await sendImg(int, targetImage.image, (targetImage.name), format);
 }

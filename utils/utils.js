@@ -131,15 +131,15 @@ const utils = {
    * Prompts the user to confirm their actions before proceeding by having them press a button
    * @param {Discord.RepliableInteraction<"cached">} interaction The interaction to confirm
    * @param {String} prompt The prompt for the confirmation
-   * @returns {Promise<Boolean|null>}
+   * @returns {Promise<Discord.ButtonInteraction|null>}
    */
   confirmInteraction: async (interaction, prompt = "Are you sure?", title = "Confirmation Dialog") => {
     const embed = utils.embed({ author: interaction.member ?? interaction.user })
       .setColor(0xff0000)
       .setTitle(title)
       .setDescription(prompt);
-    const confirmTrue = utils.customId(),
-      confirmFalse = utils.customId();
+    const confirmTrue = "utilConfirmTrue",
+      confirmFalse = "utilConfirmFalse";
 
     const response = {
       embeds: [embed],
@@ -152,18 +152,28 @@ const utils = {
       content: null
     };
 
-    if (interaction.replied || interaction.deferred) await interaction.editReply(response);
-    else await interaction.reply({ ...response, flags: ["Ephemeral"], content: undefined });
+    let msg;
+    if (interaction.replied || interaction.deferred) msg = await interaction.editReply(response);
+    else msg = await interaction.reply({ ...response, flags: ["Ephemeral"], content: undefined });
 
-    const confirm = await interaction.channel?.awaitMessageComponent({
+    const confirm = await msg.awaitMessageComponent({
       filter: (button) => button.user.id === interaction.user.id && (button.customId === confirmTrue || button.customId === confirmFalse),
       componentType: ComponentType.Button,
-      time: 60000
-    }).catch(() => ({ customId: "confirmTimeout" }));
+      time: 60_000
+    }).catch(() => null);
 
-    if (confirm?.customId === confirmTrue) return true;
-    else if (confirm?.customId === confirmFalse) return false;
-    return null;
+    if (!confirm) {
+      await interaction.editReply({ content: "I fell asleep waiting for your input...", embeds: [], components: [] });
+      return null;
+    }
+
+    if (confirm.customId === confirmFalse) {
+      await confirm.update({ content: "Action canceled.", embeds: [], components: [] });
+      return null;
+    }
+
+    await confirm.deferUpdate();
+    return confirm;
   },
   /** Database controllers */
   db: db,
@@ -307,7 +317,7 @@ const utils = {
     /* eslint-disable-next-line no-console*/
     console.error(Date());
 
-    const embed = utils.embed().setTitle(error?.name?.toString() ?? "Error");
+    const embed = utils.embed().setTitle(error?.name?.toString() ?? "Error").setFooter({ text: `Process ID: ${process.pid}` });
 
     if (message instanceof Discord.Message) {
       const loc = (message.inGuild() ? `${message.guild?.name} > ${message.channel?.name}` : "DM");

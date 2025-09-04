@@ -54,6 +54,7 @@ const Module = new Augur.Module()
 .addInteraction({
   id: u.sf.commands.slashSponsor,
   onlyGuild: true,
+  options: { registry: "slashSponsor" },
   permissions: (int) => int.member?.roles.cache.hasAny(u.sf.roles.sponsors.pro, u.sf.roles.sponsors.legendary),
   process: (int) => {
     try {
