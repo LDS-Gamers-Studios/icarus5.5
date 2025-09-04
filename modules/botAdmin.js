@@ -77,7 +77,7 @@ async function slashBotGtb(int) {
     await int.editReply("Good night! 🛏");
 
     // store the stream cache if applicable
-    if (keepCache) int.client.moduleManager.shared.get("streaming.js")?.();
+    if (keepCache) int.client.moduleManager.shared.get("streaming.js")?.writeCache();
 
     await int.client.destroy();
     process.exit();
