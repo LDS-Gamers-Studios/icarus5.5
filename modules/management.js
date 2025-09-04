@@ -7,6 +7,8 @@ const Augur = require("augurbot-ts"),
   path = require('path'),
   Module = new Augur.Module();
 
+const bannerPaths = fs.readdirSync(path.resolve(__dirname + "/../media/banners")).filter(f => f.endsWith(".png"));
+
 /**
  * @param {Discord.Client} client
  * @returns {import("./cake").Shared}
@@ -60,10 +62,10 @@ async function setBanner(holiday) {
   const day = date.getDate();
 
   // should look for the banners in banners.json
-  const banner = banners.find(b => holiday ? b.file === holiday.toLowerCase() : b.month === month && b.day === day);
+  const banner = holiday ? bannerPaths.find(p => p.endsWith(`${holiday}.png`)) : banners.find(b => b.month === month && b.day === day)?.file;
   if (!banner) return "I couldn't find that file."; // end function here if there's not a banner
 
-  const bannerPath = `media/banners/${banner.file}.png`;
+  const bannerPath = `media/banners/${banner}`;
 
   const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
   if (!ldsg) {
@@ -75,11 +77,11 @@ async function setBanner(holiday) {
   try {
     await ldsg.setBanner(bannerPath);
   } catch (error) {
-    if (holiday) return "I couldn't set the banner.";
     Module.client.getTextChannel(u.sf.channels.team.logistics)?.send({
       content: `Failed to set banner, please do this manually.`,
       files: [bannerPath]
     });
+    if (holiday) return "I couldn't set the banner. An alert has been sent.";
   }
 
   return "I set the banner!";
@@ -88,14 +90,13 @@ async function setBanner(holiday) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashChannelActivity(int) {
   try {
-    await int.deferReply({ flags: ["Ephemeral"] });
     const last = Date.now() - (14 * 24 * 60 * 60 * 60_000); // 14 days ago
 
     // makes sure that the bot can see the channel and that it isn't archive and that it is a text channel
-    const channels = int.guild.channels.cache.filter(ch => (ch.isTextBased() && ch.permissionsFor(int.client.user)?.has("ViewChannel") && (ch.parentId !== u.sf.channels.archiveCategory)));
+    const channels = int.guild.channels.cache.filter(ch => ch.isSendable() && ch.permissionsFor(int.client.user.id)?.has(["ViewChannel", "ReadMessageHistory"]) && ch.parentId !== u.sf.channels.archiveCategory);
     const fetch = channels.map(ch => {
-      if (ch.isTextBased()) {
-        return ch.messages.fetch({ limit: 100 });
+      if (ch.isSendable()) {
+        return ch.messages.fetch({ limit: 100 }).catch(() => new u.Collection());
       }
     });
 
@@ -173,14 +174,18 @@ Module.addInteraction({
   },
   autocomplete: (int) => {
     const option = int.options.getFocused();
-    const files = fs.readdirSync(path.resolve(__dirname + "/../media/banners"))
-      .filter(file => file.endsWith(".png") && file.includes(option))
+    const files = bannerPaths.filter(file => file.includes(option))
       .map(f => f.substring(0, f.length - 4));
     int.respond(files.slice(0, 24).map(f => ({ name: f, value: f })));
   }
 })
 .setClockwork(() =>
   setInterval(() => setBanner(), 24 * 60 * 60_000)
-);
+)
+.setShared({ setBanner });
+
+/**
+ * @typedef {{ setBanner: setBanner }} ManagementShared
+ */
 
 module.exports = Module;

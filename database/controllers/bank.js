@@ -1,5 +1,4 @@
 // @ts-check
-const moment = require("moment-timezone");
 const Bank = require("../models/Bank.model");
 
 /**
@@ -24,26 +23,6 @@ module.exports = {
   getAll: async function(discordId) {
     if (typeof discordId !== "string") throw new TypeError(outdated);
     return Bank.find({ discordId }, undefined, { lean: true }).exec();
-  },
-  /**
-   * @param {string[]} discordIds
-   * @param {moment.Moment} [startDate]
-   * @return {Promise<CurrencyRecord[]>}
-   */
-  getReport: async function(discordIds, startDate) {
-    if (!startDate) {
-      const seasonStart = moment.tz("America/Denver").startOf("month").hour(19);
-      const monthsAgo = seasonStart.month() % 4;
-      seasonStart.subtract(monthsAgo, "months");
-      startDate ??= seasonStart;
-    }
-
-    return Bank.find({
-      discordId: { $in: discordIds },
-      currency: "em",
-      hp: true,
-      timestamp: { $gte: startDate.toDate() }
-    }, undefined, { lean: true }).exec();
   },
   /**
    * Gets a user's current balance for a given currency.

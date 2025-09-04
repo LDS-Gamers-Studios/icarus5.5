@@ -363,7 +363,7 @@ const Module = new Augur.Module()
 })
 .setInit(() => {
   books.map(refAbbrBuild);
-  searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")})\\W(\\d+)[: ]?([\\d\\-;,\\W]+)`, "ig");
+  searchExp = new RegExp(`\\b(${[...abbreviationTable.keys()].join("|")}) (\\d+)(?: *: *([\\d\\-;, ]+))?`, "i");
 });
 
 

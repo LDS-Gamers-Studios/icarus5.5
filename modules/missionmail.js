@@ -191,6 +191,7 @@ Module
   id: u.sf.commands.slashMissionary,
   onlyGuild: true,
   hidden: true,
+  options: { registry: "slashMissionary" },
   permissions: (int) => u.perms.calc(int.member, ["mod"]),
   process: async (int) => {
     await int.deferReply({ flags: u.ephemeralChannel(int, u.sf.channels.missionary.approvals) });

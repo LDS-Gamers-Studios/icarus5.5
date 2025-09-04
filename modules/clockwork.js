@@ -156,6 +156,7 @@ const Module = new Augur.Module();
 Module.addInteraction({
   id: u.sf.commands.slashClockwork,
   onlyGuild: true,
+  options: { registry: "slashClockwork" },
   process: async (int) => {
     switch (int.options.getSubcommand(true)) {
       case "timer": return slashClockworkTimer(int);
