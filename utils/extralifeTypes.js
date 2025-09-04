@@ -17,6 +17,7 @@
  * @prop {number} numDonations
  * @prop {Participant[]} participants
  * @prop {Milestone[]} milestones
+ * @prop {Donation[]} donations
  *
  * @typedef Milestone
  * @prop {string} description

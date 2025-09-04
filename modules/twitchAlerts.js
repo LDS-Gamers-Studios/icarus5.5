@@ -17,9 +17,16 @@ const { assets, twitchURL, extraLife: { isExtraLife } } = api;
 /** @type {Discord.Collection<string, { name: string, rating?: string }>} */
 const twitchGames = new u.Collection();
 
-/** @type {Discord.Collection<string, {live: boolean, since: number, userId?: string}>} */
-const twitchStatus = new u.Collection();
+/**
+ * @typedef LiveUser
+ * @prop {boolean} live
+ * @prop {number} since
+ * @prop {string} [userId]
+ * @prop {Twitch.HelixStream | null} stream
+ */
 
+/** @type {Discord.Collection<string, LiveUser>} */
+const twitchStatus = new u.Collection();
 
 const bonusStreams = require("../data/streams.json");
 
@@ -41,7 +48,8 @@ async function checkStreamsClockwork() {
     const now = new Date();
     if (!isExtraLife() || now.getHours() % 2 !== 1 || now.getMinutes() > 5) return;
 
-    const embeds = await extraLifeEmbeds();
+    const shared = Module.client.moduleManager.shared.get("extralife.js");
+    const embeds = await shared.alerts(Module.client);
     for (const embed of embeds) {
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
     }
@@ -50,68 +58,6 @@ async function checkStreamsClockwork() {
     u.errorHandler(e, "Stream Check");
   }
 }
-
-
-/**********************
- * EXTRA LIFE HELPERS *
- **********************/
-
-/** @param {import("../utils/extralifeTypes").Team | null} [team] */
-async function fetchExtraLifeStreams(team) {
-  /** @type {Twitch.HelixStream[]} */
-  const defaultValue = [];
-
-  try {
-    if (!team) team = await fetchExtraLifeTeam();
-    if (!team) return defaultValue;
-
-    const users = team.participants.filter(m => m.links.stream)
-      .map(p => p.links.stream?.replace("https://player.twitch.tv/?channel=", "") ?? "")
-      .filter(channel => !(channel.includes(" ") || channel.includes("/")));
-
-    if (users.length === 0) return defaultValue;
-    return api.twitch.streams.getStreamsByUserNames(users).catch(() => defaultValue);
-  } catch (error) {
-    u.errorHandler(error, "Fetch Extra Life Streams");
-    return defaultValue;
-  }
-}
-
-async function extraLifeEmbeds() {
-  try {
-    const streams = await fetchExtraLifeStreams();
-    if (!streams || streams.length === 0) return [];
-
-    const embed = u.embed()
-      .setTitle("Live from the Extra Life Team!")
-      .setImage(assets.el.logo)
-      .setColor(assets.colors.elGreen);
-
-    const channels = streams.sort((a, b) => a.userDisplayName.localeCompare(b.userDisplayName)).map(s => {
-      const game = twitchGames.get(s.gameId)?.name;
-      return `**${s.userDisplayName} ${game ? `playing ${game}` : ""}**\n[${u.escapeText(s.title)}](${twitchURL(s.userDisplayName)}\n`;
-    });
-
-    return u.pagedEmbedsDescription(embed, channels);
-  } catch (error) {
-    u.errorHandler(error, "Extra Life Embed Fetch");
-    return [];
-  }
-}
-
-
-async function fetchExtraLifeTeam() {
-  try {
-    const team = await api.extraLife.getTeam(Module.client);
-    if (!team) return null;
-
-    return team;
-  } catch (error) {
-    u.errorHandler(error, "Fetch Extra Life Team");
-    return null;
-  }
-}
-
 
 /************************
  * TWITCH NOTIFICATIONS *
@@ -185,7 +131,7 @@ async function processTwitch(igns) {
         if (member && isPartnered(member)) member.roles.add(liveRole).catch(u.noop);
 
         // mark as live
-        twitchStatus.set(stream.userDisplayName.toLowerCase(), { live: true, since: Date.now(), userId: member?.id });
+        twitchStatus.set(stream.userDisplayName.toLowerCase(), { live: true, since: Date.now(), userId: member?.id, stream });
 
         // generate embed
         const embed = u.embed()
@@ -235,7 +181,8 @@ async function processTwitch(igns) {
         twitchStatus.set(ign, {
           live: false,
           since: Date.now(),
-          userId: member?.id
+          userId: member?.id,
+          stream: null
         });
 
       }
@@ -259,8 +206,6 @@ Module.addCommand({
   return setInterval(checkStreamsClockwork, 5 * 60_000);
 })
 .setInit(async (data) => {
-  api.loadDonationCache();
-
   if (data) {
     for (const [key, status] of data.twitchStatus) {
       twitchStatus.set(key, status);
@@ -279,7 +224,7 @@ Module.addCommand({
       if (parseInt(cutoffTime ?? "") > Date.now()) {
         for (const row of cache) {
           const [userId, live, since, ...name] = row.split(";");
-          twitchStatus.set(name.join(";"), { userId, live: live === "true", since: parseInt(since) });
+          twitchStatus.set(name.join(";"), { userId, live: live === "true", since: parseInt(since), stream: null });
         }
       }
 
@@ -301,10 +246,10 @@ Module.addCommand({
   delete require.cache[require.resolve("../utils/streamingApis.js")];
   return { twitchStatus, twitchGames };
 })
-.setShared({ writeCache, twitchGames, fetchExtraLifeStreams });
+.setShared({ writeCache, twitchGames, twitchStatus });
 
 /**
- * @typedef {{ writeCache: writeCache, twitchGames: twitchGames, fetchExtraLifeStreams: fetchExtraLifeStreams }} AlertsShared
+ * @typedef {{ writeCache: writeCache, twitchGames: twitchGames, twitchStatus: twitchStatus }} AlertsShared
  */
 
 module.exports = Module;

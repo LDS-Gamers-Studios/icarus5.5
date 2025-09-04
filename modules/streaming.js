@@ -3,13 +3,12 @@ const Augur = require("augurbot-ts");
 const Discord = require("discord.js");
 const Twitch = require("@twurple/api");
 
-const config = require("../config/config.json");
 const u = require("../utils/utils");
 const c = require("../utils/modCommon");
 const api = require("../utils/streamingApis");
 const bonusStreams = require("../data/streams.json");
 
-const teamId = config.twitch.elTeam;
+
 const Module = new Augur.Module();
 
 const { assets: { colors }, twitchURL, extraLife: { isExtraLife } } = api;
@@ -20,63 +19,10 @@ const approvalText = "## Congratulations!\n" +
   "While streaming, please remember the [Streaming Guidelines](<https://goo.gl/Pm3mwS>) and [LDSG Code of Conduct](<http://ldsgamers.com/code-of-conduct>).\n" +
   "-# LDSG may make changes to the Approved Streamers list from time to time at its discretion.";
 
-const notEL = "Extra Life isn't quite ready yet! Try again in October.";
 
 /******************
  * SLASH COMMANDS *
  ******************/
-
-/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
-async function slashTwitchExtralifeTeam(int) {
-  if (!isExtraLife()) return int.reply({ content: notEL, flags: ["Ephemeral"] });
-  await int.deferReply();
-
-  const team = await api.extraLife.getTeam(int.client);
-  if (!team) return int.editReply("Sorry, looks like the Extra Life API is down! Try later!").then(u.clean);
-
-  /** @type {import("./twitchAlerts").AlertsShared | undefined} */
-  const alertUtils = int.client.moduleManager.shared.get("twitchAlerts.js");
-  if (!alertUtils) throw new Error("Couldn't find Twitch Altert Utils");
-
-  const streams = await alertUtils.fetchExtraLifeStreams(team);
-  const members = team.participants.map(p => {
-    const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "");
-    const stream = streams.find(s => username && s.userDisplayName === username);
-    return { ...p, username, isLive: Boolean(stream), stream };
-  });
-
-  // sort by live, then donations, then name
-  members.sort((a, b) => {
-    if (a.isLive !== b.isLive) return a.isLive ? -1 : 1;
-    if (a.sumDonations !== b.sumDonations) return b.sumDonations - a.sumDonations;
-    return a.displayName.localeCompare(b.displayName);
-  });
-
-  const total = members.reduce((p, cur) => p + cur.sumDonations, 0);
-
-  const teamStrings = members.map(m => {
-    const percent = api.round(100 * m.sumDonations / m.fundraisingGoal);
-    let str = `**${m.displayName}**\n` +
-      `$${m.sumDonations} / $${m.fundraisingGoal} (${percent}%)\n` +
-      `**[[Donate]](${m.links.donate})**`;
-
-    if (m.isLive) str += `\n### STREAM IS NOW LIVE\n[${m.stream?.title ?? "Watch Here"}](https://twitch.tv/${m.username})`;
-    return str;
-  });
-
-  const nextMilestone = team.milestones.sort((a, b) => a.fundraisingGoal - b.fundraisingGoal)
-    .find(m => m.fundraisingGoal > team.sumDonations);
-
-  const wallOfText = `LDSG is raising money for Extra Life! We are currently at **$${total}** of our team's **$${team.fundraisingGoal}** goal for ${new Date().getFullYear()}. **That's ${api.round(100 * total / team.fundraisingGoal)}% of the way there!**\n\n` +
-    "You can help by donating to one of the Extra Life Team members below.";
-
-  const embed = u.embed().setTitle("LDSG Extra Life Team")
-    .setThumbnail("https://assets.donordrive.com/extralife/images/fbLogo.jpg?v=202009241356")
-    .setURL(`https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${teamId}#teamTabs`)
-    .setDescription(`${wallOfText}\n\n${teamStrings.join("\n\n")}\n\n${nextMilestone ? `# Next Milestone:\n$${nextMilestone.fundraisingGoal} - ${nextMilestone.description}` : ""}`);
-
-  return int.editReply({ embeds: [embed] });
-}
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashTwitchLive(int) {
@@ -93,14 +39,17 @@ async function slashTwitchLive(int) {
   let elParticipants = new u.Collection();
 
   if (isExtraLife()) {
-    const team = await api.extraLife.getTeam(int.client);
+    const team = await api.extraLife.getTeam();
+    if (team) {
+      int.client.moduleManager.shared.get("extralife.js")?.doDonationChecks(team);
 
-    elParticipants = new u.Collection(team?.participants.map(p => {
-      const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase() ?? "";
-      return [username, p];
-    }) ?? []);
+      elParticipants = new u.Collection(team.participants.map(p => {
+        const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase() ?? "";
+        return [username, p];
+      }) ?? []);
 
-    if (elParticipants.size > 0) igns = igns.concat([...elParticipants.keys()]);
+      if (elParticipants.size > 0) igns = igns.concat([...elParticipants.keys()]);
+    }
   }
 
   igns = u.unique(igns);
@@ -120,7 +69,6 @@ async function slashTwitchLive(int) {
     .setColor(colors.twitch);
 
   const channels = [];
-  const elChannels = [];
 
   /** @type {import("./twitchAlerts").AlertsShared | undefined} */
   const alertUtils = int.client.moduleManager.shared.get("twitchAlerts.js");
@@ -139,28 +87,13 @@ async function slashTwitchLive(int) {
       participant
     };
 
-    if (elParticipants.has(stream.userName)) elChannels.push(data);
-    else channels.push(data);
+    channels.push(data);
   }
 
   channels.sort((a, b) => a.name.localeCompare(b.name));
+
   const lines = channels.map(ch => `**${ch.name} is playing ${ch.game.name || "something"}**\n[${ch.title}](${ch.url})`);
-  let embeds = u.pagedEmbedsDescription(embed, lines);
-
-  // Handle extra life embeds on their own
-  if (elChannels.length > 0) {
-    const elEmbed = u.embed()
-      .setTitle(`Currently Streaming for Extra Life in ${int.guild.name}`)
-      .setColor(colors.elGreen);
-
-    const elLines = elChannels.map(ch => {
-      const title = `**${ch.name} is playing ${ch.game.name || "something"}**\n[${ch.title}](${ch.url})`;
-      const donation = `Goal Progress: $${ch.participant?.sumDonations}/$${ch.participant?.fundraisingGoal}`;
-      return `${title}\n${donation}`;
-    });
-
-    embeds = embeds.concat(u.pagedEmbedsDescription(elEmbed, elLines));
-  }
+  const embeds = u.pagedEmbedsDescription(embed, lines);
 
   return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), Boolean(ephemeral));
 }
@@ -281,7 +214,10 @@ Module.addInteraction({
     try {
       const subcommand = int.options.getSubcommand(true);
       switch (subcommand) {
-        case "extralife-team": return slashTwitchExtralifeTeam(int);
+        case "extralife-team": {
+          const cmd = int.client.moduleManager.shared.get("extralife.js");
+          return cmd?.slashTwitchExtralifeTeam(int);
+        }
         case "live": return slashTwitchLive(int);
         case "application": return slashTwitchApplication(int);
         default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
