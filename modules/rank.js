@@ -4,7 +4,7 @@ const config = require("../config/config.json");
 const u = require("../utils/utils");
 const c = require("../utils/modCommon");
 const Rank = require("../utils/rankInfo");
-const schedule = require("node-schedule");
+const cron = require("node-cron");
 
 const Module = new Augur.Module();
 
@@ -88,11 +88,8 @@ async function slashRankView(interaction) {
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
-// Occurs every [Jan, May, Sept.] 1st at 6:00 PM MST
-const rule = new schedule.RecurrenceRule(undefined, [0, 4, 8], 1, undefined, 18, 0, undefined, "America/Denver");
-
-// Occurs every day at 6:00 PM MST
-const timeTest = new schedule.RecurrenceRule(undefined, undefined, undefined, undefined, 18, 0, undefined, "America/Denver");
+/** @type {cron.ScheduledTask[]} */
+const jobs = [];
 
 Module.addInteraction({
   name: "rank",
@@ -146,19 +143,22 @@ Module.addInteraction({
   }
 })
 .setInit(() => {
-  schedule.scheduleJob("rankReset", rule, () => {
+  // Occurs every [Jan, May, Sept.] 1st at 6:00 PM MST
+  const rankReset = cron.schedule("0 18 1 Jan,May,Sep *", () => {
     /** @type {import("./manager").ManagerShared} */
     const managerShared = Module.client.moduleManager.shared.get("manager.js");
     if (!managerShared) throw new Error("Couldn't get mop bucket winner function");
 
     // @ts-ignore
     managerShared.rankReset(Module.client);
-  });
+  }, { timezone: "America/Denver", name: "rankReset" });
 
-  schedule.scheduleJob("timetest", timeTest, () => {
+  // Occurs every day at 6:00 PM MST
+  const testJob = cron.schedule("0 18 * * *", () => {
     u.errorLog.send("It's 6:00 somewhere. Is that somewhere here?");
-  });
+  }, { timezone: "America/Denver", name: "testJob" });
 
+  jobs.push(rankReset, testJob);
 })
 .addCommand({
   name: "debugcup",
@@ -172,8 +172,11 @@ Module.addInteraction({
   }
 })
 .setUnload(() => {
-  schedule.cancelJob("rankReset");
-});
+  for (const job of jobs) {
+    job.destroy();
+  }
+})
+.setShared({ jobs });
 
 
 module.exports = Module;
