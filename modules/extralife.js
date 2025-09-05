@@ -2,13 +2,10 @@
 const Augur = require("augurbot-ts");
 const NoRepeat = require("no-repeat");
 const fs = require("fs");
-const config = require("../config/config.json");
 const api = require("../utils/streamingApis");
 const u = require("../utils/utils");
 
 /** @typedef {api.LiveUser} LiveUser */
-
-const teamId = config.twitch.elTeam;
 
 const { twitchURL, extraLife: { isExtraLife }, assets } = api;
 const notEL = "Extra Life isn't quite ready yet! Try again in October.";
@@ -65,8 +62,8 @@ async function slashTwitchExtralifeTeam(int) {
     "You can help by donating to one of the Extra Life Team members below.";
 
   const embed = u.embed().setTitle("LDSG Extra Life Team")
-    .setThumbnail("https://assets.donordrive.com/extralife/images/fbLogo.jpg?v=202009241356")
-    .setURL(`https://www.extra-life.org/index.cfm?fuseaction=donorDrive.team&teamID=${teamId}#teamTabs`)
+    .setThumbnail(assets.elLogo)
+    .setURL(assets.elTeamLink)
     .setDescription(`${wallOfText}\n\n${nextMilestone ? `# Next Milestone:\n$${nextMilestone.fundraisingGoal} - ${nextMilestone.description}\n\n` : ""}`);
 
   const embeds = u.pagedEmbedsDescription(embed, teamStrings, false);
