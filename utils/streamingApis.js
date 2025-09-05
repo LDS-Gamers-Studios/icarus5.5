@@ -58,7 +58,7 @@ const extraLife = {
     team.participants = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/participants`) ?? [];
 
     /** @type {extralife.Donation[]} */
-    team.donations = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_API)}/donations`) ?? [];
+    team.donations = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/donations`) ?? [];
 
     return team;
   },
