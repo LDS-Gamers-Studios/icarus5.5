@@ -88,8 +88,8 @@ async function slashRankView(interaction) {
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
-/** @type {cron.ScheduledTask[]} */
-const jobs = [];
+/** @type {cron.ScheduledTask | null} */
+let rankResetJob = null;
 
 Module.addInteraction({
   name: "rank",
@@ -144,7 +144,7 @@ Module.addInteraction({
 })
 .setInit(() => {
   // Occurs every [Jan, May, Sept.] 1st at 6:00 PM MST
-  const rankReset = cron.schedule("0 18 1 Jan,May,Sep *", () => {
+  rankResetJob = cron.schedule("0 18 1 Jan,May,Sep *", () => {
     /** @type {import("./manager").ManagerShared} */
     const managerShared = Module.client.moduleManager.shared.get("manager.js");
     if (!managerShared) throw new Error("Couldn't get mop bucket winner function");
@@ -153,12 +153,6 @@ Module.addInteraction({
     managerShared.rankReset(Module.client);
   }, { timezone: "America/Denver", name: "rankReset" });
 
-  // Occurs every day at 6:00 PM MST
-  const testJob = cron.schedule("0 18 * * *", () => {
-    u.errorLog.send("It's 6:00 somewhere. Is that somewhere here?");
-  }, { timezone: "America/Denver", name: "testJob" });
-
-  jobs.push(rankReset, testJob);
 })
 .addCommand({
   name: "debugcup",
@@ -172,11 +166,13 @@ Module.addInteraction({
   }
 })
 .setUnload(() => {
-  for (const job of jobs) {
-    job.destroy();
-  }
+  rankResetJob?.destroy();
 })
-.setShared({ jobs });
+.setShared({ rankResetJob });
+
+/**
+ * @typedef {{ rankResetJob: rankResetJob }} RankShared
+ */
 
 
 module.exports = Module;
