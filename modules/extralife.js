@@ -49,8 +49,6 @@ async function slashTwitchExtralifeTeam(int) {
     return a.displayName.localeCompare(b.displayName);
   });
 
-  const total = members.reduce((p, cur) => p + cur.sumDonations, 0);
-
   const teamStrings = members.map(m => {
     let str = `**${m.displayName}**\n` +
       `$${m.sumDonations} / $${m.fundraisingGoal} (${percent(m.sumDonations, m.fundraisingGoal)})\n` +
@@ -63,7 +61,7 @@ async function slashTwitchExtralifeTeam(int) {
   const nextMilestone = team.milestones.sort((a, b) => a.fundraisingGoal - b.fundraisingGoal)
     .find(m => m.fundraisingGoal > team.sumDonations);
 
-  const wallOfText = `LDSG is raising money for Extra Life! We are currently at **$${total}** of our team's **$${team.fundraisingGoal}** goal for ${new Date().getFullYear()}. **That's ${percent(total, team.fundraisingGoal)} of the way there!**\n\n` +
+  const wallOfText = `LDSG is raising money for Extra Life! We are currently at **$${team.sumDonations}** of our team's **$${team.fundraisingGoal}** goal for ${new Date().getFullYear()}. **That's ${percent(team.sumDonations, team.fundraisingGoal)} of the way there!**\n\n` +
     "You can help by donating to one of the Extra Life Team members below.";
 
   const embed = u.embed().setTitle("LDSG Extra Life Team")
