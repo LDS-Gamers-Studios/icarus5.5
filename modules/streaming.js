@@ -18,10 +18,11 @@ const twitchEnabled = config.twitch.enabled && config.twitch.clientId && config.
 
 const approvalText = "## Congratulations!\n" +
   `You've been added to the Approved Streamers list in LDSG! This allows going live notifications to show up in <#${u.sf.channels.general}>, and grants access to stream to voice channels.\n` +
-  "This has been done automatically, but please double check that your correct Twitch name is saved in the database with `/ign view twitch`. If the link doesn't work, try `/ign set twitch YourTwitchUsername`.\n\n" +
+  "This has been done as part of the application process, but please double check that your correct Twitch name is saved in the database with `/ign view twitch`. If the link doesn't work, try `/ign set twitch YourTwitchUsername`.\n\n" +
   "While streaming, please remember the [Streaming Guidelines](<https://goo.gl/Pm3mwS>) and [LDSG Code of Conduct](<http://ldsgamers.com/code-of-conduct>).\n" +
   "-# LDSG may make changes to the Approved Streamers list from time to time at its discretion.";
 
+const STREAM_CACHE_FILE = "./data/streamcache.json";
 
 /******************
  * SLASH COMMANDS *
@@ -32,71 +33,24 @@ async function slashTwitchLive(int) {
   const ephemeral = u.ephemeralChannel(int, u.sf.channels.botSpam);
   await int.deferReply({ flags: ephemeral });
 
-  const approved = int.guild.roles.cache.get(u.sf.roles.streaming.approved)?.members ?? new u.Collection();
-
-  let igns = await u.db.ign.findMany(approved.map(m => m.id), "twitch")
-    .then(i => u.unique(i.map(ign => ign.ign.toLowerCase()).concat(bonusStreams)));
-
-  // Add extra life team members if applicable
-  /** @type {Discord.Collection<string, import("../utils/extralifeTypes").Participant>} */
-  let elParticipants = new u.Collection();
-
-  if (isExtraLife()) {
-    const team = await api.extraLife.getTeam();
-    if (team) {
-      /** @type {import("./extralife").ExtraLifeShared} */
-      const extralife = int.client.moduleManager.shared.get("extralife.js");
-      if (!extralife) throw new Error("Couldn't find Extra Life module");
-      extralife.doDonationChecks(team);
-
-      elParticipants = new u.Collection(team.participants.map(p => {
-        const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase() ?? "";
-        return [username, p];
-      }) ?? []);
-
-      if (elParticipants.size > 0) igns = u.unique(igns.concat([...elParticipants.keys()]));
-    }
-  }
-
-  igns = u.unique(igns);
-
-  // This method only returns streams that are currently live
-  /** @type {Promise<Twitch.HelixStream[]>[]} */
-  const streamFetch = [];
-  if (twitchEnabled && igns.length !== 0) {
-    for (let i = 0; i < igns.length; i += 100) {
-      const usernames = igns.slice(i, i + 100);
-      streamFetch.push(api.twitch.streams.getStreamsByUserNames(usernames).catch(u.noop).then(s => s ?? []));
-    }
-  }
-
-  const streams = await Promise.all(streamFetch).then(p => p.flat());
 
   const embed = u.embed()
     .setTitle(`Currently Streaming in ${int.guild.name}`)
     .setColor(colors.twitch);
 
-  const channels = [];
+  const streams = api.twitchStatus.filter(s => s.live);
+  if (streams.size === 0) return int.editReply("No one is streaming right now!").then(u.clean);
 
-  for (const stream of streams) {
-    const game = await api.fetchGameRating(stream.gameName);
-    if (game.rating === "M - Mature 17+") continue;
-    const participant = elParticipants.get(stream.userName);
-
-    const data = {
-      name: stream.userDisplayName,
-      game,
-      title: stream.title,
-      url: twitchURL(stream.userDisplayName),
-      participant
-    };
-
-    channels.push(data);
-  }
+  const channels = streams.map((status, username) => ({
+    name: status.stream?.userDisplayName || username,
+    game: status.stream?.gameName || "something",
+    title: status.stream?.title || "Watch Here",
+    url: twitchURL(status.stream?.userDisplayName || username),
+  }));
 
   channels.sort((a, b) => a.name.localeCompare(b.name));
 
-  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game.name || "something"}**\n[${ch.title}](${ch.url})`);
+  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})`);
   const embeds = u.pagedEmbedsDescription(embed, lines);
 
   return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), Boolean(ephemeral));
@@ -105,6 +59,7 @@ async function slashTwitchLive(int) {
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTwitchApplication(int) {
   if (int.member.roles.cache.has(u.sf.roles.streaming.approved)) return int.reply({ content: "You're already an approved streamer!", flags: ["Ephemeral"] });
+  if (!int.member.roles.cache.has(u.sf.roles.moderation.trusted)) return int.reply({ content: "You need the Trusted role first!", flags: ["Ephemeral"] });
 
   const agreement = u.MessageActionRow().addComponents([
     new u.Button({ customId: "streamerAgree", emoji: "✅", label: "Agree", style: Discord.ButtonStyle.Success }),
@@ -228,11 +183,13 @@ async function handleOnline(streams, streamers, ldsg) {
     const status = api.twitchStatus.get(stream.userDisplayName.toLowerCase());
 
     // If they were streaming recently (within half an hour), don't post notifications
-    if (status && (status.live || status.since > sinceThreshold())) continue;
+    if (status && (status.live || status.since > sinceThreshold())) {
+      status.stream = stream;
+      continue;
+    }
 
     // filter out bad games
-    const game = await api.fetchGameRating(stream.gameName);
-    if (game?.rating === "M - Mature 17+") continue;
+    if (await api.isRatedM(stream.gameName)) continue;
 
     const url = twitchURL(stream.userDisplayName);
 
@@ -253,13 +210,18 @@ async function handleOnline(streams, streamers, ldsg) {
     }
 
     // mark as live
-    api.twitchStatus.set(stream.userDisplayName.toLowerCase(), { live: true, since: Date.now(), userId: member?.id, stream });
+    api.twitchStatus.set(stream.userDisplayName.toLowerCase(), {
+      live: true,
+      since: Date.now(),
+      userId: member?.id,
+      stream: { userDisplayName: stream.userDisplayName, gameName: stream.gameName, title: stream.title, gameId: stream.gameId }
+    });
 
     // generate embed
     const embed = u.embed()
       .setColor(colors.twitch)
       .setThumbnail(stream.getThumbnailUrl(480, 270))
-      .setAuthor({ name: `${stream.userDisplayName} ${game ? `is playing ${game.name}` : ""}` })
+      .setAuthor({ name: `${stream.userDisplayName} ${stream.gameName ? `is playing ${stream.gameName}` : ""}` })
       .setTitle(`🔴 ${stream.title}`)
       .setDescription(`${member || stream.userDisplayName} went live on Twitch!`)
       .setURL(url);
@@ -310,7 +272,7 @@ async function handleOffline(streamers, ldsg) {
       live: false,
       since: Date.now(),
       userId: member?.id,
-      stream: null
+      stream: status.stream
     });
   }
 }
@@ -382,9 +344,20 @@ async function checkStreamsClockwork() {
   }
 }
 
+/**
+ * @typedef StreamCache
+ * @prop {number} cutoff
+ * @prop {import("../utils/streamingApis").LiveUser[]} streams
+ */
+
 function writeCache() {
-  const cutoff = u.moment().add(30, "minutes").valueOf();
-  fs.writeFileSync("./data/streamcache.txt", `${cutoff}\n${api.twitchStatus.map((s, n) => `${s.userId || ""};${s.live};${s.since};${n}`).join("\n")}`);
+  /** @type {StreamCache} */
+  const writeObj = {
+    cutoff: u.moment().add(30, "minutes").valueOf(),
+    streams: [...api.twitchStatus.values()]
+  };
+
+  fs.writeFileSync(STREAM_CACHE_FILE, JSON.stringify(writeObj, null, 2));
 }
 
 /****************
@@ -464,20 +437,20 @@ Module.addInteraction({
   if (reset) return;
 
   // read from the cache if it exists
-  if (fs.existsSync("./data/streamcache.txt")) {
-    const cache = fs.readFileSync("./data/streamcache.txt", "utf-8").split("\n");
-    const cutoffTime = cache.shift();
+  if (fs.existsSync(STREAM_CACHE_FILE)) {
+    const cacheFile = fs.readFileSync(STREAM_CACHE_FILE, "utf-8");
+    /** @type {StreamCache} */
+    const cache = JSON.parse(cacheFile);
 
     // data after the cutoff is too old and shouldn't be used.
-    if (parseInt(cutoffTime ?? "") > Date.now()) {
-      for (const row of cache) {
-        const [userId, live, since, ...name] = row.split(";");
-        api.twitchStatus.set(name.join(";"), { userId, live: live === "true", since: parseInt(since), stream: null });
+    if (cache.cutoff > Date.now()) {
+      for (const status of cache.streams) {
+        api.twitchStatus.set(status.stream.userDisplayName.toLowerCase(), status);
       }
     }
 
     // delete the cache
-    fs.unlinkSync("./data/streamcache.txt");
+    fs.unlinkSync(STREAM_CACHE_FILE);
   }
 
   // reset live role on restart

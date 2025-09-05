@@ -90,7 +90,7 @@ async function fetchExtraLifeStreams(team) {
       .filter(channel => !channel.match(/[ /]/));
 
     if (users.length === 0) return defaultValue;
-    return [...api.twitchStatus.filter(s => users.includes(s.stream?.userName || "")).values()];
+    return [...api.twitchStatus.filter((_, username) => users.includes(username)).values()];
   } catch (error) {
     u.errorHandler(error, "Fetch Extra Life Streams");
     return defaultValue;

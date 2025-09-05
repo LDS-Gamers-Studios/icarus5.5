@@ -20,7 +20,7 @@ const assets = {
 /*********************
  * CACHED API VALUES *
  *********************/
-/** @type {Collection<string, { name: string, rating?: string }>} */
+/** @type {Collection<string, { name: string, ratedM: boolean }>} */
 const twitchGames = new u.Collection();
 
 /**
@@ -28,10 +28,13 @@ const twitchGames = new u.Collection();
  * @prop {boolean} live
  * @prop {number} since
  * @prop {string} [userId]
- * @prop {Twitch.HelixStream | null} stream
+ * @prop {Pick<Twitch.HelixStream, "gameName" | "title" | "userDisplayName" | "gameId">} stream
  */
 
-/** @type {Collection<string, LiveUser>} */
+/**
+ * Username -> LiveUser
+ * @type {Collection<string, LiveUser>}
+ */
 const twitchStatus = new u.Collection();
 
 
@@ -89,14 +92,14 @@ function twitchErrorHandler(error) {
 /**
  * Find the rating for a game given its name
  * @param {string} gameName
- * @returns {Promise<{ name: string, rating?: string }>}
+ * @returns {Promise<boolean>}
  */
-async function fetchGameRating(gameName) {
+async function isRatedM(gameName) {
   try {
-    if (!config.api.thegamesdb || !gameName) return { name: gameName };
+    if (!config.api.thegamesdb || !gameName) return false;
 
-    const got = twitchGames.get(gameName);
-    if (got) return got;
+    const cached = twitchGames.get(gameName);
+    if (cached) return cached.ratedM;
 
     /** @type {{ game_title: string, rating: string }[] | undefined} */
     const apiGame = await call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
@@ -104,12 +107,12 @@ async function fetchGameRating(gameName) {
 
     // the api can return multiple games since we use the alternates field
     const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === gameName.toLowerCase() && g.rating !== "Not Rated");
-    const withRating = { name: gameName, rating: ratings?.[0].rating };
+    const withRating = { name: gameName, ratedM: ratings?.[0].rating === "M - Mature 17+" };
     twitchGames.set(gameName, withRating);
 
-    return withRating;
+    return withRating.ratedM;
   } catch (error) {
-    return { name: gameName };
+    return false;
   }
 }
 
@@ -157,7 +160,7 @@ module.exports = {
   twitchGames,
   twitchStatus,
   round,
-  fetchGameRating,
+  isRatedM,
   twitchErrorHandler,
   twitchURL,
   isPartnered,
