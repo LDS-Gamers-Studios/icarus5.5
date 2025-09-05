@@ -87,7 +87,7 @@ async function fetchExtraLifeStreams(team) {
 
     const users = team.participants.filter(m => m.links.stream)
       .map(p => p.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase() ?? "")
-      .filter(channel => !(channel.includes(" ") || channel.includes("/")));
+      .filter(channel => !channel.match(/[ /]/));
 
     if (users.length === 0) return defaultValue;
     return [...api.twitchStatus.filter(s => users.includes(s.stream?.userName || "")).values()];
@@ -96,6 +96,11 @@ async function fetchExtraLifeStreams(team) {
     return defaultValue;
   }
 }
+
+
+/**********************
+ * DONATION RESOURCES *
+ **********************/
 
 /** @type {Set<string>} */
 const donors = new Set();
@@ -113,10 +118,6 @@ function loadDonationCache() {
   for (const donor of file.donors) donors.add(donor);
   for (const id of file.donationIDs) donationIDs.add(id);
 }
-
-/******************************
- * DONATION PRICE COMPARISONS *
- ******************************/
 
 const almosts = new NoRepeat([
   "almost",

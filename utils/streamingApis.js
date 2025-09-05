@@ -47,6 +47,8 @@ function round(num) {
 
 const extraLife = {
   getTeam: async () => {
+    if (!config.twitch.enabled || !config.twitch.elTeam) return null;
+
     /** @type {extralife.Team | undefined} */
     const team = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}`);
     if (!team) return null;

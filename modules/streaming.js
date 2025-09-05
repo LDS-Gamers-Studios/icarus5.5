@@ -14,6 +14,7 @@ const bonusStreams = require("../data/streams.json");
 const Module = new Augur.Module();
 
 const { assets: { colors }, twitchURL, extraLife: { isExtraLife } } = api;
+const twitchEnabled = config.twitch.enabled && config.twitch.clientId && config.twitch.clientSecret;
 
 const approvalText = "## Congratulations!\n" +
   `You've been added to the Approved Streamers list in LDSG! This allows going live notifications to show up in <#${u.sf.channels.general}>, and grants access to stream to voice channels.\n` +
@@ -62,9 +63,11 @@ async function slashTwitchLive(int) {
   // This method only returns streams that are currently live
   /** @type {Promise<Twitch.HelixStream[]>[]} */
   const streamFetch = [];
-  for (let i = 0; i < igns.length; i += 100) {
-    const usernames = igns.slice(i, i + 100);
-    streamFetch.push(api.twitch.streams.getStreamsByUserNames(usernames).catch(u.noop).then(s => s ?? []));
+  if (twitchEnabled && igns.length !== 0) {
+    for (let i = 0; i < igns.length; i += 100) {
+      const usernames = igns.slice(i, i + 100);
+      streamFetch.push(api.twitch.streams.getStreamsByUserNames(usernames).catch(u.noop).then(s => s ?? []));
+    }
   }
 
   const streams = await Promise.all(streamFetch).then(p => p.flat());
@@ -315,6 +318,8 @@ async function handleOffline(streamers, ldsg) {
 /** @param {{ign: string, discordId: string}[]} igns */
 async function processTwitch(igns) {
   try {
+    if (!twitchEnabled) return;
+
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     if (!ldsg) return;
 
