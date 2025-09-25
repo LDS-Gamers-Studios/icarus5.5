@@ -123,6 +123,7 @@ function loadDonationCache() {
   for (const member of file.members) members.add(member);
 }
 
+
 const almosts = new NoRepeat([
   "almost",
   "like",
@@ -130,7 +131,6 @@ const almosts = new NoRepeat([
   "essentially",
   "the same as"
 ]);
-
 
 /** @type {NoRepeat<(num: number) => string>} */
 const prices = new NoRepeat([
@@ -181,8 +181,8 @@ async function doDonationChecks(team) {
     embed.setAuthor(null)
       .setFields([])
       .setDescription(
-        `Someone just donated **$${donation.amount}** to our Extra Life team! That's ${almosts.getRandom()} **${prices.getRandom()}!**\n` +
-        `(btw, that means we're at **$${team.sumDonations}**, which is **${percent(team.sumDonations, team.fundraisingGoal)}** of the way to our goal!)`
+        `Someone just donated **$${donation.amount}** to our Extra Life team! That's ${almosts.getRandom()} **${prices.getRandom()(donation.amount)}!**\n` +
+        `(btw, that means we're at **$${team.sumDonations}**, which is **${percent(team.sumDonations, team.fundraisingGoal)}** of the way to our goal of **$${team.fundraisingGoal}!**)`
       );
 
     Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
@@ -214,7 +214,7 @@ async function doDonationChecks(team) {
     const embed = u.embed().setColor(assets.colors.elBlue)
       .setTitle(`${newMembers.length} New Extra Life Participant(s)`)
       .setThumbnail(assets.elLogo)
-      .setDescription(newMembers.map(d => `[${d.displayName}](${d.links.donate})`).join("\n"));
+      .setDescription(newMembers.map(d => `[${d.displayName}](${d.links.page})`).join("\n"));
 
     Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
   }

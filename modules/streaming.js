@@ -8,7 +8,6 @@ const u = require("../utils/utils");
 const c = require("../utils/modCommon");
 const config = require("../config/config.json");
 const api = require("../utils/streamingApis");
-const bonusStreams = require("../data/streams.json");
 
 
 const Module = new Augur.Module();
@@ -18,7 +17,7 @@ const twitchEnabled = config.twitch.enabled && config.twitch.clientId && config.
 
 const approvalText = "## Congratulations!\n" +
   `You've been added to the Approved Streamers list in LDSG! This allows going live notifications to show up in <#${u.sf.channels.general}>, and grants access to stream to voice channels.\n` +
-  "This has been done as part of the application process, but please double check that your correct Twitch name is saved in the database with `/ign view twitch`. If the link doesn't work, try `/ign set twitch YourTwitchUsername`.\n\n" +
+  "This has been done as part of the application process, but please double check that your correct Twitch username is saved by doing `/ign view twitch`. If the link doesn't work, try `/ign set twitch YourTwitchUsername`.\n\n" +
   "While streaming, please remember the [Streaming Guidelines](<https://goo.gl/Pm3mwS>) and [LDSG Code of Conduct](<http://ldsgamers.com/code-of-conduct>).\n" +
   "-# LDSG may make changes to the Approved Streamers list from time to time at its discretion.";
 
@@ -33,13 +32,12 @@ async function slashTwitchLive(int) {
   const ephemeral = u.ephemeralChannel(int, u.sf.channels.botSpam);
   await int.deferReply({ flags: ephemeral });
 
+  const streams = api.twitchStatus.filter(s => s.live);
+  if (streams.size === 0) return int.editReply("No one is streaming right now!").then(u.clean);
 
   const embed = u.embed()
     .setTitle(`Currently Streaming in ${int.guild.name}`)
     .setColor(colors.twitch);
-
-  const streams = api.twitchStatus.filter(s => s.live);
-  if (streams.size === 0) return int.editReply("No one is streaming right now!").then(u.clean);
 
   const channels = streams.map((status, username) => ({
     name: status.stream?.userDisplayName || username,
@@ -317,23 +315,28 @@ async function checkStreamsClockwork() {
       ?.roles.cache.get(u.sf.roles.streaming.approved)
       ?.members.map(member => member.id) ?? [];
 
-    if (streamers.length === 0) return;
+    if (streamers.length > 0) {
+      // Look up their twitch IGN
+      const igns = await u.db.ign.findMany(streamers, "twitch");
 
-    // Look up their twitch IGN
-    const igns = await u.db.ign.findMany(streamers, "twitch");
-    const streams = bonusStreams.filter(s => s.length > 0)
-      .map(s => ({ ign: s, discordId: s }))
-      .concat(igns);
+      /** @type {string[]} */
+      const bonusStreams = JSON.parse(fs.readFileSync("./data/streams.json", "utf8"));
 
-    processTwitch(streams);
+      const streams = bonusStreams.filter(s => s.length > 0)
+        .map(s => ({ ign: s, discordId: s }))
+        .concat(igns);
+
+      processTwitch(streams);
+    }
+
 
     // Check for Extra Life
     const now = new Date();
-    if (!isExtraLife() || now.getHours() % 2 !== 1 || now.getMinutes() > 5) return;
+    if (!isExtraLife() || ((now.getHours() % 2 !== 1 || now.getMinutes() > 5) && !config.devMode)) return;
 
     /** @type {import("./extralife").ExtraLifeShared} */
     const shared = Module.client.moduleManager.shared.get("extralife.js");
-    const embeds = await shared.alerts();
+    const embeds = await shared.alerts(); // also does donation checks
 
     for (const embed of embeds) {
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
