@@ -37,6 +37,9 @@ const twitchGames = new u.Collection();
  */
 const twitchStatus = new u.Collection();
 
+/** @type {extralife.Team | null} */
+let cachedELTeam = null;
+
 
 /************************
  * EXTRA LIFE FUNCTIONS *
@@ -47,30 +50,32 @@ function round(num) {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 }
 
-
 const extraLife = {
+  // to avoid api limits, data is only fetched when the count changes.
   getTeam: async () => {
     if (!config.twitch.enabled || !config.twitch.elTeam) return null;
 
     /** @type {extralife.Team | undefined} */
     const team = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}`);
-    if (!team) return null;
+    if (!team) return cachedELTeam;
 
-    /** @type {extralife.Milestone[]} */
-    team.milestones = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/milestones`) ?? [];
+    if (cachedELTeam && cachedELTeam.numMilestones !== team.numMilestones) {
+      /** @type {extralife.Milestone[]} */
+      team.milestones = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/milestones`) ?? [];
+    }
 
-    /** @type {extralife.Participant[]} */
-    team.participants = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/participants`) ?? [];
+    if (cachedELTeam && cachedELTeam.numParticipants !== team.numParticipants) {
+      /** @type {extralife.Participant[]} */
+      team.participants = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/participants`) ?? [];
+    }
 
-    /** @type {extralife.Donation[]} */
-    team.donations = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/donations`) ?? [];
+    if (cachedELTeam && cachedELTeam.numDonations !== team.numDonations) {
+      /** @type {extralife.Donation[]} */
+      team.donations = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/donations`) ?? [];
+    }
 
+    cachedELTeam = team;
     return team;
-  },
-  /** @returns {Promise<import("./extralifeTypes").Donation[]>} */
-  getTeamDonations: () => {
-    return call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_API)}/donations`)
-      .then(data => data ?? []);
   },
   isExtraLife: () => config.devMode || [8, 9, 10].includes(new Date().getMonth())
 };
@@ -84,7 +89,7 @@ const extraLife = {
 function twitchErrorHandler(error) {
   error = error.toString();
   if (config.twitch.clientSecret) error = error.replace(new RegExp(config.twitch.clientSecret, "g"), "<TWITCH SECRET>");
-  if (config.api.thegamesdb) error = error.replace(new RegExp(config.api.thegamesdb, "g"), "<SECRET>");
+  if (config.api.thegamesdb) error = error.replace(new RegExp(config.api.thegamesdb, "g"), "<GAMES DB SECRET>");
 
   u.errorHandler(new Error(error), "Twitch API");
 }
