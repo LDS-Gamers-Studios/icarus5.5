@@ -9,6 +9,7 @@ const u = require("../utils/utils");
 
 const { twitchURL, extraLife: { isExtraLife }, assets } = api;
 const notEL = "Extra Life isn't quite ready yet! Try again in October.";
+const EL_CACHE_PATH = "./data/extralifeDonors.json";
 
 const Module = new Augur.Module();
 
@@ -108,15 +109,18 @@ const donors = new Set();
 /** @type {Set<string>} */
 const donationIDs = new Set();
 
-function loadDonationCache() {
-  const path = "./data/extralifeDonors.json";
-  if (!fs.existsSync(path)) return;
+/** @type {Set<string>} */
+const members = new Set();
 
-  /** @type {{ donors: string[], donationIDs: string[] }} */
-  const file = JSON.parse(fs.readFileSync(path, "utf-8"));
+function loadDonationCache() {
+  if (!fs.existsSync(EL_CACHE_PATH)) return;
+
+  /** @type {{ donors: string[], donationIDs: string[], members: string[] }} */
+  const file = JSON.parse(fs.readFileSync(EL_CACHE_PATH, "utf-8"));
 
   for (const donor of file.donors) donors.add(donor);
   for (const id of file.donationIDs) donationIDs.add(id);
+  for (const member of file.members) members.add(member);
 }
 
 const almosts = new NoRepeat([
@@ -195,8 +199,28 @@ async function doDonationChecks(team) {
     Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
   }
 
+  /** @type {import("../utils/extralifeTypes").Participant[]} */
+  const newMembers = [];
+
+  for (const participant of team.participants) {
+    const id = participant.participantID.toString();
+    if (members.has(id)) continue;
+
+    members.add(id);
+    newMembers.push(participant);
+  }
+
+  if (newMembers.length > 0) {
+    const embed = u.embed().setColor(assets.colors.elBlue)
+      .setTitle(`${newMembers.length} New Extra Life Participant(s)`)
+      .setThumbnail(assets.elLogo)
+      .setDescription(newMembers.map(d => `[${d.displayName}](${d.links.donate})`).join("\n"));
+
+    Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
+  }
+
   if (update) {
-    fs.writeFileSync("./data/extralifeDonors.json", JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs] }));
+    fs.writeFileSync(EL_CACHE_PATH, JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs], members: [...members] }));
   }
 }
 
