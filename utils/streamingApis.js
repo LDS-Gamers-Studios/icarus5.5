@@ -72,7 +72,7 @@ const extraLife = {
     return call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_API)}/donations`)
       .then(data => data ?? []);
   },
-  isExtraLife: () => config.devMode || [9, 10].includes(new Date().getMonth())
+  isExtraLife: () => config.devMode || [8, 9, 10].includes(new Date().getMonth())
 };
 
 
