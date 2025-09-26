@@ -8,7 +8,7 @@ const u = require("../utils/utils");
 /** @typedef {api.LiveUser} LiveUser */
 
 const { twitchURL, extraLife: { isExtraLife }, assets } = api;
-const notEL = "Extra Life isn't quite ready yet! Try again in October.";
+const notEL = "Extra Life isn't quite ready yet! Try again in September.";
 const EL_CACHE_PATH = "./data/extralifeDonors.json";
 
 const Module = new Augur.Module();
@@ -37,7 +37,7 @@ async function slashTwitchExtralifeTeam(int) {
   const members = team.participants.map(p => {
     const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "");
     const stream = username ? streams.find(s => s.stream?.userDisplayName === username) : undefined;
-    return { ...p, username, isLive: Boolean(stream), stream };
+    return { ...p, username, isLive: stream?.live, stream };
   });
 
   // sort by live, then donations, then name
@@ -52,7 +52,7 @@ async function slashTwitchExtralifeTeam(int) {
       `$${m.sumDonations} / $${m.fundraisingGoal} (${percent(m.sumDonations, m.fundraisingGoal)})\n` +
       `**[[Donate]](${m.links.donate})**\n`;
 
-    if (m.isLive) str += `\n### STREAM IS NOW LIVE\n[${m.stream?.stream?.title ?? "Watch Here"}](https://twitch.tv/${m.username})`;
+    if (m.isLive) str += `\n### STREAM IS NOW LIVE\n[${m.stream?.stream?.title || "Watch Here"}](${twitchURL(m.username)}\n`;
     return str;
   });
 

@@ -102,17 +102,18 @@ function twitchErrorHandler(error) {
 async function isRatedM(gameName) {
   try {
     if (!config.api.thegamesdb || !gameName) return false;
+    gameName = gameName.toLowerCase();
 
     const cached = twitchGames.get(gameName);
     if (cached) return cached.ratedM;
 
-    /** @type {{ game_title: string, rating: string }[] | undefined} */
-    const apiGame = await call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
-      .then(d => d.games);
+    /** @type {{ game_title: string, rating: string, alternates: string[] | null }[]} */
+    const apiGames = await call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
+      .then(d => d.games) || [];
 
-    // the api can return multiple games since we use the alternates field
-    const ratings = apiGame?.filter(g => g.game_title.toLowerCase() === gameName.toLowerCase() && g.rating !== "Not Rated");
-    const withRating = { name: gameName, ratedM: ratings?.[0].rating === "M - Mature 17+" };
+    // the api can return multiple games as well as aliases since we use the alternates field. default to the first game if it can't find it (games are sorted by relevance)
+    const ratedGame = apiGames.find(g => g.game_title.toLowerCase() === gameName || g.alternates?.find(a => a.toLowerCase() === gameName) && g.rating !== "Not Rated") || apiGames[0];
+    const withRating = { name: gameName, ratedM: ratedGame?.rating === "M - Mature 17+" };
     twitchGames.set(gameName, withRating);
 
     return withRating.ratedM;

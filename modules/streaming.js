@@ -17,7 +17,7 @@ const twitchEnabled = config.twitch.enabled && config.twitch.clientId && config.
 
 const approvalText = "## Congratulations!\n" +
   `You've been added to the Approved Streamers list in LDSG! This allows going live notifications to show up in <#${u.sf.channels.general}>, and grants access to stream to voice channels.\n` +
-  "This has been done as part of the application process, but please double check that your correct Twitch username is saved by doing `/ign view twitch`. If the link doesn't work, try `/ign set twitch YourTwitchUsername`.\n\n" +
+  "This has been done as part of the application process, but please double check that your correct Twitch username is saved by doing `/ign view twitch`. If the IGN's URL doesn't work, try `/ign set twitch YourTwitchUsername`.\n\n" +
   "While streaming, please remember the [Streaming Guidelines](<https://goo.gl/Pm3mwS>) and [LDSG Code of Conduct](<http://ldsgamers.com/code-of-conduct>).\n" +
   "-# LDSG may make changes to the Approved Streamers list from time to time at its discretion.";
 
@@ -48,7 +48,7 @@ async function slashTwitchLive(int) {
 
   channels.sort((a, b) => a.name.localeCompare(b.name));
 
-  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})`);
+  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})\n`);
   const embeds = u.pagedEmbedsDescription(embed, lines);
 
   return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), Boolean(ephemeral));
@@ -64,7 +64,7 @@ async function slashTwitchApplication(int) {
     new u.Button({ customId: "streamerDeny", emoji: "❌", label: "Deny", style: Discord.ButtonStyle.Secondary }),
   ]);
 
-  const applicationEmbed = u.embed().setTitle("Approved Streamer Application (Part 1)")
+  const applicationEmbed = u.embed().setTitle("Approved Streamer Application (Part 1 of 2)")
     .setDescription(`By clicking \`Agree\`, you agree to follow the [Streaming Guidelines](https://goo.gl/Pm3mwS) and the [Code of Conduct](https://ldsg.io/code). Are you willing to follow these standards?`);
 
   return int.reply({ embeds: [applicationEmbed], components: [agreement], flags: ["Ephemeral"] });
@@ -81,7 +81,7 @@ async function buttonStreamerAgree(int) {
 
   // make modal
   const ignModal = new u.Modal()
-    .setTitle("Approved Streamer Application (Part 2)")
+    .setTitle("Approved Streamer Application (Part 2 of 2)")
     .setCustomId("streamerIgn")
     .addComponents(
       u.ModalActionRow().addComponents(
@@ -117,11 +117,11 @@ async function modalStreamerIgn(int) {
   const name = int.fields.getTextInputValue("username").toLowerCase().trim();
   const games = int.fields.getTextInputValue("games");
 
-  if (name.includes("twitch.tv/")) return int.editReply("It looks like you've included a URL in your Twitch username. Please enter only your Twitch username (for example, 'ldsgamers'), not the full URL.");
+  if (name.includes("twitch.tv/")) return int.editReply("It looks like you've included a URL in your Twitch username. Please enter only your Twitch username (for example, 'ldsgamers'), not the full URL. Hit `Agree` to try again.");
   await u.db.ign.save(int.member.id, "twitch", name);
 
   // generate and send the request
-  const embed = u.embed().setTitle("Approved Streamer Request")
+  const embed = u.embed({ author: int.member }).setTitle("New Approved Streamer Application")
     .setDescription(`${c.userBackup(int.member)} has requested to become an approved streamer. It's recommended that you watch a stream or two of theirs before approving them.`)
     .setColor(c.colors.info)
     .setFooter({ text: int.member.id })
@@ -131,7 +131,7 @@ async function modalStreamerIgn(int) {
     );
 
   await int.client.getTextChannel(u.sf.channels.team.publicAffairs)?.send({ embeds: [embed], components: [approveButtons] });
-  return int.editReply({ content: "Your application has been submitted! Please wait for the moderators to handle your request.", components: [], embeds: [] });
+  return int.editReply({ content: "Your application has been submitted! Please wait for the Public Affairs Team to handle your request.", components: [], embeds: [] });
 }
 
 /** @param {Augur.GuildInteraction<"Button">} int*/
@@ -218,14 +218,14 @@ async function handleOnline(streams, streamers, ldsg) {
     // generate embed
     const embed = u.embed()
       .setColor(colors.twitch)
-      .setThumbnail(stream.getThumbnailUrl(480, 270))
+      .setThumbnail(stream.getThumbnailUrl(480, 270) + `?t=${Date.now()}`)
       .setAuthor({ name: `${stream.userDisplayName} ${stream.gameName ? `is playing ${stream.gameName}` : ""}` })
       .setTitle(`🔴 ${stream.title}`)
-      .setDescription(`${member || stream.userDisplayName} went live on Twitch!`)
+      .setTimestamp(stream.startDate)
       .setURL(url);
 
     // check for extralife (has extralife role and extra life in title)
-    if (isExtraLife() && (member ? member?.roles.cache.has(u.sf.roles.streaming.elteam) : true) && stream.title.match(/extra ?life/i)) {
+    if (isExtraLife() && (member ? member?.roles.cache.has(u.sf.roles.streaming.elteam) : true) && stream.title.match(/extra[ -]?life/i)) {
       if (content) content = `**<@&${u.sf.roles.streaming.elraiders}>** ${content}`;
       else content = `<@&${u.sf.roles.streaming.elraiders}>, **${member?.displayName ?? stream.userDisplayName}** is live for Extra Life!`;
 
@@ -250,12 +250,12 @@ async function handleOffline(streamers, ldsg) {
     const status = api.twitchStatus.get(ign);
 
     // remove if they're past the threshold
-    if (status && status.live && status.since < sinceThreshold()) {
+    if (status && !status.live && status.since <= sinceThreshold()) {
       api.twitchStatus.delete(ign);
       continue;
     }
 
-    // don't bother continuing if they're already marked live
+    // don't bother continuing if they're already marked as offline
     if (!status?.live) continue;
 
     if (channel.ign.toLowerCase() === "ldsgamers") Module.client.user?.setActivity({ name: "Tiddlywinks", type: Discord.ActivityType.Playing });
@@ -281,16 +281,16 @@ async function processTwitch(igns) {
     if (!twitchEnabled) return;
 
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
-    if (!ldsg) return;
+    if (!ldsg) throw new Error("Couldn't find LDSG");
 
     const notificationChannel = ldsg.client.getTextChannel(u.sf.channels.general);
 
     const perPage = 50;
     for (let i = 0; i < igns.length; i += perPage) {
       const streamers = igns.slice(i, i + perPage);
-      const users = streamers.map(s => s.ign);
+      const usernames = streamers.map(s => s.ign);
 
-      const streams = await api.twitch.streams.getStreamsByUserNames(users)
+      const streams = await api.twitch.streams.getStreamsByUserNames(usernames)
         .catch(api.twitchErrorHandler);
 
       if (!streams) continue;
@@ -315,28 +315,23 @@ async function checkStreamsClockwork() {
       ?.roles.cache.get(u.sf.roles.streaming.approved)
       ?.members.map(member => member.id) ?? [];
 
+    // Post twitch notifications
     if (streamers.length > 0) {
-      // Look up their twitch IGN
       const igns = await u.db.ign.findMany(streamers, "twitch");
-
-      /** @type {string[]} */
-      const bonusStreams = JSON.parse(fs.readFileSync("./data/streams.json", "utf8"));
-
-      const streams = bonusStreams.filter(s => s.length > 0)
-        .map(s => ({ ign: s, discordId: s }))
-        .concat(igns);
-
-      processTwitch(streams);
+      processTwitch(igns);
     }
 
 
     // Check for Extra Life
-    const now = new Date();
-    if (!isExtraLife() || ((now.getHours() % 2 !== 1 || now.getMinutes() > 5) && !config.devMode)) return;
+    if (!isExtraLife() && !config.devMode) return;
 
     /** @type {import("./extralife").ExtraLifeShared} */
     const shared = Module.client.moduleManager.shared.get("extralife.js");
-    const embeds = await shared.alerts(); // also does donation checks
+    const embeds = await shared.alerts();
+
+    // alerts does automatic donation/join posts. we only want to post summary embeds at the top of every other hour
+    const now = new Date();
+    if ((now.getMinutes() > 5 || now.getHours() % 2 === 0) && !config.devMode) return;
 
     for (const embed of embeds) {
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
@@ -462,13 +457,12 @@ Module.addInteraction({
     ?.members ?? new u.Collection();
 
   for (const [id, member] of members) {
-    if (!api.twitchStatus.find(s => s.userId === id)) await member.roles.remove(u.sf.roles.streaming.live);
+    if (!api.twitchStatus.find(s => s.userId === id)?.live) await member.roles.remove(u.sf.roles.streaming.live);
   }
 
   if (config.devMode) checkStreamsClockwork();
 })
 .setUnload(() => {
-  delete require.cache[require.resolve("../data/streams.json")];
   return true;
 })
 .setShared({ writeCache });
