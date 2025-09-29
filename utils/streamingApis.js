@@ -9,7 +9,7 @@ const TwitchAuth = require("@twurple/auth").AppTokenAuthProvider;
 
 const GAMES_DB_API = "https://api.thegamesdb.net/v1";
 const EXTRA_LIFE_API = "https://extralife.donordrive.com/api";
-const EXTRA_LIFE_TEAM = config.twitch.elTeam;
+const EXTRA_LIFE_TEAM = encodeURIComponent(config.twitch.elTeam);
 
 const assets = {
   colors: { twitch: 0x6441A4, elGreen: 0x7fd836, elBlue: 0x26c2eb },
@@ -26,9 +26,9 @@ const twitchGames = new u.Collection();
 /**
  * @typedef LiveUser
  * @prop {boolean} live
- * @prop {number} since
- * @prop {string} [userId]
- * @prop {Pick<Twitch.HelixStream, "gameName" | "title" | "userDisplayName" | "gameId">} stream
+ * @prop {number} sinceOffline
+ * @prop {string} userId
+ * @prop {Pick<Twitch.HelixStream, "gameName" | "gameId" | "title" | "userDisplayName">} stream
  */
 
 /**
@@ -47,7 +47,7 @@ let cachedELTeam = null;
 
 /** @param {number} num */
 function round(num) {
-  return Math.round((num + Number.EPSILON) * 100) / 100;
+  return Math.round(num * 100) / 100;
 }
 
 const extraLife = {
@@ -56,22 +56,22 @@ const extraLife = {
     if (!config.twitch.enabled || !config.twitch.elTeam) return null;
 
     /** @type {extralife.Team | undefined} */
-    const team = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}`);
+    const team = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}`);
     if (!team) return cachedELTeam;
 
-    if (cachedELTeam && cachedELTeam.numMilestones !== team.numMilestones) {
+    if (!cachedELTeam || cachedELTeam.numMilestones !== team.numMilestones) {
       /** @type {extralife.Milestone[]} */
-      team.milestones = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/milestones`) ?? [];
+      team.milestones = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/milestones`) ?? [];
     }
 
-    if (cachedELTeam && cachedELTeam.numParticipants !== team.numParticipants) {
+    if (!cachedELTeam || cachedELTeam.numParticipants !== team.numParticipants) {
       /** @type {extralife.Participant[]} */
-      team.participants = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/participants`) ?? [];
+      team.participants = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/participants`) ?? [];
     }
 
-    if (cachedELTeam && cachedELTeam.numDonations !== team.numDonations) {
+    if (!cachedELTeam || cachedELTeam.numDonations !== team.numDonations) {
       /** @type {extralife.Donation[]} */
-      team.donations = await call(`${EXTRA_LIFE_API}/teams/${encodeURIComponent(EXTRA_LIFE_TEAM)}/donations`) ?? [];
+      team.donations = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/donations`) ?? [];
     }
 
     cachedELTeam = team;
@@ -112,7 +112,7 @@ async function isRatedM(gameName) {
       .then(d => d.games) || [];
 
     // the api can return multiple games as well as aliases since we use the alternates field. default to the first game if it can't find it (games are sorted by relevance)
-    const ratedGame = apiGames.find(g => g.game_title.toLowerCase() === gameName || g.alternates?.find(a => a.toLowerCase() === gameName) && g.rating !== "Not Rated") || apiGames[0];
+    const ratedGame = apiGames.find(g => (g.game_title.toLowerCase() === gameName || g.alternates?.find(a => a.toLowerCase() === gameName)) && g.rating !== "Not Rated") || apiGames[0];
     const withRating = { name: gameName, ratedM: ratedGame?.rating === "M - Mature 17+" };
     twitchGames.set(gameName, withRating);
 

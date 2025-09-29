@@ -181,7 +181,7 @@ async function handleOnline(streams, streamers, ldsg) {
     const status = api.twitchStatus.get(stream.userDisplayName.toLowerCase());
 
     // If they were streaming recently (within half an hour), don't post notifications
-    if (status && (status.live || status.since > sinceThreshold())) {
+    if (status && (status.live || status.sinceOffline > sinceThreshold())) {
       status.stream = stream;
       continue;
     }
@@ -210,7 +210,7 @@ async function handleOnline(streams, streamers, ldsg) {
     // mark as live
     api.twitchStatus.set(stream.userDisplayName.toLowerCase(), {
       live: true,
-      since: Date.now(),
+      sinceOffline: Date.now(),
       userId: member?.id,
       stream: { userDisplayName: stream.userDisplayName, gameName: stream.gameName, title: stream.title, gameId: stream.gameId }
     });
@@ -250,7 +250,7 @@ async function handleOffline(streamers, ldsg) {
     const status = api.twitchStatus.get(ign);
 
     // remove if they're past the threshold
-    if (status && !status.live && status.since <= sinceThreshold()) {
+    if (status && !status.live && status.sinceOffline <= sinceThreshold()) {
       api.twitchStatus.delete(ign);
       continue;
     }
@@ -268,7 +268,7 @@ async function handleOffline(streamers, ldsg) {
 
     api.twitchStatus.set(ign, {
       live: false,
-      since: Date.now(),
+      sinceOffline: Date.now(),
       userId: member?.id,
       stream: status.stream
     });
