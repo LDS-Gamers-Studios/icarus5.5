@@ -46,8 +46,8 @@ async function slashTwitchLive(int) {
 
   // Sort by Extra Life first, then by username
   channels.sort((a, b) => {
-    if (a.isExtraLife === b.isExtraLife) return a.name.localeCompare(b.name);
-    return a ? -1 : 1;
+    if (a.isExtraLife !== b.isExtraLife) return a.isExtraLife ? -1 : 1;
+    return a.name.localeCompare(b.name);
   });
 
   const lines = channels.map(ch => `**${ch.isExtraLife ? `<:el_team:${u.sf.emoji.elteam}> ` : ""}${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})\n`);
