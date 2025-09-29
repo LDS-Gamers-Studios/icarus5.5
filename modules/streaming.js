@@ -211,7 +211,7 @@ async function handleOnline(streams, streamers, ldsg) {
     api.twitchStatus.set(stream.userDisplayName.toLowerCase(), {
       live: true,
       sinceOffline: Date.now(),
-      userId: member?.id,
+      userId: member?.id ?? "",
       stream: { userDisplayName: stream.userDisplayName, gameName: stream.gameName, title: stream.title, gameId: stream.gameId }
     });
 
@@ -269,7 +269,7 @@ async function handleOffline(streamers, ldsg) {
     api.twitchStatus.set(ign, {
       live: false,
       sinceOffline: Date.now(),
-      userId: member?.id,
+      userId: member?.id ?? "",
       stream: status.stream
     });
   }
