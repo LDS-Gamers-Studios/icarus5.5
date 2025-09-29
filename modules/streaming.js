@@ -13,7 +13,7 @@ const api = require("../utils/streamingApis");
 const Module = new Augur.Module();
 
 const { assets: { colors }, twitchURL, extraLife: { isExtraLife } } = api;
-const twitchEnabled = config.twitch.enabled && config.twitch.clientId && config.twitch.clientSecret;
+const twitchEnabled = Boolean(config.twitch.enabled && config.twitch.clientId && config.twitch.clientSecret);
 
 const approvalText = "## Congratulations!\n" +
   `You've been added to the Approved Streamers list in LDSG! This allows going live notifications to show up in <#${u.sf.channels.general}>, and grants access to stream to voice channels.\n` +
@@ -29,34 +29,36 @@ const STREAM_CACHE_FILE = "./data/streamcache.json";
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashTwitchLive(int) {
-  const ephemeral = u.ephemeralChannel(int, u.sf.channels.botSpam);
-  await int.deferReply({ flags: ephemeral });
-
   const streams = api.twitchStatus.filter(s => s.live);
-  if (streams.size === 0) return int.editReply("No one is streaming right now!").then(u.clean);
+  if (streams.size === 0) return int.reply({ content: "No one is streaming right now!", flags: ["Ephemeral"] });
 
   const embed = u.embed()
     .setTitle(`Currently Streaming in ${int.guild.name}`)
     .setColor(colors.twitch);
 
   const channels = streams.map((status, username) => ({
-    name: status.stream?.userDisplayName || username,
-    game: status.stream?.gameName || "something",
+    name: status.stream.userDisplayName || username,
+    game: status.stream.gameName || "something",
+    isExtraLife: status.isExtraLife,
     title: status.stream?.title || "Watch Here",
     url: twitchURL(status.stream?.userDisplayName || username),
   }));
 
-  channels.sort((a, b) => a.name.localeCompare(b.name));
+  // Sort by Extra Life first, then by username
+  channels.sort((a, b) => {
+    if (a.isExtraLife === b.isExtraLife) return a.name.localeCompare(b.name);
+    return a ? -1 : 1;
+  });
 
-  const lines = channels.map(ch => `**${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})\n`);
+  const lines = channels.map(ch => `**${ch.isExtraLife ? `<:el_team:${u.sf.emoji.elteam}> ` : ""}${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})\n`);
   const embeds = u.pagedEmbedsDescription(embed, lines);
 
-  return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), Boolean(ephemeral));
+  return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), int.channelId === u.sf.channels.botSpam);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
 async function slashTwitchApplication(int) {
-  if (int.member.roles.cache.has(u.sf.roles.streaming.approved)) return int.reply({ content: "You're already an approved streamer!", flags: ["Ephemeral"] });
+  if (int.member.roles.cache.has(u.sf.roles.streaming.approved)) return int.reply({ content: "You're already an Approved Streamer!", flags: ["Ephemeral"] });
   if (!int.member.roles.cache.has(u.sf.roles.moderation.trusted)) return int.reply({ content: "You need the Trusted role first!", flags: ["Ephemeral"] });
 
   const agreement = u.MessageActionRow().addComponents([
@@ -126,12 +128,13 @@ async function modalStreamerIgn(int) {
     .setColor(c.colors.info)
     .setFooter({ text: int.member.id })
     .addFields(
-      { name: "Twitch", value: `[${name}](https://twitch.tv/${name})` },
-      { name: "Usual Games", value: games }
+      { name: "Twitch Channel", value: `[${name}](${twitchURL(name)})` },
+      { name: "Usual Games", value: games },
+      { name: "Agreements", value: `${int.member} has agreed to follow the [Streaming Guidelines](https://goo.gl/Pm3mwS) and the [Code of Conduct](https://ldsg.io/code).` }
     );
 
   await int.client.getTextChannel(u.sf.channels.team.publicAffairs)?.send({ embeds: [embed], components: [approveButtons] });
-  return int.editReply({ content: "Your application has been submitted! Please wait for the Public Affairs Team to handle your request.", components: [], embeds: [] });
+  return int.editReply({ content: "Your application has been submitted! Please wait for the Public Affairs Team to handle your request. They may want to watch or review a stream or two before approving your request.", components: [], embeds: [] });
 }
 
 /** @param {Augur.GuildInteraction<"Button">} int*/
@@ -159,7 +162,7 @@ async function buttonDenyStreamer(int) {
 
   await int.deferUpdate();
 
-  await member.send(`Hey ${member.displayName}, unfortunately your application to become an approved streamer has been denied. This was likely due to the type of content being streamed, but please reach out to someone on the Public Affairs team if you have any questions.`).catch(u.noop);
+  await member.send(`Hey ${member.displayName}, unfortunately your application to become an approved streamer has been denied. This was likely due to the type of content being streamed, but please reach out to someone on the Public Affairs Team if you have any questions.`).catch(() => c.blocked(member));
   int.editReply({ content: `${member}'s application has been denied by ${int.member}`, components: [] });
 }
 
@@ -196,7 +199,7 @@ async function handleOnline(streams, streamers, ldsg) {
     let allowMentions = false;
     if (stream.userDisplayName.toLowerCase() === "ldsgamers") {
       Module.client.user?.setActivity({ name: stream.title, url, type: Discord.ActivityType.Streaming });
-      content = `**<@&${u.sf.roles.streaming.twitchraiders}>, we're live!**`;
+      content = `**<@&${u.sf.roles.streaming.twitchraiders}>, we're live!**\n${stream.title}`;
       allowMentions = true;
     }
 
@@ -206,14 +209,6 @@ async function handleOnline(streams, streamers, ldsg) {
     if (member && api.isPartnered(member)) {
       member.roles.add(u.sf.roles.streaming.live).catch(u.noop);
     }
-
-    // mark as live
-    api.twitchStatus.set(stream.userDisplayName.toLowerCase(), {
-      live: true,
-      sinceOffline: Date.now(),
-      userId: member?.id ?? "",
-      stream: { userDisplayName: stream.userDisplayName, gameName: stream.gameName, title: stream.title, gameId: stream.gameId }
-    });
 
     // generate embed
     const embed = u.embed()
@@ -225,13 +220,23 @@ async function handleOnline(streams, streamers, ldsg) {
       .setURL(url);
 
     // check for extralife (has extralife role and extra life in title)
-    if (isExtraLife() && (member ? member?.roles.cache.has(u.sf.roles.streaming.elteam) : true) && stream.title.match(/extra[ -]?life/i)) {
+    const isExtraLifeStream = isExtraLife() && (member ? member?.roles.cache.has(u.sf.roles.streaming.elteam) : true) && /extra[ -]?life/i.test(stream.title);
+    if (isExtraLifeStream) {
       if (content) content = `**<@&${u.sf.roles.streaming.elraiders}>** ${content}`;
       else content = `<@&${u.sf.roles.streaming.elraiders}>, **${member?.displayName ?? stream.userDisplayName}** is live for Extra Life!`;
 
       allowMentions = true;
       embed.setColor(colors.elGreen);
     }
+
+    // mark as live
+    api.twitchStatus.set(stream.userDisplayName.toLowerCase(), {
+      live: true,
+      sinceOffline: Date.now(),
+      userId: member?.id ?? "",
+      isExtraLife: isExtraLifeStream,
+      stream: { userDisplayName: stream.userDisplayName, gameName: stream.gameName, title: stream.title, gameId: stream.gameId }
+    });
 
     // send it!
     messages.push({ content, embeds: [embed], allowedMentions: allowMentions ? { parse: ["roles"] } : undefined });
@@ -269,7 +274,8 @@ async function handleOffline(streamers, ldsg) {
     api.twitchStatus.set(ign, {
       live: false,
       sinceOffline: Date.now(),
-      userId: member?.id ?? "",
+      userId: status.userId,
+      isExtraLife: status.isExtraLife,
       stream: status.stream
     });
   }
@@ -293,7 +299,7 @@ async function processTwitch(igns) {
       const streams = await api.twitch.streams.getStreamsByUserNames(usernames)
         .catch(api.twitchErrorHandler);
 
-      if (!streams) continue;
+      if (!streams || streams.length === 0) continue;
 
       const messages = await handleOnline(streams, streamers, ldsg);
       for (const message of messages) {
@@ -327,13 +333,13 @@ async function checkStreamsClockwork() {
 
     /** @type {import("./extralife").ExtraLifeShared} */
     const shared = Module.client.moduleManager.shared.get("extralife.js");
-    const embeds = await shared.alerts();
+    const summaryEmbeds = await shared.alerts();
 
-    // alerts does automatic donation/join posts. we only want to post summary embeds at the top of every other hour
+    // alerts does automatic donation/join posts, but we only want to post summary embeds at the top of every other hour
     const now = new Date();
     if ((now.getMinutes() > 5 || now.getHours() % 2 === 0) && !config.devMode) return;
 
-    for (const embed of embeds) {
+    for (const embed of summaryEmbeds) {
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
     }
 
@@ -372,6 +378,7 @@ Module.addInteraction({
           /** @type {import("./extralife").ExtraLifeShared} */
           const extralife = int.client.moduleManager.shared.get("extralife.js");
           if (!extralife) throw new Error("Couldn't find Extra Life module");
+
           return extralife.slashTwitchExtralifeTeam(int);
         }
         case "live": return slashTwitchLive(int);
@@ -419,7 +426,7 @@ Module.addInteraction({
     alert = " has become a Twitch Sub!";
   }
   if (content) {
-    newMember.send(content).catch(() => c.blocked(newMember));
+    newMember.send(content).catch(() => c.blocked(newMember, "Twitch Sub Update Notification"));
     alertChannel?.send(`**${c.userBackup(newMember)}**${alert}`);
   }
 })
@@ -457,7 +464,7 @@ Module.addInteraction({
     ?.members ?? new u.Collection();
 
   for (const [id, member] of members) {
-    if (!api.twitchStatus.find(s => s.userId === id)?.live) await member.roles.remove(u.sf.roles.streaming.live);
+    if (!api.twitchStatus.find(s => s.userId === id)?.live) await member.roles.remove(u.sf.roles.streaming.live).catch((e) => u.errorHandler(e, "Removing Live Role"));
   }
 
   if (config.devMode) checkStreamsClockwork();

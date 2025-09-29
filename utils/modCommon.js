@@ -48,13 +48,15 @@ const logEmbed = (int, tg) => u.embed({ author: tg })
 /**
   * Give the mods a heads up that someone isn't getting their DMs.
   * @param {Discord.GuildMember | Discord.User} user The guild member that's blocked.
+  * @param {string} [notice] What the user was being DMed about
   */
-function blocked(user) {
+function blocked(user, notice) {
   return user.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({
       author: user,
       color: embedColors.info,
-      title: `${userBackup(user)} has me blocked. *sadface*`
+      title: `${userBackup(user)} has me blocked. *sadface*`,
+      fields: notice ? [{ name: "Intended Notice", value: notice }] : undefined
     })
   ] });
 }
