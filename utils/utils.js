@@ -224,10 +224,11 @@ const utils = {
    * @param {Discord.EmbedBuilder} embed
    * @param {string[]} lines
    */
-  pagedEmbedsDescription: (embed, lines) => {
+  pagedEmbedsDescription: (embed, lines, keepDescription = true) => {
     /** @type {Discord.APIEmbed[]} */
     const embeds = [];
     let currentEmbed = embed.toJSON();
+    if (!keepDescription) embed.setDescription(null);
     let active = "";
     lines.forEach((line) => {
       if (active.length + line.length > 4000) {

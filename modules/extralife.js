@@ -1,0 +1,268 @@
+// @ts-check
+const Augur = require("augurbot-ts");
+const NoRepeat = require("no-repeat");
+const fs = require("fs");
+const api = require("../utils/streamingApis");
+const u = require("../utils/utils");
+
+/** @typedef {api.LiveUser} LiveUser */
+
+const { twitchURL, extraLife: { isExtraLife }, assets } = api;
+const notEL = "Extra Life isn't quite ready yet! Try again in September.";
+const EL_CACHE_PATH = "./data/extralifeCache.json";
+
+const Module = new Augur.Module();
+
+/**
+ * @param {number} num
+ * @param {number} den
+ */
+function percent(num, den) {
+  if (den === 0) den = num;
+  return (num / den * 100).toFixed(2) + "%";
+}
+
+
+/****************
+ *   COMMANDS   *
+ ****************/
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashTwitchExtralifeTeam(int) {
+  if (!isExtraLife()) return int.reply({ content: notEL, flags: ["Ephemeral"] });
+  await int.deferReply();
+
+  const team = await api.extraLife.getTeam();
+  if (!team) return int.editReply("Sorry, looks like the Extra Life API is down! Try later!").then(u.clean);
+
+  const streams = await fetchExtraLifeStreams(team);
+  const members = team.participants.map(p => {
+    const username = p.streamingChannel.toLowerCase();
+    const stream = username ? streams.find(s => s.stream?.userDisplayName.toLowerCase() === username) : undefined;
+    return { ...p, username, isLive: stream?.live, stream };
+  });
+
+  // sort by live, then donations, then name
+  members.sort((a, b) => {
+    if (a.isLive !== b.isLive) return a.isLive ? -1 : 1;
+    if (a.sumDonations !== b.sumDonations) return b.sumDonations - a.sumDonations;
+    return a.displayName.localeCompare(b.displayName);
+  });
+
+  const teamStrings = members.map(m => {
+    let str = `**${m.displayName}**\n` +
+      `$${m.sumDonations} / $${m.fundraisingGoal} (${percent(m.sumDonations, m.fundraisingGoal)})\n` +
+      `**[[Donate]](${m.links.donate})**\n`;
+
+    if (m.isLive) str += `\n### STREAM IS NOW LIVE\n[${m.stream?.stream?.title || "Watch Here"}](${twitchURL(m.username)})\n`;
+    return str;
+  });
+
+  const nextMilestone = team.milestones.find(m => m.fundraisingGoal > team.sumDonations);
+
+  const wallOfText = `LDSG is raising money for Extra Life! We are currently at **$${team.sumDonations}** of our team's **$${team.fundraisingGoal}** goal for ${new Date().getFullYear()}. **That's ${percent(team.sumDonations, team.fundraisingGoal)} of the way there!**\n\n` +
+    "You can help by donating to one of the Extra Life Team members below.";
+
+  const embed = u.embed().setTitle("LDSG Extra Life Team")
+    .setThumbnail(assets.elLogo)
+    .setURL(assets.elTeamLink)
+    .setDescription(`${wallOfText}\n\n${nextMilestone ? `# Next Milestone:\n$${nextMilestone.fundraisingGoal} - ${nextMilestone.description}\n\n` : ""}`);
+
+  const embeds = u.pagedEmbedsDescription(embed, teamStrings, false);
+  return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })));
+}
+
+/**
+ * Also does donation checks
+ * @param {import("../utils/extralifeTypes").Team | null} [team]
+ * @returns {Promise<LiveUser[]>}
+ */
+async function fetchExtraLifeStreams(team) {
+  /** @type {LiveUser[]} */
+  const defaultValue = [];
+
+  try {
+    if (!team) team = await api.extraLife.getTeam();
+    if (!team) return defaultValue;
+
+    doDonationChecks(team);
+
+    const users = team.participants.filter(m => m.streamingPlatform === "Twitch")
+      .map(p => p.streamingChannel?.toLowerCase() ?? "")
+      .filter(channel => channel && !channel.includes(" "));
+
+    if (users.length === 0) return defaultValue;
+    return [...api.twitchStatus.filter((_, username) => users.includes(username)).values()];
+  } catch (error) {
+    u.errorHandler(error, "Fetch Extra Life Streams");
+    return defaultValue;
+  }
+}
+
+
+/**********************
+ * DONATION RESOURCES *
+ **********************/
+
+/** @type {Set<string>} */
+const donors = new Set();
+
+/** @type {Set<string>} */
+const donationIDs = new Set();
+
+/** @type {Set<string>} */
+const teamMembers = new Set();
+
+async function loadDonationCache() {
+  if (!fs.existsSync(EL_CACHE_PATH)) return;
+
+  /** @type {{ donors: string[], donationIDs: string[], teamMembers: string[] }} */
+  const file = JSON.parse(fs.readFileSync(EL_CACHE_PATH, "utf-8"));
+
+  for (const donor of file.donors) donors.add(donor);
+  for (const id of file.donationIDs) donationIDs.add(id);
+  for (const member of file.teamMembers) teamMembers.add(member);
+}
+
+
+const almosts = new NoRepeat([
+  "almost",
+  "like",
+  "basically equivalent to",
+  "essentially",
+  "the same as",
+  "comparable to"
+]);
+
+/** @type {NoRepeat<(num: number) => string>} */
+const prices = new NoRepeat([
+  (num) => `${api.round(num * 3.84615384)} buttermelons`,
+  (num) => `${api.round(num * 15.5)}oz of beans`,
+  (num) => `${api.round(num * 100)} <:gb:${u.sf.emoji.gb}>`,
+  (num) => `${api.round(num * 12 / 2.97)} ice cream sandwiches`,
+  (num) => `${api.round(num / 4.99)} handicorn sets`,
+  (num) => `${api.round(num / 4.98)} copies of Shrek`,
+]);
+
+/** @param {import("../utils/extralifeTypes").Team} team */
+async function doDonationChecks(team) {
+  let update = false;
+
+  /** @type {import("../utils/extralifeTypes").Donation[]}*/
+  const newDonors = [];
+
+  // CHECK FOR NEW DONATIONS
+  for (const donation of team.donations) {
+    if (donationIDs.has(donation.donationID)) continue;
+
+    donationIDs.add(donation.donationID);
+    update = true;
+
+    if (donation.displayName && !donors.has(donation.displayName.toLowerCase())) {
+      donors.add(donation.displayName.toLowerCase());
+      newDonors.push(donation);
+    }
+
+    const embed = u.embed()
+      .setTitle("New Extra Life Donation")
+      .setURL(assets.elTeamLink)
+      .setThumbnail(assets.elLogo)
+      .setColor(assets.colors.elBlue)
+      .setAuthor({ name: `Donation From ${donation.displayName || "Anonymous Donor"}`, iconURL: donation.avatarImageURL || assets.elLogo })
+      .setDescription(donation.message || "[ No Message ]")
+      .setTimestamp(new Date(donation.createdDateUTC))
+      .setFields([
+        { name: "Amount", value: `$${donation.amount}`, inline: true },
+        { name: "Recipient", value: donation.recipientName, inline: true },
+        { name: "Incentive", value: donation.incentiveID || "[ None ]", inline: true }
+      ]);
+
+    Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
+
+    // prepare the embed for public sharing
+    embed.setAuthor(null)
+      .setFields([])
+      .setDescription(
+        `Someone just donated **$${donation.amount}** to our Extra Life team! That's ${almosts.getRandom()} **${prices.getRandom()(donation.amount)}!**\n` +
+        `(btw, that means we're at **$${team.sumDonations}**, which is **${percent(team.sumDonations, team.fundraisingGoal)}** of the way to our goal of **$${team.fundraisingGoal}!**)`
+      );
+
+    Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
+  }
+
+  if (newDonors.length > 0) {
+    const dono = team.donations[0];
+    const embed = u.embed().setColor(assets.colors.elBlue)
+      .setTitle(`${newDonors.length} New Extra Life Donor(s)`)
+      .setThumbnail(dono.avatarImageURL)
+      .setDescription(newDonors.map(d => d.displayName).join("\n"))
+      .setTimestamp(new Date(dono.createdDateUTC));
+
+    Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
+  }
+
+  // CHECK FOR NEW TEAM MEMBERS
+  /** @type {import("../utils/extralifeTypes").Participant[]} */
+  const newMembers = [];
+
+  for (const participant of team.participants) {
+    const id = participant.participantID.toString();
+    if (teamMembers.has(id)) continue;
+
+    teamMembers.add(id);
+    newMembers.push(participant);
+  }
+
+  if (newMembers.length > 0) {
+    const embed = u.embed().setColor(assets.colors.elBlue)
+      .setTitle(`${newMembers.length} New Extra Life Participant(s)`)
+      .setThumbnail(assets.elLogo)
+      .setDescription(newMembers.map(d => `[${u.escapeText(d.displayName)}](${d.links.page})`).join("\n"));
+
+    Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
+  }
+
+  if (update) {
+    fs.writeFileSync(EL_CACHE_PATH, JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs], teamMembers: [...teamMembers] }));
+  }
+}
+
+/** @param {LiveUser[]} streams */
+async function extraLifeEmbeds(streams) {
+  try {
+    if (!streams || streams.length === 0) return [];
+
+    const embed = u.embed()
+      .setTitle("Live from the Extra Life Team!")
+      .setImage(assets.elLogo)
+      .setColor(assets.colors.elGreen);
+
+    const channels = streams.sort((a, b) => (a.stream?.userDisplayName ?? "").localeCompare(b.stream?.userDisplayName ?? "")).map(s => {
+      return `**${s.stream.userDisplayName} ${s.stream.gameName ? `is playing ${s.stream.gameName}` : ""}**\n[${u.escapeText(s.stream.title || "")}](${twitchURL(s.stream.userDisplayName || "")})\n`;
+    });
+
+    return u.pagedEmbedsDescription(embed, channels);
+  } catch (error) {
+    u.errorHandler(error, "Extra Life Embed Fetch");
+    return [];
+  }
+}
+
+async function alerts() {
+  const streams = await fetchExtraLifeStreams();
+  const embeds = await extraLifeEmbeds(streams);
+  return embeds;
+}
+
+Module.setShared({
+  slashTwitchExtralifeTeam,
+  alerts
+})
+.setInit(() => {
+  loadDonationCache();
+});
+
+/**
+ * @typedef {{ slashTwitchExtralifeTeam: slashTwitchExtralifeTeam, alerts: alerts }} ExtraLifeShared
+ */
+
+module.exports = Module;

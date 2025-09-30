@@ -4,7 +4,13 @@ const Discord = require("discord.js");
 
 const gotobed = new u.sub()
   .setName("gotobed")
-  .setDescription("[ADMIN] Restarts the bot.");
+  .setDescription("[ADMIN] Restarts the bot.")
+  .addBooleanOption(
+    new u.bool()
+      .setName("keep-stream-cache")
+      .setDescription("Keeps track of the people currently streaming. (Default: True)")
+      .setRequired(false)
+  );
 
 const ping = new u.sub()
   .setName("ping")
