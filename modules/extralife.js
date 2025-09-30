@@ -210,6 +210,7 @@ async function doDonationChecks(team) {
 
     teamMembers.add(id);
     newMembers.push(participant);
+    update = true;
   }
 
   if (newMembers.length > 0) {
