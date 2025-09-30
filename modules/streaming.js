@@ -185,7 +185,7 @@ async function handleOnline(streams, streamers, ldsg) {
 
     // If they were streaming recently (within half an hour), don't post notifications
     if (status && (status.live || status.sinceLiveChange > sinceThreshold())) {
-      status.stream = stream;
+      status.stream = { userDisplayName: stream.userDisplayName, gameName: stream.gameName, title: stream.title, gameId: stream.gameId };
       continue;
     }
 
