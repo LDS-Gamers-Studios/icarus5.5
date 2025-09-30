@@ -9,7 +9,7 @@ const u = require("../utils/utils");
 
 const { twitchURL, extraLife: { isExtraLife }, assets } = api;
 const notEL = "Extra Life isn't quite ready yet! Try again in September.";
-const EL_CACHE_PATH = "./data/extralifeDonors.json";
+const EL_CACHE_PATH = "./data/extralifeCache.json";
 
 const Module = new Augur.Module();
 
@@ -35,8 +35,8 @@ async function slashTwitchExtralifeTeam(int) {
 
   const streams = await fetchExtraLifeStreams(team);
   const members = team.participants.map(p => {
-    const username = p.links.stream?.replace("https://player.twitch.tv/?channel=", "");
-    const stream = username ? streams.find(s => s.stream?.userDisplayName === username) : undefined;
+    const username = p.streamingChannel.toLowerCase();
+    const stream = username ? streams.find(s => s.stream?.userDisplayName.toLowerCase() === username) : undefined;
     return { ...p, username, isLive: stream?.live, stream };
   });
 
@@ -86,9 +86,9 @@ async function fetchExtraLifeStreams(team) {
 
     doDonationChecks(team);
 
-    const users = team.participants.filter(m => m.links.stream)
-      .map(p => p.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase() ?? "")
-      .filter(channel => !channel.match(/[ /]/));
+    const users = team.participants.filter(m => m.streamingPlatform === "Twitch")
+      .map(p => p.streamingChannel?.toLowerCase() ?? "")
+      .filter(channel => channel && !channel.includes(" "));
 
     if (users.length === 0) return defaultValue;
     return [...api.twitchStatus.filter((_, username) => users.includes(username)).values()];
@@ -110,17 +110,17 @@ const donors = new Set();
 const donationIDs = new Set();
 
 /** @type {Set<string>} */
-const members = new Set();
+const teamMembers = new Set();
 
 function loadDonationCache() {
   if (!fs.existsSync(EL_CACHE_PATH)) return;
 
-  /** @type {{ donors: string[], donationIDs: string[], members: string[] }} */
+  /** @type {{ donors: string[], donationIDs: string[], teamMembers: string[] }} */
   const file = JSON.parse(fs.readFileSync(EL_CACHE_PATH, "utf-8"));
 
   for (const donor of file.donors) donors.add(donor);
   for (const id of file.donationIDs) donationIDs.add(id);
-  for (const member of file.members) members.add(member);
+  for (const member of file.teamMembers) teamMembers.add(member);
 }
 
 
@@ -129,19 +129,18 @@ const almosts = new NoRepeat([
   "like",
   "basically equivalent to",
   "essentially",
-  "the same as"
+  "the same as",
+  "comparable to"
 ]);
 
 /** @type {NoRepeat<(num: number) => string>} */
 const prices = new NoRepeat([
   (num) => `${api.round(num * 3.84615384)} buttermelons`,
   (num) => `${api.round(num * 15.5)}oz of beans`,
-  (num) => `${api.round(num * 100)} <:gb:493084576470663180>`,
+  (num) => `${api.round(num * 100)} <:gb:${u.sf.emoji.gb}>`,
   (num) => `${api.round(num * 12 / 2.97)} ice cream sandwiches`,
   (num) => `${api.round(num / 4.99)} handicorn sets`,
-  (num) => `${api.round(num / 29.99)} copies of Minecraft`,
-  (num) => `${api.round(num / 5)} copies of Shrek`,
-  (num) => `${api.round(num / 27.47)} ink cartridges`
+  (num) => `${api.round(num / 4.98)} copies of Shrek`,
 ]);
 
 /** @param {import("../utils/extralifeTypes").Team} team */
@@ -151,6 +150,7 @@ async function doDonationChecks(team) {
   /** @type {import("../utils/extralifeTypes").Donation[]}*/
   const newDonors = [];
 
+  // CHECK FOR NEW DONATIONS
   for (const donation of team.donations) {
     if (donationIDs.has(donation.donationID)) continue;
 
@@ -178,6 +178,7 @@ async function doDonationChecks(team) {
 
     Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
 
+    // prepare the embed for public sharing
     embed.setAuthor(null)
       .setFields([])
       .setDescription(
@@ -199,14 +200,15 @@ async function doDonationChecks(team) {
     Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
   }
 
+  // CHECK FOR NEW TEAM MEMBERS
   /** @type {import("../utils/extralifeTypes").Participant[]} */
   const newMembers = [];
 
   for (const participant of team.participants) {
     const id = participant.participantID.toString();
-    if (members.has(id)) continue;
+    if (teamMembers.has(id)) continue;
 
-    members.add(id);
+    teamMembers.add(id);
     newMembers.push(participant);
   }
 
@@ -220,7 +222,7 @@ async function doDonationChecks(team) {
   }
 
   if (update) {
-    fs.writeFileSync(EL_CACHE_PATH, JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs], members: [...members] }));
+    fs.writeFileSync(EL_CACHE_PATH, JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs], teamMembers: [...teamMembers] }));
   }
 }
 
@@ -235,8 +237,7 @@ async function extraLifeEmbeds(streams) {
       .setColor(assets.colors.elGreen);
 
     const channels = streams.sort((a, b) => (a.stream?.userDisplayName ?? "").localeCompare(b.stream?.userDisplayName ?? "")).map(s => {
-      const game = api.twitchGames.get(s.stream?.gameId ?? "")?.name;
-      return `**${s.stream?.userDisplayName} ${game ? `playing ${game}` : ""}**\n[${u.escapeText(s.stream?.title || "")}](${twitchURL(s.stream?.userDisplayName || "")}\n`;
+      return `**${s.stream.userDisplayName} ${s.stream.gameName ? `is playing ${s.stream.gameName}` : ""}**\n[${u.escapeText(s.stream.title || "")}](${twitchURL(s.stream.userDisplayName || "")}\n`;
     });
 
     return u.pagedEmbedsDescription(embed, channels);
@@ -254,15 +255,14 @@ async function alerts() {
 
 Module.setShared({
   slashTwitchExtralifeTeam,
-  alerts,
-  doDonationChecks
+  alerts
 })
 .setInit(() => {
   loadDonationCache();
 });
 
 /**
- * @typedef {{ slashTwitchExtralifeTeam: slashTwitchExtralifeTeam, alerts: alerts, doDonationChecks: doDonationChecks }} ExtraLifeShared
+ * @typedef {{ slashTwitchExtralifeTeam: slashTwitchExtralifeTeam, alerts: alerts }} ExtraLifeShared
  */
 
 module.exports = Module;

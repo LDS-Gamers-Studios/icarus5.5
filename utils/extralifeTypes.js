@@ -14,6 +14,7 @@
  * @prop {number} teamID
  * @prop {number} sumPledges
  * @prop {string} streamingChannel
+ * @prop {string} streamingPlatform
  * @prop {number} numDonations
  * @prop {Participant[]} participants
  * @prop {Milestone[]} milestones
@@ -48,7 +49,7 @@
  * @prop {string} participantTypeCode
  * @prop {boolean} isTeamCaptain
  *
- * @typedef {Omit<Team, "numParticipants"|"streamIsLive"|"name"|"streamingChannel"> & ParticipantExclusive} Participant
+ * @typedef {Omit<Team, "numParticipants"|"streamIsLive"|"name"> & ParticipantExclusive} Participant
  */
 
 
