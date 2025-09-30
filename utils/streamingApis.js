@@ -26,7 +26,7 @@ const twitchGames = new u.Collection();
 /**
  * @typedef LiveUser
  * @prop {boolean} live
- * @prop {number} sinceOffline
+ * @prop {number} sinceLiveChange
  * @prop {string} userId
  * @prop {boolean} isExtraLife
  * @prop {Pick<Twitch.HelixStream, "gameName" | "gameId" | "title" | "userDisplayName">} stream

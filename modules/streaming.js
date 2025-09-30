@@ -184,7 +184,7 @@ async function handleOnline(streams, streamers, ldsg) {
     const status = api.twitchStatus.get(stream.userDisplayName.toLowerCase());
 
     // If they were streaming recently (within half an hour), don't post notifications
-    if (status && (status.live || status.sinceOffline > sinceThreshold())) {
+    if (status && (status.live || status.sinceLiveChange > sinceThreshold())) {
       status.stream = stream;
       continue;
     }
@@ -232,7 +232,7 @@ async function handleOnline(streams, streamers, ldsg) {
     // mark as live
     api.twitchStatus.set(stream.userDisplayName.toLowerCase(), {
       live: true,
-      sinceOffline: Date.now(),
+      sinceLiveChange: Date.now(),
       userId: member?.id ?? "",
       isExtraLife: isExtraLifeStream,
       stream: { userDisplayName: stream.userDisplayName, gameName: stream.gameName, title: stream.title, gameId: stream.gameId }
@@ -255,7 +255,7 @@ async function handleOffline(streamers, ldsg) {
     const status = api.twitchStatus.get(ign);
 
     // remove if they're past the threshold
-    if (status && !status.live && status.sinceOffline <= sinceThreshold()) {
+    if (status && !status.live && status.sinceLiveChange <= sinceThreshold()) {
       api.twitchStatus.delete(ign);
       continue;
     }
@@ -273,7 +273,7 @@ async function handleOffline(streamers, ldsg) {
 
     api.twitchStatus.set(ign, {
       live: false,
-      sinceOffline: Date.now(),
+      sinceLiveChange: Date.now(),
       userId: status.userId,
       isExtraLife: status.isExtraLife,
       stream: status.stream
@@ -324,7 +324,7 @@ async function checkStreamsClockwork() {
     // Post twitch notifications
     if (streamers.length > 0) {
       const igns = await u.db.ign.findMany(streamers, "twitch");
-      processTwitch(igns);
+      await processTwitch(igns);
     }
 
 
