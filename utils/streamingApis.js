@@ -117,7 +117,7 @@ async function isRatedM(gameName) {
 
     /** @type {{ game_title: string, rating: string, alternates: string[] | null }[]} */
     const apiGames = await call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
-      .then(d => d.games) || [];
+      .then(d => d.data.games) || [];
 
     // the api can return multiple games as well as aliases since we use the alternates field. default to the first game if it can't find it (games are sorted by relevance)
     const ratedGame = apiGames.find(g => (g.game_title.toLowerCase() === gameName || g.alternates?.find(a => a.toLowerCase() === gameName)) && g.rating !== "Not Rated") || apiGames[0];
