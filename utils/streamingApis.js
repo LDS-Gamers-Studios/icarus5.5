@@ -64,17 +64,22 @@ const extraLife = {
       /** @type {extralife.Milestone[]} */
       team.milestones = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/milestones`) ?? [];
       team.milestones.sort((a, b) => a.fundraisingGoal - b.fundraisingGoal);
+    } else {
+      team.milestones = cachedELTeam?.milestones ?? [];
     }
 
     if (!cachedELTeam || cachedELTeam.participants.length !== team.numParticipants) {
       /** @type {extralife.Participant[]} */
       team.participants = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/participants`) ?? [];
+    } else {
+      team.participants = cachedELTeam.participants ?? [];
     }
 
-    console.log(cachedELTeam);
     if (!cachedELTeam || cachedELTeam.donations.length !== team.numDonations) {
       /** @type {extralife.Donation[]} */
       team.donations = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/donations`) ?? [];
+    } else {
+      team.donations = cachedELTeam.donations ?? [];
     }
 
     cachedELTeam = team;
