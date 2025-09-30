@@ -2,7 +2,6 @@
 const Augur = require("augurbot-ts");
 const NoRepeat = require("no-repeat");
 const fs = require("fs");
-const fsp = require("fs/promises");
 const api = require("../utils/streamingApis");
 const u = require("../utils/utils");
 
@@ -117,7 +116,7 @@ async function loadDonationCache() {
   if (!fs.existsSync(EL_CACHE_PATH)) return;
 
   /** @type {{ donors: string[], donationIDs: string[], teamMembers: string[] }} */
-  const file = JSON.parse(await fsp.readFile(EL_CACHE_PATH, "utf-8"));
+  const file = JSON.parse(fs.readFileSync(EL_CACHE_PATH, "utf-8"));
 
   for (const donor of file.donors) donors.add(donor);
   for (const id of file.donationIDs) donationIDs.add(id);
@@ -223,7 +222,7 @@ async function doDonationChecks(team) {
   }
 
   if (update) {
-    await fsp.writeFile(EL_CACHE_PATH, JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs], teamMembers: [...teamMembers] }));
+    fs.writeFileSync(EL_CACHE_PATH, JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs], teamMembers: [...teamMembers] }));
   }
 }
 
