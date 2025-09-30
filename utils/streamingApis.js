@@ -60,18 +60,19 @@ const extraLife = {
     const team = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}`);
     if (!team) return cachedELTeam;
 
-    if (!cachedELTeam || cachedELTeam.numMilestones !== team.numMilestones) {
+    if (!cachedELTeam || cachedELTeam.milestones.length !== team.numMilestones) {
       /** @type {extralife.Milestone[]} */
       team.milestones = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/milestones`) ?? [];
       team.milestones.sort((a, b) => a.fundraisingGoal - b.fundraisingGoal);
     }
 
-    if (!cachedELTeam || cachedELTeam.numParticipants !== team.numParticipants) {
+    if (!cachedELTeam || cachedELTeam.participants.length !== team.numParticipants) {
       /** @type {extralife.Participant[]} */
       team.participants = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/participants`) ?? [];
     }
 
-    if (!cachedELTeam || cachedELTeam.numDonations !== team.numDonations) {
+    console.log(cachedELTeam);
+    if (!cachedELTeam || cachedELTeam.donations.length !== team.numDonations) {
       /** @type {extralife.Donation[]} */
       team.donations = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/donations`) ?? [];
     }
