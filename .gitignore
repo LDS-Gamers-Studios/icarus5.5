@@ -9,8 +9,7 @@ test.js
 *-.json
 *.csv
 data/banned.json
-data/extralifeDonors.json
-data/streams.json
+data/extralifeCache.json
 site
 .DS_Store
 media/badges/*

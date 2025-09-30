@@ -32,7 +32,6 @@ jobs:
           cp ./config/snowflakes-commands-example.json config/snowflakes-commands.json 
           cp ./config/siteConfig-example.json config/siteConfig.json 
           cp ./data/banned-example.json data/banned.json 
-          cp ./data/streams-example.json data/streams.json 
           exit 0
 
       - name: Check TypeScript Version
