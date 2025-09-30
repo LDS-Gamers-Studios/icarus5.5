@@ -2,6 +2,7 @@
 const Augur = require("augurbot-ts");
 const NoRepeat = require("no-repeat");
 const fs = require("fs");
+const fsp = require("fs/promises");
 const api = require("../utils/streamingApis");
 const u = require("../utils/utils");
 
@@ -18,6 +19,7 @@ const Module = new Augur.Module();
  * @param {number} den
  */
 function percent(num, den) {
+  if (den === 0) den = num;
   return (num / den * 100).toFixed(2) + "%";
 }
 
@@ -52,12 +54,11 @@ async function slashTwitchExtralifeTeam(int) {
       `$${m.sumDonations} / $${m.fundraisingGoal} (${percent(m.sumDonations, m.fundraisingGoal)})\n` +
       `**[[Donate]](${m.links.donate})**\n`;
 
-    if (m.isLive) str += `\n### STREAM IS NOW LIVE\n[${m.stream?.stream?.title || "Watch Here"}](${twitchURL(m.username)}\n`;
+    if (m.isLive) str += `\n### STREAM IS NOW LIVE\n[${m.stream?.stream?.title || "Watch Here"}](${twitchURL(m.username)})\n`;
     return str;
   });
 
-  const nextMilestone = team.milestones.sort((a, b) => a.fundraisingGoal - b.fundraisingGoal)
-    .find(m => m.fundraisingGoal > team.sumDonations);
+  const nextMilestone = team.milestones.find(m => m.fundraisingGoal > team.sumDonations);
 
   const wallOfText = `LDSG is raising money for Extra Life! We are currently at **$${team.sumDonations}** of our team's **$${team.fundraisingGoal}** goal for ${new Date().getFullYear()}. **That's ${percent(team.sumDonations, team.fundraisingGoal)} of the way there!**\n\n` +
     "You can help by donating to one of the Extra Life Team members below.";
@@ -112,11 +113,11 @@ const donationIDs = new Set();
 /** @type {Set<string>} */
 const teamMembers = new Set();
 
-function loadDonationCache() {
+async function loadDonationCache() {
   if (!fs.existsSync(EL_CACHE_PATH)) return;
 
   /** @type {{ donors: string[], donationIDs: string[], teamMembers: string[] }} */
-  const file = JSON.parse(fs.readFileSync(EL_CACHE_PATH, "utf-8"));
+  const file = JSON.parse(await fsp.readFile(EL_CACHE_PATH, "utf-8"));
 
   for (const donor of file.donors) donors.add(donor);
   for (const id of file.donationIDs) donationIDs.add(id);
@@ -216,13 +217,13 @@ async function doDonationChecks(team) {
     const embed = u.embed().setColor(assets.colors.elBlue)
       .setTitle(`${newMembers.length} New Extra Life Participant(s)`)
       .setThumbnail(assets.elLogo)
-      .setDescription(newMembers.map(d => `[${d.displayName}](${d.links.page})`).join("\n"));
+      .setDescription(newMembers.map(d => `[${u.escapeText(d.displayName)}](${d.links.page})`).join("\n"));
 
     Module.client.getTextChannel(u.sf.channels.team.team)?.send({ embeds: [embed] });
   }
 
   if (update) {
-    fs.writeFileSync(EL_CACHE_PATH, JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs], teamMembers: [...teamMembers] }));
+    await fsp.writeFile(EL_CACHE_PATH, JSON.stringify({ donors: [...donors], donationIDs: [...donationIDs], teamMembers: [...teamMembers] }));
   }
 }
 
@@ -237,7 +238,7 @@ async function extraLifeEmbeds(streams) {
       .setColor(assets.colors.elGreen);
 
     const channels = streams.sort((a, b) => (a.stream?.userDisplayName ?? "").localeCompare(b.stream?.userDisplayName ?? "")).map(s => {
-      return `**${s.stream.userDisplayName} ${s.stream.gameName ? `is playing ${s.stream.gameName}` : ""}**\n[${u.escapeText(s.stream.title || "")}](${twitchURL(s.stream.userDisplayName || "")}\n`;
+      return `**${s.stream.userDisplayName} ${s.stream.gameName ? `is playing ${s.stream.gameName}` : ""}**\n[${u.escapeText(s.stream.title || "")}](${twitchURL(s.stream.userDisplayName || "")})\n`;
     });
 
     return u.pagedEmbedsDescription(embed, channels);

@@ -63,6 +63,7 @@ const extraLife = {
     if (!cachedELTeam || cachedELTeam.numMilestones !== team.numMilestones) {
       /** @type {extralife.Milestone[]} */
       team.milestones = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/milestones`) ?? [];
+      team.milestones.sort((a, b) => a.fundraisingGoal - b.fundraisingGoal);
     }
 
     if (!cachedELTeam || cachedELTeam.numParticipants !== team.numParticipants) {
