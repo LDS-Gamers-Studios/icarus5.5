@@ -148,7 +148,7 @@ async function buttonApproveStreamer(int) {
   await int.deferUpdate();
 
   const content = await c.assignRole(int, member, u.sf.roles.streaming.approved);
-  await member.send(approvalText).catch(() => c.blocked(member));
+  await member.send(approvalText).catch(() => c.blocked(member, "Approved Streamer Approval"));
 
   int.editReply({ content, components: [] });
 }
@@ -162,7 +162,9 @@ async function buttonDenyStreamer(int) {
 
   await int.deferUpdate();
 
-  await member.send(`Hey ${member.displayName}, unfortunately your application to become an approved streamer has been denied. This was likely due to the type of content being streamed, but please reach out to someone on the Public Affairs Team if you have any questions.`).catch(() => c.blocked(member));
+  await member.send(`Hey ${member.displayName}, unfortunately your application to become an approved streamer has been denied. This was likely due to the type of content being streamed, but please reach out to someone on the Public Affairs Team if you have any questions.`)
+    .catch(() => c.blocked(member, "Approved Streamer Rejection"));
+
   int.editReply({ content: `${member}'s application has been denied by ${int.member}`, components: [] });
 }
 

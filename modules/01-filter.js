@@ -458,7 +458,7 @@ async function processCardAction(interaction) {
             c.warnMessage(mod.displayName)
         );
 
-        member.send({ content: response, embeds: [quote] }).catch(() => c.blocked(member));
+        member.send({ content: response, embeds: [quote] }).catch(() => c.blocked(member, "Requesting Context for Infraction"));
       }
 
       const dummy = { value: "" };
