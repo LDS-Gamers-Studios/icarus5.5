@@ -53,7 +53,7 @@ async function slashTwitchLive(int) {
   const lines = channels.map(ch => `**${ch.isExtraLife ? `<:el_team:${u.sf.emoji.elteam}> ` : ""}${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})\n`);
   const embeds = u.pagedEmbedsDescription(embed, lines);
 
-  return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), int.channelId === u.sf.channels.botSpam);
+  return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), int.channelId !== u.sf.channels.botSpam);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
