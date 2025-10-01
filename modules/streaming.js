@@ -301,7 +301,7 @@ async function processTwitch(igns) {
       const streams = await api.twitch.streams.getStreamsByUserNames(usernames)
         .catch(api.twitchErrorHandler);
 
-      if (!streams || streams.length === 0) continue;
+      if (!streams) continue;
 
       const messages = await handleOnline(streams, streamers, ldsg);
       for (const message of messages) {
