@@ -88,7 +88,7 @@ async function buttonStreamerAgree(int) {
     .addComponents(
       u.ModalActionRow().addComponents(
         new u.TextInput()
-          .setLabel("Twitch Username (This will be saved as an IGN)")
+          .setLabel("Twitch Username (will be saved as an IGN)")
           .setRequired(true)
           .setPlaceholder("https://twitch.tv/___this_part___")
           .setValue(ign?.ign || "")
