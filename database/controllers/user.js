@@ -20,6 +20,7 @@ const ChannelXP = require("../models/ChannelXP.model");
  * @prop {boolean} sendBdays Setting for receiving birthday spam
  * @prop {boolean} watching If this user is on the watchlist
  * @prop {boolean} twitchFollow If they've followed the LDSG Twitch channel
+ * @prop {import("mongoose").Types.ObjectId} _id The document's unique ID
  */
 
 /**
