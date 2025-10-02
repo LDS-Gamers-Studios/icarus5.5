@@ -1,80 +1,87 @@
 const axios = require("axios");
+const config = require("../config/config.json");
 
-/** @param {any} auth */
-const SnipCart = function(auth) {
-  this.key = auth;
+/**
+ * @typedef DiscountCreateProps
+ * @prop {string} name
+ * @prop {string} trigger
+ * @prop {string} code
+ * @prop {string} type
+ * @prop {number | null} [amount]
+ * @prop {number | null} [rate]
+ * @prop {boolean} [combinable]
+ * @prop {number} [maxNumberOfUsages]
+ *
+ * @typedef DiscountProps
+ * @prop {boolean} archived
+ * @prop {string} id
+ *
+ * @typedef {DiscountCreateProps & DiscountProps} Discount
+ */
 
-  /**
-   * @param {string} call
-   * @param {Record<any, any>} [data]
-   * @param {string} method
-   * @returns {Promise<any>}
-   */
-  this.callApi = async function(call, data = {}, method = "get") {
-    method = method.toUpperCase();
+/**
+ * @template T
+ * @param {string} endpoint
+ * @param {Record<any, any> | any[]} data
+ * @param {string} method
+ * @returns {Promise<T>}
+ */
+async function call(endpoint, data = {}, method = "get") {
+  // @ts-ignore
+  return axios({
+    url: `https://app.snipcart.com/api/${endpoint}`,
+    method,
+    data,
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "Authorization": `Basic ${config.api.snipcart}`
+    },
+  })
+  .then(/** @param {{ data: T }} res */ res => res.data);
+}
 
-    call = encodeURI(call);
+/** @returns {Promise<Discount[]>} */
+function getAllDiscounts() {
+  return call("/discounts");
+}
 
-    if (method === "GET") {
-      const urlParams = Object.keys(data).map((key) =>
-        encodeURIComponent(key) + "=" + encodeURIComponent(data[key])
-      ).join("&");
-      call += (urlParams ? "?" + urlParams : "");
-    }
+/**
+ * @param {string} code
+ * @returns {Promise<Discount | undefined>}
+ */
+function getDiscountByCode(code) {
+  return getAllDiscounts().then(discounts => discounts.find(d => d.code === code));
+}
 
-    // @ts-ignore
-    const response = await axios({
-      baseURL: "https://app.snipcart.com/api",
-      url: call,
-      data,
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-      },
-      auth: {
-        username: this.key, password: ""
-      },
-      method
-    });
+/**
+ * @param {DiscountCreateProps} discount
+ * @returns {Promise<Discount>}
+ */
+function newDiscount(discount) {
+  return call("/discounts", discount, "POST");
+}
 
-    return response.data;
-  };
+/**
+ * @param {DiscountCreateProps & Partial<DiscountProps>} discount
+ * @returns {Promise<Discount | undefined>}
+ */
+function editDiscount(discount) {
+  return call(`/discounts/${discount.id}`, discount, "PUT");
+}
 
-  // DISCOUNTS
+/**
+ * @param {string} discountId
+ * @returns {Promise<{}>}
+*/
+function deleteDiscount(discountId) {
+  return call(`/discounts/${discountId}`, undefined, "DELETE");
+}
 
-  /** @param {string | { id: string }} discount */
-  this.deleteDiscount = function(discount) {
-    const id = ((typeof discount === "string") ? discount : discount.id);
-    return this.callApi(`/discounts/${id}`, undefined, "DELETE");
-  };
-
-  /** @param {{ id: string }} discount */
-  this.editDiscount = function(discount) {
-    return this.callApi(`/discounts/${discount.id}`, discount, "PUT");
-  };
-
-  /** @param {string | { id: string }} code */
-  this.getDiscountCode = function(code) {
-    return new Promise((fulfill, reject) => {
-      this.callApi("/discounts").then(discounts =>
-        fulfill(discounts.find(/** @param {any} d */ d => d.code === code))
-      ).catch(reject);
-    });
-  };
-
-  this.getDiscounts = function() {
-    return this.callApi("/discounts");
-  };
-
-  /**
-   * @param {{name: string, combinable: boolean, maxNumberOfUsages: number, trigger: string, code: string, type: string, amount: number}} discount
-   */
-  /** @param {any} discount */
-  this.newDiscount = function(discount) {
-    return this.callApi("/discounts", discount, "POST");
-  };
-
-  return this;
+module.exports = {
+  getDiscountByCode,
+  getAllDiscounts,
+  newDiscount,
+  editDiscount,
+  deleteDiscount
 };
-
-module.exports = SnipCart;
