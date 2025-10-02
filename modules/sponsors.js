@@ -85,7 +85,7 @@ async function sponsorDiscountHandler(oldMember, newMember) {
 
   // Fetch user
   const user = await u.db.user.fetchUser(newMember.id);
-  if (!user) return;
+  if (!user) throw new Error(`Unable to access user document for ${newMember.id}`);
 
   // Check if current discount exists.
   const code = parseInt(user._id.toString().substring(16), 16).toString(36).toUpperCase();
@@ -94,8 +94,8 @@ async function sponsorDiscountHandler(oldMember, newMember) {
   const role = newMember.guild.roles.cache.get(newLevel.role)?.name;
 
   const disabledText = "Even though the shop isn't up right now, the code will be valid when it returns.";
-  const discountText = `Thanks for joining the ${role} ranks! As a thank you, you get a ${newLevel.rate}% discount on purchases in the LDSG shop by using code \`${code}\`. ${disabledText}` +
-    `This discount will apply as long as you keep the ${role} role.\n` +
+  const discountText = `Thanks for joining the ${role} ranks! As a thank you, you get a ${newLevel.rate}% discount on purchases in the LDSG shop by using code \`${code}\`. ` +
+    `${disabledText} This discount will apply as long as you keep the ${role} role.\n` +
     "https://ldsgamers.com/shop";
 
   // Discount no longer applies. Delete.
@@ -103,7 +103,7 @@ async function sponsorDiscountHandler(oldMember, newMember) {
 
   // Discount has changed. Edit.
   if (discount) {
-    discount = await snipcart.editDiscount({
+    discount = await snipcart.editDiscount(discount.id, {
       // new values
       name: `${newMember.user.username} ${role}`,
       rate: newLevel.rate,
@@ -174,7 +174,7 @@ const Module = new Augur.Module()
   try {
     if (newMember.guild.id !== u.sf.ldsg) return;
     if (oldMember.partial) return; // can't do anything with incomplete data
-    if (oldMember.roles.cache.size !== newMember.roles.cache.size) return;
+    if (oldMember.roles.cache.size === newMember.roles.cache.size) return;
 
     await sponsorDiscountHandler(oldMember, newMember);
   } catch (e) {

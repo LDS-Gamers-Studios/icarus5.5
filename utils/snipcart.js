@@ -63,11 +63,12 @@ function newDiscount(discount) {
 }
 
 /**
+ * @param {string} discountId
  * @param {DiscountCreateProps & Partial<DiscountProps>} discount
  * @returns {Promise<Discount | undefined>}
  */
-function editDiscount(discount) {
-  return call(`/discounts/${discount.id}`, discount, "PUT");
+function editDiscount(discountId, discount) {
+  return call(`/discounts/${discountId}`, discount, "PUT");
 }
 
 /**
