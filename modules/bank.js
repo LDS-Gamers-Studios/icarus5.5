@@ -1,8 +1,8 @@
 // @ts-check
 
 const Augur = require("augurbot-ts"),
+  snipcart = require("../utils/snipcart"),
   u = require("../utils/utils"),
-  config = require("../config/config.json"),
   { customAlphabet } = require("nanoid");
 const Discord = require("discord.js");
 
@@ -240,8 +240,9 @@ async function slashBankDiscount(interaction) {
       return interaction.editReply(`That amount (${gb}${amount}) is invalid. You can currently redeem up to ${gb}${Math.min(balance.gb, limit.gb)}.`);
     }
 
-    if (!config.api.snipcart) return interaction.editReply("Store discounts are currently unavailable. Sorry for the inconvenience. We're working on it!");
-    const snipcart = require("../utils/snipcart")(config.api.snipcart);
+    const disabled = true;
+    if (disabled) return interaction.editReply("Store discounts are currently unavailable. Sorry for the inconvenience. We're working on it!");
+
     const discountInfo = {
       name: `${interaction.user.username} ${Date().toLocaleString()}`,
       combinable: false,
