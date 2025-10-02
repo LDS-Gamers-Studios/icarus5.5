@@ -1,5 +1,7 @@
 // @ts-check
 const Augur = require("augurbot-ts");
+const Discord = require("discord.js");
+const snipcart = require("../utils/snipcart");
 const u = require("../utils/utils");
 
 /**
@@ -12,6 +14,27 @@ const emojis = [
   ["noice", u.sf.emoji.noice],
   ["carp", "🐟"]
 ];
+
+const discounts = new u.Collection([
+  [u.sf.roles.sponsors.legendary, 20],
+  [u.sf.roles.sponsors.pro, 15],
+  [u.sf.roles.sponsors.onyx, 10],
+  [u.sf.roles.sponsors.elite, 5]
+]);
+
+/** @param {Discord.GuildMember} member*/
+function discountLevel(member) {
+  let discount = { rate: 0, role: "" };
+
+  for (const [role, rate] of discounts) {
+    if (member.roles.cache.has(role)) {
+      discount = { rate, role };
+      break;
+    }
+  }
+
+  return discount;
+}
 
 /**
  * @param {Augur.GuildInteraction<"CommandSlash">} int
@@ -49,6 +72,68 @@ async function slashSponsorInvite(int, invite) {
   return int.editReply(`${invitee} has been shown the door.`);
 }
 
+/**
+ * @param {Discord.GuildMember} oldMember
+ * @param {Discord.GuildMember} newMember
+ */
+async function sponsorDiscountHandler(oldMember, newMember) {
+  const newLevel = discountLevel(newMember);
+  const oldLevel = discountLevel(oldMember);
+
+  if (newLevel.rate === oldLevel.rate) return;
+  if (newLevel.rate === 0 && oldLevel.rate === 0) return;
+
+  // Fetch user
+  const user = await u.db.user.fetchUser(newMember.id);
+  if (!user) return;
+
+  // Check if current discount exists.
+  const code = parseInt(user._id.toString().substring(16), 16).toString(36).toUpperCase();
+  let discount = await snipcart.getDiscountByCode(code);
+
+  const role = newMember.guild.roles.cache.get(newLevel.role)?.name;
+
+  const disabledText = "Even though the shop isn't up right now, the code will be valid when it returns.";
+  const discountText = `Thanks for joining the ${role} ranks! As a thank you, you get a ${newLevel.rate}% discount on purchases in the LDSG shop by using code \`${code}\`. ${disabledText}` +
+    `This discount will apply as long as you keep the ${role} role.\n` +
+    "https://ldsgamers.com/shop";
+
+  // Discount no longer applies. Delete.
+  if (discount && newLevel.rate === 0) return snipcart.deleteDiscount(discount.id);
+
+  // Discount has changed. Edit.
+  if (discount) {
+    discount = await snipcart.editDiscount({
+      // new values
+      name: `${newMember.user.username} ${role}`,
+      rate: newLevel.rate,
+
+      // existing values (required for request update)
+      trigger: discount.trigger,
+      code: discount.code,
+      type: discount.type
+    });
+
+    if (!discount) throw new Error(`Unable to edit sponsor discount - ${newMember.id}`);
+
+    return newMember.send(discountText).catch(u.noop);
+  }
+
+  // New discount code
+  if (newLevel.rate > 0) {
+    discount = await snipcart.newDiscount({
+      name: `${newMember.user.username} ${role}`,
+      trigger: "Code",
+      code,
+      type: "Rate",
+      rate: newLevel.rate
+    });
+
+    if (!discount) throw new Error(`Unable to edit sponsor discount - ${newMember.id}`);
+
+    return newMember.send(discountText).catch(u.noop);
+  }
+}
 
 const Module = new Augur.Module()
 .addInteraction({
@@ -81,6 +166,19 @@ const Module = new Augur.Module()
     for (const [word, emoji] of emojis) {
       if (Math.random() < 0.3 && msg.content.toLowerCase().includes(word)) await msg.react(emoji).catch(u.noop);
     }
+  }
+})
+
+// Handle sponsor discounts
+.addEvent("guildMemberUpdate", async (oldMember, newMember) => {
+  try {
+    if (newMember.guild.id !== u.sf.ldsg) return;
+    if (oldMember.partial) return; // can't do anything with incomplete data
+    if (oldMember.roles.cache.size !== newMember.roles.cache.size) return;
+
+    await sponsorDiscountHandler(oldMember, newMember);
+  } catch (e) {
+    u.errorHandler(e, "Sponsor discount error");
   }
 });
 
