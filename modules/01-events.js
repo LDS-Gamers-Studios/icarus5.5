@@ -29,7 +29,7 @@ const tier3 = 14;
 // roles that SHOULD NOT be given when a user rejoins
 const dangerRoles = [
   ...Object.values(u.sf.roles.team).filter(sf => ![u.sf.roles.team.botTeam, u.sf.roles.team.emeritus].includes(sf)),
-  u.sf.roles.live, u.sf.roles.houses.head, u.sf.roles.houses.emberGuardian,
+  u.sf.roles.streaming.live, u.sf.roles.houses.head, u.sf.roles.houses.emberGuardian,
 ];
 
 /**
@@ -41,8 +41,10 @@ async function update(oldUser, newUser) {
   try {
     const ldsg = newUser.client.guilds.cache.get(u.sf.ldsg);
     const newMember = ldsg?.members.cache.get(newUser.id);
+
     if (oldUser.partial) oldUser = await oldUser.fetch().catch(() => oldUser);
     if (oldUser.partial) return; // failed to fetch
+
     const user = await u.db.user.fetchUser(newUser.id);
     if (newMember && (!newMember.roles.cache.has(u.sf.roles.moderation.trusted) || user?.watching)) {
       const embed = u.embed({ author: oldUser })
@@ -82,14 +84,14 @@ const Module = new Augur.Module()
 .addEvent("channelCreate", (channel) => {
   try {
     if (channel.guild?.id === u.sf.ldsg) {
+      // Add default permissions
       if (channel.permissionsFor(channel.client.user)?.has(["ViewChannel", "ManageChannels"])) {
-        // muted role
-        channel.permissionOverwrites.create(u.sf.roles.moderation.muted, mutedPerms, { reason: "New channel permissions update" })
-        .catch(/** @param {Error} e */e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
-        // duct tape role
-        channel.permissionOverwrites.create(u.sf.roles.moderation.ductTape, mutedPerms, { reason: "New channel permissions update" })
-          .catch(/** @param {Error} e */e => u.errorHandler(e, `Update New Channel Permissions: ${channel.name}`));
+        const reason = `Update New Channel Permissions: ${channel.name}`;
+
+        channel.permissionOverwrites.create(u.sf.roles.moderation.muted, mutedPerms, { reason }).catch(/** @param {Error} e */e => u.errorHandler(e, `${reason}: ${channel.name}`));
+        channel.permissionOverwrites.create(u.sf.roles.moderation.ductTape, mutedPerms, { reason }).catch(/** @param {Error} e */e => u.errorHandler(e, `${reason}: ${channel.name}`));
       } else {
+        // send warning message
         channel.client.getTextChannel(u.sf.channels.team.logistics)?.send({ embeds: [
           u.embed({
             title: "Update New Channel Permissions",
@@ -107,20 +109,15 @@ const Module = new Augur.Module()
   const guild = guildBan.guild;
   const user = guildBan.user;
   if (guild.id === u.sf.ldsg) {
-    guild.client.getTextChannel(u.sf.channels.mods.logs)?.send({
-      embeds: [
-        u.embed({
-          author: user,
-          title: `${user.username} has been banned`,
-          color: c.colors.info,
-          description: user.toString(),
-          footer: { text: user.id }
-        })
-      ],
-      components: [
-        u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
-      ]
-    });
+    const embed = u.embed({ author: user })
+      .setTitle(`${user.username} has been banned`)
+      .setColor(c.colors.info)
+      .setDescription(user.toString())
+      .setFooter({ text: user.id });
+
+    const buttons = u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary));
+
+    guild.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed], components: [buttons] });
   }
 })
 .addEvent("guildMemberAdd", async (member) => {
@@ -155,8 +152,7 @@ const Module = new Augur.Module()
           const role = guild.roles.cache.get(roleId);
           if (!role) continue;
 
-          // can't be applied
-          if (role.managed || role.position >= (guild.members.me?.roles.highest.position ?? 0)) {
+          if (role.managed || role.position >= (guild.members.me?.roles.highest.position ?? 0)) { // can't be applied
             failed.push(role);
           } else if (dangerRoles.includes(roleId)) { // dangerous!
             danger.push(role);
@@ -178,6 +174,7 @@ const Module = new Augur.Module()
         const addSurplus = toAdd.length - 30;
         const failedSurplus = failed.length - 30;
         const dangerSurplus = danger.length - 30;
+
         let roleString = toAdd.sort((a, b) => b.comparePositionTo(a)).map(role => role.toString()).slice(0, 30).join(", ");
         if (addSurplus > 0) roleString += ` + ${addSurplus} more`;
         embed.addFields({ name: "Roles Given", value: roleString || "None" });
@@ -214,15 +211,18 @@ const Module = new Augur.Module()
           "How'd you find us?",
           "What platforms/games do you play?"
         ]);
+
         welcomeString = `${welcome}, ${member}! ${info1} ${welcomeChannel} ${info2}. ${info3}\n\nTry \`!profile\` over in <#${u.sf.channels.botSpam}> if you'd like to opt in to roles or share IGNs.`;
         embed.setTitle(member.displayName + " has joined the server.");
 
         u.db.user.newUser(member.id);
       }
+
       modLogs?.send({ embeds: [embed], components: [
         u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
       ] });
 
+      // pizza party alerts
       const { enabled, count } = config.memberMilestone;
       if (enabled && (guild.memberCount < count)) welcomeString += `\n*${count - guild.memberCount} more members until we have a pizza party!*`;
       if (!member.roles.cache.has(u.sf.roles.moderation.muted) && !member.user.bot && !c.getBanList().features.welcome.includes(member.id)) await general?.send({ content: welcomeString, allowedMentions: { parse: ['users'] } });
@@ -238,20 +238,21 @@ const Module = new Augur.Module()
     if (member.guild.id === u.sf.ldsg) {
       if (member.partial) member = await member.fetch().catch(() => member);
       if (member.partial) return; // failed to fetch
+
       await u.db.user.updateTenure(member);
       await u.db.user.updateRoles(member);
+
       const user = await u.db.user.fetchUser(member.id);
-      const embed = u.embed({
-        author: member,
-        title: `${member.displayName} has left the server`,
-        color: c.colors.info,
-        footer: { text: member.id }
-      })
-      .addFields(
-        { name: "User", value: member.toString() },
-        { name: "Joined", value: u.moment(member.joinedAt).fromNow(), inline: true },
-        { name: "Activity", value: (user?.posts || 0) + " Active Minutes", inline: true }
-      );
+      const embed = u.embed({ author: member })
+        .setTitle(`${member.displayName} has left the server`)
+        .setColor(c.colors.info)
+        .setFooter({ text: member.id })
+        .addFields(
+          { name: "User", value: member.toString() },
+          { name: "Joined", value: u.moment(member.joinedAt).fromNow(), inline: true },
+          { name: "Activity", value: (user?.posts || 0) + " Active Minutes", inline: true }
+        );
+
       member.guild.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [embed], components: [
         u.MessageActionRow().addComponents(new u.Button().setCustomId("timeModInfo").setEmoji("👤").setLabel("User Info").setStyle(Discord.ButtonStyle.Secondary))
       ] });
@@ -262,8 +263,10 @@ const Module = new Augur.Module()
 .addEvent("userUpdate", update)
 .setClockwork(() => {
   return setInterval(() => {
+    // Bost alerts
     const ldsg = Module.client.guilds.cache.get(u.sf.ldsg);
     if (!ldsg?.premiumSubscriptionCount) return;
+
     if (ldsg.premiumSubscriptionCount < tier3) {
       if (!lowBoosts) Module.client.getTextChannel(u.sf.channels.team.team)?.send(`# ⚠️ We've dropped to ${ldsg.premiumSubscriptionCount} boosts!\n${tier3} boosts are required for Tier 3.`);
       lowBoosts = true;

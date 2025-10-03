@@ -1,26 +1,46 @@
 const axios = require("axios");
 const config = require("../config/config.json");
 
-const noApiKeyRegex = new RegExp(config.api.snipcart, "gi");
+/**
+ * @typedef DiscountCreateProps
+ * @prop {string} name
+ * @prop {string} trigger
+ * @prop {string} code
+ * @prop {string} type
+ * @prop {number | null} [amount]
+ * @prop {number | null} [rate]
+ * @prop {boolean} [combinable]
+ * @prop {number} [maxNumberOfUsages]
+ *
+ * @typedef DiscountProps
+ * @prop {boolean} archived
+ * @prop {string} id
+ *
+ * @typedef {DiscountCreateProps & DiscountProps} Discount
+ */
+
+const noApiKeyRegex = new RegExp(config.api.snipcart);
 
 /**
+ * @template T
  * @param {string} endpoint
+ * @param {Record<any, any> | any[]} data
+ * @param {string} method
+ * @returns {Promise<T>}
  */
-async function callApi(endpoint, data = {}, method = "get") {
-  if (!config.api.snipcart) return null;
-
+async function call(endpoint, data = {}, method = "get") {
   // @ts-ignore
   return axios({
-    baseURL: "https://app.snipcart.com/api",
-    url: endpoint,
+    url: `https://app.snipcart.com/api/${endpoint}`,
+    method,
     data,
     headers: {
       "Accept": "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "Authorization": `Basic ${config.api.snipcart}`
     },
-    auth: { username: config.api.snipcart, password: "" },
-    method
-  }).catch(/** @param {axios.AxiosError} e */(e) => {
+  })
+  .catch(/** @param {axios.AxiosError} e */(e) => {
     const error = [
       `AxiosError: Code ${e.code} (${e.name})`,
       e.message
@@ -28,27 +48,52 @@ async function callApi(endpoint, data = {}, method = "get") {
       .replace(noApiKeyRegex, "<TOKEN>");
 
     throw new Error(error);
-  }).then(/** @param {any} res */ (res) => res.data);
+  })
+  .then(/** @param {{ data: T }} res */ res => res.data);
+}
+
+/** @returns {Promise<Discount[]>} */
+function getAllDiscounts() {
+  return call("/discounts");
 }
 
 /**
- * @typedef Discount
- * @prop {string} name
- * @prop {boolean} combinable
- * @prop {number} maxNumberOfUsages
- * @prop {string} trigger
- * @prop {string} code
- * @prop {string} type
- * @prop {number} amount
+ * @param {string} code
+ * @returns {Promise<Discount | undefined>}
  */
+function getDiscountByCode(code) {
+  return getAllDiscounts().then(discounts => discounts.find(d => d.code === code));
+}
 
 /**
- * @param {Discount} discountInfo
+ * @param {DiscountCreateProps} discount
  * @returns {Promise<Discount>}
  */
-
-function newDiscount(discountInfo) {
-  return callApi("/discounts", discountInfo, "POST");
+function newDiscount(discount) {
+  return call("/discounts", discount, "POST");
 }
 
-module.exports = { newDiscount };
+/**
+ * @param {string} discountId
+ * @param {DiscountCreateProps & Partial<DiscountProps>} discount
+ * @returns {Promise<Discount | undefined>}
+ */
+function editDiscount(discountId, discount) {
+  return call(`/discounts/${discountId}`, discount, "PUT");
+}
+
+/**
+ * @param {string} discountId
+ * @returns {Promise<{}>}
+*/
+function deleteDiscount(discountId) {
+  return call(`/discounts/${discountId}`, undefined, "DELETE");
+}
+
+module.exports = {
+  getDiscountByCode,
+  getAllDiscounts,
+  newDiscount,
+  editDiscount,
+  deleteDiscount
+};

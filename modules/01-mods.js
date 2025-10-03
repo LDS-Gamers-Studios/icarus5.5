@@ -64,8 +64,8 @@ async function slashModBan(interaction) {
   const days = interaction.options.getInteger("clean") ?? 1;
   if (!target) return interaction.editReply(noTarget);
 
-  const ban = await c.ban(interaction, target, reason, days);
-  return interaction.editReply(ban);
+  const banResponse = await c.ban(interaction, target, reason, days);
+  if (banResponse) return banResponse.interaction.editReply(banResponse.payload);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/
@@ -126,8 +126,8 @@ async function slashModKick(interaction) {
   const reason = interaction.options.getString("reason", true);
   if (!target) return interaction.editReply(noTarget);
 
-  const kick = await c.kick(interaction, target, reason);
-  return interaction.editReply(kick);
+  const kickResponse = await c.kick(interaction, target, reason);
+  if (kickResponse) kickResponse.interaction.editReply(kickResponse.payload);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction*/

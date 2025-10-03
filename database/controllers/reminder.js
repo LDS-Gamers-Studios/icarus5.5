@@ -7,8 +7,8 @@ const Reminder = require("../models/Reminder.model");
  * @prop {string} id The timer's ID
  * @prop {string} discordId The user's ID
  * @prop {string} reminder The reminder text
- * @prop {number} timestamp Timestamp of when the timer will go off
- * @prop {number} started Timestamp of when the timer was set
+ * @prop {Date} timestamp Timestamp of when the timer will go off
+ * @prop {Date} started Timestamp of when the timer was set
  * @prop {boolean} isTimer Whether its a timer or a reminder
  */
 
@@ -22,7 +22,7 @@ module.exports = {
    * @returns {Promise<Timer[]>}
    */
   fetchUpcoming: (cutoffDate) => {
-    return Reminder.find({ timestamp: { $lte: cutoffDate.valueOf() } }, undefined, { lean: true });
+    return Reminder.find({ timestamp: { $lte: cutoffDate.toDate() } }, undefined, { lean: true });
   },
   /**
    * @param {string} discordId

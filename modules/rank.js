@@ -1,8 +1,12 @@
 // @ts-check
 const Augur = require("augurbot-ts");
+const config = require("../config/config.json");
 const u = require("../utils/utils");
 const c = require("../utils/modCommon");
 const Rank = require("../utils/rankInfo");
+const cron = require("node-cron");
+
+const Module = new Augur.Module();
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
 async function slashRankLeaderboard(interaction) {
@@ -84,58 +88,91 @@ async function slashRankView(interaction) {
   } catch (error) { u.errorHandler(error, interaction); }
 }
 
-const Module = new Augur.Module()
-  .addInteraction({
-    name: "rank",
-    guildId: u.sf.ldsg,
-    onlyGuild: true,
-    id: u.sf.commands.slashRank,
-    options: { registry: "slashRank" },
-    process: async (interaction) => {
-      try {
-        const subcommand = interaction.options.getSubcommand(true);
-        switch (subcommand) {
-          case "view": return slashRankView(interaction);
-          case "leaderboard": return slashRankLeaderboard(interaction);
-          case "track": return slashRankTrack(interaction);
-          default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
-        }
-      } catch (error) {
-        u.errorHandler(error, interaction);
+/** @type {cron.ScheduledTask | null} */
+let rankResetJob = null;
+
+Module.addInteraction({
+  name: "rank",
+  guildId: u.sf.ldsg,
+  onlyGuild: true,
+  id: u.sf.commands.slashRank,
+  options: { registry: "slashRank" },
+  process: async (interaction) => {
+    try {
+      const subcommand = interaction.options.getSubcommand(true);
+      switch (subcommand) {
+        case "view": return slashRankView(interaction);
+        case "leaderboard": return slashRankLeaderboard(interaction);
+        case "track": return slashRankTrack(interaction);
+        default: return u.errorHandler(new Error("Unhandled Subcommand"), interaction);
       }
+    } catch (error) {
+      u.errorHandler(error, interaction);
     }
-  })
-  // these two are technically xp related, but they're also mod related, and also rank related. This file is the least cluttered rn so I put them here
-  .addInteraction({
-    name: "timeModTrust",
-    id: "timeModTrust",
-    type: "Button",
-    onlyGuild: true,
-    permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
-    process: async (int) => {
-      await int.deferReply({ flags: ["Ephemeral"] });
-      const userId = int.message.embeds[0]?.footer?.text;
-      const target = int.guild.members.cache.get(userId ?? "0");
-      if (!target) return int.editReply("I couldn't find that user!");
-      const response = await c.trust(int, target, true);
-      return int.editReply(response);
-    }
-  })
-  .addInteraction({
-    name: "timeModInfo",
-    id: "timeModInfo",
-    type: "Button",
-    onlyGuild: true,
-    permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
-    process: async (int) => {
-      await int.deferReply({ flags: ["Ephemeral"] });
-      const userId = int.message.embeds[0]?.footer?.text;
-      const target = int.guild.members.cache.get(userId ?? "0");
-      if (!target) return int.editReply("I couldn't find that user!");
-      const e = await c.getSummaryEmbed(target);
-      return int.editReply({ embeds: [e] });
-    }
-  });
+  }
+})
+// these two are technically xp related, but they're also mod related, and also rank related. This file is the least cluttered rn so I put them here
+.addInteraction({
+  name: "timeModTrust",
+  id: "timeModTrust",
+  type: "Button",
+  onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
+  process: async (int) => {
+    await int.deferReply({ flags: ["Ephemeral"] });
+    const userId = int.message.embeds[0]?.footer?.text;
+    const target = int.guild.members.cache.get(userId ?? "0");
+    if (!target) return int.editReply("I couldn't find that user!");
+    const response = await c.trust(int, target, true);
+    return int.editReply(response);
+  }
+})
+.addInteraction({
+  name: "timeModInfo",
+  id: "timeModInfo",
+  type: "Button",
+  onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
+  process: async (int) => {
+    await int.deferReply({ flags: ["Ephemeral"] });
+    const userId = int.message.embeds[0]?.footer?.text;
+    const target = int.guild.members.cache.get(userId ?? "0");
+    if (!target) return int.editReply("I couldn't find that user!");
+    const e = await c.getSummaryEmbed(target);
+    return int.editReply({ embeds: [e] });
+  }
+})
+.setInit(() => {
+  // Occurs every [Jan, May, Sept.] 1st at 6:00 PM MST
+  rankResetJob = cron.schedule("0 18 1 Jan,May,Sep *", () => {
+    /** @type {import("./manager").ManagerShared} */
+    const managerShared = Module.client.moduleManager.shared.get("manager.js");
+    if (!managerShared) throw new Error("Couldn't get mop bucket winner function");
+
+    // @ts-ignore
+    managerShared.rankReset(Module.client);
+  }, { timezone: "America/Denver", name: "rankReset" });
+
+})
+.addCommand({
+  name: "debugcup",
+  permissions: () => config.devMode,
+  process: async (msg) => {
+    /** @type {import("./manager").ManagerShared} */
+    const managerShared = msg.client.moduleManager.shared.get("manager.js");
+    if (!managerShared) throw new Error("Couldn't get mop bucket winner function");
+
+    managerShared.rankReset(msg.client);
+  }
+})
+.setUnload(() => {
+  rankResetJob?.destroy();
+})
+.setShared({ rankResetJob });
+
+/**
+ * @typedef {{ rankResetJob: rankResetJob }} RankShared
+ */
 
 
 module.exports = Module;

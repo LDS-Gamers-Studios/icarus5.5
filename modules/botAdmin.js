@@ -62,6 +62,8 @@ let warned = false;
 /** @param {Augur.GuildInteraction<"CommandSlash">} int*/
 async function slashBotGtb(int) {
   try {
+    const keepCache = int.options.getBoolean("keep-stream-cache") ?? true;
+
     // prevent double cakedays if possible
     if (!warned && u.moment().hours() === 15) {
       await int.editReply("It's cakeday and birthday hour! If you really need to restart, run this again.");
@@ -71,7 +73,17 @@ async function slashBotGtb(int) {
         warned = false;
       }, 5 * 60_000);
     }
+
     await int.editReply("Good night! 🛏");
+
+    // store the stream cache if applicable
+    if (keepCache) {
+      /** @type {import("./streaming").StreamingShared} */
+      const shared = int.client.moduleManager.shared.get("streaming.js");
+      if (!shared) await u.errorHandler(new Error("Couldn't find streaming.js shared"));
+      else shared.writeCache();
+    }
+
     await int.client.destroy();
     process.exit();
   } catch (error) {
@@ -211,6 +223,12 @@ async function slashBotStatus(int) {
   return int.editReply("Status updated!");
 }
 
+/** @param {Augur.GuildInteraction<"CommandSlash">} int*/
+async function slashBotError(int) {
+  await int.editReply("Throwing error! yEEEET!!!");
+  u.errorHandler(new Error(`${int.member.displayName} caused a controlled error!`));
+}
+
 const Module = new Augur.Module()
 .addInteraction({
   name: "bot",
@@ -235,6 +253,7 @@ const Module = new Augur.Module()
       case "register": return slashBotRegister(int);
       case "status": return slashBotStatus(int);
       case "sheets": return slashBotSheets(int);
+      case "error": return slashBotError(int);
       default: return u.errorHandler(new Error("Unhandled Subcommand"), int);
     }
   },

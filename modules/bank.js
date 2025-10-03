@@ -1,11 +1,11 @@
 // @ts-check
 
 const Augur = require("augurbot-ts"),
-  u = require("../utils/utils"),
+  snipcart = require("../utils/snipcart"),
   config = require("../config/config.json"),
+  u = require("../utils/utils"),
   { customAlphabet } = require("nanoid");
 
-const snipcart = require("../utils/snipcart");
 const Discord = require("discord.js");
 
 const Module = new Augur.Module(),
