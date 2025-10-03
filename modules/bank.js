@@ -265,7 +265,7 @@ async function slashBankDiscount(interaction) {
         )
         .addFields([
           { name: "Discount Code", value: discount.code },
-          { name: "Uses", value: discount.maxNumberOfUsages.toString() }
+          { name: "Uses", value: discount.maxNumberOfUsages?.toString() ?? "1" }
         ]);
 
       await transferCurrency({
