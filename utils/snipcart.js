@@ -19,6 +19,8 @@ const config = require("../config/config.json");
  * @typedef {DiscountCreateProps & DiscountProps} Discount
  */
 
+const noApiKeyRegex = new RegExp(config.api.snipcart);
+
 /**
  * @template T
  * @param {string} endpoint
@@ -37,6 +39,15 @@ async function call(endpoint, data = {}, method = "get") {
       "Content-Type": "application/json",
       "Authorization": `Basic ${config.api.snipcart}`
     },
+  })
+  .catch(/** @param {axios.AxiosError} e */(e) => {
+    const error = [
+      `AxiosError: Code ${e.code} (${e.name})`,
+      e.message
+    ].join("\n")
+      .replace(noApiKeyRegex, "<TOKEN>");
+
+    throw new Error(error);
   })
   .then(/** @param {{ data: T }} res */ res => res.data);
 }

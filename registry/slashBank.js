@@ -71,6 +71,19 @@ const discount = new u.sub()
       .setRequired(true)
   );
 
+const redeemEmber = new u.sub()
+  .setName("redeem-ember")
+  .setDescription("Buy something with ember")
+  .addStringOption(
+    new u.string()
+      .setName("item")
+      .setDescription("The item to buy.")
+      .setChoices([
+        { name: "700 EM - Rent-A-Channel Thread", value: "rac" }
+      ])
+      .setRequired(true)
+  );
+
 module.exports = new u.cmd()
   .setName("bank")
   .setDescription("Interact with the server currencies.")
@@ -78,6 +91,7 @@ module.exports = new u.cmd()
   .addSubcommand(give)
   .addSubcommand(balance)
   .addSubcommandGroup(game)
+  .addSubcommand(redeemEmber)
   // .addSubcommand(discount) no store rn
   // .addSubcommand(award) this is located at /team bank award in team.js
   .toJSON();
