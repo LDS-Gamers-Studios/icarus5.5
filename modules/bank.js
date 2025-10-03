@@ -4,6 +4,7 @@ const Augur = require("augurbot-ts"),
   snipcart = require("../utils/snipcart"),
   config = require("../config/config.json"),
   u = require("../utils/utils"),
+  c = require("../utils/modCommon"),
   { customAlphabet } = require("nanoid");
 
 const Discord = require("discord.js");
@@ -297,7 +298,7 @@ async function slashBankRedeemRac(interaction) {
   if (balance.em < 700) return interaction.reply({ content: `Sorry, that costs ${ember}700. You only have ${balance.em}.`, flags: ["Ephemeral"] });
 
   const nameModal = new u.Modal()
-    .setTitle("Rent A Channel")
+    .setTitle("Rent A Channel (Costs 700 Ember)")
     .setCustomId(u.customId())
     .addComponents(
       u.ModalActionRow().addComponents(
@@ -337,6 +338,7 @@ async function slashBankRedeemRac(interaction) {
     new u.Button().setCustomId("racApprove").setLabel("Approve").setStyle(Discord.ButtonStyle.Success),
     new u.Button().setCustomId("racApproveRateM").setLabel("Approve (Rated M RAC)").setStyle(Discord.ButtonStyle.Secondary),
     new u.Button().setCustomId("racReject").setLabel("Reject").setStyle(Discord.ButtonStyle.Danger),
+    new u.Button().setCustomId("racManual").setLabel("Handle Manually").setStyle(Discord.ButtonStyle.Secondary),
   );
 
   const alertChannel = interaction.client.getTextChannel(u.sf.channels.team.logistics);
@@ -362,7 +364,7 @@ async function buttonRacApprove(int, ratedM = false) {
   if (!channel) throw new Error(`Couldn't find the RAC ${ratedM ? "2" : ""} channel.`);
 
   const embed = int.message.embeds[0]?.data;
-  if (!embed?.fields || !embed?.footer?.text) throw new Error("Couldn't parse RAC request embed");
+  if (!embed?.fields || !embed.footer?.text) throw new Error("Couldn't parse RAC request embed");
 
   await int.deferUpdate();
 
@@ -375,7 +377,7 @@ async function buttonRacApprove(int, ratedM = false) {
   const user = int.guild.members.cache.get(embed.footer.text);
   if (user) {
     await thread.send({ content: `${user}, your requested Rent-A-Channel Thread has been approved.`, allowedMentions: { parse: ["users"] } });
-    if (ratedM && !user.roles.cache.has(u.sf.roles.rated_m)) await user.send({ content: "Your requested Rent-A-Channel Thread has been approved. You'll need the Rated M role to access it." }).catch(u.noop);
+    if (ratedM && !user.roles.cache.has(u.sf.roles.rated_m)) await user.send({ content: "Your requested Rent-A-Channel Thread has been approved. You'll need the Rated M role to access it." }).catch(() => c.blocked(user, "RAC Approved"));
   } else {
     await thread.send({ content: `Description/Context: ${embed.fields[1]?.value}` });
   }
@@ -396,7 +398,7 @@ async function buttonRacReject(int) {
   await u.db.bank.addCurrency({
     discordId: embed.footer.text,
     currency: "em",
-    description: `RAC Thread Refund`,
+    description: `Denied RAC Thread Refund`,
     hp: false,
     otherUser: int.client.user.id,
     value: 700
@@ -446,6 +448,7 @@ Module.addInteraction({
     case "racApprove": buttonRacApprove(int); break;
     case "racApproveRateM": buttonRacApprove(int, true); break;
     case "racReject": buttonRacReject(int); break;
+    case "racManual": int.editReply({ content: "This RAC thread will be handled manually.", components: [] }); break;
     default: return;
   }
 

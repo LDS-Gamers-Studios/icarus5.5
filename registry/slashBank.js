@@ -79,7 +79,7 @@ const redeemEmber = new u.sub()
       .setName("item")
       .setDescription("The item to buy.")
       .setChoices([
-        { name: "Rent-A-Channel Thread (700 EM)", value: "rac" }
+        { name: "700 EM - Rent-A-Channel Thread", value: "rac" }
       ])
       .setRequired(true)
   );
