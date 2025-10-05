@@ -99,7 +99,7 @@ async function fetchExtraLifeStreams(team) {
       .filter(channel => channel && !channel.includes(" "));
 
     if (users.length === 0) return defaultValue;
-    return [...api.twitchStatus.filter((_, username) => users.includes(username)).values()];
+    return [...api.twitchStatus.filter((stream, username) => users.includes(username) && stream.isExtraLife).values()];
   } catch (error) {
     u.errorHandler(error, "Fetch Extra Life Streams");
     return defaultValue;
@@ -242,7 +242,7 @@ async function extraLifeEmbeds(streams) {
 
     const embed = u.embed()
       .setTitle("Live from the Extra Life Team!")
-      .setImage(assets.elLogo)
+      .setThumbnail(assets.elLogo)
       .setColor(assets.colors.elGreen);
 
     const channels = streams.sort((a, b) => (a.stream?.userDisplayName ?? "").localeCompare(b.stream?.userDisplayName ?? "")).map(s => {
