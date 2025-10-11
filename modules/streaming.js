@@ -339,7 +339,7 @@ async function checkStreamsClockwork() {
 
     // alerts does automatic donation/join posts, but we only want to post summary embeds at the top of every other hour
     const now = new Date();
-    if ((now.getMinutes() > 5 || now.getHours() % 2 === 0) && !config.devMode) return;
+    if ((now.getMinutes() >= 5 || now.getHours() % 2 === 0) && !config.devMode) return;
 
     for (const embed of summaryEmbeds) {
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });
