@@ -16,9 +16,6 @@ let pf = new profanityFilter();
 /** @type {Set<string>} */
 const processing = new Set();
 
-// first value is for trusted, second is for non-trusted
-const thresh = config.spamThreshold;
-
 /**
  * @typedef activeMember
  * @prop {string} id
@@ -29,68 +26,44 @@ const thresh = config.spamThreshold;
 /** @type {Discord.Collection<string, activeMember> } */
 const active = new u.Collection();
 
-/** @param {Discord.Client} client*/
-async function spamming(client) {
-  // no point in doing it if nobodys posting
-  if (active.size === 0) return;
+/** @param {Discord.Message<true>} newMsg*/
+async function checkSpamming(newMsg) {
+  if (!newMsg.content || !newMsg.member) return;
 
-  // get resources
-  const ldsg = client.guilds.cache.get(u.sf.ldsg);
-  if (!ldsg) return;
+  // add user and message to active list
+  const messages = active.ensure(newMsg.author.id, () => ({ id: newMsg.author.id, messages: [] })).messages;
+  messages.push(newMsg);
 
-  const trusted = ldsg.roles.cache.get(u.sf.roles.moderation.trusted)?.members;
+  // If they haven't posted enough messages, don't bother continuing
+  const threshold = config.spamThreshold.same[u.perms.calc(newMsg.member, ["trusted"]) ? 0 : 1];
+  if (messages.length < threshold) return;
 
-  // Get the limit for the type of verdict
-  /** @param {string} type @param {string} id */
-  const limit = (/** @type {"channels"|"messages"|"same"} */ type, id) => thresh[type][trusted?.has(id) ? 0 : 1];
-
-  // Get verdicts for all active users and filter out unactioned ones
-  const offending = active.map(activeMember => {
-    let verdict = 0;
-
-    // Count how many of the same messages they've sent
-    /** @type {Discord.Collection<string, {content: string, count: number}>} */
-    const sameMessages = new u.Collection();
-    for (const message of activeMember.messages) {
-      const content = message.content.toLowerCase() || message.stickers.first()?.url;
-      if (!content) continue;
-      const prev = sameMessages.get(content);
-      sameMessages.set(content, { content, count: (prev?.count ?? 0) + 1 });
-    }
-
-    // See what channels they've been posting in
-    const channels = u.unique(activeMember.messages.map(m => m.channelId)).length;
-
-    // Decide verdict
-    if (limit('same', activeMember.id) <= Math.max(...sameMessages.map(m => m.count))) verdict = 3;
-    else if (limit('channels', activeMember.id) <= channels) verdict = 1;
-    else if (limit('messages', activeMember.id) <= activeMember.messages.length) verdict = 2;
-
-    // Set verdict
-    activeMember.verdict = verdict;
-    activeMember.count = [null, channels, activeMember.messages.length, sameMessages.reduce((a, b) => a + b.count, 0)][verdict] ?? undefined;
-    return activeMember;
-  }).filter(a => a.verdict && a.verdict !== 0);
-
-  for (const member of offending) {
-    const message = member.messages[0];
-    /** @type {Discord.Collection<string, {channel: string, count: number}>} */
-    const channels = new u.Collection();
-    for (const msg of member.messages) {
-      const prev = channels.get(msg.channelId);
-      channels.set(msg.channelId, { channel: msg.channel.toString(), count: (prev?.count ?? 0) + 1 });
-    }
-
-    const verdictString = [
-      null,
-      `Posted in too many channels (${member.count}/${limit('channels', member.id)}) too fast\nChannels:\n${channels.map(ch => `${ch.channel} (${ch.count})`).join('\n')}`,
-      `Posted too many messages (${member.count}/${limit('messages', member.id)}) too fast\nChannels:\n${channels.map(ch => `${ch.channel} (${ch.count})`).join('\n')}`,
-      `Posted the same message too many times (${member.count}/${limit('same', member.id)})`,
-    ];
-    if (member.verdict !== 2) c.spamCleanup(member.messages.map(m => m.content.toLowerCase()), ldsg, message, true);
-    c.createFlag({ msg: message, member: message.member ?? message.author, flagReason: verdictString[member.verdict ?? 1] + "\nThere may be additional spammage that I didn't catch.", pingMods: member.verdict === 3 });
-    active.delete(member.id);
+  // group messages by their content
+  /** @type {Discord.Collection<string, { content: string, count: number }>} */
+  const sameMessages = new u.Collection();
+  for (const msg of messages) {
+    if (Date.now() - msg.createdTimestamp > (config.spamThreshold.time * 1000)) continue;
+    const content = msg.content.toLowerCase();
+    sameMessages.ensure(content, () => ({ content, count: 0 })).count++;
   }
+
+  // find any groups that match or exceed the threshold
+  const spamMessages = sameMessages.filter(m => m.count >= threshold);
+  if (spamMessages.size === 0) return;
+
+  // clean up and report the spam
+  const verdictString = `Posted the same message too many times (${spamMessages.map(m => `${m.count}/${threshold}`).join(", ")})\nThere may be additional spammage that I didn't catch.`;
+  c.spamCleanup(spamMessages.map(m => m.content), newMsg.guild, newMsg, true);
+
+  c.createFlag({
+    msg: newMsg,
+    member: newMsg.member,
+    flagReason: verdictString,
+    pingMods: true
+  });
+
+  // remove them from the spam list
+  active.delete(newMsg.author.id);
 }
 
 /**
@@ -111,19 +84,20 @@ function filter(text) {
  */
 async function processMessageLanguage(msg) {
   if (!msg.member) return;
-  /** @type {string[]} */
-  let matchedContent = [];
-  /** @type {string[]} */
-  const reasons = [];
-  let warned = false;
-  let pingMods = false;
   if (!msg.inGuild() || msg.guild.id !== u.sf.ldsg || msg.channel.id === u.sf.channels.mods.watchList) return;
 
-  // catch spam
+  /** @type {string[]} */
+  let matchedContent = [];
+
+  /** @type {string[]} */
+  const reasons = [];
+
+  let warned = false;
+  let pingMods = false;
+
+  // spam check
   if (!msg.author.bot && !msg.webhookId && !c.grownups.has(msg.channel.id)) {
-    const messages = active.get(msg.author.id)?.messages ?? [];
-    messages.push(msg);
-    active.set(msg.author.id, { id: msg.author.id, messages: messages });
+    checkSpamming(msg);
   }
 
   const invites = await processDiscordInvites(msg);
@@ -501,18 +475,16 @@ const Module = new Augur.Module()
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => pf = new profanityFilter())
 .setShared(() => pf)
-.addEvent("ready", () => {
-  // eslint-disable-next-line no-unused-vars
-  const forWhenSpamWorks = () => setInterval(() => {
-    spamming(Module.client);
-    for (const [id, member] of active) {
-      const newMsgs = member.messages.filter(m => m.createdTimestamp + (thresh.time * 1000) >= Date.now());
-      if (newMsgs.length === member.messages.length) continue;
-      if (newMsgs.length === 0) active.delete(id);
-      else active.set(id, Object.assign(member, { messages: newMsgs }));
+.setClockwork(() => {
+  return setInterval(() => {
+    for (const [id, activity] of active) {
+      const relevantMessages = activity.messages.filter(m => Date.now() - m.createdTimestamp < config.spamThreshold.time);
+      if (relevantMessages.length === activity.messages.length) continue;
+
+      if (relevantMessages.length === 0) active.delete(id);
+      else active.set(id, { id, messages: relevantMessages });
     }
-  }, thresh.time * 1000);
-  return;
+  }, config.spamThreshold.time * 1000);
 })
 // @ts-ignore custom event
 .addEvent("reloadBanned", () => {

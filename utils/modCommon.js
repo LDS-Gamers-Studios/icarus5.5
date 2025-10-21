@@ -603,13 +603,17 @@ const modCommon = {
   spamCleanup: async function(searchContent, guild, message, auto = false) {
     const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2) * 1000;
     const contents = u.unique(searchContent);
+
     /** @type {Promise<Discord.Collection<Discord.Snowflake, Discord.Message | Discord.PartialMessage | undefined>>[]} */
     const promises = [];
+
     for (const [, channel] of guild.channels.cache) {
       const perms = channel.permissionsFor(message.client.user);
-      if (!channel.isTextBased() || !perms?.has("ManageMessages") || !perms.has("ViewChannel") || !perms.has("Connect")) continue;
+      if (!channel.isTextBased() || !perms?.has(["ManageMessages", "ViewChannel", "Connect", "ReadMessageHistory"])) continue;
+
       const fetched = await channel.messages.fetch({ around: message.id, limit: 30 }).catch(u.noop);
       if (!fetched) return { deleted: 0, channels: [] };
+
       const messages = fetched.filter(m =>
         m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
         m.createdTimestamp >= (message.createdTimestamp - timeDiff) &&
