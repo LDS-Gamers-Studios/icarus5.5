@@ -35,7 +35,7 @@ async function checkSpamming(newMsg) {
   messages.push(newMsg);
 
   // If they haven't posted enough messages, don't bother continuing
-  const threshold = config.spamThreshold.same[u.perms.calc(newMsg.member, ["trusted"]) ? 0 : 1];
+  const threshold = config.spamThreshold.messageCount;
   if (messages.length < threshold) return;
 
   // group messages by their content
