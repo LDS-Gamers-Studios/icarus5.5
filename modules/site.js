@@ -4,6 +4,8 @@ const config = require("../config/config.json");
 const { createServer } = require("http");
 const u = require("../utils/utils");
 
+const Module = new Augur.Module();
+
 /** @type {ReturnType<import("express")>} */
 let app;
 
@@ -34,6 +36,8 @@ if (config.siteOn) {
   const tourneyWS = require('../site/backend/routes/tournament/WS');
   // @ts-ignore
   const streamingWS = require("../site/backend/routes/streaming/ws");
+
+  const streamUtils = require("../site/backend/routes/streaming/utils");
 
   app = express();
   const socket = require("express-ws")(app);
@@ -162,11 +166,14 @@ if (config.siteOn) {
 
   io.on("connection", streamingWS.listen);
 
+  Module.addEvent("voiceStateUpdate", streamUtils.onVcChange);
+
   // eslint-disable-next-line no-console
   httpServer.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
+
 }
 
-module.exports = new Augur.Module()
+module.exports = Module
 .setUnload(() => {
   if (!config.siteOn) return;
 
