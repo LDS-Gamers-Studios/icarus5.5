@@ -68,7 +68,7 @@ if (config.siteOn) {
       next();
     });
 
-  app.use('/static', express.static('site/backend/public', { setHeaders: (res, path) => {
+  app.use('/assets', express.static('site/backend/public', { setHeaders: (res, path) => {
     // we want these to be direct downloads
     if (path.includes("wallpapers")) {
       res.setHeader("Content-Disposition", "attachment");
