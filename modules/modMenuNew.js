@@ -87,7 +87,7 @@ async function flagReason(int, msg, usr) {
     .addComponents(
       new u.SelectMenu.String()
         .setCustomId("flagReason")
-        .setMaxValues(3)
+        .setMaxValues(2)
         .setMinValues(1)
         .setPlaceholder("Select why you're flagging it")
         .setOptions(menuFlagOptions.map(f =>
