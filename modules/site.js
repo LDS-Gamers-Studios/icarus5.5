@@ -4,6 +4,8 @@ const config = require("../config/config.json");
 const { createServer } = require("http");
 const u = require("../utils/utils");
 
+const Module = new Augur.Module();
+
 /** @type {ReturnType<import("express")>} */
 let app;
 
@@ -35,6 +37,9 @@ if (config.siteOn) {
   // @ts-ignore
   const streamingWS = require("../site/backend/routes/streaming/ws");
 
+  // @ts-ignore
+  const streamUtils = require("../site/backend/routes/streaming/utils");
+
   app = express();
   const socket = require("express-ws")(app);
 
@@ -64,7 +69,7 @@ if (config.siteOn) {
       next();
     });
 
-  app.use('/static', express.static('site/backend/public', { setHeaders: (res, path) => {
+  app.use('/assets', express.static('site/backend/public', { setHeaders: (res, path) => {
     // we want these to be direct downloads
     if (path.includes("wallpapers")) {
       res.setHeader("Content-Disposition", "attachment");
@@ -162,11 +167,14 @@ if (config.siteOn) {
 
   io.on("connection", streamingWS.listen);
 
+  Module.addEvent("voiceStateUpdate", streamUtils.onVcChange);
+
   // eslint-disable-next-line no-console
   httpServer.listen(siteConfig.port, () => console.log(`Site running on port ${siteConfig.port}`));
+
 }
 
-module.exports = new Augur.Module()
+module.exports = Module
 .setUnload(() => {
   if (!config.siteOn) return;
 

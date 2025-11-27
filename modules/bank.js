@@ -126,7 +126,7 @@ async function slashBankGive(interaction) {
       };
       const receipt = await u.db.bank.addCurrency(deposit);
       const balance = await u.db.bank.getBalance(recipient.id);
-      const embed = u.embed({ author: interaction.client.user })
+      const embed = u.embed({ author: interaction.member })
         .addFields(
           { name: "Reason", value: reason },
           { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
@@ -147,7 +147,7 @@ async function slashBankGive(interaction) {
     };
     const receipt = await u.db.bank.addCurrency(withdrawal);
     const balance = await u.db.bank.getBalance(giver.id);
-    const embed = u.embed({ author: interaction.client.user })
+    const embed = u.embed({ author: interaction.member })
       .addFields(
         { name: "Reason", value: reason },
         { name: "Your New Balance", value: `${gb}${balance.gb}\n${ember}${balance.em}` }
