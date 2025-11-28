@@ -83,6 +83,11 @@ function filter(text) {
  * @param {Discord.Message} msg Message
  */
 async function processMessageLanguage(msg, isEdit = false) {
+
+  if (msg.author.id === u.sf.other.charlemange && msg.content.startsWith("WARNING: Removal of")) {
+    return msg.delete().catch(u.noop);
+  }
+
   if (!msg.member) return;
   if (!msg.inGuild() || msg.guild.id !== u.sf.ldsg || msg.channel.id === u.sf.channels.mods.watchList) return;
 
@@ -96,7 +101,7 @@ async function processMessageLanguage(msg, isEdit = false) {
   let pingMods = false;
 
   // spam check
-  if (!(msg.author.bot && msg.author.id !== u.sf.other.charlemange) && !msg.webhookId && !c.grownups.has(msg.channel.id) && !isEdit) {
+  if (!msg.author.bot && !msg.webhookId && !c.grownups.has(msg.channel.id) && !isEdit) {
     checkSpamming(msg);
   }
 
