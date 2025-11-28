@@ -21,7 +21,7 @@ function usrErr(int) {
   return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [] });
 }
 
-/** @param {Discord.AnySelectMenuInteraction} int */
+/** @param {Discord.AnySelectMenuInteraction | Discord.ButtonInteraction} int */
 function msgErr(int) {
   const content = "I couldn't find the message! It might have been deleted.";
   return int.replied ? edit(int, content) : int.update({ content });
@@ -354,12 +354,17 @@ async function purgeChannel(int, msg) {
   ] });
   edit(int, `I deleted ${deleted.size + 1}/${toDelete.size + 1} messages!`);
 }
+
+const fetchButton = u.MessageActionRow().addComponents(
+  new u.Button().setLabel("Try Harder").setCustomId("spamCleanFetch").setStyle(Discord.ButtonStyle.Primary)
+);
+
 /** @type {message} */
 async function spamCleanup(int, msg) {
   if (!msg) return msgErr(int);
   await edit(int, "Searching for and cleaning spam...");
-  const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false);
-  if (!cleaned) return edit(int, "I couldn't find any recent messages that matched this one.");
+  const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false, false);
+  if (!cleaned) return edit(int, { content: "I couldn't find any recent messages that matched this one.", components: [fetchButton] });
   // Log it
   int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({ author: int.member })
@@ -373,8 +378,37 @@ async function spamCleanup(int, msg) {
       .setColor(c.colors.info)
   ] });
 
-  edit(int, `I deleted ${cleaned.deleted} messages in the following channel(s):\n${cleaned.channels.join("\n")}`);
+  edit(int, { content: `I deleted ${cleaned.deleted} messages in ${cleaned.channels.length} channel(s):\n${cleaned.channels.join("\n")}`.substring(0, 4000), components: [fetchButton] });
 }
+
+/**
+ * @param {Discord.ButtonInteraction<"cached">} int
+ */
+async function spamCleanupFetch(int) {
+  const msg = int.message;
+  if (!msg || msg.partial) return msgErr(int);
+  const targetMsg = await msg.fetchReference().catch(u.noop);
+  if (!targetMsg) return msgErr(int);
+
+  await edit(int, "Searching for and cleaning spam...");
+  const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false, true);
+  if (!cleaned) return edit(int, "I tried so hard, but in the end it didn't even do anything extra");
+
+  int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
+    u.embed({ author: int.member })
+      .setTitle("Channel Purge (In-Depth)")
+      .addFields(
+        { name: "Mod", value: int.member.toString() },
+        { name: "Channel(s)", value: cleaned.channels.join(', ') },
+        { name: "Message Count", value: cleaned.deleted.toString() },
+        { name: "Reason", value: "Spam" }
+      )
+      .setColor(c.colors.info)
+  ] });
+
+  edit(int, { content: `I deleted ${cleaned.deleted} messages in ${cleaned.channels.length} channel(s):\n${cleaned.channels.join("\n")}`.substring(0, 4000), components: [fetchButton] });
+}
+
 /** @type {message} */
 async function announceMessage(int, msg) {
   if (!msg) return msgErr(int);
@@ -482,6 +516,13 @@ const Module = new Augur.Module()
     type: "ContextUser",
     onlyGuild: true,
     process: sendModMenu
+  })
+  .addInteraction({
+    name: "spamCleanupFetch",
+    id: "spamCleanupFetch",
+    type: "Button",
+    onlyGuild: true,
+    process: spamCleanupFetch
   });
 
 module.exports = Module;

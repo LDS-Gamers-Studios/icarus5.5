@@ -599,8 +599,9 @@ const modCommon = {
    * @param {Discord.Guild} guild
    * @param {Discord.Message<true>} message
    * @param {boolean} auto
+   * @param {boolean} fetch
    */
-  spamCleanup: async function(searchContent, guild, message, auto = false) {
+  spamCleanup: async function(searchContent, guild, message, auto = false, fetch = false) {
     const timeDiff = config.spamThreshold.cleanupLimit * (auto ? 1 : 2) * 1000;
     const contents = u.unique(searchContent);
 
@@ -611,10 +612,15 @@ const modCommon = {
       const perms = channel.permissionsFor(message.client.user);
       if (!channel.isTextBased() || !perms?.has(["ManageMessages", "ViewChannel", "Connect", "ReadMessageHistory"])) continue;
 
-      const fetched = await channel.messages.fetch({ around: message.id, limit: 30 }).catch(u.noop);
-      if (!fetched) return { deleted: 0, channels: [] };
+      let channelMessages = channel.messages.cache;
 
-      const messages = fetched.filter(m =>
+      if (fetch) {
+        channelMessages = await channel.messages.fetch({ around: message.id, limit: 30 }).catch(u.noop) ?? new u.Collection();
+      }
+
+      if (channelMessages.size === 0) return { deleted: 0, channels: [] };
+
+      const messages = channelMessages.filter(m =>
         m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
         m.createdTimestamp >= (message.createdTimestamp - timeDiff) &&
         m.author.id === message.author.id &&
@@ -625,7 +631,7 @@ const modCommon = {
     if (promises.length > 0) {
       const resolved = await Promise.all(promises);
       const deleted = resolved.flatMap(a => a.size).reduce((p, c) => p + c, 0);
-      const channels = u.unique(resolved.flatMap(a => a.map(b => b?.channel.toString())));
+      const channels = u.unique(resolved.flatMap(a => a.map(b => `${b?.channel}`)));
       return { deleted, channels };
     }
     return null;
