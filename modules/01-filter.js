@@ -82,7 +82,7 @@ function filter(text) {
  * Process discord message language
  * @param {Discord.Message} msg Message
  */
-async function processMessageLanguage(msg) {
+async function processMessageLanguage(msg, isEdit = false) {
   if (!msg.member) return;
   if (!msg.inGuild() || msg.guild.id !== u.sf.ldsg || msg.channel.id === u.sf.channels.mods.watchList) return;
 
@@ -96,7 +96,7 @@ async function processMessageLanguage(msg) {
   let pingMods = false;
 
   // spam check
-  if (!msg.author.bot && !msg.webhookId && !c.grownups.has(msg.channel.id)) {
+  if (!(msg.author.bot && msg.author.id !== u.sf.other.charlemange) && !msg.webhookId && !c.grownups.has(msg.channel.id) && !isEdit) {
     checkSpamming(msg);
   }
 
@@ -461,7 +461,7 @@ async function processCardAction(interaction) {
 const Module = new Augur.Module()
 .addEvent("messageCreate", processMessageLanguage)
 .addEvent("messageEdit", async (old, newMsg) => {
-  processMessageLanguage(newMsg);
+  processMessageLanguage(newMsg, true);
 })
 .addEvent("interactionCreate", (int) => {
   if (!int.inCachedGuild() || !int.isButton() || int.guild.id !== u.sf.ldsg) return;
