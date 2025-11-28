@@ -84,6 +84,7 @@ function nameGen() {
 }
 
 const modCommon = {
+  code,
   blocked,
   compareRoles,
   nameGen,
@@ -409,7 +410,7 @@ const modCommon = {
 
   /**
    * Prevent someone from talking
-   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString"|"Button">} interaction
    * @param {Discord.GuildMember} target
    * @param {string} [reason]
    */
@@ -446,9 +447,9 @@ const modCommon = {
 
       if (apply) {
         await interaction.client.getTextChannel(u.sf.channels.mods.muted)?.send({ content:
-          `${target}, you have been muted in ${interaction.guild.name}. `
-        + `Please review our ${code}.\n`
-        + 'A member of the mod team will be available to discuss more details.',
+          `${target}, you have been muted in ${interaction.guild.name}. ` +
+          `Please review our ${code}.\n` +
+          'A member of the mod team will be available to discuss more details.',
         allowedMentions: { parse: ["users"] } });
       }
 
