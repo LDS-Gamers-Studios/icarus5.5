@@ -408,15 +408,19 @@ async function slashModGrownups(interaction) {
 }
 
 /** @param {Discord.ButtonInteraction<"cached">} interaction */
-async function buttonModUnmutePurge(interaction, officeMode = false) {
-  const channel = interaction.client.getTextChannel(officeMode ? u.sf.channels.mods.office : u.sf.channels.mods.muted);
-  if (!channel) throw new Error("Unable to access channel");
+async function buttonModUnmutePurge(interaction) {
+  if (!interaction.channel) throw new Error("Unable to access channel");
+
+  if (![u.sf.channels.mods.office, u.sf.channels.mods.muted].includes(interaction.channel?.id ?? "")) {
+    u.errorHandler(new Error("Unmute purge button attempted outside of mute channel"), interaction);
+    return interaction.reply({ content: "You can't use that in this channel!", flags: ["Ephemeral"] });
+  }
 
   await interaction.deferReply({ flags: ["Ephemeral"] });
 
-  let messages = await channel.bulkDelete(100, false);
+  let messages = await interaction.channel.bulkDelete(100, false);
   while (messages.size === 100) {
-    messages = await channel.bulkDelete(100, false);
+    messages = await interaction.channel.bulkDelete(100, false);
   }
 
   await interaction.editReply("Channel was cleaned up!");
@@ -495,14 +499,6 @@ Module.addEvent("guildMemberAdd", async (member) => {
   onlyGuild: true,
   permissions: (int) => u.perms.calc(int.member, ["mod"]),
   process: buttonModUnmutePurge,
-})
-.addInteraction({
-  name: "modUnofficePurge",
-  id: "modUnofficePurge",
-  type: "Button",
-  onlyGuild: true,
-  permissions: (int) => u.perms.calc(int.member, ["mod"]),
-  process: (int) => buttonModUnmutePurge(int, true),
 });
 
 module.exports = Module;
