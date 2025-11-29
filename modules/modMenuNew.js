@@ -358,7 +358,7 @@ async function purgeChannel(int, msg) {
 async function spamCleanup(int, msg) {
   if (!msg) return msgErr(int);
   await edit(int, "Searching for and cleaning spam...");
-  const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false);
+  const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false, true);
   if (!cleaned) return edit(int, "I couldn't find any recent messages that matched this one.");
   // Log it
   int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
@@ -373,7 +373,7 @@ async function spamCleanup(int, msg) {
       .setColor(c.colors.info)
   ] });
 
-  edit(int, `I deleted ${cleaned.deleted} messages in the following channel(s):\n${cleaned.channels.join("\n")}`);
+  edit(int, `I deleted ${cleaned.deleted} messages in ${cleaned.channels.length} channel(s):\n${cleaned.channels.join("\n")}`.substring(0, 4000));
 }
 /** @type {message} */
 async function announceMessage(int, msg) {

@@ -182,26 +182,9 @@
       "description": "Thresholds for the spam filter. The first number is for untrusted members, the second for trusted.",
       "type": "object",
       "properties": {
-        "channels": {
-          "type": "array",
-          "items": [
-            { "type": "integer" },
-            { "type": "integer" }
-          ]
-        },
-        "messages": {
-          "type": "array",
-          "items": [
-            { "type": "integer" },
-            { "type": "integer" }
-          ]
-        },
-        "same": {
-          "type": "array",
-          "items": [
-            { "type": "integer" },
-            { "type": "integer" }
-          ]
+        "messageCount": {
+          "description": "The max number of messages with the same content that can be posted before counting as spam",
+          "type": "integer"
         },
         "time": {
           "description": "Time in seconds until the threshold resets",
@@ -212,7 +195,7 @@
           "type": "integer"
         }
       },
-      "required": ["channels", "messages", "same", "time", "cleanupLimit"]
+      "required": ["messageCount", "time", "cleanupLimit"]
     },
     "token": {
       "description": "Put your bot token here (https://discord.com/developers/applications)",
