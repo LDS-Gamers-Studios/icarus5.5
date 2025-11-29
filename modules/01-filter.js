@@ -55,8 +55,10 @@ async function checkSpamming(newMsg) {
   }
 
   // find any groups that match or exceed the threshold
-  const spamMessages = sameMessages.filter(m => m.count >= threshold);
-  if (spamMessages.size === 0) return;
+  // subtracts one since the last of multiple repeated spammed messages would be blocked
+  const isSpamming = sameMessages.find(m => m.count >= threshold);
+  if (!isSpamming) return;
+  const spamMessages = sameMessages.filter(m => m.count >= threshold - 1);
 
   // clean up and report the spam
   const verdictString = `Posted the same message too many times (${spamMessages.map(m => `${m.count}/${threshold}`).join(", ")})\nThere may be additional spammage that I didn't catch.`;
@@ -77,7 +79,7 @@ async function checkSpamming(newMsg) {
  * Filter some text, warn if appropriate.
  * @param {String} text The text to scan.
  */
-function filter(text) {
+function softFilter(text) {
   // PROFANITY FILTER
   const noWhiteSpace = text.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~"'()?|]/g, "").replace(/\s\s+/g, " ");
   const filtered = pf.scan(noWhiteSpace);
@@ -204,7 +206,7 @@ async function processMessageLanguage(msg, isEdit = false) {
   }
 
   // SOFT LANGUAGE FILTER
-  const soft = filter(msg.cleanContent);
+  const soft = softFilter(msg.cleanContent);
   if (soft.length > 0) {
     matchedContent = matchedContent.concat(soft);
     reasons.push("Profanity Detected");
@@ -226,7 +228,7 @@ async function processMessageLanguage(msg, isEdit = false) {
       }
 
       // SOFT FILTER
-      if (filter(preview).length > 0) {
+      if (softFilter(preview).length > 0) {
         if (!warned && !msg.author.bot && !msg.webhookId) msg.reply({ content: "It looks like that link might have some language in the preview. Please be careful!", failIfNotExists: false }).catch(u.noop);
         warned = true;
         msg.suppressEmbeds().catch(u.noop);
