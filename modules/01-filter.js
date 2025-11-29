@@ -10,7 +10,7 @@ let banned = c.getBanList();
 
 let bannedWords = new RegExp(banned.words.join("|"), "i");
 
-const linkFilters = {
+let linkFilters = {
   links: new RegExp(banned.links.join("|"), "gi"),
   scam: new RegExp(banned.scam.join("|"), "gi"),
   exception: new RegExp(banned.exception.join("|"), "gi"),
@@ -433,14 +433,14 @@ async function processCardAction(interaction) {
     }
 
     // RETRACT ACTION (returns)
-    if (interaction.customId === "modCardRetract") { // RETRACT ACTION
+    if (interaction.customId === "modCardRetract") {
       // Only the person who acted on the card (or someone in management) can retract an action
       if (infraction.handler !== mod.id && !u.perms.calc(interaction.member, ['mgmt'])) return interaction.reply({ content: "That isn't your card to retract!", flags: ["Ephemeral"] });
 
       // Update embed to reverted state
       await interaction.deferUpdate();
       const verbal = embed.data.fields?.find(f => f.value.includes("verbal"));
-      const revertedMsg = "The offending message can't be restored." + (infraction.value > 9 ? " The Muted role may have to be removed and the user unwatched." : ".");
+      const revertedMsg = "The offending message can't be restored." + (infraction.value > 9 ? " The Muted role may have to be removed and the user unwatched." : "");
 
       embed.setColor(c.colors.action)
         .setFields(embed.data.fields?.filter(f => !f.name.startsWith("Resolved") && !f.name.startsWith("Reverted")) ?? [])
@@ -497,7 +497,7 @@ async function processCardAction(interaction) {
           // Only mute if they weren't already muted.
           try {
             await member.roles.add(u.sf.roles.moderation.muted);
-            if (member.voice.channel) await member.voice.disconnect("User mute").catch(u.noop);
+            if (member.voice.channel) await member.voice.disconnect("Auto Mute").catch(u.noop);
             interaction.client.getTextChannel(u.sf.channels.mods.muted)?.send({
               content: `${member}, you have been muted in ${member.guild.name}. Please review our ${c.code}. A member of the mod team will be available to discuss more details.`,
               allowedMentions: { users: [member.id] }
@@ -594,6 +594,12 @@ const Module = new Augur.Module()
 .addEvent("reloadBanned", () => {
   banned = c.getBanList();
   bannedWords = new RegExp(banned.words.join("|"), "i");
+
+  linkFilters = {
+    links: new RegExp(banned.links.join("|"), "gi"),
+    scam: new RegExp(banned.scam.join("|"), "gi"),
+    exception: new RegExp(banned.exception.join("|"), "gi"),
+  };
 })
 .setUnload(() => c.grownups)
 .setInit((grown) => grown ? c.grownups = grown : null);
