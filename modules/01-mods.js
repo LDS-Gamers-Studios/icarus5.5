@@ -12,6 +12,34 @@ const noTarget = "The user you provided was invalid. They may have left the serv
 const molasses = new Map();
 
 /**
+ * @param {Discord.GuildMember} member
+ * @param {string} webhookURL
+ * @param {string} decorator
+ * @param {string} [content]
+ * @param {Discord.Message} [msg]
+*/
+function sendMsgCopy(member, webhookURL, decorator, content, msg) {
+
+  if (!content && msg) {
+    content = `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`;
+  }
+
+  /** @type {Discord.WebhookMessageCreateOptions} */
+  const payload = {
+    username: `${decorator} - ${member.displayName}`.substring(0, 31),
+    avatarURL: member.displayAvatarURL(),
+    allowedMentions: { parse: [] },
+    content,
+    files: msg ? msg.attachments.map(attachment => attachment.url).concat(msg.stickers.map(s => s.url)) : undefined
+  };
+
+  const webhook = new Discord.WebhookClient({ url: webhookURL });
+
+  webhook.send(payload);
+
+}
+
+/**
  * @param {Discord.Message} [msg]
  * @param {Discord.VoiceState} [oldState]
  * @param {Discord.VoiceState} [newState]
@@ -24,25 +52,26 @@ async function watch(msg, oldState, newState) {
   if (member.user.bot || (member.roles.cache.has(u.sf.roles.moderation.trusted) && !c.watchlist.has(member.id))) return; // filter not in the watchlist
 
   const decorator = !member.roles.cache.has(u.sf.roles.moderation.trusted) ? "🚪" : "👀";
-  /** @type {Discord.WebhookMessageCreateOptions} */
-  const payload = {
-    username: `${decorator} - ${member.displayName}`.substring(0, 31),
-    avatarURL: member.displayAvatarURL(),
-    allowedMentions: { parse: [] }
-  };
-  if (msg) {
-    payload.files = msg.attachments.map(attachment => attachment.url).concat(msg.stickers.map(s => s.url));
-    payload.content = `${msg.url} ${msg.editedAt ? "[EDITED]" : ""}\n> ${msg.content}`;
-  } else if (oldState?.channelId !== newState?.channelId) {
-    if (newState?.channel) payload.content = `🎙️ Joined ${newState.channel.name}`;
-    else if (oldState?.channel) payload.content = `🔇 Left ${oldState.channel.name}`;
-    else return;
-  } else {
-    return;
-  }
-  const webhook = new Discord.WebhookClient({ url: config.webhooks.watchlist });
 
-  webhook.send(payload);
+  let content = "";
+
+  if (!msg && oldState?.channelId !== newState?.channelId) {
+    if (newState?.channel) content = `🎙️ Joined ${newState.channel.name}`;
+    else if (oldState?.channel) content = `🔇 Left ${oldState.channel.name}`;
+  }
+
+  sendMsgCopy(member, config.webhooks.watchlist, decorator, content, msg);
+}
+
+/** @param {Discord.Message<true>} msg */
+async function mutedHistory(msg) {
+  if (!msg.member || msg.channelId !== u.sf.channels.mods.muted) return;
+
+  let decorator = "🛡️";
+  if (msg.member.roles.cache.has(u.sf.roles.moderation.muted)) decorator = "🔇";
+
+  const content = `${msg.editedAt ? "[EDITED]" : ""} ${msg.content}`;
+  sendMsgCopy(msg.member, config.webhooks.mutedHistory, decorator, content, msg);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
@@ -378,6 +407,21 @@ async function slashModGrownups(interaction) {
   }
 }
 
+/** @param {Discord.ButtonInteraction<"cached">} interaction */
+async function buttonModUnmutePurge(interaction) {
+  const muted = interaction.client.getTextChannel(u.sf.channels.mods.muted);
+  if (!muted) throw new Error("Unable to access muted channel");
+
+  await interaction.deferReply({ flags: ["Ephemeral"] });
+
+  let messages = await muted.bulkDelete(100, false);
+  while (messages.size === 100) {
+    messages = await muted.bulkDelete(100, false);
+  }
+
+  await interaction.editReply("Channel was cleaned up!");
+}
+
 
 Module.addEvent("guildMemberAdd", async (member) => {
   if (member.guild.id === u.sf.ldsg) {
@@ -397,9 +441,15 @@ Module.addEvent("guildMemberAdd", async (member) => {
   const list = await u.db.user.getUsers({ watching: true });
   c.watchlist = new Set(list.map(l => l.discordId));
 })
-.addEvent("messageCreate", watch)
+.addEvent("messageCreate", (msg) => {
+  if (!msg.inGuild()) return;
+  watch(msg);
+  mutedHistory(msg);
+})
 .addEvent("messageEdit", async (msg, newMsg) => {
+  if (!newMsg.inGuild()) return;
   watch(newMsg);
+  mutedHistory(newMsg);
 })
 .addEvent("voiceStateUpdate", (oldS, newS) => {
   watch(undefined, oldS, newS);
@@ -437,6 +487,14 @@ Module.addEvent("guildMemberAdd", async (member) => {
       }
     } catch (error) { u.errorHandler(error, interaction); }
   }
+})
+.addInteraction({
+  name: "modUnmutePurge",
+  id: "modUnmutePurge",
+  type: "Button",
+  onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["mod"]),
+  process: buttonModUnmutePurge,
 });
 
 module.exports = Module;

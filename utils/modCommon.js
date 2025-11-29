@@ -451,6 +451,15 @@ const modCommon = {
           `Please review our ${code}.\n` +
           'A member of the mod team will be available to discuss more details.',
         allowedMentions: { parse: ["users"] } });
+      } else {
+        await interaction.client.getTextChannel(u.sf.channels.mods.muted)?.send({
+          content: "Looks like someone was unmuted. Do you want to clear the channel history? All messages are backed up.",
+          components: [
+            u.MessageActionRow().addComponents(
+              new u.Button().setLabel("Purge Channel").setCustomId("modUnmutePurge").setStyle(Discord.ButtonStyle.Primary).setEmoji("🧹")
+            )
+          ]
+        });
       }
 
       return `${M}d ${target}.`;

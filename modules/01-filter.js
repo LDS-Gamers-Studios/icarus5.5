@@ -154,7 +154,7 @@ function linkFilter(msg) {
  */
 async function processMessageLanguage(msg, isEdit = false) {
   if (!msg.member) return;
-  if (!msg.inGuild() || msg.guild.id !== u.sf.ldsg || msg.channel.id === u.sf.channels.mods.watchList) return;
+  if (!msg.inGuild() || msg.guild.id !== u.sf.ldsg || msg.channel.id === u.sf.channels.mods.watchList || msg.channel.id === u.sf.channels.mods.mutedHistory) return;
 
   // CHARLEMANGE FILTER (lol)
   if (msg.author.id === u.sf.other.charlemange && msg.content.startsWith("WARNING: Removal of")) {
