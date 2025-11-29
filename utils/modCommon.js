@@ -619,7 +619,7 @@ const modCommon = {
         channelMessages = await channel.messages.fetch({ around: message.id, limit: 30 }).catch(u.noop) ?? new u.Collection();
       }
 
-      if (channelMessages.size === 0) return { deleted: 0, channels: [] };
+      if (channelMessages.size === 0) continue;
 
       const messages = channelMessages.filter(m =>
         m.createdTimestamp <= (timeDiff + message.createdTimestamp) &&
