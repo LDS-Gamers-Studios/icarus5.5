@@ -408,15 +408,15 @@ async function slashModGrownups(interaction) {
 }
 
 /** @param {Discord.ButtonInteraction<"cached">} interaction */
-async function buttonModUnmutePurge(interaction) {
-  const muted = interaction.client.getTextChannel(u.sf.channels.mods.muted);
-  if (!muted) throw new Error("Unable to access muted channel");
+async function buttonModUnmutePurge(interaction, officeMode = false) {
+  const channel = interaction.client.getTextChannel(officeMode ? u.sf.channels.mods.office : u.sf.channels.mods.muted);
+  if (!channel) throw new Error("Unable to access channel");
 
   await interaction.deferReply({ flags: ["Ephemeral"] });
 
-  let messages = await muted.bulkDelete(100, false);
+  let messages = await channel.bulkDelete(100, false);
   while (messages.size === 100) {
-    messages = await muted.bulkDelete(100, false);
+    messages = await channel.bulkDelete(100, false);
   }
 
   await interaction.editReply("Channel was cleaned up!");
@@ -495,6 +495,14 @@ Module.addEvent("guildMemberAdd", async (member) => {
   onlyGuild: true,
   permissions: (int) => u.perms.calc(int.member, ["mod"]),
   process: buttonModUnmutePurge,
+})
+.addInteraction({
+  name: "modUnofficePurge",
+  id: "modUnofficePurge",
+  type: "Button",
+  onlyGuild: true,
+  permissions: (int) => u.perms.calc(int.member, ["mod"]),
+  process: (int) => buttonModUnmutePurge(int, true),
 });
 
 module.exports = Module;
