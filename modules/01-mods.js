@@ -65,13 +65,19 @@ async function watch(msg, oldState, newState) {
 
 /** @param {Discord.Message<true>} msg */
 async function mutedHistory(msg) {
-  if (!msg.member || msg.channelId !== u.sf.channels.mods.muted) return;
+  if (!msg.member || ![u.sf.channels.mods.muted, u.sf.channels.mods.office].includes(msg.channelId)) return;
+
+  const isOffice = msg.channelId === u.sf.channels.mods.office;
+  const webhook = isOffice ? config.webhooks.officeHistory : config.webhooks.mutedHistory;
 
   let decorator = "🛡️";
-  if (msg.member.roles.cache.has(u.sf.roles.moderation.muted)) decorator = "🔇";
+  if (msg.member.roles.cache.hasAny(u.sf.roles.moderation.muted, u.sf.roles.moderation.ductTape)) {
+    if (isOffice) decorator = "🪑";
+    else decorator = "🔇";
+  }
 
   const content = `${msg.editedAt ? "[EDITED]" : ""} ${msg.content}`;
-  sendMsgCopy(msg.member, config.webhooks.mutedHistory, decorator, content, msg);
+  sendMsgCopy(msg.member, webhook, decorator, content, msg);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} interaction */
