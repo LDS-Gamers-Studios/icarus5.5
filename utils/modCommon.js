@@ -410,7 +410,7 @@ const modCommon = {
 
   /**
    * Prevent someone from talking
-   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString"|"Button">} interaction
+   * @param {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} interaction
    * @param {Discord.GuildMember} target
    * @param {string} [reason]
    */

@@ -21,7 +21,7 @@ function usrErr(int) {
   return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [] });
 }
 
-/** @param {Discord.AnySelectMenuInteraction | Discord.ButtonInteraction} int */
+/** @param {Discord.AnySelectMenuInteraction} int */
 function msgErr(int) {
   const content = "I couldn't find the message! It might have been deleted.";
   return int.replied ? edit(int, content) : int.update({ content });
@@ -354,13 +354,12 @@ async function purgeChannel(int, msg) {
   ] });
   edit(int, `I deleted ${deleted.size + 1}/${toDelete.size + 1} messages!`);
 }
-
 /** @type {message} */
 async function spamCleanup(int, msg) {
   if (!msg) return msgErr(int);
   await edit(int, "Searching for and cleaning spam...");
   const cleaned = await c.spamCleanup([msg.content.toLowerCase()], msg.guild, msg, false, true);
-  if (!cleaned) return edit(int, { content: "I couldn't find any recent messages that matched this one." });
+  if (!cleaned) return edit(int, "I couldn't find any recent messages that matched this one.");
   // Log it
   int.client.getTextChannel(u.sf.channels.mods.logs)?.send({ embeds: [
     u.embed({ author: int.member })
@@ -374,9 +373,8 @@ async function spamCleanup(int, msg) {
       .setColor(c.colors.info)
   ] });
 
-  edit(int, { content: `I deleted ${cleaned.deleted} messages in ${cleaned.channels.length} channel(s):\n${cleaned.channels.join("\n")}`.substring(0, 4000) });
+  edit(int, `I deleted ${cleaned.deleted} messages in ${cleaned.channels.length} channel(s):\n${cleaned.channels.join("\n")}`.substring(0, 4000));
 }
-
 /** @type {message} */
 async function announceMessage(int, msg) {
   if (!msg) return msgErr(int);
