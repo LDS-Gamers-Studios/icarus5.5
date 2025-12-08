@@ -110,7 +110,7 @@ if (config.siteOn) {
       res.on("finish", () => {
         // @ts-ignore sometimes it picks on some nonsense
         // eslint-disable-next-line no-console
-        console.log(`${req.user?.displayName ?? req.ip} [${req.method}] ${req.path} -> [${res.statusCode} ${res.statusMessage}]`);
+        console.log(`${req.user?.displayName ?? req.ip} [${req.method}] ${req.originalUrl} -> [${res.statusCode} ${res.statusMessage}]`);
       });
     }
     next();
