@@ -28,7 +28,9 @@
   "webhooks": {
     "error": "Webhook url for errors",
     "watchlist": "Webhook url for #watch-list",
-    "mcTesting": "Webhook url for testing interactions with Minecraft chat"
+    "mcTesting": "Webhook url for testing interactions with Minecraft chat",
+    "mutedHistory": "Webhook url for recording muted channel history",
+    "officeHistory": "Webhook url for recording office channel history"
   },
   "events": [
     "channelCreate",
