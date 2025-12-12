@@ -71,8 +71,10 @@ if (config.siteOn) {
 
   app.use('/assets', express.static('site/backend/public', { setHeaders: (res, path) => {
     // we want these to be direct downloads
-    if (path.includes("wallpapers")) {
+    if (path.includes("wallpapers") && !path.endsWith("preview.jpg")) {
       res.setHeader("Content-Disposition", "attachment");
+      // eslint-disable-next-line no-console
+      console.log(res.req.path + " download");
     }
     res.setHeader("Cache-Control", "public, max-age=259200");
     return res;
@@ -102,12 +104,14 @@ if (config.siteOn) {
 
   // expose backend routes
   app.use('/api', globalLimit, (req, res, next) => {
-    if (siteConfig.monitoring) {
-      if (!(req.path.startsWith("/streaming/overlay") && !req.path.endsWith(".html"))) {
+
+    // const ogSend = res.send;
+    if (siteConfig.monitoring && !req.path.endsWith(".html")) {
+      res.on("finish", () => {
         // @ts-ignore sometimes it picks on some nonsense
         // eslint-disable-next-line no-console
-        console.log(`${req.user?.displayName ?? "Unauthorized User"} [${req.method}] ${req.path}`);
-      }
+        console.log(`${req.user?.displayName ?? req.ip} [${req.method}] ${req.originalUrl} -> [${res.statusCode} ${res.statusMessage}]`);
+      });
     }
     next();
   }, routes);

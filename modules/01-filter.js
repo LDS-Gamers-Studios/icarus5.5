@@ -145,7 +145,7 @@ function linkFilter(msg) {
     }
   }
 
-  return { deleteMsg, warning, isGif, matchedContent };
+  return { deleteMsg, warning, isGif, matchedContent, reasons };
 }
 
 /**
@@ -188,13 +188,14 @@ async function processMessageLanguage(msg, isEdit = false) {
   }
 
   // LINK FILTER
-  const { deleteMsg, isGif, warning, matchedContent: matchedInLink } = linkFilter(msg);
+  const { deleteMsg, isGif, warning, matchedContent: matchedInLink, reasons: linkReasons } = linkFilter(msg);
   if (deleteMsg) u.clean(msg, 0);
   if (warning && !warned) {
     msg.reply({ content: warning, failIfNotExists: false }).catch(u.noop);
     warned = true;
   }
 
+  reasons.push(...linkReasons);
   matchedContent = matchedContent.concat(matchedInLink);
 
 

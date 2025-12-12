@@ -89,13 +89,13 @@ const Module = new Augur.Module()
         const reason = `Update New Channel Permissions: ${channel.name}`;
 
         channel.permissionOverwrites.create(u.sf.roles.moderation.muted, mutedPerms, { reason }).catch(/** @param {Error} e */e => u.errorHandler(e, `${reason}: ${channel.name}`));
-        channel.permissionOverwrites.create(u.sf.roles.moderation.ductTape, mutedPerms, { reason }).catch(/** @param {Error} e */e => u.errorHandler(e, `${reason}: ${channel.name}`));
+        // channel.permissionOverwrites.create(u.sf.roles.moderation.ductTape, mutedPerms, { reason }).catch(/** @param {Error} e */e => u.errorHandler(e, `${reason}: ${channel.name}`));
       } else {
         // send warning message
         channel.client.getTextChannel(u.sf.channels.team.logistics)?.send({ embeds: [
           u.embed({
             title: "Update New Channel Permissions",
-            description: `Insufficient permissions to update channel ${channel} (#${channel.name}). Muted permissions need to be applied manually. Default denied permissions for Muted and Duct Tape are:\n\`\`\`${Object.keys(mutedPerms).join('\n')}\`\`\``,
+            description: `Insufficient permissions to update channel ${channel} (#${channel.name}). Muted permissions need to be applied manually. Default denied permissions for Muted are:\n\`\`\`${Object.keys(mutedPerms).join('\n')}\`\`\``,
             color: c.colors.info
           })
         ] });
