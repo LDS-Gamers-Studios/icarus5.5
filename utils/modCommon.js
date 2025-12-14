@@ -25,6 +25,11 @@ const modActions = [
     new u.Button().setCustomId("modCardLink").setEmoji("🔗").setLabel("Link to Discuss").setStyle(ButtonStyle.Secondary)
   ])
 ];
+
+const modUnmutePurgeButton = u.MessageActionRow().addComponents(
+  new u.Button().setLabel("Purge Channel").setCustomId("modUnmutePurge").setStyle(Discord.ButtonStyle.Primary).setEmoji("🧹")
+);
+
 /** @param {Discord.GuildMember|Discord.User|Discord.Webhook} person */
 const userBackup = (person) => `${person} (${u.escapeText("displayName" in person ? person.displayName : person.name)})`;
 
@@ -451,6 +456,11 @@ const modCommon = {
           `Please review our ${code}.\n` +
           'A member of the mod team will be available to discuss more details.',
         allowedMentions: { parse: ["users"] } });
+      } else {
+        await interaction.client.getTextChannel(u.sf.channels.mods.muted)?.send({
+          content: "Looks like someone was unmuted. Do you want to clear the channel history? All messages are backed up.",
+          components: [modUnmutePurgeButton]
+        });
       }
 
       return `${M}d ${target}.`;
@@ -533,6 +543,11 @@ const modCommon = {
           + 'This allows you and the mods to have a private space to discuss issues or concerns.\n'
           + `Please review our ${code}. A member of the mod team will be available to discuss more details.`,
         allowedMentions: { parse: ['users'] }
+        });
+      } else {
+        await interaction.client.getTextChannel(u.sf.channels.mods.office)?.send({
+          content: "Looks like someone was removed from the office. Do you want to clear the channel history? All messages are backed up.",
+          components: [modUnmutePurgeButton]
         });
       }
 

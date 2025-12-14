@@ -89,9 +89,11 @@
       "properties": {
         "error": { "type": "string" },
         "watchlist": { "type": "string" },
-        "mcTesting": { "type": "string" }
+        "mcTesting": { "type": "string" },
+        "mutedHistory": { "type": "string" },
+        "officeHistory": { "type": "string" }
       },
-      "required": ["error", "watchlist", "mcTesting"]
+      "required": ["error", "watchlist", "mcTesting", "mutedHistory", "officeHistory"]
     },
     "events": {
       "description": "Events the bot will listen to/handle",
