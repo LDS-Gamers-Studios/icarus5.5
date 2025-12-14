@@ -10,6 +10,7 @@ test.js
 *.csv
 data/banned.json
 data/extralifeCache.json
+data/streamcache.json
 site
 .DS_Store
 media/badges/*

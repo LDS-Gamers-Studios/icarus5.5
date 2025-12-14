@@ -53,7 +53,7 @@ async function slashTwitchLive(int) {
   const lines = channels.map(ch => `**${ch.isExtraLife ? `<:el_team:${u.sf.emoji.elteam}> ` : ""}${ch.name} is playing ${ch.game}**\n[${ch.title}](${ch.url})\n`);
   const embeds = u.pagedEmbedsDescription(embed, lines);
 
-  return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), int.channelId === u.sf.channels.botSpam);
+  return u.manyReplies(int, embeds.map(e => ({ embeds: [e] })), int.channelId !== u.sf.channels.botSpam);
 }
 
 /** @param {Augur.GuildInteraction<"CommandSlash">} int */
@@ -88,7 +88,7 @@ async function buttonStreamerAgree(int) {
     .addComponents(
       u.ModalActionRow().addComponents(
         new u.TextInput()
-          .setLabel("Twitch Username (This will be saved as an IGN)")
+          .setLabel("Twitch Username (will be saved as an IGN)")
           .setRequired(true)
           .setPlaceholder("https://twitch.tv/___this_part___")
           .setValue(ign?.ign || "")
@@ -148,7 +148,7 @@ async function buttonApproveStreamer(int) {
   await int.deferUpdate();
 
   const content = await c.assignRole(int, member, u.sf.roles.streaming.approved);
-  await member.send(approvalText).catch(() => c.blocked(member));
+  await member.send(approvalText).catch(() => c.blocked(member, "Approved Streamer Approval"));
 
   int.editReply({ content, components: [] });
 }
@@ -162,7 +162,9 @@ async function buttonDenyStreamer(int) {
 
   await int.deferUpdate();
 
-  await member.send(`Hey ${member.displayName}, unfortunately your application to become an approved streamer has been denied. This was likely due to the type of content being streamed, but please reach out to someone on the Public Affairs Team if you have any questions.`).catch(() => c.blocked(member));
+  await member.send(`Hey ${member.displayName}, unfortunately your application to become an approved streamer has been denied. This was likely due to the type of content being streamed, but please reach out to someone on the Public Affairs Team if you have any questions.`)
+    .catch(() => c.blocked(member, "Approved Streamer Rejection"));
+
   int.editReply({ content: `${member}'s application has been denied by ${int.member}`, components: [] });
 }
 
@@ -185,7 +187,7 @@ async function handleOnline(streams, streamers, ldsg) {
 
     // If they were streaming recently (within half an hour), don't post notifications
     if (status && (status.live || status.sinceLiveChange > sinceThreshold())) {
-      status.stream = stream;
+      status.stream = { userDisplayName: stream.userDisplayName, gameName: stream.gameName, title: stream.title, gameId: stream.gameId };
       continue;
     }
 
@@ -299,7 +301,7 @@ async function processTwitch(igns) {
       const streams = await api.twitch.streams.getStreamsByUserNames(usernames)
         .catch(api.twitchErrorHandler);
 
-      if (!streams || streams.length === 0) continue;
+      if (!streams) continue;
 
       const messages = await handleOnline(streams, streamers, ldsg);
       for (const message of messages) {
@@ -337,7 +339,7 @@ async function checkStreamsClockwork() {
 
     // alerts does automatic donation/join posts, but we only want to post summary embeds at the top of every other hour
     const now = new Date();
-    if ((now.getMinutes() > 5 || now.getHours() % 2 === 0) && !config.devMode) return;
+    if ((now.getMinutes() >= 5 || now.getHours() % 2 === 0) && !config.devMode) return;
 
     for (const embed of summaryEmbeds) {
       await Module.client.getTextChannel(u.sf.channels.general)?.send({ embeds: [embed] });

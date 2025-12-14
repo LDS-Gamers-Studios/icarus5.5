@@ -22,6 +22,14 @@ function percent(num, den) {
   return (num / den * 100).toFixed(2) + "%";
 }
 
+/** @param {import("../utils/extralifeTypes").Participant} participant */
+function getChannelName(participant) {
+  let name = participant.streamingChannel?.toLowerCase();
+  name ??= participant.links.stream?.replace("https://player.twitch.tv/?channel=", "").toLowerCase();
+
+  return name || "";
+}
+
 
 /****************
  *   COMMANDS   *
@@ -36,7 +44,7 @@ async function slashTwitchExtralifeTeam(int) {
 
   const streams = await fetchExtraLifeStreams(team);
   const members = team.participants.map(p => {
-    const username = p.streamingChannel.toLowerCase();
+    const username = getChannelName(p);
     const stream = username ? streams.find(s => s.stream?.userDisplayName.toLowerCase() === username) : undefined;
     return { ...p, username, isLive: stream?.live, stream };
   });
@@ -87,11 +95,11 @@ async function fetchExtraLifeStreams(team) {
     doDonationChecks(team);
 
     const users = team.participants.filter(m => m.streamingPlatform === "Twitch")
-      .map(p => p.streamingChannel?.toLowerCase() ?? "")
+      .map(p => getChannelName(p))
       .filter(channel => channel && !channel.includes(" "));
 
     if (users.length === 0) return defaultValue;
-    return [...api.twitchStatus.filter((_, username) => users.includes(username)).values()];
+    return [...api.twitchStatus.filter((stream, username) => users.includes(username) && stream.isExtraLife).values()];
   } catch (error) {
     u.errorHandler(error, "Fetch Extra Life Streams");
     return defaultValue;
@@ -210,6 +218,7 @@ async function doDonationChecks(team) {
 
     teamMembers.add(id);
     newMembers.push(participant);
+    update = true;
   }
 
   if (newMembers.length > 0) {
@@ -233,7 +242,7 @@ async function extraLifeEmbeds(streams) {
 
     const embed = u.embed()
       .setTitle("Live from the Extra Life Team!")
-      .setImage(assets.elLogo)
+      .setThumbnail(assets.elLogo)
       .setColor(assets.colors.elGreen);
 
     const channels = streams.sort((a, b) => (a.stream?.userDisplayName ?? "").localeCompare(b.stream?.userDisplayName ?? "")).map(s => {

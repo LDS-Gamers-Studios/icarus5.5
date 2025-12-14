@@ -30,6 +30,8 @@ const permFuncs = {
   /** @type {perm} */
   botTeam: m => m.roles.cache.has(sf.roles.team.botTeam),
   /** @type {perm} */
+  headOfHouse: m => m.roles.cache.has(sf.roles.houses.head),
+  /** @type {perm} */
   team: m => m.roles.cache.has(sf.roles.team.team),
   /** @type {perm} */
   volunteer: m => m.roles.cache.has(sf.roles.team.volunteer),

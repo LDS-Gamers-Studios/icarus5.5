@@ -60,20 +60,26 @@ const extraLife = {
     const team = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}`);
     if (!team) return cachedELTeam;
 
-    if (!cachedELTeam || cachedELTeam.numMilestones !== team.numMilestones) {
+    if (!cachedELTeam || cachedELTeam.milestones.length !== team.numMilestones) {
       /** @type {extralife.Milestone[]} */
       team.milestones = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/milestones`) ?? [];
       team.milestones.sort((a, b) => a.fundraisingGoal - b.fundraisingGoal);
+    } else {
+      team.milestones = cachedELTeam?.milestones ?? [];
     }
 
-    if (!cachedELTeam || cachedELTeam.numParticipants !== team.numParticipants) {
+    if (!cachedELTeam || cachedELTeam.participants.length !== team.numParticipants) {
       /** @type {extralife.Participant[]} */
       team.participants = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/participants`) ?? [];
+    } else {
+      team.participants = cachedELTeam.participants ?? [];
     }
 
-    if (!cachedELTeam || cachedELTeam.numDonations !== team.numDonations) {
+    if (!cachedELTeam || cachedELTeam.donations.length !== team.numDonations) {
       /** @type {extralife.Donation[]} */
       team.donations = await call(`${EXTRA_LIFE_API}/teams/${EXTRA_LIFE_TEAM}/donations`) ?? [];
+    } else {
+      team.donations = cachedELTeam.donations ?? [];
     }
 
     cachedELTeam = team;
@@ -111,7 +117,7 @@ async function isRatedM(gameName) {
 
     /** @type {{ game_title: string, rating: string, alternates: string[] | null }[]} */
     const apiGames = await call(`${GAMES_DB_API}/Games/ByGameName?apikey=${config.api.thegamesdb}&name=${encodeURIComponent(gameName)}&fields=rating,alternates`)
-      .then(d => d.games) || [];
+      .then(d => d.data.games) || [];
 
     // the api can return multiple games as well as aliases since we use the alternates field. default to the first game if it can't find it (games are sorted by relevance)
     const ratedGame = apiGames.find(g => (g.game_title.toLowerCase() === gameName || g.alternates?.find(a => a.toLowerCase() === gameName)) && g.rating !== "Not Rated") || apiGames[0];

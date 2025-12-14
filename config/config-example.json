@@ -28,7 +28,9 @@
   "webhooks": {
     "error": "Webhook url for errors",
     "watchlist": "Webhook url for #watch-list",
-    "mcTesting": "Webhook url for testing interactions with Minecraft chat"
+    "mcTesting": "Webhook url for testing interactions with Minecraft chat",
+    "mutedHistory": "Webhook url for recording muted channel history",
+    "officeHistory": "Webhook url for recording office channel history"
   },
   "events": [
     "channelCreate",
@@ -83,11 +85,9 @@
   },
   "prefix": "! (change this to something unique)",
   "spamThreshold":  {
-    "channels": [10, 8],
-    "messages": [10, 8],
-    "same": [5, 5],
-    "time": 7,
-    "cleanupLimit": 90
+    "messageCount": 5,
+    "cleanupLimit": 90,
+    "time": 60
   },
   "token": "Put your bot token here (https://discord.com/developers/applications)",
   "memberMilestone": {
