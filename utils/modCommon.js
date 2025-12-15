@@ -103,7 +103,7 @@ const modCommon = {
   refreshBanList: () => delete require.cache[require.resolve("../data/banned.json")],
   /**
    * BAN HAMMER!!!
-   * @template {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} T
+   * @template {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString"|"Modal">} T
    * @param {T} interaction
    * @param {Discord.GuildMember} target
    * @param {string} reason
@@ -336,7 +336,7 @@ const modCommon = {
   },
   /**
    * They get the boot
-   * @template {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString">} T
+   * @template {Augur.GuildInteraction<"CommandSlash"|"SelectMenuString"|"Modal">} T
    * @param {T} interaction
    * @param {Discord.GuildMember} target
    * @param {string} reason

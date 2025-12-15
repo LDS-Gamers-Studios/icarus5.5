@@ -135,9 +135,11 @@ Module.addInteraction({
   permissions: (int) => u.perms.calc(int.member, ["mod", "mgr"]),
   process: async (int) => {
     await int.deferReply({ flags: ["Ephemeral"] });
+
     const userId = int.message.embeds[0]?.footer?.text;
-    const target = int.guild.members.cache.get(userId ?? "0");
+    const target = int.guild.members.cache.get(userId ?? "") || int.client.users.cache.get(userId ?? "");
     if (!target) return int.editReply("I couldn't find that user!");
+
     const e = await c.getSummaryEmbed(target);
     return int.editReply({ embeds: [e] });
   }
