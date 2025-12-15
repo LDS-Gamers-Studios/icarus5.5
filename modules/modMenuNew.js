@@ -10,9 +10,11 @@ const menuOptions = require("../data/modMenuOptions.json"),
   noTime = "I fell asleep waiting for your input...";
 
 /**
- * @typedef {(int: Augur.GuildInteraction<"SelectMenuString">, target: Discord.GuildMember|Discord.User|null, apply?: boolean) => Promise<any>} user
- * @typedef {(int: Augur.GuildInteraction<"SelectMenuString">, target: Discord.Message<true>|null, apply?: boolean) => Promise<any>} message
- * @typedef {(int: Augur.GuildInteraction<"SelectMenuString">, message: Discord.Message<true>|null, user: Discord.GuildMember|Discord.User|null, apply?: boolean) => Promise<any>} both
+ * @typedef {Augur.GuildInteraction<"SelectMenuString">} MenuSelection
+ * @typedef {(int: MenuSelection, target: Discord.GuildMember|Discord.User|null, apply?: boolean) => Promise<any>} user
+ * @typedef {(int: MenuSelection, target: Discord.GuildMember, apply?: boolean) => Promise<any>} member
+ * @typedef {(int: MenuSelection, target: Discord.Message<true>|null, apply?: boolean) => Promise<any>} message
+ * @typedef {(int: MenuSelection, message: Parameters<message>[1], user: Parameters<user>[1], apply?: boolean) => Promise<any>} both
  */
 
 /** @param {Discord.AnySelectMenuInteraction} int */
@@ -44,7 +46,7 @@ function edit(int, payload) {
 }
 
 /**
- * @param {Discord.StringSelectMenuInteraction} int
+ * @param {Discord.StringSelectMenuInteraction<"cached">} int
  * @param {string} description
 */
 async function getReason(int, description) {
@@ -69,7 +71,15 @@ async function getReason(int, description) {
     edit(int, noTime);
     return;
   });
-  return modalSubmit;
+
+  if (modalSubmit) {
+    await modalSubmit.deferUpdate();
+    const reason = modalSubmit.fields.getTextInputValue("reason");
+
+    return { modalSubmit, reason };
+  }
+
+  await int.update(noTime);
 }
 
 /** @type {user} */
@@ -126,6 +136,7 @@ async function flag(int, msg, usr) {
   if (madeFlag) return edit(int, "Your report has been created! Moderators may reach out if they need more details.");
   return edit(int, "Sorry, I ran into an error while creating your report. Please let the moderators know about the issue.");
 }
+
 /** @type {message} */
 async function pin(int, msg) {
   if (!msg) return msgErr(int);
@@ -151,6 +162,7 @@ async function pin(int, msg) {
   return edit(int, "Pin request submitted!");
 
 }
+
 /** @type {user} */
 async function userSummary(int, usr) {
   if (!usr) return usrErr(int);
@@ -158,6 +170,7 @@ async function userSummary(int, usr) {
   const e = await c.getSummaryEmbed(usr, 28);
   return edit(int, { embeds: [e] });
 }
+
 /** @type {user} */
 async function noteUser(int, usr) {
   if (!usr) return usrErr(int);
@@ -186,9 +199,9 @@ async function noteUser(int, usr) {
     return edit(modalSubmit, noted);
   }
 }
-/** @type {user} */
+
+/** @type {member} */
 async function renameUser(int, usr) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
   const modal = new u.Modal()
     .setTitle("Rename User")
     .setCustomId("modMenuRename")
@@ -215,36 +228,45 @@ async function renameUser(int, usr) {
   return int.update(noTime);
 
 }
-/** @type {user} */
+
+
+/**
+ * @param {Parameters<user>[0]} interaction
+ * @param {Parameters<user>[1]} user
+ * @returns {user is Discord.GuildMember}
+ */
+function memberTest(interaction, user) {
+  const isMember = Boolean(user && user instanceof Discord.GuildMember);
+  if (!isMember) usrErr(interaction);
+
+  return isMember;
+}
+
+/** @type {member} */
 async function trustUser(int, usr, apply = true) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
   const trust = await c.trust(int, usr, apply);
   return edit(int, trust);
 }
-/** @type {user} */
+
+/** @type {member} */
 async function trustPlusUser(int, usr, apply = true) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
   const trust = await c.trustPlus(int, usr, apply);
   return edit(int, trust);
 }
-/** @type {user} */
+
+/** @type {member} */
 async function watchUser(int, usr, apply = true) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
   const watching = await c.watch(int, usr, apply);
   return edit(int, watching);
 }
-/** @type {user} */
-async function warnUser(int, usr) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
-  const reason = await getReason(int, "What's the warning for?");
-  if (reason) {
-    await reason.deferUpdate();
-    const r = reason.fields.getTextInputValue("reason");
-    const warn = await c.warn(int, r, 1, usr);
-    return edit(reason, warn);
-  }
-  return int.update(noTime);
 
+/** @type {member} */
+async function warnUser(int, usr) {
+  const res = await getReason(int, "What's the warning for?");
+  if (!res) return;
+
+  const warn = await c.warn(int, res.reason, 1, usr);
+  return edit(res.modalSubmit, warn);
 }
 /** @type {message} */
 async function modDiscussion(int, msg) {
@@ -256,80 +278,63 @@ async function modDiscussion(int, msg) {
   md?.send({ embeds: [embed] }).catch(u.noop);
   return edit(int, `I forwarded the message to ${md}!`);
 }
-/** @type {user} */
+/** @type {member} */
 async function muteUser(int, usr, apply = true) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
-  let reason = undefined;
-  if (apply) {
-    const gotR = await getReason(int, "Why are they being muted?");
-    if (gotR) {
-      reason = gotR.fields.getTextInputValue("reason");
-      await gotR.deferUpdate();
-    } else {
-      return;
-    }
+  let mute;
+  if (!apply) {
+    mute = await c.mute(int, usr, undefined, false);
+  } else {
+    const res = await getReason(int, "Why are they being muted?");
+    if (!res) return;
+
+    mute = await c.mute(int, usr, res.reason, true);
   }
-  const mute = await c.mute(int, usr, reason, apply);
+
   return edit(int, mute);
 }
-/** @type {user} */
+
+/** @type {member} */
 async function timeoutUser(int, usr) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
-  const reason = await getReason(int, "What's the timeout for?");
-  if (reason) {
-    await reason.deferUpdate();
-    const r = reason.fields.getTextInputValue("reason");
-    const timeout = await c.timeout(int, usr, 10, r);
-    return edit(reason, timeout);
-  }
-  return int.update(noTime);
+  const res = await getReason(int, "What's the timeout for?");
+  if (!res) return;
 
+  const timeout = await c.timeout(int, usr, 10, res.reason);
+  return edit(res.modalSubmit, timeout);
 }
-/** @type {user} */
+
+/** @type {member} */
 async function kickUser(int, usr) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
-  const reason = await getReason(int, "What's the kick for?");
-  if (reason) {
-    await reason.deferUpdate();
-    const r = reason.fields.getTextInputValue("reason");
-    const kickResponse = await c.kick(int, usr, r);
-    if (!kickResponse) return;
+  const res = await getReason(int, "What's the kick for?");
+  if (!res) return;
 
-    return edit(kickResponse.interaction, kickResponse.payload);
-  }
-  return int.update(noTime);
+  const kickResponse = await c.kick(res.modalSubmit, usr, res.reason);
+  if (!kickResponse) return;
 
+  return edit(kickResponse.interaction, kickResponse.payload);
 }
-/** @type {user} */
+/** @type {member} */
 async function banUser(int, usr) {
-  if (!usr || !(usr instanceof Discord.GuildMember)) return usrErr(int);
-  const reason = await getReason(int, "What's the ban for?");
-  if (reason) {
-    await reason.deferUpdate();
-    const r = reason.fields.getTextInputValue("reason");
-    const banResponse = await c.ban(int, usr, r);
-    if (!banResponse) return;
+  const res = await getReason(int, "What's the ban for?");
+  if (!res) return;
 
-    return edit(banResponse.interaction, banResponse.payload);
-  }
-  return int.update(noTime);
+  const kickResponse = await c.ban(res.modalSubmit, usr, res.reason);
+  if (!kickResponse) return;
 
+  return edit(kickResponse.interaction, kickResponse.payload);
 }
 /** @type {message} */
 async function warnMessage(int, msg) {
   if (!msg) return msgErr(int);
+
   const usr = msg.member;
   if (!usr) return usrErr(int);
-  const reason = await getReason(int, "What's the warning for?");
-  if (reason) {
-    await reason.deferUpdate();
-    const r = reason.fields.getTextInputValue("reason");
-    const warn = await c.warn(int, r, 1, usr, msg);
-    u.clean(msg, 0);
-    return edit(reason, warn);
-  }
-  return int.update(noTime);
 
+  const res = await getReason(int, "What's the warning for?");
+  if (!res) return;
+
+  const warn = await c.warn(int, res.reason, 1, usr, msg);
+  u.clean(msg, 0);
+  return edit(res.modalSubmit, warn);
 }
 /** @type {message} */
 async function purgeChannel(int, msg) {
@@ -387,26 +392,39 @@ async function announceMessage(int, msg) {
 */
 async function handleModMenu(submitted, oldInt) {
   const components = permComponents(oldInt);
-  const component = components.find(cmp => cmp.value === submitted.values[0]);
+  const command = submitted.values[0];
+  const component = components.find(cmp => cmp.value === command);
   if (!component) return submitted.update({ content: "I couldn't find that command!", components: [] });
+
   const message = oldInt.isMessageContextMenuCommand() ? oldInt.targetMessage : null;
   const user = oldInt.isUserContextMenuCommand() ? oldInt.targetMember ?? oldInt.targetUser : message?.member ?? null;
-  if (!user && !message) return u.errorHandler(null, "No user or message on modMenu");
+  if (!user && !message) return u.errorHandler(new Error("No user or message on modMenu"), submitted);
+
   // These commands require additional input and can't be defered
-  switch (submitted.values[0]) {
+  switch (command) {
     case "noteUser": return noteUser(submitted, user);
-    case "renameUser": return renameUser(submitted, user);
-    case "warnUser": return warnUser(submitted, user);
-    case "muteUser": return muteUser(submitted, user, true);
-    case "timeoutUser": return timeoutUser(submitted, user);
-    case "kickUser": return kickUser(submitted, user);
-    case "banUser": return banUser(submitted, user);
     case "warnMessage": return warnMessage(submitted, message);
     default: break;
   }
-  // These ones don't require additional inputs,
+
+  // These commands require a member
+  if (!message) {
+    if (!memberTest(submitted, user)) return;
+    switch (command) {
+      case "renameUser": return renameUser(submitted, user);
+      case "warnUser": return warnUser(submitted, user);
+      case "muteUser": return muteUser(submitted, user, true);
+      case "timeoutUser": return timeoutUser(submitted, user);
+      case "kickUser": return kickUser(submitted, user);
+      case "banUser": return banUser(submitted, user);
+      default: break;
+
+    }
+  }
+
+  // These ones don't require additional inputs
   await submitted.deferUpdate();
-  switch (submitted.values[0]) {
+  switch (command) {
     case "modDiscussion": return modDiscussion(submitted, message);
     case "purgeChannel": return purgeChannel(submitted, message);
     case "spamCleanup": return spamCleanup(submitted, message);
@@ -415,6 +433,12 @@ async function handleModMenu(submitted, oldInt) {
     case "flag": return flagReason(submitted, message, user);
     case "pinMessage": return pin(submitted, message);
     case "userSummary": return userSummary(submitted, user);
+    default: break;
+  }
+
+  // Anything beyond this point requires a member
+  if (!memberTest(submitted, user)) return;
+  switch (command) {
     case "trustUser": return trustUser(submitted, user, true);
     case "untrustUser": return trustUser(submitted, user, false);
     case "trustPlusUser": return trustPlusUser(submitted, user, true);
@@ -424,6 +448,8 @@ async function handleModMenu(submitted, oldInt) {
     case "unmuteUser": return muteUser(submitted, user, false);
     default: return edit(submitted, "I'm not sure what command you used, but it's not any of the ones I know...");
   }
+
+
 }
 
 /** @param {Augur.GuildInteraction<"ContextBase">} int */
@@ -468,6 +494,7 @@ async function sendModMenu(int) {
   });
   if (component && component.inCachedGuild()) handleModMenu(component, int);
 }
+
 const Module = new Augur.Module()
   .addInteraction({
     name: "msgModMenu",
