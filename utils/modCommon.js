@@ -208,7 +208,7 @@ const modCommon = {
           { name: "Jump to Post", value: msg.url, inline: true },
           { name: "User", value: userBackup(user) }
         );
-      if (msg.channel.parentId === u.sf.channels.minecraft.category) {
+      if (msg.channel.parentId === u.sf.channels.minecraft.category && msg.channel.name.toLowerCase().startsWith("mc-chat")) {
         msg.client.getTextChannel(u.sf.channels.minecraft.mods)?.send({
           embeds: [embed],
           components: [
