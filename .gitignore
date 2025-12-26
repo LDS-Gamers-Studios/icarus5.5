@@ -17,7 +17,7 @@ media/badges/*
 media/banners/*
 !media/banners/README.md
 media/tags/*
-naughty.csv
+data/naughty.txt
 
 # For Visual Studio's temp directory
 .vs/

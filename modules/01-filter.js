@@ -3,6 +3,7 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js"),
   config = require('../config/config.json'),
   profanityFilter = require("profanity-matcher"),
+  profanityFilterNew = require("profanity-matcher-ts"),
   u = require("../utils/utils"),
   c = require("../utils/modCommon");
 
@@ -18,6 +19,7 @@ let linkFilters = {
 const hasLink = /(>?(>?http[s]?|ftp):\/\/)([\w.-]+\.)?([\w.-]+\.[^/\n ]+)(\/[^ \n]+)?/gi;
 
 let pf = new profanityFilter();
+let pft = new profanityFilterNew("./data/naughty.txt");
 
 /** @type {Set<string>} */
 const processing = new Set();
@@ -75,6 +77,25 @@ async function checkSpamming(newMsg) {
   active.delete(newMsg.author.id);
 }
 
+const Module = new Augur.Module();
+
+/**
+ * @param {string[]} filtered
+ * @param {string[]} newFiltered
+ */
+function tempConsistencyCheck(filtered, newFiltered) {
+  const oldJoined = [...filtered].sort((a, b) => a.localeCompare(b)).join(" ");
+  const newJoined = [...newFiltered].sort((a, b) => a.localeCompare(b)).join(" ");
+
+  if (oldJoined !== newJoined) {
+    const embed = u.embed()
+      .setTitle("Soft filter mismatch")
+      .setDescription(`Old method: \`${oldJoined || "<nothing>"}\`\n\nNew Method: \`${newJoined || "<nothing>"}\``);
+
+    Module.client.users.cache.get(u.sf.other.bobby)?.send({ embeds: [embed] });
+  }
+}
+
 /**
  * Filter some text, warn if appropriate.
  * @param {String} text The text to scan.
@@ -83,6 +104,10 @@ function softFilter(text) {
   // PROFANITY FILTER
   const noWhiteSpace = text.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~"'()?|]/g, "").replace(/\s\s+/g, " ");
   const filtered = pf.scan(noWhiteSpace);
+
+  const newFiltered = pft.scan(text);
+  tempConsistencyCheck(filtered, newFiltered);
+
   if ((filtered.length > 0) && filtered[0] && (noWhiteSpace.length > 0)) return filtered;
   return [];
 }
@@ -564,8 +589,7 @@ async function processCardAction(interaction) {
 /********************
 **  Filter Events  **
 ********************/
-const Module = new Augur.Module()
-.addEvent("messageCreate", processMessageLanguage)
+Module.addEvent("messageCreate", processMessageLanguage)
 .addEvent("messageEdit", async (old, newMsg) => {
   processMessageLanguage(newMsg, true);
 })
