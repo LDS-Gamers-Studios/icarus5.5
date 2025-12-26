@@ -57,6 +57,7 @@
     "passport-discord-auth": "^1.1.1",
     "pet-pet-gif": "^1.0.9",
     "profanity-matcher": "^1.0.1",
+    "profanity-matcher-ts": "github:BobbyTheCatfish/profanity-matcher-ts",
     "rss-parser": "^3.12.0",
     "sharp": "^0.33.5",
     "socket.io": "^4.8.1",
