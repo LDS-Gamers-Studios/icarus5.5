@@ -603,7 +603,10 @@ Module.addEvent("messageCreate", processMessageLanguage)
   return true;
 })
 // @ts-ignore it does exist...
-.addEvent("filterUpdate", () => pf = new profanityFilter())
+.addEvent("filterUpdate", () => {
+  pf = new profanityFilter();
+  pft = new profanityFilterNew("./data/naughty.txt");
+})
 .setShared(() => pf)
 .setClockwork(() => {
   // Clear spam list of old messages
