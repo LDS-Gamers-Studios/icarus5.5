@@ -19,7 +19,7 @@ let linkFilters = {
 const hasLink = /(>?(>?http[s]?|ftp):\/\/)([\w.-]+\.)?([\w.-]+\.[^/\n ]+)(\/[^ \n]+)?/gi;
 
 let pf = new profanityFilter();
-let pft = new profanityFilterNew("./data/naughty.txt");
+let pft = new profanityFilterNew({ filepath: "./data/naughty.txt", removalRegex: /[^\w\s@]/g });
 
 /** @type {Set<string>} */
 const processing = new Set();
@@ -605,7 +605,7 @@ Module.addEvent("messageCreate", processMessageLanguage)
 // @ts-ignore it does exist...
 .addEvent("filterUpdate", () => {
   pf = new profanityFilter();
-  pft = new profanityFilterNew("./data/naughty.txt");
+  pft = new profanityFilterNew({ filepath: "./data/naughty.txt", removalRegex: /[^\w\s@]/g });
 })
 .setShared(() => pf)
 .setClockwork(() => {
