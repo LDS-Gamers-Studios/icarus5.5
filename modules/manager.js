@@ -349,7 +349,7 @@ async function rankReset(client, dist = 10_000) {
   let announcement = "# CHAT RANK RESET!!!\n\n" +
     `Another chat season has come to a close! In the most recent season, we've had **${users.length}** active members who are tracking their chatting XP! Altogether, we earned **${totalXP} XP!**\n` +
     `The three most active members were:\n${top3}\n\n` +
-    dist ? `${ember}${dist} have been distributed among *all* of those ${users.length} XP trackers, proportional to their participation.\n\n` : "" +
+    (dist ? `${ember}${dist} have been distributed among *all* of those ${users.length} XP trackers, proportional to their participation.\n\n` : "") +
     "If you would like to participate in this season's chat ranks and *haven't* opted in, `/rank track` will get you in the mix. If you've previously used that command, you don't need to do so again.";
 
   const mopBucket = await getMopBucketWinner(client);
