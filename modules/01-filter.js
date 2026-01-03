@@ -38,6 +38,7 @@ const active = new u.Collection();
 /** @param {Discord.Message<true>} newMsg*/
 async function checkSpamming(newMsg) {
   if (!newMsg.content || !newMsg.member) return;
+  if (u.parse(newMsg) || (newMsg.member.roles.cache.has(u.sf.roles.moderation.trusted) && newMsg.channelId === u.sf.channels.botSpam)) return; // filter commands
 
   // add user and message to active list
   const messages = active.ensure(newMsg.author.id, () => ({ id: newMsg.author.id, messages: [] })).messages;
