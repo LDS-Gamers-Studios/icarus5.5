@@ -548,18 +548,14 @@ async function processCardAction(interaction) {
     const infractionSummary = await u.db.infraction.getSummary(infraction.discordId);
 
     // Alert user of points
-    if (member && infraction.channel) {
+    if (member && infraction.channel && infraction.value > 0) {
       const quote = u.embed({ author: member })
         .addFields({ name: "Channel", value: `#${interaction.client.getTextChannel(infraction.channel)?.name ?? "Unknown Channel"}` })
         .setDescription(embed.data.description ?? null)
         .setTimestamp(flag.createdAt)
         .setFooter({ text: "There may have been an attachment or sticker" });
 
-      const response = "## 🚨 Message from the LDSG Mods:\n" + (
-        (infraction.value === 0) ?
-          `We would like to speak with you about the following post. It may be that we're looking for some additional context or just want to handle things informally.\n\n**${mod.toString()}** will be reaching out to you shortly, if they haven't already.` :
-          c.warnMessage(mod.displayName)
-      );
+      const response = "## 🚨 Message from the LDSG Mods:\n" + c.warnMessage(mod.displayName);
 
       member.send({ content: response, embeds: [quote] }).catch(() => c.blocked(member, "Infraction Warning"));
     }

@@ -896,10 +896,11 @@ const modCommon = {
   },
   /** @param {string} mod */
   warnMessage: function(mod) {
+    mod; // just for the sake of keeping the param
     return "We have received one or more complaints regarding content you posted.\n"
     + `We have reviewed the content in question and have determined, in our sole discretion, that it is against our ${code}.\n`
-    + "This content was removed on your behalf. As a reminder, if we believe that you are frequently in breach of our Code of Conduct or are otherwise acting inconsistently with the letter or spirit of the code, we may limit, suspend or terminate your access to the LDSG Discord server.\n\n"
-    + `**${mod}** has issued this warning.`;
+    + "This content was removed on your behalf. As a reminder, if we believe that you are frequently in breach of our Code of Conduct or are otherwise acting inconsistently with the letter or spirit of the code, we may limit, suspend or terminate your access to the LDSG Discord server.\n\n";
+    // + `**${mod}** has issued this warning.`;
   },
   /** @type {Set<string>} */
   watchlist: new Set(),
