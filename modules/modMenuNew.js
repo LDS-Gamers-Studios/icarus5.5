@@ -5,7 +5,7 @@ const Augur = require("augurbot-ts"),
   Discord = require("discord.js");
 
 const menuOptions = require("../data/modMenuOptions.json"),
-  menuFlagOptions = require("../data/modMenuFlagOptions.json"),
+  // menuFlagOptions = require("../data/modMenuFlagOptions.json"),
   time = 5 * 60 * 1000,
   noTime = "I fell asleep waiting for your input...";
 
@@ -81,33 +81,34 @@ async function avatar(int, target) {
   const image = new u.Attachment(target.displayAvatarURL({ extension: 'png' }), { name: 'avatar.png' });
   return edit(int, { embeds: [embed], files: [image] });
 }
-/** @type {both} */
-async function flagReason(int, msg, usr) {
-  const reasons = u.MessageActionRow()
-    .addComponents(
-      new u.SelectMenu.String()
-        .setCustomId("flagReason")
-        .setMaxValues(2)
-        .setMinValues(1)
-        .setPlaceholder("Select why you're flagging it")
-        .setOptions(menuFlagOptions.map(f =>
-          new u.SelectMenu.StringOption()
-            .setDefault(false)
-            .setDescription(f.description)
-            .setEmoji(f.emoji)
-            .setLabel(f.label)
-            .setValue(f.value)
-        ))
-    );
+// /** @type {both} */
+// async function flagReason(int, msg, usr) {
+//   const reasons = u.MessageActionRow()
+//     .addComponents(
+//       new u.SelectMenu.String()
+//         .setCustomId("flagReason")
+//         .setMaxValues(2)
+//         .setMinValues(1)
+//         .setPlaceholder("Select why you're flagging it")
+//         .setOptions(menuFlagOptions.map(f =>
+//           new u.SelectMenu.StringOption()
+//             .setDefault(false)
+//             .setDescription(f.description)
+//             .setEmoji(f.emoji)
+//             .setLabel(f.label)
+//             .setValue(f.value)
+//         ))
+//     );
 
-  const responseMsg = await edit(int, { components: [reasons] });
-  const response = await responseMsg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true }).catch(() => {
-    edit(int, noTime);
-    return;
-  });
-  if (response && response.inCachedGuild()) return flag(response, msg, usr);
-  return edit(int, noTime);
-}
+//   const responseMsg = await edit(int, { components: [reasons] });
+//   const response = await responseMsg.awaitMessageComponent({ componentType: Discord.ComponentType.StringSelect, time, dispose: true }).catch(() => {
+//     edit(int, noTime);
+//     return;
+//   });
+
+//   if (response && response.inCachedGuild()) return flag(response, msg, usr);
+//   return edit(int, noTime);
+// }
 /**
  * @type {both}
  * @param {Discord.GuildMember} usr
@@ -115,14 +116,17 @@ async function flagReason(int, msg, usr) {
 async function flag(int, msg, usr) {
   if (!usr) return usrErr(int);
   await int.deferUpdate();
-  const reason = int.values.map(v => menuFlagOptions.find(o => o.value === v)?.label).join(', ');
-  if (reason.includes("Mod Abuse") && !u.perms.calc(usr, ["mod", "mcMod", "mgr"])) return edit(int, "Only Moderators can be flagged for mod abuse.");
+  // const reason = int.values.map(v => menuFlagOptions.find(o => o.value === v)?.label).join(', ');
+
+  // if (reason.includes("Mod Abuse") && !u.perms.calc(usr, ["mod", "mcMod", "mgr"])) return edit(int, "Only Moderators can be flagged for mod abuse.");
+
   if (msg) {
     // Don't let them know it was already flagged, but also don't create a duplicate
     const existing = await u.db.infraction.getByMsg(msg.id);
     if (existing) return edit(int, "Your report has been created! Moderators may reach out if they need more details.");
   }
-  const madeFlag = await c.createFlag({ msg: msg ?? undefined, member: usr, pingMods: false, snitch: int.member, flagReason: reason }, int);
+
+  const madeFlag = await c.createFlag({ msg: msg ?? undefined, member: usr, pingMods: false, snitch: int.member, flagReason: "User Report" /* reason */ }, int);
   if (madeFlag) return edit(int, "Your report has been created! Moderators may reach out if they need more details.");
   return edit(int, "Sorry, I ran into an error while creating your report. Please let the moderators know about the issue.");
 }
@@ -387,11 +391,15 @@ async function announceMessage(int, msg) {
 */
 async function handleModMenu(submitted, oldInt) {
   const components = permComponents(oldInt);
+
   const component = components.find(cmp => cmp.value === submitted.values[0]);
   if (!component) return submitted.update({ content: "I couldn't find that command!", components: [] });
+
   const message = oldInt.isMessageContextMenuCommand() ? oldInt.targetMessage : null;
   const user = oldInt.isUserContextMenuCommand() ? oldInt.targetMember ?? oldInt.targetUser : message?.member ?? null;
+
   if (!user && !message) return u.errorHandler(null, "No user or message on modMenu");
+
   // These commands require additional input and can't be defered
   switch (submitted.values[0]) {
     case "noteUser": return noteUser(submitted, user);
@@ -412,7 +420,7 @@ async function handleModMenu(submitted, oldInt) {
     case "spamCleanup": return spamCleanup(submitted, message);
     case "announceMessage": return announceMessage(submitted, message);
     case "userAvatar": return avatar(submitted, user);
-    case "flag": return flagReason(submitted, message, user);
+    case "flag": return flag(submitted, message, user);
     case "pinMessage": return pin(submitted, message);
     case "userSummary": return userSummary(submitted, user);
     case "trustUser": return trustUser(submitted, user, true);
