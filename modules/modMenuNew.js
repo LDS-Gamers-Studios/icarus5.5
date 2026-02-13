@@ -18,19 +18,19 @@ const menuOptions = require("../data/modMenuOptions.json"),
 /** @param {Discord.AnySelectMenuInteraction} int */
 function usrErr(int) {
   const content = "I couldn't find the user! They may have left the server.";
-  return int.replied ? edit(int, content) : int.update({ content, components: [], embeds: [] });
+  return (int.replied || int.deferred) ? edit(int, content) : int.update({ content, components: [], embeds: [] });
 }
 
 /** @param {Discord.AnySelectMenuInteraction} int */
 function msgErr(int) {
   const content = "I couldn't find the message! It might have been deleted.";
-  return int.replied ? edit(int, content) : int.update({ content });
+  return (int.replied || int.deferred) ? edit(int, content) : int.update({ content });
 }
 
 /**
  * Handle replying to an interaction with components
  * @param {Discord.CommandInteraction|Discord.AnySelectMenuInteraction|Discord.ModalSubmitInteraction|Discord.ButtonInteraction} int
- * @param {Discord.MessageEditOptions|string} payload
+ * @param {Discord.MessageEditOptions|Discord.MessagePayload|string} payload
  */
 function edit(int, payload) {
   const obj = { embeds: [], components: [], attachments: [], files: [], content: "" };
@@ -40,6 +40,7 @@ function edit(int, payload) {
   } else {
     payload = Object.assign(obj, payload);
   }
+
   return int.editReply(payload);
 }
 
