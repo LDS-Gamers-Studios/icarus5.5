@@ -115,7 +115,7 @@ async function avatar(int, target) {
  */
 async function flag(int, msg, usr) {
   if (!usr) return usrErr(int);
-  await int.deferUpdate();
+  // await int.deferUpdate();
   // const reason = int.values.map(v => menuFlagOptions.find(o => o.value === v)?.label).join(', ');
 
   // if (reason.includes("Mod Abuse") && !u.perms.calc(usr, ["mod", "mcMod", "mgr"])) return edit(int, "Only Moderators can be flagged for mod abuse.");
